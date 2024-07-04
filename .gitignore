@@ -1,1 +1,16 @@
+# organization
 local/
+.DS_Store
+
+# latex
+thesis/*.aux
+thesis/*.bbl
+thesis/*.bcf
+thesis/*.fdb_latexmk
+thesis/*.fls
+thesis/*.log
+thesis/*.out
+thesis/*.run.xml
+thesis/*.synctex.gz
+thesis/*.toc
+thesis/*.xmpi

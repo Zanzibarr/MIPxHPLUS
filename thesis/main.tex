@@ -1,0 +1,160 @@
+\pdfinfo{
+    /Author (Zanella Matteo)
+    /Title (Example title)
+    /Keyword ()
+}
+
+% Libraries
+\documentclass[a4paper,12pt]{report}
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{fancyhdr}
+\usepackage{sectsty}
+\usepackage[inner=3cm,top=2cm,bottom=2cm,outer=2cm]{geometry}
+\usepackage{setspace}
+\usepackage[hang,small,sf,font=small, labelfont=bf]{caption}
+\usepackage{subcaption}
+\usepackage[usenames]{color}
+\usepackage{xcolor}
+\usepackage{colortbl}
+\usepackage{tocloft}
+\usepackage[a-1b]{pdfx}
+\usepackage{hyperref}
+\usepackage{tabto}
+\usepackage{mathtools}
+\usepackage{bbold}
+\usepackage{wrapfig}
+\usepackage[]{mdframed}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\usepackage{amssymb}
+\usepackage{cases}
+\usepackage{indentfirst}
+\usepackage{afterpage}
+\usepackage{placeins}
+\usepackage{csquotes}
+
+%images
+\usepackage{graphicx}
+\graphicspath{ {./images/} }
+
+%tikz
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta}
+
+%pseudocode
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+
+
+\DeclarePairedDelimiter\floor{\lfloor}{\rfloor}
+\DeclarePairedDelimiter\ceil{\lceil}{\rceil}
+
+\setlength{\arrayrulewidth}{1pt}
+\newcommand\blankpage{%
+    \null
+    \thispagestyle{empty}%
+    \addtocounter{page}{-1}%
+    \newpage}
+
+% Mandatory settings
+\onehalfspacing
+\hypersetup{
+    colorlinks,
+    citecolor=black,
+    filecolor=black,
+    linkcolor=black,
+    urlcolor=black
+}
+
+% Subsections
+\renewcommand{\cftpartleader}{\cftdotfill{\cftdotsep}} % for parts
+\renewcommand{\cftchapleader}{\cftdotfill{\cftdotsep}} % for chapters
+\renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}} % for sections
+
+% Bibliography
+\usepackage[sorting=none]{biblatex}
+\addbibresource{bibl.bib}
+
+% Start document
+\begin{document}
+\begin{titlepage}
+\begin{center}
+
+\includegraphics[height=0.13\textheight]{logo_unipd.png}
+\hfill
+\includegraphics[height=0.13\textheight]{logo_dei.png}
+\newline
+\newline
+
+\vspace{0.8cm}
+\textsc{\LARGE Universit\`{a} degli Studi di Padova}\\
+\vspace{1.6cm}
+\textsc{\large 	School of Engineering Department of Information Engineering}\\
+\vspace{0.4cm}
+
+\textsc{\large Master Degree in Computer Engineering}\\
+\vfill
+{ \LARGE \bfseries Example of a Title}\\
+\vspace{1cm}
+
+%\textbf{\large Example of a Subtitle}\\
+\vfill
+
+\textit{\large Supervisor:} \hfill \textit{\large Candidate:}\\
+\textsc{\large Prof. Salvagnin Domenico} \hfill \textsc{Zanella Matteo}\\
+\textsc{Università di Padova:} \hfill \textsc{2122187}\\
+
+\vfill
+
+Academic Year 2024/2025
+
+\vfill
+
+
+\end{center}
+\end{titlepage}
+
+\pagenumbering{roman}
+\thispagestyle{empty}
+\clearpage{\pagestyle{plain}\cleardoublepage}
+    
+\clearpage\null\newpage
+
+% Abstract
+\newcommand\summaryname{Abstract}
+\newenvironment{Abstract} {
+    \begin{center}%
+    \bfseries{\summaryname} \end{center}
+}
+
+\vspace*{50px}
+
+\begin{Abstract}
+This is an example of an abstract.
+\end{Abstract}
+
+\afterpage{\blankpage}
+
+% Index
+\clearpage{\pagestyle{plain}\cleardoublepage}
+\tableofcontents
+%\listoffigures
+%\listoftables
+
+\clearpage{\pagestyle{plain}\cleardoublepage}
+\pagenumbering{arabic}
+
+\afterpage{\blankpage}
+
+% Chapter 1
+\clearpage{\pagestyle{plain}\cleardoublepage}
+\chapter{Introduction}
+\input{chapters/introduction}
+
+\afterpage{\blankpage}
+    
+% Bibliography
+\printbibliography
+
+\end{document}
