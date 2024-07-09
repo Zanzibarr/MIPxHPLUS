@@ -1,11 +1,13 @@
 # organization
 local/
 .DS_Store
+.vscode
 
 # latex
 thesis/*.aux
 thesis/*.bbl
 thesis/*.bcf
+thesis/*.blg
 thesis/*.fdb_latexmk
 thesis/*.fls
 thesis/*.log
@@ -14,3 +16,8 @@ thesis/*.run.xml
 thesis/*.synctex.gz
 thesis/*.toc
 thesis/*.xmpi
+
+# code
+code/logs
+code/build
+code/src/test.cpp
