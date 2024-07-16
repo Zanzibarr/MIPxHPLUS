@@ -4,9 +4,6 @@
 #include "utils.hpp"
 
 class Logger {
-    private:
-        char log_file_name[100];
-        void _format_output(const char* str, va_list ptr, FILE* log_file);
 
     public:
         /**
@@ -31,6 +28,11 @@ class Logger {
          * Terminates the execution of the program (exit(1))
          */
         void raise_error(const char* str, ...);
+
+    private:
+        char log_file_name[100];
+        void _format_output(const char* str, va_list ptr, FILE* log_file);
+        
 };
 
 #endif
