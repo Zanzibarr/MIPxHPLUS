@@ -12,7 +12,7 @@ class Logger {
          * @param run_title Title of the run to be logged
          * @param log_name (optional, def = default.log) Name of the log file
          */
-        Logger(const char* run_title, std::string log_name = DEF_LOG_FILE);
+        Logger(const std::string run_title, const std::string log_name = DEF_LOG_FILE);
         /**
          * Code executes only if VERBOSE >= 10
          * Prints and logs a formatted string (info format)

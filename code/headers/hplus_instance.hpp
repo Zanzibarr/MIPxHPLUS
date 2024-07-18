@@ -2,6 +2,7 @@
 #define _HPLUS_INST_H
 
 #include "utils.hpp"
+#include "logging.hpp"
 
 /**
  * Struct representing an action with preconditions, effects and cost
@@ -10,31 +11,29 @@ class HPLUS_action  {
 
     public:
 
-        //TODO: Edit if I'm working in STRIPS
         /**
          * Value each variable must have for the action to be taken
-         * 
-         * [p0, p1, ..., pn] for each variable vj, value(vj) must be pj for the action to be taken (-1 if a specific value isn't required)
+         * ->
+         * [1000 0100 0001] -> Assuming a size of 3 and a range of 4 for each variable, value(v0) must be 0, value(v1) must be 1, value(v2) must be 3
          */
-        int* pre;
+        BitField* pre;
 
-        //TODO: Edit if I'm working in STRIPS
         /**
          * Value each variable has after the action has been taken
-         * 
-         * [e0, e1, ..., en] for each variable vj, value(vj) = ej after the action has been taken (-1 if the action doesn't change that variable's value)
+         * ->
+         * [1000 0100 0001] -> Assuming a size of 3 and a range of 4 for each variable, value(v0) will be 0, value(v1) will be 1, value(v2) will be 3
          */
-        int* eff;   //TODO: Ask: Do I need to make an add and a remove effect or just effects is ok (considering I don't have remove effects)?
+        BitField* eff;
 
         /**
          * Cost of the action
          */
-        int cost;   //TODO: Ask: int or double?
+        int cost;
 
         /**
          * Create a blank HPLUS_action
          */
-        HPLUS_action();
+        HPLUS_action(unsigned int size_bf);
 
         /**
          * Create an HPLUS_action from another (deep copy)
@@ -50,8 +49,7 @@ class HPLUS_action  {
 
 };
 
-//TODO: Consider split in HPLUS_domain and HPLUS_problem
-class HPLUS_instance {
+class HPLUS_domain {
 
     public:
 
@@ -60,19 +58,24 @@ class HPLUS_instance {
          * 
          * @param file_name: Path of the file where to read the instance from
          */
-        HPLUS_instance(std::string file_path);
+        HPLUS_domain(const std::string file_path, Logger* logger);
 
         /**
          * Create an HPLUS_instance from another (deep copy)
          * 
          * @param from_inst: The HPLUS_instance to copy
          */
-        HPLUS_instance(const HPLUS_instance* from_inst);
+        HPLUS_domain(const HPLUS_domain* from_dom);
 
         /**
          * Destructor for HPLUS_instance
          */
-        ~HPLUS_instance();
+        ~HPLUS_domain();
+
+        /**
+         * true if unitary cost is used, false if generic cost is used
+         */
+        const bool unitary_cost();
 
         /**
          * Get the number of variables this problem has (referred as n)
@@ -81,7 +84,6 @@ class HPLUS_instance {
          */
         const void get_nvar(int* nvar);
 
-        //TODO: Remove if I'm working in STRIPS
         /**
          * Get the ranges of each variable
          * 
@@ -107,62 +109,8 @@ class HPLUS_instance {
          */
         const void get_actions(HPLUS_action* actions_list);
 
-        //TODO: Edit if I'm working in STRIPS
-        /**
-         * Get the initial state
-         * 
-         * @param istate: A pointer to the variable to save the return value into:
-         * this variable must be an array of integers, already allocated, with a length >= n (only the first n values will be set)
-         * ->
-         * [i0, i1, ..., in] for each variable vj, value(vj) = ij in the initial state
-         */
-        const void get_istate(int* istate);
-
-        //TODO: Edit if I'm working in STRIPS
-        /**
-         * Get the goal state
-         * 
-         * @param istate: A pointer to the variable to save the return value into:
-         * this variable must be an array of integers, already allocated, with a length >= n (only the first n values will be set)
-         * ->
-         * [g0, g1, ..., gn] for each variable vj, value(vj) must be gj in the goal state (-1 if a specific value isn't required)
-         */
-        const void get_gstate(int* gstate);
-
-        /**
-         * Compare a solution found with the best found so far and stores it if it's the new best one
-         * 
-         * @param solution: ordered sequence of HPLUS_action that represent the solution found
-         * @param nact: number of actions this solution has
-         * @param cost: cost of this solution
-         */
-        void update_best_solution(const HPLUS_action* solution, const int* nact, const int* cost);
-
-        /**
-         * Get the best solution found so far
-         * 
-         * @param solution: A pointer to the variable to save the solution into:
-         * this variable must be a list of HPLUS_action, already allocated, with a length >= m (only the first nact variables will be set)
-         * @param nact: A pointer to the variable to save the number of actions the solution has into: int
-         * @param cost: A pointer to the variable to save the cost of the solution into: int
-         */
-        const void get_best_solution(HPLUS_action* solution, int* nact, int* cost);
-
-        /**
-         * Get the cost of the best solution found so far
-         * 
-         * @param cost: A pointer to the variable to save the return value into: int
-         */
-        const void get_best_cost(int* cost);
-
     private:
 
-        // DOMAIN
-
-        //TODO: Probably unneccessary
-        short version;
-
-        //TODO: Probably unnecessary, maybe useful for mathematical model
         /**
          * This instance uses generic or unitary costs
          */
@@ -173,7 +121,6 @@ class HPLUS_instance {
          */
         int n_var;
 
-        //TODO: Remove if I'm working in STRIPS
         /**
          * Range of each variable
          * 
@@ -189,30 +136,94 @@ class HPLUS_instance {
         /**
          * List of actions that can be done
          */
-        HPLUS_action* actions;
+        HPLUS_action** actions;
 
-        // PROBLEM
-
-        //TODO: Edit if I'm working in STRIPS
         /**
-         * Initial state of the problem
+         * Logger to use for info/debugging
+         */
+        Logger* logger;
+
+        // UTILS
+
+        void parse_inst_file(const FILE* file);
+
+};
+
+class HPLUS_problem {
+
+    public:
+
+        HPLUS_problem(const HPLUS_domain* domain, const int* istate, const int* gstate);
+
+        ~HPLUS_problem();
+
+        /**
+         * Get the initial state
          * 
-         * [i0, i1, ..., in] for each variable vj, value(vj) = ij in the initial state
+         * @param istate: A pointer to the variable to save the return value into:
+         * this variable must be a BitField of sum(rj) bits (where [0, rj[ is the range of variable vj)
+         * ->
+         * [1000 0100 0001] -> Assuming a size of 3 and a range of 4 for each variable, value(v0) = 0, value(v1) = 1, value(v2) = 3
          */
-        int* initial_state;
+        const void get_istate(BitField* istate);
 
-        //TODO: Edit if I'm working in STRIPS
         /**
-         * Goal state of the problem
+         * Get the goal state
          * 
-         * [g0, g1, ..., gn] for each variable vj, value(vj) must be gj in the goal state (-1 if a specific value isn't required)
+         * @param istate: A pointer to the variable to save the return value into:
+         * this variable must be a BitField of sum(rj) bits (where [0, rj[ is the range of variable vj)
+         * ->
+         * [1000 0100 0001] -> Assuming a size of 3 and a range of 4 for each variable, value(v0) = 0, value(v1) = 1, value(v2) = 3
          */
-        int* goal_state;
+        const void get_gstate(BitField* gstate);
 
         /**
-         * Best solution found so far as a ordered sequence of actions
+         * Compare a solution found with the best found so far and stores it if it's the new best one
+         * 
+         * @param solution: ordered sequence of actions (represented by their index in the domain) that represent the solution found
+         * @param nact: number of actions this solution has
+         * @param cost: cost of this solution
          */
-        HPLUS_action* best_solution;
+        void update_best_solution(const int* solution, const int* nact, const int* cost);
+
+        /**
+         * Get the best solution found so far
+         * 
+         * @param solution: A pointer to the variable to save the solution into:
+         * this variable must be a list of integer, already allocated, with a length >= m (only the first nact variables will be set)
+         * @param nact: A pointer to the variable to save the number of actions the solution has into: int
+         * @param cost: A pointer to the variable to save the cost of the solution into: int
+         */
+        const void get_best_solution(int* solution, int* nact, int* cost);
+
+        /**
+         * Get the cost of the best solution found so far
+         * 
+         * @param cost: A pointer to the variable to save the return value into: int
+         */
+        const void get_best_cost(int* cost);
+
+    private:
+    
+        /**
+         * Domain associated to this problem
+         */
+        HPLUS_domain* domain;
+
+        /**
+         * Initial state of the problem (bit field)
+         */
+        BitField* initial_state;
+
+        /**
+         * Goal state of the problem (bit field)
+         */
+        BitField* goal_state;
+
+        /**
+         * Best solution found so far as a ordered sequence of indexes corresponding to actions
+         */
+        int* best_solution;
 
         /**
          * Number of actions in the best solution found so far
@@ -223,10 +234,6 @@ class HPLUS_instance {
          * Cost of the best solution found so far
          */
         int best_cost;
-
-        // UTILS
-
-        void parse_inst_file(const FILE* file);
 
 };
 

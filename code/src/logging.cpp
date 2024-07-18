@@ -1,10 +1,8 @@
-#include "../headers/logging.hpp"
-
 #include <fstream>
 #include <format>
+#include "../headers/logging.hpp"
 
 void Logger::_format_output(const char* str, va_list ptr, FILE* log_file) {
-
 
     // char array to store token 
     char token[1000]; 
@@ -109,12 +107,12 @@ void Logger::_format_output(const char* str, va_list ptr, FILE* log_file) {
     }
 }
 
-Logger::Logger(const char* run_title, std::string log_name) {
+Logger::Logger(const std::string run_title, const std::string log_name) {
 
     const char* c_log_name = log_name.c_str();
     snprintf(log_file_name, 100, "%s/%s/%s", HOME_DIR, LOG_DIR ,c_log_name);
     FILE* log_file = fopen(log_file_name, "a");
-    fprintf(log_file, "\n--------------------------------\n%s\n--------------------------------\n", run_title);
+    fprintf(log_file, "\n--------------------------------\n%s\n--------------------------------\n", run_title.c_str());
     fclose(log_file);
 
 }
