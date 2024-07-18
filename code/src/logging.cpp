@@ -1,6 +1,6 @@
 #include <fstream>
 #include <format>
-#include "../headers/logging.hpp"
+#include "../include/logging.hpp"
 
 void Logger::_format_output(const char* str, va_list ptr, FILE* log_file) const {
 

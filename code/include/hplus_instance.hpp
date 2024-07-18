@@ -26,7 +26,7 @@ struct HPLUS_action  {
     /**
      * Cost of the action
      */
-    int cost;
+    unsigned int cost;
 
     /**
      * DUMMY constructor for array declarations
@@ -85,7 +85,7 @@ class HPLUS_domain {
          * 
          * @return The number of variables this problem has
          */
-        int get_nvar() const;
+        unsigned int get_nvar() const;
 
         /**
          * Get the ranges of each variable
@@ -94,21 +94,21 @@ class HPLUS_domain {
          * ->
          * [r0, r1, ..., rn] for each variable vj, value(vj) is in [0, rj[
          */
-        const int* get_var_ranges() const;
+        const unsigned int* get_var_ranges() const;
 
         /**
          * Get the size of the BitFields used in this domain
          * 
          * @return The size of the bitfields used in this domain
          */
-        int get_bfsize() const;
+        unsigned int get_bfsize() const;
 
         /**
          * Get the number of actions this domain has (referred as m)
          * 
          * @param The number of actions this domain has
          */
-        int get_nact() const;
+        unsigned int get_nact() const;
 
         /**
          * Get the list of possible actions
@@ -129,24 +129,24 @@ class HPLUS_domain {
         /**
          * Number of variables in the problem (n)
          */
-        int n_var;
+        unsigned int n_var;
 
         /**
          * Range of each variable
          * 
          * [r0, r1, ..., rn] the range for variable vj is [0, rj[
          */
-        int* var_ranges;
+        unsigned int* var_ranges;
 
         /**
          * Size of bitfields used to represent states
          */
-        int bf_size;
+        unsigned int bf_size;
 
         /**
          * Number of actions in the problem (m)
          */
-        int n_act;
+        unsigned int n_act;
 
         /**
          * List of actions that can be done
@@ -197,7 +197,7 @@ class HPLUS_problem {
          * @param nact: number of actions this solution has
          * @param cost: cost of this solution
          */
-        void update_best_solution(const int* solution, const int* nact, const int* cost);
+        void update_best_solution(const unsigned int* solution, const unsigned int nact, const unsigned int cost);
 
         /**
          * Get the best solution found so far
@@ -207,14 +207,14 @@ class HPLUS_problem {
          * @param nact: A pointer to the variable to save the number of actions the solution has into: int
          * @param cost: A pointer to the variable to save the cost of the solution into: int
          */
-        void get_best_solution(int* solution, int* nact, int* cost) const;
+        void get_best_solution(unsigned int* solution, unsigned int* nact, unsigned int* cost) const;
 
         /**
          * Get the cost of the best solution found so far
          * 
          * @return The cost of the best solution found so far
          */
-        int get_best_cost() const;
+        unsigned int get_best_cost() const;
 
     private:
     
@@ -236,17 +236,17 @@ class HPLUS_problem {
         /**
          * Best solution found so far as a ordered sequence of indexes corresponding to actions
          */
-        int* best_solution;
+        unsigned int* best_solution;
 
         /**
          * Number of actions in the best solution found so far
          */
-        int best_nact;
+        unsigned int best_nact;
 
         /**
          * Cost of the best solution found so far
          */
-        int best_cost;
+        unsigned int best_cost;
 
 };
 

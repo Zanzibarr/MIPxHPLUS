@@ -1,4 +1,4 @@
-#include "../headers/hplus_instance.hpp"
+#include "../include/hplus_instance.hpp"
 
 HPLUS_action::HPLUS_action(unsigned int size_bf) {
     
@@ -48,12 +48,12 @@ HPLUS_domain::HPLUS_domain(const HPLUS_domain* from_dom) {
     this -> logger = from_dom -> logger;
     this -> use_costs = from_dom -> use_costs;
     this -> n_var = from_dom -> n_var;
-    this -> var_ranges = new int[this -> n_var];
-    for (int i = 0; i < this -> n_var; i++) (this -> var_ranges)[i] = (from_dom -> var_ranges)[i];
+    this -> var_ranges = new unsigned int[this -> n_var];
+    for (int i = 0; i < this -> n_var; i++) this -> var_ranges[i] = (from_dom -> var_ranges)[i];
     this -> bf_size = from_dom -> bf_size;
     this -> n_act = from_dom -> n_act;
     this -> actions = new HPLUS_action[n_act];
-    for (int i = 0; i < this -> n_act; i++) (this -> actions)[i] = HPLUS_action((from_dom -> actions)[i]);
+    for (int i = 0; i < this -> n_act; i++) this -> actions[i] = HPLUS_action((from_dom -> actions)[i]);
 
     this -> logger -> print_info("Created copy HPLUS_domain.");
 
@@ -66,15 +66,15 @@ HPLUS_domain::~HPLUS_domain() {
 
 }
 
-bool HPLUS_domain::unitary_cost() const { return !(this -> use_costs); }
+bool HPLUS_domain::unitary_cost() const { return !this -> use_costs; }
 
-int HPLUS_domain::get_nvar() const { return this -> n_var; }
+unsigned int HPLUS_domain::get_nvar() const { return this -> n_var; }
 
-const int* HPLUS_domain::get_var_ranges() const { return this -> var_ranges; }
+const unsigned int* HPLUS_domain::get_var_ranges() const { return this -> var_ranges; }
 
-int HPLUS_domain::get_bfsize() const { return this -> bf_size; }
+unsigned int HPLUS_domain::get_bfsize() const { return this -> bf_size; }
 
-int HPLUS_domain::get_nact() const { return this -> n_act; }
+unsigned int HPLUS_domain::get_nact() const { return this -> n_act; }
 
 const HPLUS_action* HPLUS_domain::get_actions() const { return this -> actions; }
 
@@ -90,7 +90,7 @@ void HPLUS_domain::parse_inst_file(const FILE* file) {
 
 HPLUS_problem::HPLUS_problem(HPLUS_domain* domain, const unsigned int* istate, const unsigned int* gstate) {
 
-    const int* var_ranges = domain -> get_var_ranges();
+    const unsigned int* var_ranges = domain -> get_var_ranges();
     #if INTCHECKS
     for (int i = 0; i < domain -> get_nvar(); i++) {
         if (istate[i] >= var_ranges[i]) domain -> get_logger() -> raise_error("Variable %d in the initial state has value %d but range %d.", i, istate[i], var_ranges[i]);
@@ -130,20 +130,46 @@ const BitField* HPLUS_problem::get_istate() const { return this -> initial_state
 
 const BitField* HPLUS_problem::get_gstate() const { return this -> goal_state; }
 
-void HPLUS_problem::update_best_solution(const int* solution, const int* nact, const int* cost) {
+//TODO: If needed make threadsafe
+void HPLUS_problem::update_best_solution(const unsigned int* solution, const unsigned int nact, const unsigned int cost) {
+    
+    #if INTCHECKS
+    int n_act = this -> domain -> get_nact();
+    int* dbcheck = new int[n_act]();
+    const HPLUS_action* actions = this -> domain -> get_actions();
+    unsigned int costcheck = 0;
+    if (nact > n_act) this -> domain -> get_logger() -> raise_error("Proposed solution considers %d actions, while only %d actions exist.", nact, n_act);
+    for (int i = 0; i < nact; i++) {
+        if (solution[i] >= n_act) this -> domain -> get_logger() -> raise_error("Proposed solution has in %d position action %d, while only %d actions exist.", i, solution[i], n_act);
+        if (dbcheck[solution[i]]) this -> domain -> get_logger() -> raise_error("Proposed solution has multiple occurrences of action %d.", solution[i]);
+        dbcheck[solution[i]] = 1;
+        costcheck += actions[solution[i]].cost;
+    }
+    if (costcheck != cost) this -> domain -> get_logger() -> raise_error("Proposed solution with cost %d but suggested cost is %d.", cost, costcheck);
+    delete[] actions; actions = NULL;
+    delete[] dbcheck; dbcheck = NULL;
+    #endif
 
-    //TODO
+    if (cost >= this -> best_cost) return;
+
+    if (nact > this -> best_nact) {
+        delete[] this -> best_solution;
+        this -> best_solution = new unsigned int[nact];
+    }
+    for (int i = 0; i < nact; i++) this -> best_solution[i] = solution[i];
+    this -> best_nact = nact;
+    this -> best_cost = cost;
 
     this -> domain -> get_logger() -> print_info("Updated best solution - Cost: %4d.", this -> best_cost);
 
 }
 
-void HPLUS_problem::get_best_solution(int* solution, int* nact, int* cost) const {
+void HPLUS_problem::get_best_solution(unsigned int* solution, unsigned int* nact, unsigned int* cost) const {
 
-    for (int i = 0; i < this -> best_nact; i++) solution[i] = (this -> best_solution)[i];
+    for (int i = 0; i < this -> best_nact; i++) solution[i] = this -> best_solution[i];
     *nact = this -> best_nact;
     *cost = this -> best_cost;
 
 }
 
-int HPLUS_problem::get_best_cost() const { return this -> best_cost; }
+unsigned int HPLUS_problem::get_best_cost() const { return this -> best_cost; }

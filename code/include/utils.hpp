@@ -41,7 +41,7 @@ BitField used to compactly store size bits into a single data structure
 class BitField {
 
     private:
-        unsigned char* field;
+        char* field;
         unsigned int len;
 
     public:

@@ -1,6 +1,6 @@
 CC = g++
 SRCDIR = code/src
-INCDIR = code/headers
+INCDIR = code/include
 BUILDIR = code/build
 
 SRCS = $(wildcard $(SRCDIR)/*.cpp)
