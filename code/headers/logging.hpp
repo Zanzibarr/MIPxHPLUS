@@ -17,21 +17,21 @@ class Logger {
          * Code executes only if VERBOSE >= 10
          * Prints and logs a formatted string (info format)
          */
-        void print_info(const char* str, ...);
+        void print_info(const char* str, ...) const;
         /**
          * Code executes only if VERBOSE >= 1
          * Prints and logs a formatted string (warning format)
          */
-        void print_warn(const char* str, ...);
+        void print_warn(const char* str, ...) const;
         /**
          * Prints and logs an unhandled error (error format)
          * Terminates the execution of the program (exit(1))
          */
-        void raise_error(const char* str, ...);
+        void raise_error(const char* str, ...) const;
 
     private:
         char log_file_name[100];
-        void _format_output(const char* str, va_list ptr, FILE* log_file);
+        void _format_output(const char* str, va_list ptr, FILE* log_file) const;
         
 };
 

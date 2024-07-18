@@ -7,45 +7,48 @@
 /**
  * Struct representing an action with preconditions, effects and cost
  */
-class HPLUS_action  {
+struct HPLUS_action  {
 
-    public:
+    /**
+     * Value each variable must have for the action to be taken
+     * ->
+     * [1000 0100 0001] -> Assuming a size of 3 and a range of 4 for each variable, value(v0) must be 0, value(v1) must be 1, value(v2) must be 3
+     */
+    BitField* pre;
 
-        /**
-         * Value each variable must have for the action to be taken
-         * ->
-         * [1000 0100 0001] -> Assuming a size of 3 and a range of 4 for each variable, value(v0) must be 0, value(v1) must be 1, value(v2) must be 3
-         */
-        BitField* pre;
+    /**
+     * Value each variable has after the action has been taken
+     * ->
+     * [1000 0100 0001] -> Assuming a size of 3 and a range of 4 for each variable, value(v0) will be 0, value(v1) will be 1, value(v2) will be 3
+     */
+    BitField* eff;
 
-        /**
-         * Value each variable has after the action has been taken
-         * ->
-         * [1000 0100 0001] -> Assuming a size of 3 and a range of 4 for each variable, value(v0) will be 0, value(v1) will be 1, value(v2) will be 3
-         */
-        BitField* eff;
+    /**
+     * Cost of the action
+     */
+    int cost;
 
-        /**
-         * Cost of the action
-         */
-        int cost;
+    /**
+     * DUMMY constructor for array declarations
+     */
+    HPLUS_action() { pre = NULL; eff = NULL; cost = INFINITY; }
 
-        /**
-         * Create a blank HPLUS_action
-         */
-        HPLUS_action(unsigned int size_bf);
+    /**
+     * Constructor HPLUS_action
+     */
+    HPLUS_action(unsigned int size_bf);
 
-        /**
-         * Create an HPLUS_action from another (deep copy)
-         * 
-         * @param from_action: The HPLUS_action to copy
-         */
-        HPLUS_action(const HPLUS_action* from_action);
+    /**
+     * Create an HPLUS_action from another (deep copy)
+     * 
+     * @param from_action: The HPLUS_action to copy
+     */
+    HPLUS_action(const HPLUS_action* from_action);
 
-        /**
-         * Destructor for HPLUS_action
-         */
-        ~HPLUS_action();
+    /**
+     * Destructor for HPLUS_action
+     */
+    ~HPLUS_action();
 
 };
 
@@ -75,39 +78,46 @@ class HPLUS_domain {
         /**
          * true if unitary cost is used, false if generic cost is used
          */
-        const bool unitary_cost();
+        bool unitary_cost() const;
 
         /**
          * Get the number of variables this problem has (referred as n)
          * 
-         * @param nvar A pointer to the variable to save the return value into: int
+         * @return The number of variables this problem has
          */
-        const void get_nvar(int* nvar);
+        int get_nvar() const;
 
         /**
          * Get the ranges of each variable
          * 
-         * @param ranges_list A pointer to the variable to save the return value into: 
-         * this variable must be an array of integers, already allocated, with a length >= n (only the first n values will be set)
+         * @return The list of ranges for each variable
          * ->
          * [r0, r1, ..., rn] for each variable vj, value(vj) is in [0, rj[
          */
-        const void get_var_ranges(int* ranges_list);
+        const int* get_var_ranges() const;
 
         /**
-         * Get the number of actions this problem has (referred as m)
+         * Get the size of the BitFields used in this domain
          * 
-         * @param nact A pointer to the variable to save the return the value into: int
+         * @return The size of the bitfields used in this domain
          */
-        const void get_nact(int* nact);
+        int get_bfsize() const;
+
+        /**
+         * Get the number of actions this domain has (referred as m)
+         * 
+         * @param The number of actions this domain has
+         */
+        int get_nact() const;
 
         /**
          * Get the list of possible actions
          * 
-         * @param actions_list A pointer to the variable to save the return value into:
-         * this variable must be an array of HPLUS_action, already allocated, with a length >= m (only the first m values will be set)
+         * @return The list of actions this domain has
          */
-        const void get_actions(HPLUS_action* actions_list);
+        const HPLUS_action* get_actions() const;
+
+        const Logger* get_logger() const;
 
     private:
 
@@ -129,6 +139,11 @@ class HPLUS_domain {
         int* var_ranges;
 
         /**
+         * Size of bitfields used to represent states
+         */
+        int bf_size;
+
+        /**
          * Number of actions in the problem (m)
          */
         int n_act;
@@ -136,7 +151,7 @@ class HPLUS_domain {
         /**
          * List of actions that can be done
          */
-        HPLUS_action** actions;
+        HPLUS_action* actions;
 
         /**
          * Logger to use for info/debugging
@@ -153,29 +168,27 @@ class HPLUS_problem {
 
     public:
 
-        HPLUS_problem(const HPLUS_domain* domain, const int* istate, const int* gstate);
+        HPLUS_problem(HPLUS_domain* domain, const unsigned int* istate, const unsigned int* gstate);
 
         ~HPLUS_problem();
 
         /**
          * Get the initial state
          * 
-         * @param istate: A pointer to the variable to save the return value into:
-         * this variable must be a BitField of sum(rj) bits (where [0, rj[ is the range of variable vj)
+         * @return The initial state as a BitField
          * ->
          * [1000 0100 0001] -> Assuming a size of 3 and a range of 4 for each variable, value(v0) = 0, value(v1) = 1, value(v2) = 3
          */
-        const void get_istate(BitField* istate);
+        const BitField* get_istate() const;
 
         /**
          * Get the goal state
          * 
-         * @param istate: A pointer to the variable to save the return value into:
-         * this variable must be a BitField of sum(rj) bits (where [0, rj[ is the range of variable vj)
+         * @return The goal state as a BitField
          * ->
          * [1000 0100 0001] -> Assuming a size of 3 and a range of 4 for each variable, value(v0) = 0, value(v1) = 1, value(v2) = 3
          */
-        const void get_gstate(BitField* gstate);
+        const BitField* get_gstate() const;
 
         /**
          * Compare a solution found with the best found so far and stores it if it's the new best one
@@ -194,14 +207,14 @@ class HPLUS_problem {
          * @param nact: A pointer to the variable to save the number of actions the solution has into: int
          * @param cost: A pointer to the variable to save the cost of the solution into: int
          */
-        const void get_best_solution(int* solution, int* nact, int* cost);
+        void get_best_solution(int* solution, int* nact, int* cost) const;
 
         /**
          * Get the cost of the best solution found so far
          * 
-         * @param cost: A pointer to the variable to save the return value into: int
+         * @return The cost of the best solution found so far
          */
-        const void get_best_cost(int* cost);
+        int get_best_cost() const;
 
     private:
     

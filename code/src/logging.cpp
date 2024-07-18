@@ -2,7 +2,7 @@
 #include <format>
 #include "../headers/logging.hpp"
 
-void Logger::_format_output(const char* str, va_list ptr, FILE* log_file) {
+void Logger::_format_output(const char* str, va_list ptr, FILE* log_file) const {
 
     // char array to store token 
     char token[1000]; 
@@ -117,7 +117,7 @@ Logger::Logger(const std::string run_title, const std::string log_name) {
 
 }
 
-void Logger::print_info(const char* str, ...) {
+void Logger::print_info(const char* str, ...) const {
 
     #if VERBOSE < 10
     return;
@@ -146,7 +146,7 @@ void Logger::print_info(const char* str, ...) {
 
 }
 
-void Logger::print_warn(const char* str, ...) {
+void Logger::print_warn(const char* str, ...) const {
 
     #if VERBOSE < 1
     return;
@@ -175,7 +175,7 @@ void Logger::print_warn(const char* str, ...) {
 
 }
 
-void Logger::raise_error(const char* str, ...) {
+void Logger::raise_error(const char* str, ...) const {
 
     // logging file
     FILE* log_file = fopen(log_file_name, "a");
