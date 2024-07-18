@@ -1,8 +1,13 @@
 #include <fstream>
 #include <format>
+#include <chrono>
 #include "../include/logging.hpp"
 
 void Logger::_format_output(const char* str, va_list ptr, FILE* log_file) const {
+
+    double elapsed_time = ((double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - this -> s_timer).count()) / 1000;
+    fprintf(stdout, "%8.3f : ", elapsed_time);
+    fprintf(log_file, "%8.3f : ", elapsed_time);
 
     // char array to store token 
     char token[1000]; 
@@ -109,6 +114,8 @@ void Logger::_format_output(const char* str, va_list ptr, FILE* log_file) const 
 
 Logger::Logger(const std::string run_title, const std::string log_name) {
 
+    this -> reset_timer();
+
     const char* c_log_name = log_name.c_str();
     snprintf(log_file_name, 100, "%s/%s/%s", HOME_DIR, LOG_DIR ,c_log_name);
     FILE* log_file = fopen(log_file_name, "a");
@@ -116,6 +123,8 @@ Logger::Logger(const std::string run_title, const std::string log_name) {
     fclose(log_file);
 
 }
+
+void Logger::reset_timer() { this -> s_timer = std::chrono::steady_clock::now(); }
 
 void Logger::print_info(const char* str, ...) const {
 
@@ -130,8 +139,8 @@ void Logger::print_info(const char* str, ...) const {
     va_list ptr; 
     va_start(ptr, str);
 
-    fprintf(stdout, "\033[92m\033[1m[ INFO  ]:\033[0m ");
-    fprintf(log_file, "[ INFO  ]: ");
+    fprintf(stdout, "\033[92m\033[1m[ INFO  ]\033[0m -- ");
+    fprintf(log_file, "[ INFO  ] -- ");
 
     // printing and logging the formatted message
     _format_output(str, ptr, log_file);
@@ -159,8 +168,8 @@ void Logger::print_warn(const char* str, ...) const {
     va_list ptr; 
     va_start(ptr, str);
 
-    fprintf(stdout, "\033[93m\033[1m[ WARN  ]:\033[0m ");
-    fprintf(log_file, "[ WARN  ]: ");
+    fprintf(stdout, "\033[93m\033[1m[ WARN  ]\033[0m -- ");
+    fprintf(log_file, "[ WARN  ] -- ");
 
     // printing and logging the formatted message
     _format_output(str, ptr, log_file);
@@ -184,8 +193,8 @@ void Logger::raise_error(const char* str, ...) const {
     va_list ptr; 
     va_start(ptr, str);
 
-    fprintf(stdout, "\033[91m\033[1m[ ERROR ]:\033[0m ");
-    fprintf(log_file, "[ ERROR ]: ");
+    fprintf(stdout, "\033[91m\033[1m[ ERROR ]\033[0m -- ");
+    fprintf(log_file, "[ ERROR ] -- ");
 
     // printing and logging the formatted message
     _format_output(str, ptr, log_file);

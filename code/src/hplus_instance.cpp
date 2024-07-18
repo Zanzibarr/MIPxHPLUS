@@ -84,7 +84,7 @@ void HPLUS_domain::parse_inst_file(const FILE* file) {
 
     //TODO
 
-    this -> logger -> print_info("Parsed SAS file.");
+    this -> logger -> print_info("[TODO] Parsed SAS file.");
     
 }
 

@@ -14,6 +14,10 @@ class Logger {
          */
         Logger(const std::string run_title, const std::string log_name = DEF_LOG_FILE);
         /**
+         * Starts the timer for logging execution time
+         */
+        void reset_timer();
+        /**
          * Code executes only if VERBOSE >= 10
          * Prints and logs a formatted string (info format)
          */
@@ -31,6 +35,7 @@ class Logger {
 
     private:
         char log_file_name[100];
+        std::chrono::steady_clock::time_point s_timer;
         void _format_output(const char* str, va_list ptr, FILE* log_file) const;
         
 };

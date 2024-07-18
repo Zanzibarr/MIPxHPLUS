@@ -40,10 +40,6 @@ BitField used to compactly store size bits into a single data structure
  */
 class BitField {
 
-    private:
-        char* field;
-        unsigned int len;
-
     public:
         /**
          * Constructor of the BitField
@@ -93,6 +89,10 @@ class BitField {
          * @return The number of bits the BitField contains
          */
         unsigned int size() const;
+
+    private:
+        char* field;
+        unsigned int len;
 
 };
 
