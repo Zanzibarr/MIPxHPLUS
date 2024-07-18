@@ -8,7 +8,7 @@ void BitField::set(const unsigned int i) { this -> field[i/8] |= (1 << i%8); }
 
 void BitField::unset(const unsigned int i) { this -> field[i/8] &= ~(1 << i%8); }
 
-bool BitField::operator [] (const unsigned int i) const { return (this -> field[i/8] >> i%8) & 1; }
+bool BitField::operator [] (const unsigned int i) const { return this -> field[i/8] & (1 << i%8); }
 
 BitField BitField::operator & (const BitField bf) const {
 
