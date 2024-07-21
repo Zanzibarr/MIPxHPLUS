@@ -9,8 +9,10 @@ int main() {
     HPLUS_problem* problem = NULL;
     HPLUS_domain* domain = new HPLUS_domain("/Users/matteozanella/Documents/git/thesis_master/local/test.sas", problem, &logger);
 
-    logger.raise_error("Test error (it's right that it appears, just testing the logger).");
-    logger.print_info("This shouldn't appear.");
+    logger.raise_error("Only the parser has been implemented yet, code exits now.");
+
+    delete domain;
+    delete problem;
 
     return status;
 

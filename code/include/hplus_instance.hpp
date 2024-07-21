@@ -5,6 +5,55 @@
 
 class HPLUS_problem;
 
+class HPLUS_variable {
+
+    public:
+        
+        /**
+         * @param range: The range of values [0, range - 1] this variable can be in
+         * @param name: The name of the variable
+         * @param val_names: A list of name for each value the variable can be in
+         */
+        HPLUS_variable(const unsigned int range, const std::string name, const std::vector<std::string> val_names);
+
+        HPLUS_variable() {}
+
+        ~HPLUS_variable();
+
+        /**
+         * @return The range of values this variable can be set to
+         */
+        unsigned int get_range() const;
+
+        /**
+         * @return The name of the variable
+         */
+        std::string get_name() const;
+
+        /**
+         * @return The list of names for each value the variable can be set to
+         */
+        std::vector<std::string> get_val_names() const;
+
+    private:
+
+        /**
+         * Range of the variable
+         */
+        unsigned int range;
+
+        /**
+         * Name of the variable
+         */
+        std::string name;
+
+        /**
+         * Name for each value the variable can be set to
+         */
+        std::vector<std::string> val_names;
+
+};
+
 /**
  * Struct representing an action with preconditions, effects and cost
  */
@@ -13,46 +62,36 @@ class HPLUS_action  {
     public:
 
         /**
-         * DUMMY constructor for array declarations
-         */
-        HPLUS_action() { pre = NULL; eff = NULL; cost = UINT_MAX; }
-
-        /**
-         * Constructor HPLUS_action
+         * @param pre_bf: BitField of the precondition state for this action
+         * @param eff_bf: BitField of the effects on the state this action has
+         * @param cost: Cost of the action
+         * @param name: Name of the action
          */
         HPLUS_action(const BitField* pre_bf, const BitField* eff_bf, const unsigned int cost, const std::string name);
 
-        /**
-         * Create an HPLUS_action from another (deep copy)
-         * 
-         * @param from_action: The HPLUS_action to copy
-         */
-        HPLUS_action(const HPLUS_action* from_action);
+        HPLUS_action() {}
 
-        /**
-         * Destructor for HPLUS_action
-         */
         ~HPLUS_action();
 
         /**
-         * Get a pointer to the BitField containing the preconditions
+         * @return The BitField representing the precondition state for this action
          */
-        const BitField* get_pre() const;
+        BitField get_pre() const;
 
         /**
-         * Get a pointer to the BitField containing the effects
+         * @return The BitField representing the effects on the state this action has
          */
-        const BitField* get_eff() const;
+        BitField get_eff() const;
 
         /**
-         * Get the action name
-         */
-        std::string get_name() const;
-
-        /**
-         * Get the action cost
+         * @return The cost of this action
          */
         unsigned int get_cost() const;
+
+        /**
+         * @return The name of this action
+         */
+        std::string get_name() const;
 
     private:
 
@@ -89,64 +128,45 @@ class HPLUS_domain {
         /**
          * Create an HPLUS_instance from a file produced by the fast downward translator
          * 
-         * @param file_name: Path of the file where to read the instance from
+         * @param file_path: Path of the file where to read the instance from
+         * @param problem: Pointer to the HPLUS_problem to build from this domain
+         * @param logger: Logger to associate to this domain
          */
         HPLUS_domain(const std::string file_path, HPLUS_problem* problem, Logger* logger);
 
         /**
-         * Create an HPLUS_instance from another (deep copy)
-         * 
-         * @param from_inst: The HPLUS_instance to copy
-         */
-        HPLUS_domain(const HPLUS_domain* from_dom);
-
-        /**
-         * Destructor for HPLUS_instance
-         */
-        ~HPLUS_domain();
-
-        /**
-         * true if unitary cost is used, false if generic cost is used
+         * @return true if unitary cost is used, false if generic cost is used
          */
         bool unitary_cost() const;
 
         /**
-         * Get the number of variables this problem has (referred as n)
-         * 
          * @return The number of variables this problem has
          */
         unsigned int get_nvar() const;
 
         /**
-         * Get the ranges of each variable
-         * 
-         * @return The list of ranges for each variable
-         * ->
-         * [r0, r1, ..., rn] for each variable vj, value(vj) is in [0, rj[
+         * @return The number of actions this domain has
          */
-        const unsigned int* get_var_ranges() const;
+        unsigned int get_nact() const;
 
         /**
-         * Get the size of the BitFields used in this domain
-         * 
          * @return The size of the bitfields used in this domain
          */
         unsigned int get_bfsize() const;
 
         /**
-         * Get the number of actions this domain has (referred as m)
-         * 
-         * @param The number of actions this domain has
+         * @return The list of variables this domain has
          */
-        unsigned int get_nact() const;
+        const HPLUS_variable* get_variables() const;
 
         /**
-         * Get the list of possible actions
-         * 
          * @return The list of actions this domain has
          */
         const HPLUS_action* get_actions() const;
 
+        /**
+         * @return The logger associated to this domain
+         */
         const Logger* get_logger() const;
 
     private:
@@ -167,39 +187,27 @@ class HPLUS_domain {
         unsigned int n_var;
 
         /**
-         * Symbolic name of the variables
-         */
-        std::string* var_names;
-
-        /**
-         * Range of each variable
-         * 
-         * [r0, r1, ..., rn] the range for variable vj is [0, rj[
-         */
-        unsigned int* var_ranges;
-
-        /**
-         * Symbolic name for each value of the variables
-         */
-        std::string** var_values_names;
-
-        /**
-         * Size of bitfields used to represent states
-         */
-        unsigned int bf_size;
-
-        /**
          * Number of actions in the problem (m)
          */
         unsigned int n_act;
 
         /**
-         * List of actions that can be done
+         * Number of bits required to store a state in this problem
+         */
+        unsigned int bf_size;
+        
+        /**
+         * List of variables this domain has
+         */
+        HPLUS_variable* variables;
+
+        /**
+         * List of actions this domain has
          */
         HPLUS_action* actions;
 
         /**
-         * Logger to use for info/debugging
+         * Logger used to print info/debug the execution of this domain
          */
         Logger* logger;
 
@@ -214,36 +222,25 @@ class HPLUS_problem {
     public:
 
         /**
-         * Constructor for the HPLUS_problem
-         * 
          * @param domain: Domain to associate to this problem
          * @param istate: Initial state of the problem (list of values that each variable has in the initial state)
          * @param gstate: Goal state of the problem (list of values that each variable must have in the final state (-1 if undefined))
          */
-        HPLUS_problem(HPLUS_domain* domain, const unsigned int* istate, const int* gstate);
+        HPLUS_problem(HPLUS_domain* domain, const std::vector<unsigned int> istate, const std::vector<int> gstate);
 
         /**
-         * Destructor of the HPLUS_problem
-         */
-        ~HPLUS_problem();
-
-        /**
-         * Get the initial state
-         * 
          * @return The initial state as a BitField
          * ->
          * [1000 0100 0001] -> Assuming a size of 3 and a range of 4 for each variable, value(v0) = 0, value(v1) = 1, value(v2) = 3
          */
-        const BitField* get_istate() const;
+        BitField get_istate() const;
 
         /**
-         * Get the goal state
-         * 
          * @return The goal state as a BitField
          * ->
          * [1000 0100 0001] -> Assuming a size of 3 and a range of 4 for each variable, value(v0) = 0, value(v1) = 1, value(v2) = 3
          */
-        const BitField* get_gstate() const;
+        BitField get_gstate() const;
 
         /**
          * Compare a solution found with the best found so far and stores it if it's the new best one
@@ -252,21 +249,18 @@ class HPLUS_problem {
          * @param nact: number of actions this solution has
          * @param cost: cost of this solution
          */
-        void update_best_solution(const unsigned int* solution, const unsigned int nact, const unsigned int cost);
+        void update_best_solution(const std::vector<unsigned int> solution, const unsigned int nact, const unsigned int cost);
 
         /**
          * Get the best solution found so far
          * 
-         * @param solution: A pointer to the variable to save the solution into:
-         * this variable must be a list of integer, already allocated, with a length >= m (only the first nact variables will be set)
-         * @param nact: A pointer to the variable to save the number of actions the solution has into: int
-         * @param cost: A pointer to the variable to save the cost of the solution into: int
+         * @param solution: Vector where to save the solution into
+         * @param nact: Integer where to save the number of actions into
+         * @param cost: Integer where to save the cost into
          */
-        void get_best_solution(unsigned int* solution, unsigned int* nact, unsigned int* cost) const;
+        void get_best_solution(std::vector<unsigned int>* solution, unsigned int* nact, unsigned int* cost) const;
 
         /**
-         * Get the cost of the best solution found so far
-         * 
          * @return The cost of the best solution found so far
          */
         unsigned int get_best_cost() const;
@@ -291,7 +285,7 @@ class HPLUS_problem {
         /**
          * Best solution found so far as a ordered sequence of indexes corresponding to actions
          */
-        unsigned int* best_solution;
+        std::vector<unsigned int> best_solution;
 
         /**
          * Number of actions in the best solution found so far
