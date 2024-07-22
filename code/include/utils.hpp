@@ -7,6 +7,8 @@
 #include <vector>
 #include <format>
 #include <chrono>
+#include <climits>
+#include <stdarg.h>
 
 // directory organization
 #ifndef HPLUS_HOME_DIR
