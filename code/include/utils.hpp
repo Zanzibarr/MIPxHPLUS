@@ -8,6 +8,7 @@
 #include <format>
 #include <chrono>
 #include <climits>
+#include <algorithm>
 #include <stdarg.h>
 
 // directory organization
