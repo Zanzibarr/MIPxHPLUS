@@ -1,4 +1,3 @@
-#include "../include/utils.hpp"
 #include "../include/hplus_instance.hpp"
 
 int main() {
@@ -7,7 +6,8 @@ int main() {
 
     Logger logger = Logger("Test run", "test.log");
     HPLUS_problem* problem = NULL;
-    HPLUS_domain* domain = new HPLUS_domain("/Users/matteozanella/Documents/git/thesis_master/local/test.sas", problem, &logger);
+    std::string test_instance = std::string(HPLUS_INST_DIR)+"/agricola-opt18-strips-p05.sas";
+    HPLUS_domain* domain = new HPLUS_domain(test_instance, problem, &logger);
 
     logger.raise_error("Only the parser has been implemented yet, code exits now.");
 

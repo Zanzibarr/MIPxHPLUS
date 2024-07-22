@@ -148,7 +148,7 @@ Logger::Logger(const std::string run_title, const std::string log_name) {
     this -> reset_timer();
 
     const char* c_log_name = log_name.c_str();
-    snprintf(log_file_name, 100, "%s/%s/%s", HOME_DIR, LOG_DIR ,c_log_name);
+    snprintf(log_file_name, 100, "%s/%s", HPLUS_LOG_DIR ,c_log_name);
     FILE* log_file = fopen(log_file_name, "a");
     fprintf(log_file, "\n--------------------------------\n%s\n--------------------------------\n", run_title.c_str());
     fclose(log_file);
@@ -159,7 +159,7 @@ void Logger::reset_timer() { this -> s_timer = std::chrono::steady_clock::now();
 
 void Logger::print_info(const char* str, ...) const {
 
-    #if VERBOSE < 10
+    #if HPLUS_VERBOSE < 10
     return;
     #endif
 
@@ -188,7 +188,7 @@ void Logger::print_info(const char* str, ...) const {
 
 void Logger::print_warn(const char* str, ...) const {
 
-    #if VERBOSE < 1
+    #if HPLUS_VERBOSE < 1
     return;
     #endif
 

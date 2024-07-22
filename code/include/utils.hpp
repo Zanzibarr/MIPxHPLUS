@@ -9,17 +9,21 @@
 #include <chrono>
 
 // directory organization
-#define HOME_DIR "/Users/matteozanella/Documents/git/thesis_master/code" //TODO: Maybe not hardcoded?
-#define LOG_DIR "logs"
+#ifndef HPLUS_HOME_DIR
+#define HPLUS_HOME_DIR "cmake_handles_this" // overwritten by cmake
+#endif
+#define HPLUS_CODE_DIR HPLUS_HOME_DIR"/code"
+#define HPLUS_INST_DIR HPLUS_CODE_DIR"/instances"
+#define HPLUS_LOG_DIR HPLUS_CODE_DIR"/logs"
 #define DEF_LOG_FILE "default.log"
 
 // verbose parameter for logging
-#ifndef VERBOSE
-#define VERBOSE 0
+#ifndef HPLUS_VERBOSE
+#define HPLUS_VERBOSE 0 // overwritten by cmake
 #endif
 
 // integrity checks switch
-#define INTCHECKS VERBOSE>0
+#define INTCHECKS HPLUS_VERBOSE>0
 
 /**
  * Environment for the execution of the code
@@ -119,12 +123,12 @@ class Logger {
          */
         void reset_timer();
         /**
-         * Code executes only if VERBOSE >= 10
+         * Code executes only if HPLUS_VERBOSE >= 10
          * Prints and logs a formatted string (info format)
          */
         void print_info(const char* str, ...) const;
         /**
-         * Code executes only if VERBOSE >= 1
+         * Code executes only if HPLUS_VERBOSE >= 1
          * Prints and logs a formatted string (warning format)
          */
         void print_warn(const char* str, ...) const;

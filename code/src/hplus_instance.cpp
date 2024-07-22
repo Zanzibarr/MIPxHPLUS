@@ -241,7 +241,7 @@ void HPLUS_domain::parse_inst_file(std::ifstream* ifs, HPLUS_problem* problem) {
         this -> actions[act_i] = HPLUS_action(&pre, &eff, cost, name);
     }
 
-    #if VERBOSE >= 100
+    #if HPLUS_VERBOSE >= 100
 
     this -> logger -> print_info("Version: %d.", this -> version);
     this -> logger -> print_info("Metric: %d.", this -> use_costs);
