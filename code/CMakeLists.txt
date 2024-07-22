@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(main)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 11)
 
 # setting flags for optimization and debug builds
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
