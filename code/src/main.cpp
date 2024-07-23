@@ -11,8 +11,8 @@ int main() {
 
     logger.print_warn("Only the parser has been implemented.");
 
-    delete domain; domain = nullptr;
     delete problem; problem = nullptr;
+    delete domain; domain = nullptr;
 
     return status;
 
