@@ -285,8 +285,8 @@ void HPLUS_domain::parse_inst_file(std::ifstream* ifs, HPLUS_problem* problem) {
 HPLUS_problem::HPLUS_problem(HPLUS_domain* domain, BitField* istate, BitField* gstate) {
 
     this -> domain = domain;
-    this -> initial_state = istate; istate = nullptr;
-    this -> goal_state = gstate; gstate = nullptr;
+    this -> initial_state = istate;// istate = nullptr;
+    this -> goal_state = gstate;// gstate = nullptr;
 
     this -> best_solution = nullptr;
     this -> best_nact = INT_MAX;
