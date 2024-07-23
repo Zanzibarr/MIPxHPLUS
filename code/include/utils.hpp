@@ -83,7 +83,7 @@ class BitField {
          * @param i: Index of the bit to access
          * @return The value of the bit in i th position
          */
-        bool operator [] (const unsigned int i) const;
+        bool operator[](const unsigned int i) const;
 
         /**
          * Bitwise and of two BitFields
@@ -91,7 +91,15 @@ class BitField {
          * @param bf: BitField to do the and with
          * @return The resulting BitField
          */
-        BitField operator & (const BitField bf) const;
+        BitField operator&(const BitField bf) const;
+
+        /**
+         * Compare two BitField
+         * 
+         * @param bf: BitField to compare with
+         * @return true/false based on if the two bitfields are equal
+         */
+        bool operator==(const BitField bf) const;
 
         /**
          * Returns the size of the BitField (in bits)
@@ -142,7 +150,7 @@ class Logger {
         void raise_error(const char* str, ...) const;
 
     private:
-        char log_file_name[100];
+        std::string log_file_name;
         std::chrono::steady_clock::time_point s_timer;
         void _format_output(const char* str, va_list ptr, FILE* log_file) const;
         
@@ -157,6 +165,11 @@ namespace my {
      * Splits a string into a vector of strings based on the specified delimiter
      */
     void split(const std::string str, std::vector<std::string>* tokens, const char del);
+
+    /**
+     * Interrupts the execution of the code if the condition is false
+     */
+    void assert(bool condition, const std::string message);
 
     /**
      * Asserts that the value obtained is equal to the expected one

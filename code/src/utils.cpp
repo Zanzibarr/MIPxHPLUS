@@ -4,19 +4,43 @@
 
 BitField::BitField(unsigned int size) { this -> len = size; this -> field = new char[(size+7)/8](); }
 
-BitField::~BitField() { delete[] this -> field; this -> field = NULL; }
+BitField::~BitField() { delete[] this -> field; this -> field = nullptr; }
 
-void BitField::set(const unsigned int i) { this -> field[i/8] |= (1 << i%8); }
+void BitField::set(const unsigned int i) {
+    
+    my::assert(i < this -> len, "[BITFIELD SET]");
+    this -> field[i/8] |= (1 << i%8);
+    
+}
 
-void BitField::unset(const unsigned int i) { this -> field[i/8] &= ~(1 << i%8); }
+void BitField::unset(const unsigned int i) {
+    
+    my::assert(i < this -> len, "[BITFIELD UNSET]");
+    this -> field[i/8] &= ~(1 << i%8);
+    
+}
 
-bool BitField::operator [] (const unsigned int i) const { return this -> field[i/8] & (1 << i%8); }
+bool BitField::operator[](const unsigned int i) const {
+    
+    my::assert(i < this -> len, "BITFIELD OPERATOR[]]");
+    return this -> field[i/8] & (1 << i%8);
+    
+}
 
-BitField BitField::operator & (const BitField bf) const {
+BitField BitField::operator&(const BitField bf) const {
 
+    my::assert(this -> len == bf.len, "[BITFIELD OPERATOR&]");
     BitField ret = BitField(this -> len);
     for (int i = 0; i < this -> len; i++) if ((this -> field[i/8] & (1 << i%8)) && bf[i]) ret.set(i);
     return ret;
+
+}
+
+bool BitField::operator==(const BitField bf) const {
+
+    my::assert(this -> len == bf.len, "[BITFIELD OPERATOR==]");
+    for (int i = 0; i < (this -> len + 7) / 8; i++) if (this -> field[i] != bf.field[i]) return false;
+    return true;
 
 }
 
@@ -147,9 +171,8 @@ Logger::Logger(const std::string run_title, const std::string log_name) {
 
     this -> reset_timer();
 
-    const char* c_log_name = log_name.c_str();
-    snprintf(log_file_name, 100, "%s/%s", HPLUS_LOG_DIR ,c_log_name);
-    FILE* log_file = fopen(log_file_name, "a");
+    this -> log_file_name = HPLUS_LOG_DIR"/" + log_name;
+    FILE* log_file = fopen(this -> log_file_name.c_str(), "a");
     fprintf(log_file, "\n--------------------------------\n%s\n--------------------------------\n", run_title.c_str());
     fclose(log_file);
 
@@ -164,7 +187,7 @@ void Logger::print_info(const char* str, ...) const {
     #endif
 
     // logging file
-    FILE* log_file = fopen(log_file_name, "a");
+    FILE* log_file = fopen(this -> log_file_name.c_str(), "a");
 
     // initializing list pointer 
     va_list ptr; 
@@ -193,7 +216,7 @@ void Logger::print_warn(const char* str, ...) const {
     #endif
 
     // logging file
-    FILE* log_file = fopen(log_file_name, "a");
+    FILE* log_file = fopen(this -> log_file_name.c_str(), "a");
 
     // initializing list pointer 
     va_list ptr; 
@@ -218,7 +241,7 @@ void Logger::print_warn(const char* str, ...) const {
 void Logger::raise_error(const char* str, ...) const {
 
     // logging file
-    FILE* log_file = fopen(log_file_name, "a");
+    FILE* log_file = fopen(this -> log_file_name.c_str(), "a");
 
     // initializing list pointer 
     va_list ptr; 
@@ -260,6 +283,8 @@ void my::split(const std::string str, std::vector<std::string>* tokens, const ch
     if (tmp != "") (*tokens).push_back(tmp);
 
 }
+
+void my::assert(const bool condition, const std::string message) { if (!condition) { std::cout << "Assert check failed: " << message << "." << std::endl; exit(1); } }
 
 void my::asserteq(const std::string value, const std::string expected, const Logger* logger) {
 
