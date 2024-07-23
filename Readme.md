@@ -1,0 +1,18 @@
+# Requirements
+- UNIX based OS (didn't test on Windows if this works as it is)
+- cmake 3.20 +
+
+# Build instructions
+While inside the root folder of this repo:
+```shell
+./build.sh
+```
+If anything goes wrong with the building process, a message explaining the problem will appear: please follow the instructions.
+
+If the build is successful, to run the executable:
+```shell
+./code/build/main <eventual_parameters>
+```
+
+# Parameters
+At the moment the code doesn't accept any cli argument.

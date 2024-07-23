@@ -24,8 +24,8 @@ HPLUS_action::HPLUS_action(BitField* pre_bf, BitField* eff_bf, const unsigned in
     my::assert(pre_bf != nullptr, "[HPLUS_ACTION CONSTRUCTOR]");
     my::assert(eff_bf != nullptr, "[HPLUS_ACTION CONSTRUCTOR]");
 
-    this -> pre = pre_bf;// pre_bf = nullptr;
-    this -> eff = eff_bf;// eff_bf = nullptr;
+    this -> pre = pre_bf; pre_bf = nullptr;
+    this -> eff = eff_bf; eff_bf = nullptr;
     this -> cost = cost;
     this -> name = name.c_str();
 
@@ -285,8 +285,8 @@ void HPLUS_domain::parse_inst_file(std::ifstream* ifs, HPLUS_problem* problem) {
 HPLUS_problem::HPLUS_problem(HPLUS_domain* domain, BitField* istate, BitField* gstate) {
 
     this -> domain = domain;
-    this -> initial_state = istate;// istate = nullptr;
-    this -> goal_state = gstate;// gstate = nullptr;
+    this -> initial_state = istate; istate = nullptr;
+    this -> goal_state = gstate; gstate = nullptr;
 
     this -> best_solution = nullptr;
     this -> best_nact = INT_MAX;
