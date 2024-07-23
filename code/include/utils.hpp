@@ -33,9 +33,6 @@
  */
 struct Environment {
 
-    std::string run_name;
-    std::string log_name;
-
 };
 
 /**
@@ -122,27 +119,35 @@ class BitField {
 class Logger {
 
     public:
+
         /**
-         * Constructor for the logger (to be called at the start of the program)
-         * 
          * @param run_title Title of the run to be logged
          * @param log_name (optional, def = default.log) Name of the log file
          */
         Logger(const std::string run_title, const std::string log_name = DEF_LOG_FILE);
+        
         /**
          * Starts the timer for logging execution time
          */
         void reset_timer();
+        
+        /**
+         * @return Time passed (in seconds) since the timer has been started
+         */
+        double get_time() const;
+        
         /**
          * Code executes only if HPLUS_VERBOSE >= 10
          * Prints and logs a formatted string (info format)
          */
         void print_info(const char* str, ...) const;
+        
         /**
          * Code executes only if HPLUS_VERBOSE >= 1
          * Prints and logs a formatted string (warning format)
          */
         void print_warn(const char* str, ...) const;
+        
         /**
          * Prints and logs an unhandled error (error format)
          * Terminates the execution of the program (exit(1))

@@ -60,7 +60,7 @@ std::string BitField::view() const {
 
 void Logger::_format_output(const char* str, va_list ptr, FILE* log_file) const {
 
-    double elapsed_time = ((double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - this -> s_timer).count()) / 1000;
+    double elapsed_time = this -> get_time();
     fprintf(stdout, "%8.3f : ", elapsed_time);
     fprintf(log_file, "%8.3f : ", elapsed_time);
 
@@ -179,6 +179,8 @@ Logger::Logger(const std::string run_title, const std::string log_name) {
 }
 
 void Logger::reset_timer() { this -> s_timer = std::chrono::steady_clock::now(); }
+
+double Logger::get_time() const { return ((double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - this -> s_timer).count()) / 1000; }
 
 void Logger::print_info(const char* str, ...) const {
 
