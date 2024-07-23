@@ -102,6 +102,7 @@ void HPLUS_domain::parse_inst_file(std::ifstream* ifs, HPLUS_problem* problem) {
     my::asserteq(line, "begin_metric", this -> logger);
     std::getline(*ifs, line);   // metric
     my::assertisint(line, this -> logger, 0, 1);
+    this -> use_costs = stoi(line) == 1;
     std::getline(*ifs, line);   // end_metric
     my::asserteq(line, "end_metric", this -> logger);
 
