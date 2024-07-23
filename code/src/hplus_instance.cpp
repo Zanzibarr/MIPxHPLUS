@@ -1,5 +1,9 @@
 #include "../include/hplus_instance.hpp"
 
+// ##################################################################### //
+// ########################### HPLUS_VARIABLE ########################## //
+// ##################################################################### //
+
 HPLUS_variable::HPLUS_variable(const unsigned int range, const std::string name, const std::vector<std::string> val_names) {
 
     my::assert(val_names.size() == range, "[HPLUS_VARIABLE CONSTRUCTOR]");
@@ -18,6 +22,10 @@ unsigned int HPLUS_variable::get_range() const { return this -> range; }
 const std::string* HPLUS_variable::get_name() const { return &this -> name; }
 
 const std::string* HPLUS_variable::get_val_names() const { return this -> val_names; }
+
+// ##################################################################### //
+// ############################ HPLUS_ACTION ########################### //
+// ##################################################################### //
 
 HPLUS_action::HPLUS_action(BitField* pre_bf, BitField* eff_bf, const unsigned int cost, const std::string name) {
     
@@ -45,6 +53,10 @@ const BitField* HPLUS_action::get_eff() const { return this -> eff; }
 const std::string* HPLUS_action::get_name() const { return &this -> name; }
 
 unsigned int HPLUS_action::get_cost() const { return this -> cost; }
+
+// ##################################################################### //
+// ############################ HPLUS_DOMAIN ########################### //
+// ##################################################################### //
 
 HPLUS_domain::HPLUS_domain(const std::string file_path, HPLUS_problem* problem, const Logger* logger) {
 
@@ -281,6 +293,10 @@ void HPLUS_domain::parse_inst_file(std::ifstream* ifs, HPLUS_problem* problem) {
     this -> logger -> print_info("Parsed SAS file.");
     
 }
+
+// ##################################################################### //
+// ########################### HPLUS_PROBLEM ########################### //
+// ##################################################################### //
 
 HPLUS_problem::HPLUS_problem(HPLUS_domain* domain, BitField* istate, BitField* gstate) {
 

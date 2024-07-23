@@ -1,6 +1,10 @@
 #ifndef _UTILS_H
 #define _UTILS_H
 
+// ##################################################################### //
+// ############################## INCLUDE ############################## //
+// ##################################################################### //
+
 #include <iostream>
 #include <fstream>
 #include <string>
@@ -10,7 +14,10 @@
 #include <algorithm>
 #include <stdarg.h>
 
-// directory organization
+// ##################################################################### //
+// ######################### PATHS AND FOLDERS ######################### //
+// ##################################################################### //
+
 #ifndef HPLUS_HOME_DIR
 #define HPLUS_HOME_DIR "cmake_handles_this" // overwritten by cmake
 #endif
@@ -19,27 +26,36 @@
 #define HPLUS_LOG_DIR HPLUS_CODE_DIR"/logs"
 #define DEF_LOG_FILE "default.log"
 
-// verbose parameter for logging
+// ##################################################################### //
+// ####################### PRINTING AND DEBUGGING ###################### //
+// ##################################################################### //
+
 #ifndef HPLUS_VERBOSE
 #define HPLUS_VERBOSE 0 // overwritten by cmake
 #endif
-
-// integrity checks switch
 #define INTCHECKS HPLUS_VERBOSE>0
+
+// ##################################################################### //
+// ############################ GLOBAL INFO ############################ //
+// ##################################################################### //
 
 /**
  * Environment for the execution of the code
  */
-struct Environment {
+extern struct Environment {
 
-};
+} HPLUS_env;
 
 /**
  * Statistics for the execution of the code
  */
-struct Statistics {
+extern struct Statistics {
 
-};
+} HPLUS_stats;
+
+// ##################################################################### //
+// ############################## BITFIELD ############################# //
+// ##################################################################### //
 
 /**
 BitField used to compactly store size bits into a single data structure
@@ -112,6 +128,10 @@ class BitField {
 
 };
 
+// ##################################################################### //
+// ############################### LOGGER ############################## //
+// ##################################################################### //
+
 /**
  * Logger used during the execution of this program
  */
@@ -159,6 +179,10 @@ class Logger {
         void _format_output(const char* str, va_list ptr, FILE* log_file) const;
         
 };
+
+// ##################################################################### //
+// ############################ MY NAMESPACE ########################### //
+// ##################################################################### //
 
 /**
  * Utils functions

@@ -1,6 +1,8 @@
 #include "../include/utils.hpp"
 
-#pragma region BITFIELD
+// ##################################################################### //
+// ############################## BITFIELD ############################# //
+// ##################################################################### //
 
 BitField::BitField(unsigned int size) { this -> len = size; this -> field = new char[(size+7)/8](); }
 
@@ -54,9 +56,9 @@ std::string BitField::view() const {
 
 }
 
-#pragma endregion
-
-#pragma region LOGGER
+// ##################################################################### //
+// ############################### LOGGER ############################## //
+// ##################################################################### //
 
 void Logger::_format_output(const char* str, va_list ptr, FILE* log_file) const {
 
@@ -267,9 +269,9 @@ void Logger::raise_error(const char* str, ...) const {
 
 }
 
-#pragma endregion
-
-#pragma region MY_NAMESPACE
+// ##################################################################### //
+// ############################ MY NAMESPACE ########################### //
+// ##################################################################### //
 
 void my::split(const std::string str, std::vector<std::string>* tokens, const char del) {
 
@@ -313,5 +315,3 @@ void my::assertisint(const std::string str, const Logger* logger, const int from
     if (num < from || num > to) logger -> raise_error("Expected a number between %d and %d, found %d.", from, to, num);
 
 }
-
-#pragma endregion
