@@ -133,9 +133,8 @@ class HPLUS_instance {
          * 
          * @param file_path: Path of the file where to read the instance from
          * @param problem: Pointer to the HPLUS_problem to build from this domain
-         * @param logger: Logger to associate to this domain
          */
-        HPLUS_instance(const std::string file_path, const Logger* logger);
+        HPLUS_instance(const std::string file_path);
 
         ~HPLUS_instance();
 
@@ -168,11 +167,6 @@ class HPLUS_instance {
          * @return The list of actions this domain has
          */
         const HPLUS_action** get_actions() const;
-
-        /**
-         * @return The logger associated to this domain
-         */
-        const Logger* get_logger() const;
 
         /**
          * @return The initial state as a BitField
@@ -247,11 +241,6 @@ class HPLUS_instance {
         const HPLUS_action** actions;
 
         /**
-         * Logger used to print info/debug the execution of this domain
-         */
-        const Logger* logger;
-
-        /**
          * Initial state of the problem (bit field)
          */
         BitField* initial_state;
@@ -281,26 +270,5 @@ class HPLUS_instance {
         void parse_inst_file(std::ifstream* file);
 
 };
-
-// ##################################################################### //
-// ########################### HPLUS_PROBLEM ########################### //
-// ##################################################################### //
-
-// class HPLUS_problem {
-
-//     public:
-
-//         /**
-//          * @param domain: Domain to associate to this problem
-//          * @param istate: Initial state of the problem -> to prevent accidental deletes this will be set to nullptr after
-//          * @param gstate: Goal state of the problem -> to prevent accidental deletes this will be set to nullptr after
-//          */
-//         HPLUS_problem(HPLUS_domain* domain, BitField* istate, BitField* gstate);
-
-//         ~HPLUS_problem();
-
-//     private:
-
-// };
 
 #endif

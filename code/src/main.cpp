@@ -1,18 +1,34 @@
 #include "../include/hplus_instance.hpp"
 
+void start() {
+
+    my::start_timer();
+    HPLUS_env.status = 0;
+    HPLUS_env.logger = Logger("Parser testing", "agricola-opt18-strips-p01.log");
+
+}
+
+void end() {
+
+    HPLUS_stats.print();
+
+}
+
 int main() {
 
-    int status = 0;
+    start();
 
     // TODO : Parse values from command line
-    Logger logger = Logger("Parser testing", "agricola-opt18-strips-p01.log");
-    std::string test_instance = std::string(HPLUS_INST_DIR)+"/agricola-opt18-strips-p01.sas";
-    HPLUS_instance* inst = new HPLUS_instance(test_instance, &logger);
 
-    logger.print_warn("Only the parser has been implemented.");
+    std::string test_instance = std::string(HPLUS_INST_DIR)+"/agricola-opt18-strips-p01.sas";
+    HPLUS_instance* inst = new HPLUS_instance(test_instance);
+
+    HPLUS_env.logger.print_warn("Only the parser has been implemented.");
 
     delete inst; inst = nullptr;
 
-    return status;
+    end();
+
+    return HPLUS_env.status;
 
 }

@@ -36,24 +36,6 @@
 #define INTCHECKS HPLUS_VERBOSE>0
 
 // ##################################################################### //
-// ############################ GLOBAL INFO ############################ //
-// ##################################################################### //
-
-/**
- * Environment for the execution of the code
- */
-extern struct Environment {
-
-} HPLUS_env;
-
-/**
- * Statistics for the execution of the code
- */
-extern struct Statistics {
-
-} HPLUS_stats;
-
-// ##################################################################### //
 // ############################## BITFIELD ############################# //
 // ##################################################################### //
 
@@ -144,16 +126,14 @@ class Logger {
          * @param log_name (optional, def = default.log) Name of the log file
          */
         Logger(const std::string run_title, const std::string log_name = DEF_LOG_FILE);
-        
+
+        Logger() {};
+
         /**
-         * Starts the timer for logging execution time
+         * Code executes always
+         * Prints and logs a formatted string
          */
-        void reset_timer();
-        
-        /**
-         * @return Time passed (in seconds) since the timer has been started
-         */
-        double get_time() const;
+        void print(const char* str, ...) const;
         
         /**
          * Code executes only if HPLUS_VERBOSE >= 10
@@ -175,10 +155,35 @@ class Logger {
 
     private:
         std::string log_file_name;
-        std::chrono::steady_clock::time_point s_timer;
-        void _format_output(const char* str, va_list ptr, FILE* log_file) const;
+        void _format_output(const char* str, va_list ptr, FILE* log_file, const bool show_time = true) const;
         
 };
+
+// ##################################################################### //
+// ############################ GLOBAL INFO ############################ //
+// ##################################################################### //
+
+/**
+ * Environment for the execution of the code
+ */
+extern struct Environment {
+
+    int status;
+    Logger logger;
+    std::chrono::steady_clock::time_point s_timer;
+
+} HPLUS_env;
+
+/**
+ * Statistics for the execution of the code
+ */
+extern struct Statistics {
+
+    double parsing_time;
+
+    void print() const;
+
+} HPLUS_stats;
 
 // ##################################################################### //
 // ############################ MY NAMESPACE ########################### //
@@ -200,20 +205,26 @@ namespace my {
     void assert(bool condition, const std::string message);
 
     /**
-     * Asserts that the value obtained is equal to the expected one
-     */
-    void asserteq(const std::string value, const std::string expected, const Logger* logger);
-
-    /**
-     * Asserts that the value obtained is equal to the expected one
-     */
-    void asserteq(const int value, const int expected, const Logger* logger);
-
-    /**
      * Asserts that a string is a number (if specified also checks the range (both inclusive))
      */
-    void assertisint(const std::string str, const Logger* logger, const int from = INT_MIN, const int to = INT_MAX);
+    bool isint(const std::string str, const int from = INT_MIN, const int to = INT_MAX);
+
+    /**
+     * Starts the timer for measuring execution time
+     */
+    void start_timer();
+
+    /**
+     * Returns the execution time in seconds since the timer was started
+     */
+    double get_time();
 
 }
+
+// ##################################################################### //
+// ############################### MACROS ############################## //
+// ##################################################################### //
+
+#define ASSERT(cond) my::assert(cond, std::string(__FILE__" : ")+std::to_string(__LINE__));
 
 #endif

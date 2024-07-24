@@ -1,37 +1,55 @@
 #include "../include/utils.hpp"
 
+Environment HPLUS_env;
+Statistics HPLUS_stats;
+
 // ##################################################################### //
 // ############################## BITFIELD ############################# //
 // ##################################################################### //
 
-BitField::BitField(unsigned int size) { this -> len = size; this -> field = new char[(size+7)/8](); }
+BitField::BitField(unsigned int size) {
+
+    #if INTCHECKS
+    ASSERT(size > 0);
+    #endif
+    this -> len = size; this -> field = new char[(size+7)/8]();
+
+}
 
 BitField::~BitField() { delete[] this -> field; this -> field = nullptr; }
 
 void BitField::set(const unsigned int i) {
     
-    my::assert(i < this -> len, "[BITFIELD SET]");
+    #if INTCHECKS
+    ASSERT(i < this -> len);
+    #endif
     this -> field[i/8] |= (1 << i%8);
     
 }
 
 void BitField::unset(const unsigned int i) {
     
-    my::assert(i < this -> len, "[BITFIELD UNSET]");
+    #if INTCHECKS
+    ASSERT(i < this -> len);
+    #endif
     this -> field[i/8] &= ~(1 << i%8);
     
 }
 
 bool BitField::operator[](const unsigned int i) const {
     
-    my::assert(i < this -> len, "BITFIELD OPERATOR[]]");
+    #if INTCHECKS
+    ASSERT(i < this -> len);
+    #endif
     return this -> field[i/8] & (1 << i%8);
     
 }
 
 BitField BitField::operator&(const BitField bf) const {
 
-    my::assert(this -> len == bf.len, "[BITFIELD OPERATOR&]");
+    #if INTCHECKS
+    ASSERT(this -> len == bf.len);
+    #endif
     BitField ret = BitField(this -> len);
     for (int i = 0; i < this -> len; i++) if ((this -> field[i/8] & (1 << i%8)) && bf[i]) ret.set(i);
     return ret;
@@ -40,7 +58,9 @@ BitField BitField::operator&(const BitField bf) const {
 
 bool BitField::operator==(const BitField bf) const {
 
-    my::assert(this -> len == bf.len, "[BITFIELD OPERATOR==]");
+    #if INTCHECKS
+    ASSERT(this -> len == bf.len);
+    #endif
     for (int i = 0; i < (this -> len + 7) / 8; i++) if (this -> field[i] != bf.field[i]) return false;
     return true;
 
@@ -60,11 +80,13 @@ std::string BitField::view() const {
 // ############################### LOGGER ############################## //
 // ##################################################################### //
 
-void Logger::_format_output(const char* str, va_list ptr, FILE* log_file) const {
+void Logger::_format_output(const char* str, va_list ptr, FILE* log_file, const bool show_time) const {
 
-    double elapsed_time = this -> get_time();
-    fprintf(stdout, "%8.3f : ", elapsed_time);
-    fprintf(log_file, "%8.3f : ", elapsed_time);
+    if (show_time) {
+        double elapsed_time = my::get_time();
+        fprintf(stdout, "%8.3f : ", elapsed_time);
+        fprintf(log_file, "%8.3f : ", elapsed_time);
+    }
 
     // char array to store token 
     char token[1000]; 
@@ -171,8 +193,6 @@ void Logger::_format_output(const char* str, va_list ptr, FILE* log_file) const 
 
 Logger::Logger(const std::string run_title, const std::string log_name) {
 
-    this -> reset_timer();
-
     this -> log_file_name = HPLUS_LOG_DIR"/" + log_name;
     FILE* log_file = fopen(this -> log_file_name.c_str(), "a");
     fprintf(log_file, "\n--------------------------------\n%s\n--------------------------------\n", run_title.c_str());
@@ -180,9 +200,27 @@ Logger::Logger(const std::string run_title, const std::string log_name) {
 
 }
 
-void Logger::reset_timer() { this -> s_timer = std::chrono::steady_clock::now(); }
+void Logger::print(const char* str, ...) const {
 
-double Logger::get_time() const { return ((double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - this -> s_timer).count()) / 1000; }
+    // logging file
+    FILE* log_file = fopen(this -> log_file_name.c_str(), "a");
+
+    // initializing list pointer
+    va_list ptr;
+    va_start(ptr, str);
+
+    // printing and logging the formatted message
+    _format_output(str, ptr, log_file, false);
+
+    fprintf(stdout, "\n");
+    fprintf(log_file, "\n");
+
+    fclose(log_file);
+
+    // ending traversal
+    va_end(ptr);
+
+}
 
 void Logger::print_info(const char* str, ...) const {
 
@@ -270,6 +308,20 @@ void Logger::raise_error(const char* str, ...) const {
 }
 
 // ##################################################################### //
+// ############################# STATISTICS ############################ //
+// ##################################################################### //
+
+void Statistics::print() const {
+
+    HPLUS_env.logger.print("\n\n------------------------------------------");
+    HPLUS_env.logger.print("-------------   Statistics   -------------");
+    HPLUS_env.logger.print("------------------------------------------\n");
+    HPLUS_env.logger.print(" >>  Parsing time         %10.3fs  <<", this->parsing_time);
+    HPLUS_env.logger.print("\n\n");
+
+}
+
+// ##################################################################### //
 // ############################ MY NAMESPACE ########################### //
 // ##################################################################### //
 
@@ -288,30 +340,17 @@ void my::split(const std::string str, std::vector<std::string>* tokens, const ch
 
 }
 
-void my::assert(const bool condition, const std::string message) { if (!condition) { std::cout << "Assert check failed: " << message << "." << std::endl; exit(1); } }
+void my::assert(const bool condition, const std::string message) { if (!condition) HPLUS_env.logger.raise_error("%s - Assert check failed.", message.c_str()); }
 
-void my::asserteq(const std::string value, const std::string expected, const Logger* logger) {
+bool my::isint(const std::string str, const int from, const int to) {
 
-    if (value != expected) logger -> raise_error("Expected '%s', found '%s'.", expected.c_str(), value.c_str());
-
-}
-
-void my::asserteq(const int value, const int expected, const Logger* logger) {
-
-    if (value != expected) logger -> raise_error("Expected '%d', found '%d'.", expected, value);
-}
-
-void my::assertisint(const std::string str, const Logger* logger, const int from, const int to) {
-
-    // negative numbers accepted
-    if (str[0] == '-') {
-        std::string tmp = str.substr(1);
-        return my::assertisint(tmp, logger);
-    }
-
-    if (str.empty() || !std::all_of(str.begin(), str.end(), ::isdigit)) logger -> raise_error("Expected a number, found '%s'.", str.c_str());
-
-    int num = stoi(str);
-    if (num < from || num > to) logger -> raise_error("Expected a number between %d and %d, found %d.", from, to, num);
+    try {
+        int num = stoi(str);
+        return num >= from && num <= to;
+    } catch (std::invalid_argument) { return false; }
 
 }
+
+void my::start_timer() { HPLUS_env.s_timer = std::chrono::steady_clock::now(); }
+
+double my::get_time() { return ((double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - HPLUS_env.s_timer).count()) / 1000; }

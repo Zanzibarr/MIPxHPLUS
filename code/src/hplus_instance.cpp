@@ -6,7 +6,9 @@
 
 HPLUS_variable::HPLUS_variable(const unsigned int range, const std::string name, const std::vector<std::string> val_names) {
 
-    my::assert(val_names.size() == range, "[HPLUS_VARIABLE CONSTRUCTOR]");
+    #if INTCHECKS
+    ASSERT(val_names.size() == range);
+    #endif
 
     this -> range = range;
     this -> name = std::string(name);
@@ -29,8 +31,10 @@ const std::string* HPLUS_variable::get_val_names() const { return this -> val_na
 
 HPLUS_action::HPLUS_action(BitField* pre_bf, BitField* eff_bf, const unsigned int cost, const std::string name) {
     
-    my::assert(pre_bf != nullptr, "[HPLUS_ACTION CONSTRUCTOR]");
-    my::assert(eff_bf != nullptr, "[HPLUS_ACTION CONSTRUCTOR]");
+    #if INTCHECKS
+    ASSERT(pre_bf != nullptr);
+    ASSERT(eff_bf != nullptr);
+    #endif
 
     this -> pre = pre_bf; pre_bf = nullptr;
     this -> eff = eff_bf; eff_bf = nullptr;
@@ -58,18 +62,14 @@ unsigned int HPLUS_action::get_cost() const { return this -> cost; }
 // ############################ HPLUS_instance ########################### //
 // ##################################################################### //
 
-HPLUS_instance::HPLUS_instance(const std::string file_path, const Logger* logger) {
-
-    my::assert(logger != nullptr, "[HPLUS_instance CONSTRUCTOR]");
-    
-    this -> logger = logger;
+HPLUS_instance::HPLUS_instance(const std::string file_path) {
 
     std::ifstream file(file_path.c_str(), std::ifstream::in);
-    if (!file.good()) this -> logger -> raise_error("File %s not found.", file_path.c_str());
+    if (!file.good()) HPLUS_env.logger.raise_error("File %s not found.", file_path.c_str());
     parse_inst_file(&file);
     file.close();
 
-    this -> logger -> print_info("Created HPLUS_instance.");
+    HPLUS_env.logger.print_info("Created HPLUS_instance.");
 
 }
 
@@ -97,8 +97,6 @@ const HPLUS_variable** HPLUS_instance::get_variables() const { return this -> va
 
 const HPLUS_action** HPLUS_instance::get_actions() const { return this -> actions; }
 
-const Logger* HPLUS_instance::get_logger() const { return this -> logger; }
-
 const BitField* HPLUS_instance::get_istate() const { return this -> initial_state; }
 
 const BitField* HPLUS_instance::get_gstate() const { return this -> goal_state; }
@@ -108,16 +106,16 @@ void HPLUS_instance::update_best_solution(const std::vector<unsigned int> soluti
 
     unsigned int nact = solution.size();
     #if INTCHECKS
-    int* dbcheck = new int[this -> n_act]();
+    bool* dbcheck = new bool[this -> n_act]();
     unsigned int costcheck = 0;
-    if (nact > this -> n_act) this -> logger -> raise_error("Proposed solution considers %d actions, while only %d actions exist.", nact, this -> n_act);
+    ASSERT(nact <= this -> n_act);
     for (int i = 0; i < nact; i++) {
-        if (solution[i] >= this -> n_act) this -> logger -> raise_error("Proposed solution has in %d position action %d, while only %d actions exist.", i, solution[i], this -> n_act);
-        if (dbcheck[solution[i]]) this -> logger -> raise_error("Proposed solution has multiple occurrences of action %d.", solution[i]);
+        ASSERT(solution[i] < this -> n_act);
+        ASSERT(!dbcheck[solution[i]]);
         dbcheck[solution[i]] = 1;
         costcheck += this -> actions[solution[i]] -> get_cost();
     }
-    if (costcheck != cost) this -> logger -> raise_error("Proposed solution with cost %d but suggested cost is %d.", cost, costcheck);
+    ASSERT(costcheck == cost);
     delete[] dbcheck; dbcheck = nullptr;
     #endif
 
@@ -131,14 +129,16 @@ void HPLUS_instance::update_best_solution(const std::vector<unsigned int> soluti
     this -> best_nact = nact;
     this -> best_cost = cost;
 
-    this -> logger -> print_info("Updated best solution - Cost: %4d.", this -> best_cost);
+    HPLUS_env.logger.print_info("Updated best solution - Cost: %4d.", this -> best_cost);
 
 }
 
 void HPLUS_instance::get_best_solution(std::vector<unsigned int>* solution, unsigned int* cost) const {
 
-    my::assert(solution != nullptr, "[HPLUS_PROBLEM GETSOL]");
-    my::assert(cost != nullptr, "[HPLUS_PROBLEM GETSOL]");
+    #if INTCHECKS
+    ASSERT(solution != nullptr);
+    ASSERT(cost != nullptr);
+    #endif
 
     solution -> clear();
     (*solution) = std::vector<unsigned int>(this -> best_nact);
@@ -150,44 +150,47 @@ void HPLUS_instance::get_best_solution(std::vector<unsigned int>* solution, unsi
 unsigned int HPLUS_instance::get_best_cost() const { return this -> best_cost; }
 
 void HPLUS_instance::parse_inst_file(std::ifstream* ifs) {
-    
+
+    HPLUS_env.logger.print_info("Parsing SAS file.");
+
+    double start_time = my::get_time();
     std::string line;
 
     // * version section
     std::getline(*ifs, line);   // begin_version
-    my::asserteq(line, "begin_version", this -> logger);
+    ASSERT(line == "begin_version");
     std::getline(*ifs, line);   // version_number
-    my::assertisint(line, this -> logger);
+    ASSERT(my::isint(line));
     this -> version = std::stoi(line);
     std::getline(*ifs, line);   // end_version
-    my::asserteq(line, "end_version", this -> logger);
+    ASSERT(line == "end_version");
 
     // * metric section
     std::getline(*ifs, line);   // begin_metric
-    my::asserteq(line, "begin_metric", this -> logger);
+    ASSERT(line == "begin_metric")
     std::getline(*ifs, line);   // metric
-    my::assertisint(line, this -> logger, 0, 1);
+    ASSERT(my::isint(line, 0, 1));
     this -> use_costs = stoi(line) == 1;
     std::getline(*ifs, line);   // end_metric
-    my::asserteq(line, "end_metric", this -> logger);
+    ASSERT(line == "end_metric");
 
     // * variables section
-    this -> logger -> print_warn("Ignoring axiom layers.");
+    HPLUS_env.logger.print_warn("Ignoring axiom layers.");
     std::getline(*ifs, line);   // n_var
-    my::assertisint(line, this -> logger, 0);
+    ASSERT(my::isint(line, 0));
     this -> n_var = (unsigned int) std::stoi(line);
     this -> variables = new const HPLUS_variable*[this -> n_var];
     this -> bf_size = 0;
     for (int var_i = 0; var_i < this -> n_var; var_i++) {
         // process each variable
         std::getline(*ifs, line);   // begin_variable
-        my::asserteq(line, "begin_variable", this -> logger);
+        ASSERT(line == "begin_variable");
         std::string name;
         std::getline(*ifs, name);   // variable name
         std::getline(*ifs, line);   // axiom layer (ignored)
-        if (line != "-1") this -> logger -> print_warn("Axiom layer is %s.", line.c_str());
+        if (line != "-1") HPLUS_env.logger.print_warn("Axiom layer is %s.", line.c_str());
         std::getline(*ifs, line);   // range of variable
-        my::assertisint(line, this -> logger, 0);
+        ASSERT(my::isint(line, 0));
         unsigned int range = (unsigned int) stoi(line);
         this -> bf_size += range;
         std::vector<std::string> val_names(range);
@@ -197,93 +200,93 @@ void HPLUS_instance::parse_inst_file(std::ifstream* ifs) {
         }
         this -> variables[var_i] = new HPLUS_variable(range, name, val_names);
         std::getline(*ifs, line);   // end_variable
-        my::asserteq(line, "end_variable", this -> logger);
+        ASSERT(line == "end_variable");
     }
     
     // * mutex section (ignored)
-    this -> logger -> print_warn("Ignoring mutex section.");
+    HPLUS_env.logger.print_warn("Ignoring mutex section.");
     std::getline(*ifs, line);   // number of mutex groups
-    my::assertisint(line, this -> logger, 0);
+    ASSERT(my::isint(line, 0));
     int nmgroups = stoi(line);
     for (int i = 0; i < nmgroups; i++) {
         std::getline(*ifs, line);   // begin_mutex_group
-        my::asserteq(line, "begin_mutex_group", this -> logger);
+        ASSERT(line == "begin_mutex_group");
         while (line != "end_mutex_group") {
             std::getline(*ifs, line); // reach end_mutex_group (ignore all content)
-            if (line == "begin_state") this -> logger -> raise_error("Mutex group skipped in SAS file without reaching 'end_mutex_group'.");
+            if (line == "begin_state") HPLUS_env.logger.raise_error("Mutex group skipped in SAS file without reaching 'end_mutex_group'.");
         }
     }
 
     // * initial state section
     std::getline(*ifs, line);   // begin_state
-    my::asserteq(line, "begin_state", this -> logger);
+    ASSERT(line == "begin_state");
     this -> initial_state = new BitField(this -> bf_size);
     for (int var_i = 0, c = 0; var_i < this -> n_var; c += this -> variables[var_i] -> get_range(), var_i++) {
         std::getline(*ifs, line);   // initial value of var_i
-        my::assertisint(line, this -> logger, 0, this -> variables[var_i] -> get_range() - 1);
+        ASSERT(my::isint(line, 0, this -> variables[var_i] -> get_range() - 1));
         unsigned int val = (unsigned int) stoi(line);
         this -> initial_state -> set(c + val);
     }
     std::getline(*ifs, line);   // end_state
-    my::asserteq(line, "end_state", this -> logger);
+    ASSERT(line == "end_state");
 
     // * goal state section
     std::getline(*ifs, line);   // begin_goal
-    my::asserteq(line, "begin_goal", this -> logger);
+    ASSERT(line == "begin_goal");
     this -> goal_state = new BitField(this -> bf_size);
     std::getline(*ifs, line);   // number of goals
-    my::assertisint(line, this -> logger, 0, this -> n_var);
+    ASSERT(my::isint(line, 0, this -> n_var));
     int ngoals = stoi(line);
     for (int i = 0; i < ngoals; i++) {
         // parsing each goal
         std::vector<std::string> tokens;
         std::getline(*ifs, line);   // pair 'variable goal'
         my::split(line, &tokens, ' ');
-        my::asserteq(tokens.size(), 2, this -> logger);
-        my::assertisint(tokens[0], this -> logger, 1, this -> n_var - 1); // variable index
+        ASSERT(tokens.size() == 2);
+        ASSERT(my::isint(tokens[0], 1, this -> n_var - 1)); // variable index
         unsigned int var = (unsigned int) stoi(tokens[0]);
-        my::assertisint(tokens[1], this -> logger, 0, this -> variables[var] -> get_range() - 1); // variable goal
+        ASSERT(my::isint(tokens[1], 0, this -> variables[var] -> get_range() - 1)); // variable goal
         unsigned int value = (unsigned int) stoi(tokens[1]);
         int c = 0;
         for (int i = 0; i < var; c += this -> variables[i] -> get_range(), i++);
         this -> goal_state -> set(c + value);
     }
     std::getline(*ifs, line);   // end_goal
-    my::asserteq(line, "end_goal", this -> logger);
+    ASSERT(line == "end_goal");
 
     // * operator (actions) section
     //TODO: Ask if it's ok if I put preconditions together with prevail conditions
-    this -> logger -> print_warn("Ignoring effect conditions.");
+    HPLUS_env.logger.print_warn("Ignoring effect conditions.");
     std::getline(*ifs, line);   // n_act
-    my::assertisint(line, this -> logger, 0);
+    ASSERT(my::isint(line, 0));
     this -> n_act = (unsigned int) stoi(line);
     this -> actions = new const HPLUS_action*[this -> n_act];
     for (int act_i = 0; act_i < this -> n_act; act_i++) {
         // process each action
         std::getline(*ifs, line);   // begin_operator
-        my::asserteq(line, "begin_operator", this -> logger);
+        ASSERT(line == "begin_operator");
         std::getline(*ifs, line);   // symbolic action name
         std::string name = line;
         BitField* act_pre = new BitField(this -> bf_size);
         std::getline(*ifs, line);   // number of prevail conditions
-        my::assertisint(line, this -> logger, 0, this -> n_var);
+        ASSERT(my::isint(line, 0, this -> n_var));
         unsigned int n_pre = (unsigned int) stoi(line);
         for (int pre_i = 0; pre_i < n_pre; pre_i++) {
             // parsing each prevail condition
             std::vector<std::string> tokens;
             std::getline(*ifs, line);   // pair 'variable value'
             my::split(line, &tokens, ' ');
-            my::asserteq(tokens.size(), 2, this -> logger);
-            my::assertisint(tokens[0], this -> logger, 0, this -> n_var - 1); // variable index
+            ASSERT(tokens.size() == 2);
+            ASSERT(my::isint(tokens[0], 0, this -> n_var - 1)); // variable index
             unsigned int var = (unsigned int) stoi(tokens[0]);
-            my::assertisint(tokens[1], this -> logger, 0, this -> variables[var] -> get_range() - 1); // variable value
+            ASSERT(my::isint(tokens[1], 0, this -> variables[var] -> get_range() - 1)); // variable value
             unsigned int value = (unsigned int) stoi(tokens[1]);
             int c = 0;
             for (int i = 0; i < var; c += this -> variables[i] -> get_range(), i++);
             act_pre -> set(c + value);
         }
         std::getline(*ifs, line);   // number of effects
-        my::assertisint(line, this -> logger, 0);
+        ASSERT(my::isint(line, 0));
         unsigned int n_eff = (unsigned int) stoi(line);
         BitField* act_eff = new BitField(this -> bf_size);
         for (int eff_i = 0; eff_i < n_eff; eff_i++) {
@@ -291,13 +294,13 @@ void HPLUS_instance::parse_inst_file(std::ifstream* ifs) {
             std::getline(*ifs, line);   // effect line
             std::vector<std::string> tokens;
             my::split(line, &tokens, ' ');
-            my::asserteq(tokens.size(), 4, this -> logger); // not expecting effect conditions
-            my::assertisint(tokens[0], this -> logger, 0, 0);   // number of effect conditions (ignored and check to be 0)
-            my::assertisint(tokens[1], this -> logger, 0, this -> n_var - 1);   // variable affected by the action
+            ASSERT(tokens.size() == 4); // not expecting effect conditions
+            ASSERT(my::isint(tokens[0], 0, 0)); // number of effect conditions (ignored and check to be 0)
+            ASSERT(my::isint(tokens[1], 0, this -> n_var - 1));   // variable affected by the action
             unsigned int var = (unsigned int) stoi(tokens[1]);
-            my::assertisint(tokens[2], this -> logger, -1, this -> variables[var] -> get_range() - 1);    // precondition of the variable
+            ASSERT(my::isint(tokens[2], -1, this -> variables[var] -> get_range() - 1));    // precondition of the variable
             int pre_val = stoi(tokens[2]);
-            my::assertisint(tokens[3], this -> logger, 0, this -> variables[var] -> get_range() - 1);     // effect on the variable
+            ASSERT(my::isint(tokens[3], 0, this -> variables[var] -> get_range() - 1)); // precondition of the variable
             unsigned int eff_val = (unsigned int) stoi(tokens[3]);
             int c = 0;
             for (int i = 0; i < var; c += this -> variables[i] -> get_range(), i++);
@@ -305,47 +308,47 @@ void HPLUS_instance::parse_inst_file(std::ifstream* ifs) {
             act_eff -> set(c + eff_val);
         }
         std::getline(*ifs, line);   // action cost
-        my::assertisint(line, this -> logger);
+        ASSERT(my::isint(line));
         unsigned int cost = 1;
         if (this -> use_costs) cost = (unsigned int) stoi(line);
         std::getline(*ifs, line);   // end_operator
-        my::asserteq(line, "end_operator", this -> logger);
+        ASSERT(line == "end_operator");
         this -> actions[act_i] = new HPLUS_action(act_pre, act_eff, cost, name);
     }
 
-    this -> logger -> print_warn("Ignoring axiom section.");
+    HPLUS_env.logger.print_warn("Ignoring axiom section.");
 
     this -> best_solution = nullptr;
     this -> best_nact = INT_MAX;
     this -> best_cost = UINT_MAX;
 
+    HPLUS_stats.parsing_time = my::get_time() - start_time;
+
     // * visualization
 
     #if HPLUS_VERBOSE >= 100
 
-    this -> logger -> print_info("Version: %d.", this -> version);
-    this -> logger -> print_info("Metric: %d.", this -> use_costs);
-    this -> logger -> print_info("N_var: %d.", this -> n_var);
-    for (int i = 0; i < this -> n_var; i++) this -> logger -> print_info("name(var_%d) = '%s'.", i, this -> variables[i] -> get_name() -> c_str());
-    for (int i = 0; i < this -> n_var; i++) this -> logger -> print_info("range(var_%d) = '%d'.", i, this -> variables[i] -> get_range());
+    HPLUS_env.logger.print_info("Version: %d.", this -> version);
+    HPLUS_env.logger.print_info("Metric: %d.", this -> use_costs);
+    HPLUS_env.logger.print_info("N_var: %d.", this -> n_var);
+    for (int i = 0; i < this -> n_var; i++) HPLUS_env.logger.print_info("name(var_%d) = '%s'.", i, this -> variables[i] -> get_name() -> c_str());
+    for (int i = 0; i < this -> n_var; i++) HPLUS_env.logger.print_info("range(var_%d) = '%d'.", i, this -> variables[i] -> get_range());
     for (int i = 0; i < this -> n_var; i++){
         const std::string* val_names = this -> variables[i] -> get_val_names();
         for (int j = 0; j < this -> variables[i] -> get_range(); j++)
-            this -> logger -> print_info("name(var_%d[%d]) = '%s'.", i, j, val_names[j].c_str());
+            HPLUS_env.logger.print_info("name(var_%d[%d]) = '%s'.", i, j, val_names[j].c_str());
     }
-    this -> logger -> print_info("Bitfield size: %d", this -> bf_size);
-    this -> logger -> print_info("Initial state: %s.", this -> initial_state -> view().c_str());
-    this -> logger -> print_info("Goal state: %s.", this -> goal_state -> view().c_str());
-    this -> logger -> print_info("N_act: %d.", this -> n_act);
+    HPLUS_env.logger.print_info("Bitfield size: %d", this -> bf_size);
+    HPLUS_env.logger.print_info("Initial state: %s.", this -> initial_state -> view().c_str());
+    HPLUS_env.logger.print_info("Goal state: %s.", this -> goal_state -> view().c_str());
+    HPLUS_env.logger.print_info("N_act: %d.", this -> n_act);
     for (int act_i = 0; act_i < this -> n_act; act_i++) {
-        this -> logger -> print_info("pre(act_%d) = '%s'.", act_i, this -> actions[act_i] -> get_pre() -> view().c_str());
-        this -> logger -> print_info("eff(act_%d) = '%s'.", act_i, this -> actions[act_i] -> get_eff() -> view().c_str());
-        this -> logger -> print_info("name(act_%d) = '%s'.", act_i, this -> actions[act_i] -> get_name() -> c_str());
-        this -> logger -> print_info("cost(act_%d) = '%d'.", act_i, this -> actions[act_i] -> get_cost());
+        HPLUS_env.logger.print_info("pre(act_%d) = '%s'.", act_i, this -> actions[act_i] -> get_pre() -> view().c_str());
+        HPLUS_env.logger.print_info("eff(act_%d) = '%s'.", act_i, this -> actions[act_i] -> get_eff() -> view().c_str());
+        HPLUS_env.logger.print_info("name(act_%d) = '%s'.", act_i, this -> actions[act_i] -> get_name() -> c_str());
+        HPLUS_env.logger.print_info("cost(act_%d) = '%d'.", act_i, this -> actions[act_i] -> get_cost());
     }
 
     #endif
-
-    this -> logger -> print_info("Parsed SAS file.");
     
 }
