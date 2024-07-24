@@ -225,6 +225,8 @@ namespace my {
 // ############################### MACROS ############################## //
 // ##################################################################### //
 
-#define ASSERT(cond) my::assert(cond, std::string(__FILE__" : ")+std::to_string(__LINE__));
+#define ASSERT(cond) my::assert(cond, std::string(__FILE__":")+std::to_string(__LINE__));
+#define DEL(ptr) delete ptr; ptr = nullptr;
+#define DELL(ptr) delete[] ptr; ptr = nullptr;
 
 #endif

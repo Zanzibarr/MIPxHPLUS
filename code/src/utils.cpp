@@ -16,7 +16,7 @@ BitField::BitField(unsigned int size) {
 
 }
 
-BitField::~BitField() { delete[] this -> field; this -> field = nullptr; }
+BitField::~BitField() { DELL(this->field); }
 
 void BitField::set(const unsigned int i) {
     

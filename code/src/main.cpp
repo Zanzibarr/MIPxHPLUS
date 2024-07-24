@@ -25,7 +25,7 @@ int main() {
 
     HPLUS_env.logger.print_warn("Only the parser has been implemented.");
 
-    delete inst; inst = nullptr;
+    DEL(inst);
 
     end();
 

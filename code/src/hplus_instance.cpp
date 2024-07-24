@@ -17,7 +17,7 @@ HPLUS_variable::HPLUS_variable(const unsigned int range, const std::string name,
 
 }
 
-HPLUS_variable::~HPLUS_variable() { delete[] this -> val_names; this -> val_names = nullptr; }
+HPLUS_variable::~HPLUS_variable() { DELL(this->val_names); }
 
 unsigned int HPLUS_variable::get_range() const { return this -> range; }
 
@@ -43,12 +43,7 @@ HPLUS_action::HPLUS_action(BitField* pre_bf, BitField* eff_bf, const unsigned in
 
 }
 
-HPLUS_action::~HPLUS_action() {
-
-    delete this -> pre; this -> pre = nullptr;
-    delete this -> eff; this -> eff = nullptr;
-
-}
+HPLUS_action::~HPLUS_action() { DEL(this->pre); DEL(this->eff); }
 
 const BitField* HPLUS_action::get_pre() const { return this -> pre; }
 
@@ -76,12 +71,12 @@ HPLUS_instance::HPLUS_instance(const std::string file_path) {
 HPLUS_instance::~HPLUS_instance() {
 
     for (int i = 0; i < this -> n_var; i++) delete this -> variables[i];
-    delete[] this -> variables; this -> variables = nullptr;
+    DELL(this -> variables);
     for (int i = 0; i < this -> n_act; i++) delete this -> actions[i];
-    delete[] this -> actions; this -> actions = nullptr;
-    delete this -> initial_state; this -> initial_state = nullptr;
-    delete this -> goal_state; this -> goal_state = nullptr;
-    delete[] this -> best_solution; this -> best_solution = nullptr;
+    DELL(this->actions);
+    DEL(this->initial_state);
+    DEL(this->goal_state);
+    DELL(this->best_solution);
 
 }
 
@@ -116,7 +111,7 @@ void HPLUS_instance::update_best_solution(const std::vector<unsigned int> soluti
         costcheck += this -> actions[solution[i]] -> get_cost();
     }
     ASSERT(costcheck == cost);
-    delete[] dbcheck; dbcheck = nullptr;
+    DELL(dbcheck);
     #endif
 
     if (cost >= this -> best_cost) return;
