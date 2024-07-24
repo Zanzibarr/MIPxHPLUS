@@ -1,12 +1,11 @@
 #!/bin/bash
 
-cd code
-if [ ! -d build ];
-then
-  echo "Build directory doesn't exists, creating one"
-  mkdir build
+cd code || exit
+if [[ ! -d build ]]; then
+	echo "Build directory doesn't exists, creating one"
+	mkdir build
 fi
-cd build
+cd build || exit
 VERBOSE_OPT=${1:-10}
-cmake -D VERBOSE=$VERBOSE_OPT ..
+cmake -D VERBOSE="${VERBOSE_OPT}" ..
 make
