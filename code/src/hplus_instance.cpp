@@ -99,6 +99,56 @@ const HPLUS_action** HPLUS_instance::get_actions() const { return this -> action
 
 const Logger* HPLUS_instance::get_logger() const { return this -> logger; }
 
+const BitField* HPLUS_instance::get_istate() const { return this -> initial_state; }
+
+const BitField* HPLUS_instance::get_gstate() const { return this -> goal_state; }
+
+// TODO: Maybe make thread safe?
+void HPLUS_instance::update_best_solution(const std::vector<unsigned int> solution, const unsigned int cost) {
+
+    unsigned int nact = solution.size();
+    #if INTCHECKS
+    int* dbcheck = new int[this -> n_act]();
+    unsigned int costcheck = 0;
+    if (nact > this -> n_act) this -> logger -> raise_error("Proposed solution considers %d actions, while only %d actions exist.", nact, this -> n_act);
+    for (int i = 0; i < nact; i++) {
+        if (solution[i] >= this -> n_act) this -> logger -> raise_error("Proposed solution has in %d position action %d, while only %d actions exist.", i, solution[i], this -> n_act);
+        if (dbcheck[solution[i]]) this -> logger -> raise_error("Proposed solution has multiple occurrences of action %d.", solution[i]);
+        dbcheck[solution[i]] = 1;
+        costcheck += this -> actions[solution[i]] -> get_cost();
+    }
+    if (costcheck != cost) this -> logger -> raise_error("Proposed solution with cost %d but suggested cost is %d.", cost, costcheck);
+    delete[] dbcheck; dbcheck = nullptr;
+    #endif
+
+    if (cost >= this -> best_cost) return;
+
+    if (nact > this -> best_nact) {
+        if (this -> best_solution != nullptr) delete[] this -> best_solution;
+        this -> best_solution = new unsigned int[nact];
+    }
+    for (int i = 0; i < nact; i++) this -> best_solution[i] = solution[i];
+    this -> best_nact = nact;
+    this -> best_cost = cost;
+
+    this -> logger -> print_info("Updated best solution - Cost: %4d.", this -> best_cost);
+
+}
+
+void HPLUS_instance::get_best_solution(std::vector<unsigned int>* solution, unsigned int* cost) const {
+
+    my::assert(solution != nullptr, "[HPLUS_PROBLEM GETSOL]");
+    my::assert(cost != nullptr, "[HPLUS_PROBLEM GETSOL]");
+
+    solution -> clear();
+    (*solution) = std::vector<unsigned int>(this -> best_nact);
+    for (int i = 0; i < this -> best_nact; i++) (*solution)[i] = this -> best_solution[i];
+    *cost = this -> best_cost;
+
+}
+
+unsigned int HPLUS_instance::get_best_cost() const { return this -> best_cost; }
+
 void HPLUS_instance::parse_inst_file(std::ifstream* ifs) {
     
     std::string line;
@@ -284,8 +334,8 @@ void HPLUS_instance::parse_inst_file(std::ifstream* ifs) {
             this -> logger -> print_info("name(var_%d[%d]) = '%s'.", i, j, val_names[j].c_str());
     }
     this -> logger -> print_info("Bitfield size: %d", this -> bf_size);
-    this -> logger -> print_info("Initial state: %s.", problem -> get_istate() -> view().c_str());
-    this -> logger -> print_info("Goal state: %s.", problem -> get_gstate() -> view().c_str());
+    this -> logger -> print_info("Initial state: %s.", this -> initial_state -> view().c_str());
+    this -> logger -> print_info("Goal state: %s.", this -> goal_state -> view().c_str());
     this -> logger -> print_info("N_act: %d.", this -> n_act);
     for (int act_i = 0; act_i < this -> n_act; act_i++) {
         this -> logger -> print_info("pre(act_%d) = '%s'.", act_i, this -> actions[act_i] -> get_pre() -> view().c_str());
@@ -299,53 +349,3 @@ void HPLUS_instance::parse_inst_file(std::ifstream* ifs) {
     this -> logger -> print_info("Parsed SAS file.");
     
 }
-
-const BitField* HPLUS_instance::get_istate() const { return this -> initial_state; }
-
-const BitField* HPLUS_instance::get_gstate() const { return this -> goal_state; }
-
-// TODO: Maybe make thread safe?
-void HPLUS_instance::update_best_solution(const std::vector<unsigned int> solution, const unsigned int cost) {
-    
-    unsigned int nact = solution.size();
-    #if INTCHECKS
-    int* dbcheck = new int[this -> n_act]();
-    unsigned int costcheck = 0;
-    if (nact > this -> n_act) this -> logger -> raise_error("Proposed solution considers %d actions, while only %d actions exist.", nact, this -> n_act);
-    for (int i = 0; i < nact; i++) {
-        if (solution[i] >= this -> n_act) this -> logger -> raise_error("Proposed solution has in %d position action %d, while only %d actions exist.", i, solution[i], this -> n_act);
-        if (dbcheck[solution[i]]) this -> logger -> raise_error("Proposed solution has multiple occurrences of action %d.", solution[i]);
-        dbcheck[solution[i]] = 1;
-        costcheck += this -> actions[solution[i]] -> get_cost();
-    }
-    if (costcheck != cost) this -> logger -> raise_error("Proposed solution with cost %d but suggested cost is %d.", cost, costcheck);
-    delete[] dbcheck; dbcheck = nullptr;
-    #endif
-
-    if (cost >= this -> best_cost) return;
-
-    if (nact > this -> best_nact) {
-        if (this -> best_solution != nullptr) delete[] this -> best_solution;
-        this -> best_solution = new unsigned int[nact];
-    }
-    for (int i = 0; i < nact; i++) this -> best_solution[i] = solution[i];
-    this -> best_nact = nact;
-    this -> best_cost = cost;
-
-    this -> logger -> print_info("Updated best solution - Cost: %4d.", this -> best_cost);
-    
-}
-
-void HPLUS_instance::get_best_solution(std::vector<unsigned int>* solution, unsigned int* cost) const {
-
-    my::assert(solution != nullptr, "[HPLUS_PROBLEM GETSOL]");
-    my::assert(cost != nullptr, "[HPLUS_PROBLEM GETSOL]");
-
-    solution -> clear();
-    (*solution) = std::vector<unsigned int>(this -> best_nact);
-    for (int i = 0; i < this -> best_nact; i++) (*solution)[i] = this -> best_solution[i];
-    *cost = this -> best_cost;
-
-}
-
-unsigned int HPLUS_instance::get_best_cost() const { return this -> best_cost; }
