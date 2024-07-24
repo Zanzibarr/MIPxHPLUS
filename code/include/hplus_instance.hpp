@@ -3,8 +3,6 @@
 
 #include "utils.hpp"
 
-class HPLUS_problem;
-
 // ##################################################################### //
 // ########################### HPLUS_VARIABLE ########################## //
 // ##################################################################### //
@@ -123,10 +121,10 @@ class HPLUS_action  {
 };
 
 // ##################################################################### //
-// ############################ HPLUS_DOMAIN ########################### //
+// ########################### HPLUS_INSTANCE ########################## //
 // ##################################################################### //
 
-class HPLUS_domain {
+class HPLUS_instance {
 
     public:
 
@@ -137,9 +135,9 @@ class HPLUS_domain {
          * @param problem: Pointer to the HPLUS_problem to build from this domain
          * @param logger: Logger to associate to this domain
          */
-        HPLUS_domain(const std::string file_path, HPLUS_problem* problem, const Logger* logger);
+        HPLUS_instance(const std::string file_path, const Logger* logger);
 
-        ~HPLUS_domain();
+        ~HPLUS_instance();
 
         /**
          * @return true if unitary cost is used, false if generic cost is used
@@ -175,6 +173,41 @@ class HPLUS_domain {
          * @return The logger associated to this domain
          */
         const Logger* get_logger() const;
+
+        /**
+         * @return The initial state as a BitField
+         * ->
+         * [1000 0100 0001] -> Assuming a size of 3 and a range of 4 for each variable, value(v0) = 0, value(v1) = 1, value(v2) = 3
+         */
+        const BitField* get_istate() const;
+
+        /**
+         * @return The goal state as a BitField
+         * ->
+         * [1000 0100 0001] -> Assuming a size of 3 and a range of 4 for each variable, value(v0) = 0, value(v1) = 1, value(v2) = 3
+         */
+        const BitField* get_gstate() const;
+
+        /**
+         * Compare a solution found with the best found so far and stores it if it's the new best one
+         * @param solution: ordered sequence of actions (represented by their index in the domain) that represent the solution found
+         * @param nact: number of actions this solution has
+         * @param cost: cost of this solution
+         */
+        void update_best_solution(const std::vector<unsigned int> solution, const unsigned int cost);
+
+        /**
+         * Get the best solution found so far
+         * @param solution: Vector where to save the solution into (cleared and resized)
+         * @param nact: Integer where to save the number of actions into
+         * @param cost: Integer where to save the cost into
+         */
+        void get_best_solution(std::vector<unsigned int>* solution, unsigned int* cost) const;
+
+        /**
+         * @return The cost of the best solution found so far
+         */
+        unsigned int get_best_cost() const;
 
     private:
 
@@ -218,73 +251,6 @@ class HPLUS_domain {
          */
         const Logger* logger;
 
-        // UTILS
-
-        void parse_inst_file(std::ifstream* file, HPLUS_problem* problem);
-
-};
-
-// ##################################################################### //
-// ########################### HPLUS_PROBLEM ########################### //
-// ##################################################################### //
-
-class HPLUS_problem {
-
-    public:
-
-        /**
-         * @param domain: Domain to associate to this problem
-         * @param istate: Initial state of the problem -> to prevent accidental deletes this will be set to nullptr after
-         * @param gstate: Goal state of the problem -> to prevent accidental deletes this will be set to nullptr after
-         */
-        HPLUS_problem(HPLUS_domain* domain, BitField* istate, BitField* gstate);
-
-        ~HPLUS_problem();
-
-        /**
-         * @return The initial state as a BitField
-         * ->
-         * [1000 0100 0001] -> Assuming a size of 3 and a range of 4 for each variable, value(v0) = 0, value(v1) = 1, value(v2) = 3
-         */
-        const BitField* get_istate() const;
-
-        /**
-         * @return The goal state as a BitField
-         * ->
-         * [1000 0100 0001] -> Assuming a size of 3 and a range of 4 for each variable, value(v0) = 0, value(v1) = 1, value(v2) = 3
-         */
-        const BitField* get_gstate() const;
-
-        /**
-         * Compare a solution found with the best found so far and stores it if it's the new best one
-         * 
-         * @param solution: ordered sequence of actions (represented by their index in the domain) that represent the solution found
-         * @param nact: number of actions this solution has
-         * @param cost: cost of this solution
-         */
-        void update_best_solution(const std::vector<unsigned int> solution, const unsigned int cost);
-
-        /**
-         * Get the best solution found so far
-         * 
-         * @param solution: Vector where to save the solution into (cleared and resized)
-         * @param nact: Integer where to save the number of actions into
-         * @param cost: Integer where to save the cost into
-         */
-        void get_best_solution(std::vector<unsigned int>* solution, unsigned int* cost) const;
-
-        /**
-         * @return The cost of the best solution found so far
-         */
-        unsigned int get_best_cost() const;
-
-    private:
-    
-        /**
-         * Domain associated to this problem
-         */
-        HPLUS_domain* domain;
-
         /**
          * Initial state of the problem (bit field)
          */
@@ -310,6 +276,31 @@ class HPLUS_problem {
          */
         unsigned int best_cost;
 
+        // UTILS
+
+        void parse_inst_file(std::ifstream* file);
+
 };
+
+// ##################################################################### //
+// ########################### HPLUS_PROBLEM ########################### //
+// ##################################################################### //
+
+// class HPLUS_problem {
+
+//     public:
+
+//         /**
+//          * @param domain: Domain to associate to this problem
+//          * @param istate: Initial state of the problem -> to prevent accidental deletes this will be set to nullptr after
+//          * @param gstate: Goal state of the problem -> to prevent accidental deletes this will be set to nullptr after
+//          */
+//         HPLUS_problem(HPLUS_domain* domain, BitField* istate, BitField* gstate);
+
+//         ~HPLUS_problem();
+
+//     private:
+
+// };
 
 #endif

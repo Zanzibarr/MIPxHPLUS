@@ -55,48 +55,51 @@ const std::string* HPLUS_action::get_name() const { return &this -> name; }
 unsigned int HPLUS_action::get_cost() const { return this -> cost; }
 
 // ##################################################################### //
-// ############################ HPLUS_DOMAIN ########################### //
+// ############################ HPLUS_instance ########################### //
 // ##################################################################### //
 
-HPLUS_domain::HPLUS_domain(const std::string file_path, HPLUS_problem* problem, const Logger* logger) {
+HPLUS_instance::HPLUS_instance(const std::string file_path, const Logger* logger) {
 
-    my::assert(logger != nullptr, "[HPLUS_DOMAIN CONSTRUCTOR]");
+    my::assert(logger != nullptr, "[HPLUS_instance CONSTRUCTOR]");
     
     this -> logger = logger;
 
     std::ifstream file(file_path.c_str(), std::ifstream::in);
     if (!file.good()) this -> logger -> raise_error("File %s not found.", file_path.c_str());
-    parse_inst_file(&file, problem);
+    parse_inst_file(&file);
     file.close();
 
-    this -> logger -> print_info("Created HPLUS_domain.");
+    this -> logger -> print_info("Created HPLUS_instance.");
 
 }
 
-HPLUS_domain::~HPLUS_domain() {
+HPLUS_instance::~HPLUS_instance() {
 
     for (int i = 0; i < this -> n_var; i++) delete this -> variables[i];
     delete[] this -> variables; this -> variables = nullptr;
     for (int i = 0; i < this -> n_act; i++) delete this -> actions[i];
     delete[] this -> actions; this -> actions = nullptr;
+    delete this -> initial_state; this -> initial_state = nullptr;
+    delete this -> goal_state; this -> goal_state = nullptr;
+    delete[] this -> best_solution; this -> best_solution = nullptr;
 
 }
 
-bool HPLUS_domain::unitary_cost() const { return !this -> use_costs; }
+bool HPLUS_instance::unitary_cost() const { return !this -> use_costs; }
 
-unsigned int HPLUS_domain::get_nvar() const { return this -> n_var; }
+unsigned int HPLUS_instance::get_nvar() const { return this -> n_var; }
 
-unsigned int HPLUS_domain::get_nact() const { return this -> n_act; }
+unsigned int HPLUS_instance::get_nact() const { return this -> n_act; }
 
-unsigned int HPLUS_domain::get_bfsize() const { return this -> bf_size; }
+unsigned int HPLUS_instance::get_bfsize() const { return this -> bf_size; }
 
-const HPLUS_variable** HPLUS_domain::get_variables() const { return this -> variables; }
+const HPLUS_variable** HPLUS_instance::get_variables() const { return this -> variables; }
 
-const HPLUS_action** HPLUS_domain::get_actions() const { return this -> actions; }
+const HPLUS_action** HPLUS_instance::get_actions() const { return this -> actions; }
 
-const Logger* HPLUS_domain::get_logger() const { return this -> logger; }
+const Logger* HPLUS_instance::get_logger() const { return this -> logger; }
 
-void HPLUS_domain::parse_inst_file(std::ifstream* ifs, HPLUS_problem* problem) {
+void HPLUS_instance::parse_inst_file(std::ifstream* ifs) {
     
     std::string line;
 
@@ -164,13 +167,12 @@ void HPLUS_domain::parse_inst_file(std::ifstream* ifs, HPLUS_problem* problem) {
     // * initial state section
     std::getline(*ifs, line);   // begin_state
     my::asserteq(line, "begin_state", this -> logger);
-    // FIXME : This causes the memory leak somehow
-    BitField* istate = new BitField(this -> bf_size);
+    this -> initial_state = new BitField(this -> bf_size);
     for (int var_i = 0, c = 0; var_i < this -> n_var; c += this -> variables[var_i] -> get_range(), var_i++) {
         std::getline(*ifs, line);   // initial value of var_i
         my::assertisint(line, this -> logger, 0, this -> variables[var_i] -> get_range() - 1);
         unsigned int val = (unsigned int) stoi(line);
-        istate -> set(c + val);
+        this -> initial_state -> set(c + val);
     }
     std::getline(*ifs, line);   // end_state
     my::asserteq(line, "end_state", this -> logger);
@@ -178,8 +180,7 @@ void HPLUS_domain::parse_inst_file(std::ifstream* ifs, HPLUS_problem* problem) {
     // * goal state section
     std::getline(*ifs, line);   // begin_goal
     my::asserteq(line, "begin_goal", this -> logger);
-    // FIXME : This causes the memory leak somehow
-    BitField* gstate = new BitField(this -> bf_size);
+    this -> goal_state = new BitField(this -> bf_size);
     std::getline(*ifs, line);   // number of goals
     my::assertisint(line, this -> logger, 0, this -> n_var);
     int ngoals = stoi(line);
@@ -195,14 +196,10 @@ void HPLUS_domain::parse_inst_file(std::ifstream* ifs, HPLUS_problem* problem) {
         unsigned int value = (unsigned int) stoi(tokens[1]);
         int c = 0;
         for (int i = 0; i < var; c += this -> variables[i] -> get_range(), i++);
-        gstate -> set(c + value);
+        this -> goal_state -> set(c + value);
     }
     std::getline(*ifs, line);   // end_goal
     my::asserteq(line, "end_goal", this -> logger);
-
-    if (problem != nullptr) delete problem;
-    // FIXME : This causes the memory leak somehow
-    problem = new HPLUS_problem(this, istate, gstate);
 
     // * operator (actions) section
     //TODO: Ask if it's ok if I put preconditions together with prevail conditions
@@ -268,6 +265,10 @@ void HPLUS_domain::parse_inst_file(std::ifstream* ifs, HPLUS_problem* problem) {
 
     this -> logger -> print_warn("Ignoring axiom section.");
 
+    this -> best_solution = nullptr;
+    this -> best_nact = INT_MAX;
+    this -> best_cost = UINT_MAX;
+
     // * visualization
 
     #if HPLUS_VERBOSE >= 100
@@ -299,53 +300,25 @@ void HPLUS_domain::parse_inst_file(std::ifstream* ifs, HPLUS_problem* problem) {
     
 }
 
-// ##################################################################### //
-// ########################### HPLUS_PROBLEM ########################### //
-// ##################################################################### //
+const BitField* HPLUS_instance::get_istate() const { return this -> initial_state; }
 
-HPLUS_problem::HPLUS_problem(HPLUS_domain* domain, BitField* istate, BitField* gstate) {
-
-    this -> domain = domain;
-    this -> initial_state = istate; istate = nullptr;
-    this -> goal_state = gstate; gstate = nullptr;
-
-    this -> best_solution = nullptr;
-    this -> best_nact = INT_MAX;
-    this -> best_cost = UINT_MAX;
-
-    this -> domain -> get_logger() -> print_info("Created HPLUS_problem for this instance.");
-
-}
-
-HPLUS_problem::~HPLUS_problem() {
-
-    delete this -> initial_state; this -> initial_state = nullptr;
-    delete this -> goal_state; this -> goal_state = nullptr;
-    delete[] this -> best_solution; this -> best_solution = nullptr;
-
-}
-
-const BitField* HPLUS_problem::get_istate() const { return this -> initial_state; }
-
-const BitField* HPLUS_problem::get_gstate() const { return this -> goal_state; }
+const BitField* HPLUS_instance::get_gstate() const { return this -> goal_state; }
 
 // TODO: Maybe make thread safe?
-void HPLUS_problem::update_best_solution(const std::vector<unsigned int> solution, const unsigned int cost) {
+void HPLUS_instance::update_best_solution(const std::vector<unsigned int> solution, const unsigned int cost) {
     
     unsigned int nact = solution.size();
     #if INTCHECKS
-    int n_act = this -> domain -> get_nact();
-    int* dbcheck = new int[n_act]();
-    const HPLUS_action** actions = this -> domain -> get_actions();
+    int* dbcheck = new int[this -> n_act]();
     unsigned int costcheck = 0;
-    if (nact > n_act) this -> domain -> get_logger() -> raise_error("Proposed solution considers %d actions, while only %d actions exist.", nact, n_act);
+    if (nact > this -> n_act) this -> logger -> raise_error("Proposed solution considers %d actions, while only %d actions exist.", nact, this -> n_act);
     for (int i = 0; i < nact; i++) {
-        if (solution[i] >= n_act) this -> domain -> get_logger() -> raise_error("Proposed solution has in %d position action %d, while only %d actions exist.", i, solution[i], n_act);
-        if (dbcheck[solution[i]]) this -> domain -> get_logger() -> raise_error("Proposed solution has multiple occurrences of action %d.", solution[i]);
+        if (solution[i] >= this -> n_act) this -> logger -> raise_error("Proposed solution has in %d position action %d, while only %d actions exist.", i, solution[i], this -> n_act);
+        if (dbcheck[solution[i]]) this -> logger -> raise_error("Proposed solution has multiple occurrences of action %d.", solution[i]);
         dbcheck[solution[i]] = 1;
-        costcheck += actions[solution[i]] -> get_cost();
+        costcheck += this -> actions[solution[i]] -> get_cost();
     }
-    if (costcheck != cost) this -> domain -> get_logger() -> raise_error("Proposed solution with cost %d but suggested cost is %d.", cost, costcheck);
+    if (costcheck != cost) this -> logger -> raise_error("Proposed solution with cost %d but suggested cost is %d.", cost, costcheck);
     delete[] dbcheck; dbcheck = nullptr;
     #endif
 
@@ -359,11 +332,11 @@ void HPLUS_problem::update_best_solution(const std::vector<unsigned int> solutio
     this -> best_nact = nact;
     this -> best_cost = cost;
 
-    this -> domain -> get_logger() -> print_info("Updated best solution - Cost: %4d.", this -> best_cost);
+    this -> logger -> print_info("Updated best solution - Cost: %4d.", this -> best_cost);
     
 }
 
-void HPLUS_problem::get_best_solution(std::vector<unsigned int>* solution, unsigned int* cost) const {
+void HPLUS_instance::get_best_solution(std::vector<unsigned int>* solution, unsigned int* cost) const {
 
     my::assert(solution != nullptr, "[HPLUS_PROBLEM GETSOL]");
     my::assert(cost != nullptr, "[HPLUS_PROBLEM GETSOL]");
@@ -375,4 +348,4 @@ void HPLUS_problem::get_best_solution(std::vector<unsigned int>* solution, unsig
 
 }
 
-unsigned int HPLUS_problem::get_best_cost() const { return this -> best_cost; }
+unsigned int HPLUS_instance::get_best_cost() const { return this -> best_cost; }
