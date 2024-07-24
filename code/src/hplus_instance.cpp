@@ -100,7 +100,7 @@ void HPLUS_domain::parse_inst_file(std::ifstream* ifs, HPLUS_problem* problem) {
     
     std::string line;
 
-    // version section
+    // * version section
     std::getline(*ifs, line);   // begin_version
     my::asserteq(line, "begin_version", this -> logger);
     std::getline(*ifs, line);   // version_number
@@ -109,7 +109,7 @@ void HPLUS_domain::parse_inst_file(std::ifstream* ifs, HPLUS_problem* problem) {
     std::getline(*ifs, line);   // end_version
     my::asserteq(line, "end_version", this -> logger);
 
-    // metric section
+    // * metric section
     std::getline(*ifs, line);   // begin_metric
     my::asserteq(line, "begin_metric", this -> logger);
     std::getline(*ifs, line);   // metric
@@ -118,7 +118,7 @@ void HPLUS_domain::parse_inst_file(std::ifstream* ifs, HPLUS_problem* problem) {
     std::getline(*ifs, line);   // end_metric
     my::asserteq(line, "end_metric", this -> logger);
 
-    // variables section
+    // * variables section
     this -> logger -> print_warn("Ignoring axiom layers.");
     std::getline(*ifs, line);   // n_var
     my::assertisint(line, this -> logger, 0);
@@ -147,7 +147,7 @@ void HPLUS_domain::parse_inst_file(std::ifstream* ifs, HPLUS_problem* problem) {
         my::asserteq(line, "end_variable", this -> logger);
     }
     
-    // mutex section (ignored)
+    // * mutex section (ignored)
     this -> logger -> print_warn("Ignoring mutex section.");
     std::getline(*ifs, line);   // number of mutex groups
     my::assertisint(line, this -> logger, 0);
@@ -161,9 +161,10 @@ void HPLUS_domain::parse_inst_file(std::ifstream* ifs, HPLUS_problem* problem) {
         }
     }
 
-    // initial state section
+    // * initial state section
     std::getline(*ifs, line);   // begin_state
     my::asserteq(line, "begin_state", this -> logger);
+    // FIXME : This causes the memory leak somehow
     BitField* istate = new BitField(this -> bf_size);
     for (int var_i = 0, c = 0; var_i < this -> n_var; c += this -> variables[var_i] -> get_range(), var_i++) {
         std::getline(*ifs, line);   // initial value of var_i
@@ -174,9 +175,10 @@ void HPLUS_domain::parse_inst_file(std::ifstream* ifs, HPLUS_problem* problem) {
     std::getline(*ifs, line);   // end_state
     my::asserteq(line, "end_state", this -> logger);
 
-    // goal state section
+    // * goal state section
     std::getline(*ifs, line);   // begin_goal
     my::asserteq(line, "begin_goal", this -> logger);
+    // FIXME : This causes the memory leak somehow
     BitField* gstate = new BitField(this -> bf_size);
     std::getline(*ifs, line);   // number of goals
     my::assertisint(line, this -> logger, 0, this -> n_var);
@@ -199,9 +201,10 @@ void HPLUS_domain::parse_inst_file(std::ifstream* ifs, HPLUS_problem* problem) {
     my::asserteq(line, "end_goal", this -> logger);
 
     if (problem != nullptr) delete problem;
+    // FIXME : This causes the memory leak somehow
     problem = new HPLUS_problem(this, istate, gstate);
 
-    // operator (actions) section
+    // * operator (actions) section
     //TODO: Ask if it's ok if I put preconditions together with prevail conditions
     this -> logger -> print_warn("Ignoring effect conditions.");
     std::getline(*ifs, line);   // n_act
@@ -265,6 +268,8 @@ void HPLUS_domain::parse_inst_file(std::ifstream* ifs, HPLUS_problem* problem) {
 
     this -> logger -> print_warn("Ignoring axiom section.");
 
+    // * visualization
+
     #if HPLUS_VERBOSE >= 100
 
     this -> logger -> print_info("Version: %d.", this -> version);
@@ -324,13 +329,13 @@ const BitField* HPLUS_problem::get_istate() const { return this -> initial_state
 
 const BitField* HPLUS_problem::get_gstate() const { return this -> goal_state; }
 
-//TODO: If needed make threadsafe
+// TODO: Maybe make thread safe?
 void HPLUS_problem::update_best_solution(const std::vector<unsigned int> solution, const unsigned int cost) {
     
     unsigned int nact = solution.size();
     #if INTCHECKS
     int n_act = this -> domain -> get_nact();
-    int* dbcheck = new int[n_act]();
+    int* dbcheck = (int*) calloc(n_act, sizeof(int));
     const HPLUS_action** actions = this -> domain -> get_actions();
     unsigned int costcheck = 0;
     if (nact > n_act) this -> domain -> get_logger() -> raise_error("Proposed solution considers %d actions, while only %d actions exist.", nact, n_act);
@@ -341,7 +346,7 @@ void HPLUS_problem::update_best_solution(const std::vector<unsigned int> solutio
         costcheck += actions[solution[i]] -> get_cost();
     }
     if (costcheck != cost) this -> domain -> get_logger() -> raise_error("Proposed solution with cost %d but suggested cost is %d.", cost, costcheck);
-    delete[] dbcheck; dbcheck = nullptr;
+    my::safe_free(dbcheck);
     #endif
 
     if (cost >= this -> best_cost) return;
