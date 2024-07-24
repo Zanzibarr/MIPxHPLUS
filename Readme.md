@@ -34,7 +34,7 @@ make <target_option>
     - **10** (or _none_) : normal output (+ integrity checks)
     - **100** : full verbose (+ integrity checks)
 
-- target_options:
+- target_option:
     - _none_ : no flag added (default build)
     - **opt** : -O3 flag added (optimized build)
     - **debug** : -g flag added (debug build)
