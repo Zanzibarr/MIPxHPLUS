@@ -54,13 +54,13 @@ const std::string* HPLUS_action::get_name() const { return &this -> name; }
 unsigned int HPLUS_action::get_cost() const { return this -> cost; }
 
 // ##################################################################### //
-// ############################ HPLUS_instance ########################### //
+// ########################### HPLUS_INSTANCE ########################## //
 // ##################################################################### //
 
 HPLUS_instance::HPLUS_instance(const std::string file_path) {
 
     std::ifstream file(file_path.c_str(), std::ifstream::in);
-    if (!file.good()) HPLUS_env.logger.raise_error("File %s not found.", file_path.c_str());
+    ASSERT(file.good());
     parse_inst_file(&file);
     file.close();
 
@@ -208,7 +208,7 @@ void HPLUS_instance::parse_inst_file(std::ifstream* ifs) {
         ASSERT(line == "begin_mutex_group");
         while (line != "end_mutex_group") {
             std::getline(*ifs, line); // reach end_mutex_group (ignore all content)
-            if (line == "begin_state") HPLUS_env.logger.raise_error("Mutex group skipped in SAS file without reaching 'end_mutex_group'.");
+            ASSERT(line != "begin_state");
         }
     }
 
