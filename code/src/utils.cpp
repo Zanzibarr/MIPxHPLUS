@@ -4,7 +4,7 @@
 // ############################## BITFIELD ############################# //
 // ##################################################################### //
 
-BitField::BitField(unsigned int size) { this -> len = size; this -> field = new char[(size+7)/8]; }
+BitField::BitField(unsigned int size) { this -> len = size; this -> field = new char[(size+7)/8](); }
 
 BitField::~BitField() { delete[] this -> field; this -> field = nullptr; }
 
