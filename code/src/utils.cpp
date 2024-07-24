@@ -4,9 +4,9 @@
 // ############################## BITFIELD ############################# //
 // ##################################################################### //
 
-BitField::BitField(unsigned int size) { this -> len = size; this -> field = (char*) calloc((size+7)/8, sizeof(char)); }
+BitField::BitField(unsigned int size) { this -> len = size; this -> field = new char[(size+7)/8]; }
 
-BitField::~BitField() { my::safe_free(this -> field); }
+BitField::~BitField() { delete[] this -> field; this -> field = nullptr; }
 
 void BitField::set(const unsigned int i) {
     
@@ -315,5 +315,3 @@ void my::assertisint(const std::string str, const Logger* logger, const int from
     if (num < from || num > to) logger -> raise_error("Expected a number between %d and %d, found %d.", from, to, num);
 
 }
-
-void my::safe_free(void* ptr) { if (ptr != nullptr) free(ptr); ptr = nullptr; }

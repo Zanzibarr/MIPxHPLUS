@@ -214,11 +214,6 @@ namespace my {
      */
     void assertisint(const std::string str, const Logger* logger, const int from = INT_MIN, const int to = INT_MAX);
 
-    /**
-     * Safely frees a pointer and sets it to nullptr
-     */
-    void safe_free(void* ptr);
-
 }
 
 #endif

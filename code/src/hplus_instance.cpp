@@ -203,6 +203,8 @@ void HPLUS_domain::parse_inst_file(std::ifstream* ifs, HPLUS_problem* problem) {
     if (problem != nullptr) delete problem;
     // FIXME : This causes the memory leak somehow
     problem = new HPLUS_problem(this, istate, gstate);
+    delete istate; istate = nullptr;
+    delete gstate; gstate = nullptr;
 
     // * operator (actions) section
     //TODO: Ask if it's ok if I put preconditions together with prevail conditions
@@ -306,8 +308,14 @@ void HPLUS_domain::parse_inst_file(std::ifstream* ifs, HPLUS_problem* problem) {
 HPLUS_problem::HPLUS_problem(HPLUS_domain* domain, BitField* istate, BitField* gstate) {
 
     this -> domain = domain;
-    this -> initial_state = istate; istate = nullptr;
-    this -> goal_state = gstate; gstate = nullptr;
+    this -> initial_state = new BitField(domain -> get_bfsize());
+    this -> goal_state = new BitField(domain -> get_bfsize());
+    for (int i = 0; i < domain -> get_bfsize(); i++) {
+        if (istate -> operator[](i)) this -> initial_state -> set(i);
+        if (gstate -> operator[](i)) this -> goal_state -> set(i);
+    }
+    // this -> initial_state = istate; istate = nullptr;
+    // this -> goal_state = gstate; gstate = nullptr;
 
     this -> best_solution = nullptr;
     this -> best_nact = INT_MAX;
@@ -335,7 +343,7 @@ void HPLUS_problem::update_best_solution(const std::vector<unsigned int> solutio
     unsigned int nact = solution.size();
     #if INTCHECKS
     int n_act = this -> domain -> get_nact();
-    int* dbcheck = (int*) calloc(n_act, sizeof(int));
+    int* dbcheck = new int[n_act]();
     const HPLUS_action** actions = this -> domain -> get_actions();
     unsigned int costcheck = 0;
     if (nact > n_act) this -> domain -> get_logger() -> raise_error("Proposed solution considers %d actions, while only %d actions exist.", nact, n_act);
@@ -346,7 +354,7 @@ void HPLUS_problem::update_best_solution(const std::vector<unsigned int> solutio
         costcheck += actions[solution[i]] -> get_cost();
     }
     if (costcheck != cost) this -> domain -> get_logger() -> raise_error("Proposed solution with cost %d but suggested cost is %d.", cost, costcheck);
-    my::safe_free(dbcheck);
+    delete[] dbcheck; dbcheck = nullptr;
     #endif
 
     if (cost >= this -> best_cost) return;
