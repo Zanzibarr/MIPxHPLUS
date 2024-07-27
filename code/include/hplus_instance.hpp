@@ -139,6 +139,11 @@ class HPLUS_instance {
         ~HPLUS_instance();
 
         /**
+         * @return The version of the fast downward translator used to generate this instance
+         */
+        int get_version() const;
+
+        /**
          * @return true if unitary cost is used, false if generic cost is used
          */
         bool unitary_cost() const;

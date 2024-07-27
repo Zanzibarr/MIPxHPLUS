@@ -80,6 +80,8 @@ HPLUS_instance::~HPLUS_instance() {
 
 }
 
+int HPLUS_instance::get_version() const { return this -> version; }
+
 bool HPLUS_instance::unitary_cost() const { return !this -> use_costs; }
 
 unsigned int HPLUS_instance::get_nvar() const { return this -> n_var; }
@@ -318,32 +320,5 @@ void HPLUS_instance::parse_inst_file(std::ifstream* ifs) {
     this -> best_cost = UINT_MAX;
 
     HPLUS_stats.parsing_time = my::get_time() - start_time;
-
-    // * visualization
-
-    #if HPLUS_VERBOSE >= 100
-
-    HPLUS_env.logger.print_info("Version: %d.", this -> version);
-    HPLUS_env.logger.print_info("Metric: %d.", this -> use_costs);
-    HPLUS_env.logger.print_info("N_var: %d.", this -> n_var);
-    for (int i = 0; i < this -> n_var; i++) HPLUS_env.logger.print_info("name(var_%d) = '%s'.", i, this -> variables[i] -> get_name() -> c_str());
-    for (int i = 0; i < this -> n_var; i++) HPLUS_env.logger.print_info("range(var_%d) = '%d'.", i, this -> variables[i] -> get_range());
-    for (int i = 0; i < this -> n_var; i++){
-        const std::string* val_names = this -> variables[i] -> get_val_names();
-        for (int j = 0; j < this -> variables[i] -> get_range(); j++)
-            HPLUS_env.logger.print_info("name(var_%d[%d]) = '%s'.", i, j, val_names[j].c_str());
-    }
-    HPLUS_env.logger.print_info("Bitfield size: %d", this -> bf_size);
-    HPLUS_env.logger.print_info("Initial state: %s.", this -> initial_state -> view().c_str());
-    HPLUS_env.logger.print_info("Goal state: %s.", this -> goal_state -> view().c_str());
-    HPLUS_env.logger.print_info("N_act: %d.", this -> n_act);
-    for (int act_i = 0; act_i < this -> n_act; act_i++) {
-        HPLUS_env.logger.print_info("pre(act_%d) = '%s'.", act_i, this -> actions[act_i] -> get_pre() -> view().c_str());
-        HPLUS_env.logger.print_info("eff(act_%d) = '%s'.", act_i, this -> actions[act_i] -> get_eff() -> view().c_str());
-        HPLUS_env.logger.print_info("name(act_%d) = '%s'.", act_i, this -> actions[act_i] -> get_name() -> c_str());
-        HPLUS_env.logger.print_info("cost(act_%d) = '%d'.", act_i, this -> actions[act_i] -> get_cost());
-    }
-
-    #endif
     
 }

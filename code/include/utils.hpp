@@ -13,6 +13,8 @@
 #include <climits>
 #include <algorithm>
 #include <stdarg.h>
+#include <sys/stat.h>
+#include <unistd.h>
 
 // ##################################################################### //
 // ######################### PATHS AND FOLDERS ######################### //
@@ -27,13 +29,30 @@
 #define DEF_LOG_FILE "default.log"
 
 // ##################################################################### //
+// ############################ PARSING CLI ############################ //
+// ##################################################################### //
+
+#define CLI_INPUT_FILE_FLAG "-i"            // flag for parsing input file
+#define CLI_LOG_FLAG "-l"                   // flag for using a log file
+#define CLI_LOG_NAME_FLAG "-ln"             // flag for parsing the log name
+#define CLI_RUN_NAME_FLAG "-rn"             // flag for parsing the run name
+
+// ##################################################################### //
 // ####################### PRINTING AND DEBUGGING ###################### //
 // ##################################################################### //
 
 #ifndef HPLUS_VERBOSE
-#define HPLUS_VERBOSE 0 // overwritten by cmake
+#define HPLUS_VERBOSE 10    // overwritten by make
 #endif
-#define INTCHECKS HPLUS_VERBOSE>0
+#ifndef HPLUS_WARN
+#define HPLUS_WARN 1        // overwritten by make
+#endif
+#ifndef HPLUS_INTCHECK
+#define HPLUS_INTCHECK 1    // overwritten by make
+#endif
+
+#define LINE "------------------------------------------"
+#define THICK_LINE "##############################################"
 
 // ##################################################################### //
 // ############################## BITFIELD ############################# //
@@ -142,7 +161,7 @@ class Logger {
         void print_info(const char* str, ...) const;
         
         /**
-         * Code executes only if HPLUS_VERBOSE >= 1
+         * Code executes only if HPLUS_WARN == 1
          * Prints and logs a formatted string (warning format)
          */
         void print_warn(const char* str, ...) const;
@@ -171,6 +190,11 @@ extern struct Environment {
     int status;
     Logger logger;
     std::chrono::steady_clock::time_point s_timer;
+
+    std::string infile;
+    bool log;
+    std::string log_name;
+    std::string run_name;
 
 } HPLUS_env;
 

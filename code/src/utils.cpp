@@ -85,7 +85,7 @@ void Logger::_format_output(const char* str, va_list ptr, FILE* log_file, const 
     if (show_time) {
         double elapsed_time = my::get_time();
         fprintf(stdout, "%8.3f : ", elapsed_time);
-        fprintf(log_file, "%8.3f : ", elapsed_time);
+        if (HPLUS_env.log) fprintf(log_file, "%8.3f : ", elapsed_time);
     }
 
     // char array to store token 
@@ -105,7 +105,7 @@ void Logger::_format_output(const char* str, va_list ptr, FILE* log_file, const 
             if (token[0] != '%') {
 
                 fprintf(stdout, "%s", token); // printing the whole token if it is not a format specifier
-                fprintf(log_file, "%s", token);
+                if (HPLUS_env.log) fprintf(log_file, "%s", token);
 
             } else { 
 
@@ -119,19 +119,19 @@ void Logger::_format_output(const char* str, va_list ptr, FILE* log_file, const 
 
                     int value = va_arg(ptr, int);
                     fprintf(stdout, token, value);
-                    fprintf(log_file, token, value);
+                    if (HPLUS_env.log) fprintf(log_file, token, value);
 
                 } else if (ch1 == 'c') { // for chars
 
                     char value = va_arg(ptr, int);
                     fprintf(stdout, token, value);
-                    fprintf(log_file, token, value);
+                    if (HPLUS_env.log) fprintf(log_file, token, value);
 
                 } else if (ch1 == 'f') { // for float values 
 
                     double value = va_arg(ptr, double);
                     fprintf(stdout, token, value);
-                    fprintf(log_file, token, value);
+                    if (HPLUS_env.log) fprintf(log_file, token, value);
 
                 } else if (ch1 == 'l') { // for long values
 
@@ -141,13 +141,13 @@ void Logger::_format_output(const char* str, va_list ptr, FILE* log_file, const 
 
                         long value = va_arg(ptr, long);
                         fprintf(stdout, token, value);
-                        fprintf(log_file, token, value);
+                        if (HPLUS_env.log) fprintf(log_file, token, value);
 
                     } else if (ch2 == 'f') {  // for double values 
 
                         double value = va_arg(ptr, double);
                         fprintf(stdout, token, value);
-                        fprintf(log_file, token, value);
+                        if (HPLUS_env.log) fprintf(log_file, token, value);
 
                     } 
 
@@ -159,7 +159,7 @@ void Logger::_format_output(const char* str, va_list ptr, FILE* log_file, const 
 
                         long long value = va_arg(ptr, long long);
                         fprintf(stdout, token, value);
-                        fprintf(log_file, token, value);
+                        if (HPLUS_env.log) fprintf(log_file, token, value);
 
                     } 
 
@@ -167,7 +167,7 @@ void Logger::_format_output(const char* str, va_list ptr, FILE* log_file, const 
 
                         long double value = va_arg(ptr, long double);
                         fprintf(stdout, token, value);
-                        fprintf(log_file, token, value);
+                        if (HPLUS_env.log) fprintf(log_file, token, value);
 
                     } 
 
@@ -175,12 +175,12 @@ void Logger::_format_output(const char* str, va_list ptr, FILE* log_file, const 
 
                     char* value = va_arg(ptr, char*);
                     fprintf(stdout, token, value);
-                    fprintf(log_file, token, value);
+                    if (HPLUS_env.log) fprintf(log_file, token, value);
 
                 } else { // print the whole token if no case is matched 
 
                     fprintf(stdout, "%s", token);
-                    fprintf(log_file, "%s", token);
+                    if (HPLUS_env.log) fprintf(log_file, "%s", token);
 
                 } 
 
@@ -193,10 +193,12 @@ void Logger::_format_output(const char* str, va_list ptr, FILE* log_file, const 
 
 Logger::Logger(const std::string run_title, const std::string log_name) {
 
-    this -> log_file_name = HPLUS_LOG_DIR"/" + log_name;
-    FILE* log_file = fopen(this -> log_file_name.c_str(), "a");
-    fprintf(log_file, "\n--------------------------------\n%s\n--------------------------------\n", run_title.c_str());
-    fclose(log_file);
+    this -> log_file_name = log_name;
+    if (HPLUS_env.log)  {
+        FILE* log_file = fopen(this -> log_file_name.c_str(), "a");
+        fprintf(log_file, "\n%s\nRUN_NAME: %s\n%s\n", THICK_LINE, run_title.c_str(), THICK_LINE);
+        fclose(log_file);
+    }
 
 }
 
@@ -213,7 +215,7 @@ void Logger::print(const char* str, ...) const {
     _format_output(str, ptr, log_file, false);
 
     fprintf(stdout, "\n");
-    fprintf(log_file, "\n");
+    if (HPLUS_env.log) fprintf(log_file, "\n");
 
     fclose(log_file);
 
@@ -236,13 +238,13 @@ void Logger::print_info(const char* str, ...) const {
     va_start(ptr, str);
 
     fprintf(stdout, "\033[92m\033[1m[ INFO  ]\033[0m -- ");
-    fprintf(log_file, "[ INFO  ] -- ");
+    if (HPLUS_env.log) fprintf(log_file, "[ INFO  ] -- ");
 
     // printing and logging the formatted message
     _format_output(str, ptr, log_file);
 
     fprintf(stdout, "\n");
-    fprintf(log_file, "\n");
+    if (HPLUS_env.log) fprintf(log_file, "\n");
     
     fclose(log_file);
 
@@ -253,7 +255,7 @@ void Logger::print_info(const char* str, ...) const {
 
 void Logger::print_warn(const char* str, ...) const {
 
-    #if HPLUS_VERBOSE < 1
+    #if HPLUS_WARN == 0
     return;
     #endif
 
@@ -265,13 +267,13 @@ void Logger::print_warn(const char* str, ...) const {
     va_start(ptr, str);
 
     fprintf(stdout, "\033[93m\033[1m[ WARN  ]\033[0m -- ");
-    fprintf(log_file, "[ WARN  ] -- ");
+    if (HPLUS_env.log) fprintf(log_file, "[ WARN  ] -- ");
 
     // printing and logging the formatted message
     _format_output(str, ptr, log_file);
 
     fprintf(stdout, "\n");
-    fprintf(log_file, "\n");
+    if (HPLUS_env.log) fprintf(log_file, "\n");
     
     fclose(log_file);
 
@@ -290,13 +292,13 @@ void Logger::raise_error(const char* str, ...) const {
     va_start(ptr, str);
 
     fprintf(stdout, "\033[91m\033[1m[ ERROR ]\033[0m -- ");
-    fprintf(log_file, "[ ERROR ] -- ");
+    if (HPLUS_env.log) fprintf(log_file, "[ ERROR ] -- ");
 
     // printing and logging the formatted message
     _format_output(str, ptr, log_file);
 
     fprintf(stdout, "\n");
-    fprintf(log_file, "\n");
+    if (HPLUS_env.log) fprintf(log_file, "\n");
     
     fclose(log_file);
 

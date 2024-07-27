@@ -7,9 +7,13 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_FLAGS_RELEASE "-O3")
 set(CMAKE_CXX_FLAGS_DEBUG "-g")
 
-# setting the default verbose (edited with the -D flag)
+# setting the default verbose/warn/intchecks (edited with the -D flag)
 set(VERBOSE "10" CACHE STRING "Verbose setting set from command line")
 message(STATUS "VERBOSE is set to ${VERBOSE}")
+set(WARN "1" CACHE STRING "Flag to enable warning messages")
+message(STATUS "WARN is set to ${WARN}")
+set(INTCHECK "1" CACHE STRING "Flag to enable integrity checks")
+message(STATUS "INTCHECK is set to ${INTCHECK}")
 
 # check if all necessary folders exist
 cmake_path(GET CMAKE_HOME_DIRECTORY PARENT_PATH HOME_DIR)
@@ -50,8 +54,8 @@ target_link_libraries(
     HPLUS_instance
 )
 
-# define HPLUS_VERBOSE and HPLUS_HOME_DIR
-add_definitions(-DHPLUS_VERBOSE=${VERBOSE} -DHPLUS_HOME_DIR="${HOME_DIR}")
+# adding definitions
+add_definitions(-DHPLUS_VERBOSE=${VERBOSE} -DHPLUS_HOME_DIR="${HOME_DIR}" -DHPLUS_WARN=${WARN} -DHPLUS_INTCHECK=${INTCHECK})
 
 # custom builds
 add_custom_target(opt
