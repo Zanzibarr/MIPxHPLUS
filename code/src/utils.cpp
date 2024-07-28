@@ -310,8 +310,12 @@ void Logger::raise_error(const char* str, ...) const {
 }
 
 // ##################################################################### //
-// ############################# STATISTICS ############################ //
+// ############################## GLOBALS ############################## //
 // ##################################################################### //
+
+void Environment::start_timer() { timer = std::chrono::steady_clock::now(); }
+
+double Environment::get_time() { return ((double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - timer).count()) / 1000; }
 
 void Statistics::print() const {
 
@@ -352,7 +356,3 @@ bool my::isint(const std::string str, const int from, const int to) {
     } catch (std::invalid_argument) { return false; }
 
 }
-
-void Environment::start_timer() { timer = std::chrono::steady_clock::now(); }
-
-double Environment::get_time() { return ((double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - timer).count()) / 1000; }
