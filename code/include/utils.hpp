@@ -188,13 +188,24 @@ class Logger {
 extern struct Environment {
 
     int status;
+
     Logger logger;
-    std::chrono::steady_clock::time_point s_timer;
+    std::chrono::steady_clock::time_point timer;
 
     std::string infile;
     bool log;
     std::string log_name;
     std::string run_name;
+
+    /**
+     * Starts the timer for measuring execution time
+     */
+    void start_timer();
+
+    /**
+     * Returns the execution time in seconds since the timer was started
+     */
+    double get_time();
 
 } HPLUS_env;
 
@@ -233,16 +244,6 @@ namespace my {
      */
     bool isint(const std::string str, const int from = INT_MIN, const int to = INT_MAX);
 
-    /**
-     * Starts the timer for measuring execution time
-     */
-    void start_timer();
-
-    /**
-     * Returns the execution time in seconds since the timer was started
-     */
-    double get_time();
-
 }
 
 // ##################################################################### //
@@ -250,7 +251,7 @@ namespace my {
 // ##################################################################### //
 
 #define ASSERT(cond) my::assert(cond, std::string(__FILE__":")+std::to_string(__LINE__));
-#define DEL(ptr) delete ptr; ptr = nullptr;
-#define DELL(ptr) delete[] ptr; ptr = nullptr;
+#define DEL(ptr) { delete ptr; ptr = nullptr; }
+#define DELL(ptr) { delete[] ptr; ptr = nullptr; }
 
 #endif

@@ -150,7 +150,7 @@ void HPLUS_instance::parse_inst_file(std::ifstream* ifs) {
 
     HPLUS_env.logger.print_info("Parsing SAS file.");
 
-    double start_time = my::get_time();
+    double start_time = HPLUS_env.get_time();
     std::string line;
 
     // * version section
@@ -315,10 +315,10 @@ void HPLUS_instance::parse_inst_file(std::ifstream* ifs) {
 
     HPLUS_env.logger.print_warn("Ignoring axiom section.");
 
+    HPLUS_stats.parsing_time = HPLUS_env.get_time() - start_time;
+
     this -> best_solution = nullptr;
     this -> best_nact = INT_MAX;
     this -> best_cost = UINT_MAX;
-
-    HPLUS_stats.parsing_time = my::get_time() - start_time;
     
 }

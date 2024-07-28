@@ -5,7 +5,7 @@
  */
 void start() {
 
-    my::start_timer();
+    HPLUS_env.start_timer();
     HPLUS_env.status = 0;
 
 }

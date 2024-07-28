@@ -83,7 +83,7 @@ std::string BitField::view() const {
 void Logger::_format_output(const char* str, va_list ptr, FILE* log_file, const bool show_time) const {
 
     if (show_time) {
-        double elapsed_time = my::get_time();
+        double elapsed_time = HPLUS_env.get_time();
         fprintf(stdout, "%8.3f : ", elapsed_time);
         if (HPLUS_env.log) fprintf(log_file, "%8.3f : ", elapsed_time);
     }
@@ -353,6 +353,6 @@ bool my::isint(const std::string str, const int from, const int to) {
 
 }
 
-void my::start_timer() { HPLUS_env.s_timer = std::chrono::steady_clock::now(); }
+void Environment::start_timer() { timer = std::chrono::steady_clock::now(); }
 
-double my::get_time() { return ((double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - HPLUS_env.s_timer).count()) / 1000; }
+double Environment::get_time() { return ((double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - timer).count()) / 1000; }
