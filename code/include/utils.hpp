@@ -28,6 +28,7 @@
 #define HPLUS_INST_DIR HPLUS_CODE_DIR"/instances"
 #define HPLUS_LOG_DIR HPLUS_CODE_DIR"/logs"
 #define HPLUS_DEF_LOG_FILE "default.log"
+#define HPLUS_CPLEX_OUT_DIR HPLUS_CODE_DIR"/cpxout"
 
 // ##################################################################### //
 // ############################ PARSING CLI ############################ //
@@ -217,6 +218,7 @@ namespace my {
 extern struct HPLUS_Environment {
 
     int status;
+    int cpx_terminate;
 
     // Logging
 
@@ -231,6 +233,20 @@ extern struct HPLUS_Environment {
     // Algorithms
 
     std::string alg;
+
+    // CPLEX utils
+    unsigned int act_start;
+    unsigned int tact_start;
+    unsigned int var_start;
+    unsigned int fa_start;
+    unsigned int tvar_start;
+    unsigned int cpx_nvar;
+
+    unsigned int cpx_act_idx(unsigned int act_i);
+    unsigned int cpx_var_idx(unsigned int var_i);
+    unsigned int cpx_fa_idx(unsigned int fa_i);
+    unsigned int cpx_tact_idx(unsigned int tact_i);
+    unsigned int cpx_tvar_idx(unsigned int tvar_i);
 
     // Time control
 
@@ -261,8 +277,9 @@ extern struct HPLUS_Statistics {
 // ############################### MACROS ############################## //
 // ##################################################################### //
 
-#define MYASSERT(cond) my::assert(cond, std::string(__FILE__":")+std::to_string(__LINE__));
-#define MYDEL(ptr) { delete ptr; ptr = nullptr; }
-#define MYDELL(ptr) { delete[] ptr; ptr = nullptr; }
+#define MYASSERT(cond) my::assert(cond, std::string(__FILE__":")+std::to_string(__LINE__))
+#define MYFREE(ptr) { MYASSERT(ptr != nullptr); free(ptr); ptr = nullptr; }
+#define MYDEL(ptr) { MYASSERT(ptr != nullptr); delete ptr; ptr = nullptr; }
+#define MYDELL(ptr) { MYASSERT(ptr != nullptr); delete[] ptr; ptr = nullptr; }
 
 #endif

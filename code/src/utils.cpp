@@ -313,6 +313,12 @@ void my::Logger::raise_error(const char* str, ...) const {
 // ############################## GLOBALS ############################## //
 // ##################################################################### //
 
+unsigned int HPLUS_Environment::cpx_act_idx(unsigned int act_i) { return HPLUS_env.act_start + act_i; }
+unsigned int HPLUS_Environment::cpx_tact_idx(unsigned int tact_i) { return HPLUS_env.tact_start + tact_i; }
+unsigned int HPLUS_Environment::cpx_var_idx(unsigned int var_i) { return HPLUS_env.var_start + var_i; }
+unsigned int HPLUS_Environment::cpx_fa_idx(unsigned int fa_i) { return HPLUS_env.fa_start + fa_i; }
+unsigned int HPLUS_Environment::cpx_tvar_idx(unsigned int t_var_i) { return HPLUS_env.tvar_start + t_var_i; }
+
 void HPLUS_Environment::start_timer() { timer = std::chrono::steady_clock::now(); }
 
 double HPLUS_Environment::get_time() { return ((double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - timer).count()) / 1000; }

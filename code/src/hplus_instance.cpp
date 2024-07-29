@@ -164,7 +164,7 @@ void HPLUS_instance::parse_inst_file(std::ifstream* ifs) {
 
     // * metric section
     std::getline(*ifs, line);   // begin_metric
-    MYASSERT(line == "begin_metric")
+    MYASSERT(line == "begin_metric");
     std::getline(*ifs, line);   // metric
     MYASSERT(my::isint(line, 0, 1));
     this -> use_costs = stoi(line) == 1;
@@ -317,8 +317,8 @@ void HPLUS_instance::parse_inst_file(std::ifstream* ifs) {
 
     HPLUS_stats.parsing_time = HPLUS_env.get_time() - start_time;
 
-    this -> best_solution = nullptr;
-    this -> best_nact = INT_MAX;
+    this -> best_solution = new unsigned int[0];
+    this -> best_nact = 0;
     this -> best_cost = UINT_MAX;
     
 }

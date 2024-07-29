@@ -7,6 +7,11 @@ Using a MIP solver (CPLEX) to solve the delete free relaxation of a planning tas
 - [Requirements](#requirements)
 - [Build/Run](#buildrun-instructions)
 - [Parameters](#parameters)
+  - [CMake](#cmake-flags)
+  - [Make](#make-flags)
+  - [Execution](#run-options)
+    - [Execution](#code-execution)
+    - [Logging](#logging)
 
 ## Requirements
 
@@ -21,7 +26,7 @@ While inside the root folder of this repo:
 # to build
 mkdir code/build
 cd code/build
-cmake -D VERBOSE=<verbose_option> -D WARN=<warning_option> -D INTCHECK=<integrity_check_option> ..
+cmake <build_options> ..
 make <target_option>
 
 # to run
@@ -30,25 +35,29 @@ make <target_option>
 
 ## Parameters
 
-### Build options
+### CMake flags
 
-- verbose_option:
-  - == **0** : no output
+- **-DVERBOSE=**\<verbose_option>:
+  - = **0** : no output
   - \> **0** : basic output
   - \>= **10** (or _none_) : basic steps progress
   - \>= **100** : full verbose
-- warning_option:
+- **-DWARN=**\<warning_option>:
   - **0** : all warnings suppressed
   - **1** (or _none_) : warnings will be showed
-- integrity_check_option:
-
+- **-DINTCHECK=**\<integrity_check_option>:
   - **0** : no integrity checks
   - **1** (or _none_) : integrity checks enabled (might slow down the execution)
+- **-DCPLEX_DIR=**\<path_to_cplex_lib>: optional, specify a custom path to the CPLEX library
+- **-DCPLEX_INCLUDE=**\<path_to_cplex_headers>: optional, specify a custom path to the CPLEX headers
 
-- target_option:
+### Make flags
+
+- \<target_option>:
   - _none_ : no flag added (default build)
   - **opt** : -O3 flag added (optimized build)
   - **debug** : -g flag added (debug build)
+  - **clear** : removes all files inside the code/build folder
 
 ### Run options
 
@@ -62,4 +71,4 @@ make <target_option>
 
 - **-l** : (optional) tells the program to log output to file (as well as stdout)
 - **-ln** : (optional) specify the name of the log file (will be located inside the code/logs folder); if not specified and the _-l_ flag is used, a default log file will be used
-- **-rn** : (optional) set a run name that will show in the log file
+- **-rn** : (optional) set a run name that will show in the log file (used also to create log/lp files for cplex)
