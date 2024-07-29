@@ -68,19 +68,19 @@ class HPLUS_action  {
          * @param cost: Cost of the action
          * @param name: Name of the action
          */
-        HPLUS_action(BitField* pre_bf, BitField* eff_bf, const unsigned int cost, const std::string name);
+        HPLUS_action(my::BitField* pre_bf, my::BitField* eff_bf, const unsigned int cost, const std::string name);
 
         ~HPLUS_action();
 
         /**
          * @return The BitField representing the precondition state for this action
          */
-        const BitField* get_pre() const;
+        const my::BitField* get_pre() const;
 
         /**
          * @return The BitField representing the effects on the state this action has
          */
-        const BitField* get_eff() const;
+        const my::BitField* get_eff() const;
 
         /**
          * @return The cost of this action
@@ -99,14 +99,14 @@ class HPLUS_action  {
          * ->
          * [1000 0100 0001] -> Assuming a size of 3 and a range of 4 for each variable, value(v0) must be 0, value(v1) must be 1, value(v2) must be 3
          */
-        BitField* pre;
+        my::BitField* pre;
 
         /**
          * Value each variable has after the action has been taken
          * ->
          * [1000 0100 0001] -> Assuming a size of 3 and a range of 4 for each variable, value(v0) will be 0, value(v1) will be 1, value(v2) will be 3
          */
-        BitField* eff;
+        my::BitField* eff;
 
         /**
          * Cost of the action
@@ -178,14 +178,14 @@ class HPLUS_instance {
          * ->
          * [1000 0100 0001] -> Assuming a size of 3 and a range of 4 for each variable, value(v0) = 0, value(v1) = 1, value(v2) = 3
          */
-        const BitField* get_istate() const;
+        const my::BitField* get_istate() const;
 
         /**
          * @return The goal state as a BitField
          * ->
          * [1000 0100 0001] -> Assuming a size of 3 and a range of 4 for each variable, value(v0) = 0, value(v1) = 1, value(v2) = 3
          */
-        const BitField* get_gstate() const;
+        const my::BitField* get_gstate() const;
 
         /**
          * Compare a solution found with the best found so far and stores it if it's the new best one
@@ -248,12 +248,12 @@ class HPLUS_instance {
         /**
          * Initial state of the problem (bit field)
          */
-        BitField* initial_state;
+        my::BitField* initial_state;
 
         /**
          * Goal state of the problem (bit field)
          */
-        BitField* goal_state;
+        my::BitField* goal_state;
 
         /**
          * Best solution found so far as a ordered sequence of indexes corresponding to actions

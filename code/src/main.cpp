@@ -1,9 +1,10 @@
 #include "../include/hplus_instance.hpp"
+#include "../include/algorithms.hpp"
 
 /**
  * Initializations
  */
-void start() {
+void HPLUS_start() {
 
     HPLUS_env.start_timer();
     HPLUS_env.status = 0;
@@ -13,7 +14,7 @@ void start() {
 /**
  * Visual info of the execution of the code and the parsed problem
  */
-void show_info(const HPLUS_instance* inst) {
+void HPLUS_show_info(const HPLUS_instance* inst) {
 
     HPLUS_env.logger.print(LINE);
 
@@ -65,48 +66,53 @@ void show_info(const HPLUS_instance* inst) {
 /**
  * Parse command-line arguments
  */
-void parse_cli(const int argc, const char** argv) {
+void HPLUS_parse_cli(const int argc, const char** argv) {
 
     std::vector<std::string> unknown_args;
 
     for (int i = 1; i < argc; i++) {
 
-        if (!strcmp(argv[i], CLI_INPUT_FILE_FLAG)) {
-            HPLUS_env.infile = HPLUS_INST_DIR"/" + std::string(argv[i+1]);
-            i++;
+        if (!strcmp(argv[i], HPLUS_CLI_INPUT_FILE_FLAG)) {
+            HPLUS_env.infile = HPLUS_INST_DIR"/" + std::string(argv[++i]);
             struct stat buffer;
             my::assert(stat((HPLUS_env.infile).c_str(), &buffer) == 0,  "Failed to open input file.");
         }
-        else if (!strcmp(argv[i], CLI_LOG_FLAG)) {
-            HPLUS_env.log = true;
-        }
-        else if (!strcmp(argv[i], CLI_LOG_NAME_FLAG)) {
-            HPLUS_env.log_name = HPLUS_LOG_DIR"/" + std::string(argv[i+1]);
-            i++;
-        }
-        else if (!strcmp(argv[i], CLI_RUN_NAME_FLAG)) {
-            HPLUS_env.run_name = argv[i+1];
-            i++;
-        }
+        else if (!strcmp(argv[i], HPLUS_CLI_LOG_FLAG)) HPLUS_env.log = true;
+        else if (!strcmp(argv[i], HPLUS_CLI_LOG_NAME_FLAG)) HPLUS_env.log_name = HPLUS_LOG_DIR"/" + std::string(argv[++i]);
+        else if (!strcmp(argv[i], HPLUS_CLI_RUN_NAME_FLAG)) HPLUS_env.run_name = argv[++i];
+        else if (!strcmp(argv[i], HPLUS_CLI_ALG)) HPLUS_env.alg = argv[++i];
 
         else unknown_args.push_back(argv[i]);
 
     }
 
     my::assert(!HPLUS_env.infile.empty(), "No input file specified.");
-    if (HPLUS_env.log && HPLUS_env.log_name.empty()) { HPLUS_env.log_name = HPLUS_LOG_DIR"/" + std::string(DEF_LOG_FILE); }
+    if (HPLUS_env.log && HPLUS_env.log_name.empty()) { HPLUS_env.log_name = HPLUS_LOG_DIR"/" + std::string(HPLUS_DEF_LOG_FILE); }
     if (HPLUS_env.run_name.empty()) { HPLUS_env.run_name = "UNNAMED RUN"; }
 
-    HPLUS_env.logger = Logger(HPLUS_env.run_name, HPLUS_env.log_name);
+    HPLUS_env.logger = my::Logger(HPLUS_env.run_name, HPLUS_env.log_name);
+
+    my::assert(!HPLUS_env.alg.empty(), "No algorithm specified.");
 
     for (int i = 0; i < unknown_args.size(); i++) HPLUS_env.logger.print_warn("Unknown command-line option '%s'.", unknown_args[i].c_str());
 
 }
 
 /**
+ * Run the algorithm specified via cli
+ */
+void HPLUS_run(HPLUS_instance* inst) {
+
+    if (HPLUS_env.alg == "imai") HPLUS_run_imai(inst);
+
+    else HPLUS_env.logger.raise_error("The specified algorithm %s is not recognised. Please refer to the README.md for instructions.", HPLUS_env.alg.c_str());
+
+}
+
+/**
  * Program termination hook
  */
-void end() {
+void HPLUS_end() {
 
     #if HPLUS_VERBOSE >= 1
     HPLUS_stats.print();
@@ -116,21 +122,21 @@ void end() {
 
 int main(const int argc, const char** argv) {
 
-    start();
+    HPLUS_start();
 
-    parse_cli(argc, argv);
+    HPLUS_parse_cli(argc, argv);
 
     HPLUS_instance* inst = new HPLUS_instance(HPLUS_env.infile);
 
     #if HPLUS_VERBOSE >= 1
-    show_info(inst);
+    HPLUS_show_info(inst);
     #endif
 
-    HPLUS_env.logger.print_warn("Only the parser has been implemented.");
+    HPLUS_run(inst);
 
-    DEL(inst);
+    MYDEL(inst);
 
-    end();
+    HPLUS_end();
 
     return HPLUS_env.status;
 

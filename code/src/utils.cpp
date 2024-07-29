@@ -1,13 +1,13 @@
 #include "../include/utils.hpp"
 
-Environment HPLUS_env;
-Statistics HPLUS_stats;
+HPLUS_Environment HPLUS_env;
+HPLUS_Statistics HPLUS_stats;
 
 // ##################################################################### //
 // ############################## BITFIELD ############################# //
 // ##################################################################### //
 
-BitField::BitField(unsigned int size) {
+my::BitField::BitField(unsigned int size) {
 
     #if INTCHECKS
     ASSERT(size > 0);
@@ -16,9 +16,9 @@ BitField::BitField(unsigned int size) {
 
 }
 
-BitField::~BitField() { DELL(this->field); }
+my::BitField::~BitField() { MYDELL(this->field); }
 
-void BitField::set(const unsigned int i) {
+void my::BitField::set(const unsigned int i) {
     
     #if INTCHECKS
     ASSERT(i < this -> len);
@@ -27,7 +27,7 @@ void BitField::set(const unsigned int i) {
     
 }
 
-void BitField::unset(const unsigned int i) {
+void my::BitField::unset(const unsigned int i) {
     
     #if INTCHECKS
     ASSERT(i < this -> len);
@@ -36,7 +36,7 @@ void BitField::unset(const unsigned int i) {
     
 }
 
-bool BitField::operator[](const unsigned int i) const {
+bool my::BitField::operator[](const unsigned int i) const {
     
     #if INTCHECKS
     ASSERT(i < this -> len);
@@ -45,7 +45,7 @@ bool BitField::operator[](const unsigned int i) const {
     
 }
 
-BitField BitField::operator&(const BitField bf) const {
+my::BitField my::BitField::operator&(const BitField bf) const {
 
     #if INTCHECKS
     ASSERT(this -> len == bf.len);
@@ -56,7 +56,7 @@ BitField BitField::operator&(const BitField bf) const {
 
 }
 
-bool BitField::operator==(const BitField bf) const {
+bool my::BitField::operator==(const BitField bf) const {
 
     #if INTCHECKS
     ASSERT(this -> len == bf.len);
@@ -66,9 +66,9 @@ bool BitField::operator==(const BitField bf) const {
 
 }
 
-unsigned int BitField::size() const { return this -> len; }
+unsigned int my::BitField::size() const { return this -> len; }
 
-std::string BitField::view() const {
+std::string my::BitField::view() const {
 
     std::string ret;
     for (int i = 0; i < this -> len; i++) ret.append(std::to_string(this -> operator[](i)));
@@ -80,7 +80,7 @@ std::string BitField::view() const {
 // ############################### LOGGER ############################## //
 // ##################################################################### //
 
-void Logger::_format_output(const char* str, va_list ptr, FILE* log_file, const bool show_time) const {
+void my::Logger::_format_output(const char* str, va_list ptr, FILE* log_file, const bool show_time) const {
 
     if (show_time) {
         double elapsed_time = HPLUS_env.get_time();
@@ -191,7 +191,7 @@ void Logger::_format_output(const char* str, va_list ptr, FILE* log_file, const 
     }
 }
 
-Logger::Logger(const std::string run_title, const std::string log_name) {
+my::Logger::Logger(const std::string run_title, const std::string log_name) {
 
     this -> log_file_name = log_name;
     if (HPLUS_env.log)  {
@@ -202,7 +202,7 @@ Logger::Logger(const std::string run_title, const std::string log_name) {
 
 }
 
-void Logger::print(const char* str, ...) const {
+void my::Logger::print(const char* str, ...) const {
 
     // logging file
     FILE* log_file = fopen(this -> log_file_name.c_str(), "a");
@@ -224,7 +224,7 @@ void Logger::print(const char* str, ...) const {
 
 }
 
-void Logger::print_info(const char* str, ...) const {
+void my::Logger::print_info(const char* str, ...) const {
 
     #if HPLUS_VERBOSE < 10
     return;
@@ -253,7 +253,7 @@ void Logger::print_info(const char* str, ...) const {
 
 }
 
-void Logger::print_warn(const char* str, ...) const {
+void my::Logger::print_warn(const char* str, ...) const {
 
     #if HPLUS_WARN == 0
     return;
@@ -282,7 +282,7 @@ void Logger::print_warn(const char* str, ...) const {
 
 }
 
-void Logger::raise_error(const char* str, ...) const {
+void my::Logger::raise_error(const char* str, ...) const {
 
     // logging file
     FILE* log_file = fopen(this -> log_file_name.c_str(), "a");
@@ -313,11 +313,11 @@ void Logger::raise_error(const char* str, ...) const {
 // ############################## GLOBALS ############################## //
 // ##################################################################### //
 
-void Environment::start_timer() { timer = std::chrono::steady_clock::now(); }
+void HPLUS_Environment::start_timer() { timer = std::chrono::steady_clock::now(); }
 
-double Environment::get_time() { return ((double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - timer).count()) / 1000; }
+double HPLUS_Environment::get_time() { return ((double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - timer).count()) / 1000; }
 
-void Statistics::print() const {
+void HPLUS_Statistics::print() const {
 
     HPLUS_env.logger.print("\n\n------------------------------------------");
     HPLUS_env.logger.print("-------------   Statistics   -------------");
