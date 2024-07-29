@@ -46,6 +46,12 @@ add_library(
     include/hplus_instance.hpp
 )
 
+add_library(
+    HPLUS_algorithms
+    src/algorithms.cpp
+    include/algorithms.hpp
+)
+
 find_library(CPLEX_LIBRARY
     NAMES cplex
     PATHS ${CPLEX_DIR}
@@ -65,6 +71,7 @@ target_link_libraries(
     main
     Utils
     HPLUS_instance
+    HPLUS_algorithms
     ${CPLEX_LIBRARY}
 )
 

@@ -3,6 +3,7 @@
 Using a MIP solver (CPLEX) to solve the delete free relaxation of a planning task.
 
 ## Index
+
 - [Requirements](#requirements)
 - [Build/Run](#buildrun-instructions)
 - [Parameters](#parameters)
@@ -54,6 +55,8 @@ make <target_option>
 #### Code execution
 
 - **-i** <input_file> : specify the input file (looked up inside the code/instances folder)
+- **-a** <algorithm_name> : specify the algorithm to use
+  - **imai** to use the baseline model from the Imai15 paper
 
 #### Logging
 
