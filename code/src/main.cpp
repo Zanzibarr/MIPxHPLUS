@@ -1,13 +1,24 @@
 #include "../include/hplus_instance.hpp"
 #include "../include/algorithms.hpp"
 
+void signal_callback_handler(const int signum) {
+
+    HPLUS_env.logger.print("\n%s", LINE);
+    HPLUS_env.logger.print(" >>  Caught ctrl+C signal, exiting...  <<");
+    HPLUS_env.logger.print(LINE);
+
+    HPLUS_env.cpx_terminate = 1;                        // signal cplex to stop
+    HPLUS_env.status = my::status::USR_STOP;            // set the status to "terminated by user"
+
+}
+
 /**
  * Initializations
  */
 void HPLUS_start() {
 
     HPLUS_env.start_timer();
-    HPLUS_env.status = 0;
+    HPLUS_env.status = my::status::NOTFOUND;
 
 }
 
@@ -103,9 +114,13 @@ void HPLUS_parse_cli(const int argc, const char** argv) {
  */
 void HPLUS_run(HPLUS_instance* inst) {
 
+    double start_time = HPLUS_env.get_time();
+
     if (HPLUS_env.alg == "imai") HPLUS_run_imai(inst);
 
     else HPLUS_env.logger.raise_error("The specified algorithm %s is not recognised. Please refer to the README.md for instructions.", HPLUS_env.alg.c_str());
+
+    HPLUS_stats.exec_time = HPLUS_env.get_time() - start_time;
 
 }
 
@@ -122,6 +137,7 @@ void HPLUS_end() {
 
 int main(const int argc, const char** argv) {
 
+    signal(SIGINT, signal_callback_handler);
     HPLUS_start();
 
     HPLUS_parse_cli(argc, argv);

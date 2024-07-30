@@ -11,6 +11,7 @@
 #include <vector>
 #include <chrono>
 #include <climits>
+#include <functional>
 #include <algorithm>
 #include <stdarg.h>
 #include <sys/stat.h>
@@ -183,9 +184,14 @@ namespace my {
 
     };
 
-    // ##################################################################### //
-    // ############################ MY NAMESPACE ########################### //
-    // ##################################################################### //
+    enum status {
+        OPT = 0,
+        TIMEL_F,
+        TIMEL_NF,
+        USR_STOP,
+        INFEAS,
+        NOTFOUND
+    };
 
     /**
      * Utils functions
@@ -217,7 +223,7 @@ namespace my {
  */
 extern struct HPLUS_Environment {
 
-    int status;
+    my::status status;
     int cpx_terminate;
 
     // Logging
@@ -240,7 +246,7 @@ extern struct HPLUS_Environment {
     unsigned int var_start;
     unsigned int fa_start;
     unsigned int tvar_start;
-    unsigned int cpx_nvar;
+    unsigned int cpx_ncols;
 
     unsigned int cpx_act_idx(unsigned int act_i);
     unsigned int cpx_var_idx(unsigned int var_i);
@@ -268,6 +274,7 @@ extern struct HPLUS_Environment {
 extern struct HPLUS_Statistics {
 
     double parsing_time;
+    double exec_time;
 
     void print() const;
 

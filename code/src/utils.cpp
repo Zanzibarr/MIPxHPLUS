@@ -329,6 +329,7 @@ void HPLUS_Statistics::print() const {
     HPLUS_env.logger.print("-------------   Statistics   -------------");
     HPLUS_env.logger.print("------------------------------------------\n");
     HPLUS_env.logger.print(" >>  Parsing time         %10.3fs  <<", this->parsing_time);
+    HPLUS_env.logger.print(" >>  Exec time            %10.3fs  <<", this->exec_time);
     HPLUS_env.logger.print("\n\n");
 
 }
