@@ -4,7 +4,7 @@ project(main)
 set(CMAKE_CXX_STANDARD 11)
 
 # setting flags for optimization and debug builds
-set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3 -flto")
+set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3")
 set(CMAKE_CXX_FLAGS_DEBUG "-Og -ggdb")
 
 # setting the default verbose/warn/intchecks (edited with the -D flag)

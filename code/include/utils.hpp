@@ -6,6 +6,7 @@
 // ##################################################################### //
 
 #include <iostream>
+#include <cstring>
 #include <fstream>
 #include <string>
 #include <vector>
@@ -14,6 +15,7 @@
 #include <functional>
 #include <algorithm>
 #include <stdarg.h>
+#include <signal.h>
 #include <sys/stat.h>
 #include <unistd.h>
 #include <cplex.h>
