@@ -64,6 +64,10 @@ HPLUS_instance::HPLUS_instance(const std::string file_path) {
     parse_inst_file(&file);
     file.close();
 
+    this -> best_solution = nullptr;
+    this -> best_nact = 0;
+    this -> best_cost = UINT_MAX;
+
     HPLUS_env.logger.print_info("Created HPLUS_instance.");
 
 }
@@ -76,7 +80,7 @@ HPLUS_instance::~HPLUS_instance() {
     MYDELL(this->actions);
     MYDEL(this->initial_state);
     MYDEL(this->goal_state);
-    MYDELL(this->best_solution);
+    if (this->best_solution != nullptr) { delete[] this -> best_solution; this -> best_solution = nullptr; }
 
 }
 
@@ -327,9 +331,5 @@ void HPLUS_instance::parse_inst_file(std::ifstream* ifs) {
     HPLUS_env.logger.print_warn("Ignoring axiom section.");
 
     HPLUS_stats.parsing_time = HPLUS_env.get_time() - start_time;
-
-    this -> best_solution = new unsigned int[0];
-    this -> best_nact = 0;
-    this -> best_cost = UINT_MAX;
     
 }

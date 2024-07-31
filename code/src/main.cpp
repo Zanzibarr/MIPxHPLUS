@@ -15,6 +15,7 @@ void HPLUS_start() {
 
     HPLUS_env.start_timer();
     HPLUS_env.status = my::status::NOTFOUND;
+    HPLUS_env.cpx_terminate = 0;
 
 }
 

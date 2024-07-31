@@ -5,7 +5,7 @@
 // ##################################################################### //
 
 /**
- * Create tge cplex env and lp
+ * Create the cplex env and lp
  *
  * @param env: Pointer to the cplex environment
  * @param lp: Pointer to the cplex linear problem
@@ -29,6 +29,19 @@ void HPLUS_cpx_init(CPXENVptr* env, CPXLPptr* lp) {
 
     // terminate condition
     MYASSERT(!CPXsetterminate(*env, &HPLUS_env.cpx_terminate));
+
+}
+
+/**
+ * Delete the cplex env and lp
+ *
+ * @param env: Pointer to the cplex environment
+ * @param lp: Pointer to the cplex linear problem
+*/
+void HPLUS_cpx_close(CPXENVptr* env, CPXLPptr* lp) {
+
+    CPXfreeprob(*env, lp);
+    CPXcloseCPLEX(env);
 
 }
 
@@ -185,7 +198,7 @@ void HPLUS_cpx_build_imai(CPXENVptr* env, CPXLPptr* lp, HPLUS_instance* inst) {
 
         MYASSERT(!CPXnewcols(*env, *lp, sizes[i], objs, lbs, ubs, types, names));
 
-        for (int j = 0; j < sizes[i]; j++) { MYASSERT(names[j] != nullptr); delete[] names[j]; }
+        for (int j = 0; j < ((i == 4) ? bfsize*nact : sizes[i]); j++) { delete[] names[j]; }
         MYDELL(names);
         MYDELL(types);
         MYDELL(ubs);
@@ -270,12 +283,12 @@ void HPLUS_cpx_build_imai(CPXENVptr* env, CPXLPptr* lp, HPLUS_instance* inst) {
 
     for (int i = 0; i < bfsize; i++) MYASSERT(!CPXaddrows(*env, *lp, 0, 1, nnz[i], &rhs[i], &sensee, &begin, ind[i], val[i], nullptr, nullptr));
 
-    MYASSERT(!CPXwriteprob(*env, *lp, (HPLUS_CPLEX_OUT_DIR"/lp/"+HPLUS_env.run_name+".lp").c_str(), nullptr));
-
     for (int i = 0; i < bfsize; i++) {
         MYDELL(ind[i]);
         MYDELL(val[i]);
     }
+
+    MYASSERT(!CPXwriteprob(*env, *lp, (HPLUS_CPLEX_OUT_DIR"/lp/"+HPLUS_env.run_name+".lp").c_str(), "LP"));
 
     HPLUS_env.logger.print_info("Created CPLEX lp for imai.");
 
@@ -341,8 +354,8 @@ void HPLUS_run_imai(HPLUS_instance* inst) {
 
     HPLUS_parse_cplex_status(&env, &lp);
 
-    if (!HPLUS_env.found()) return;
+    if (HPLUS_env.found()) HPLUS_store_imai_sol(&env, &lp, inst);
 
-    HPLUS_store_imai_sol(&env, &lp, inst);
+    HPLUS_cpx_close(&env, &lp);
 
 }
