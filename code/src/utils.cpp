@@ -45,26 +45,29 @@ bool my::BitField::operator[](const unsigned int i) const {
     
 }
 
-my::BitField my::BitField::operator&(const BitField bf) const {
+my::BitField my::BitField::intersects(const BitField* bf) const {
 
     #if INTCHECKS
     ASSERT(this -> len == bf.len);
     #endif
     BitField ret = BitField(this -> len);
-    for (int i = 0; i < this -> len; i++) if ((this -> field[i/8] & (1 << i%8)) && bf[i]) ret.set(i);
+    for (int i = 0; i < this -> len; i++) if (this -> operator[](i) && bf -> operator[](i)) ret.set(i);
     return ret;
 
 }
 
-bool my::BitField::operator==(const BitField bf) const {
+bool my::BitField::equals(const BitField* bf) const {
 
     #if INTCHECKS
     ASSERT(this -> len == bf.len);
     #endif
-    for (int i = 0; i < (this -> len + 7) / 8; i++) if (this -> field[i] != bf.field[i]) return false;
+    for (int i = 0; i < (this -> len + 7) / 8; i++) if (this -> field[i] != bf -> field[i]) return false;
     return true;
 
 }
+
+bool my::BitField::validate(const BitField* bf) const { return this -> intersects(bf).equals(bf); }
+
 
 unsigned int my::BitField::size() const { return this -> len; }
 

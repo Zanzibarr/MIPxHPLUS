@@ -18,6 +18,7 @@
 #include <signal.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include <numeric>
 #include <cplex.h>
 
 // ##################################################################### //
@@ -112,7 +113,7 @@ namespace my {
              * @param bf: BitField to do the and with
              * @return The resulting BitField
              */
-            BitField operator&(const BitField bf) const;
+            BitField intersects(const BitField* bf) const;
 
             /**
              * Compare two BitField
@@ -120,7 +121,15 @@ namespace my {
              * @param bf: BitField to compare with
              * @return true/false based on if the two bitfields are equal
              */
-            bool operator==(const BitField bf) const;
+            bool equals(const BitField* bf) const;
+
+            /**
+             * Check if all true bits of the passed bitfield are true in this bitfield
+             *
+             * @param bf: BitField used to validate this one
+             * @return true/false based on if this bitfield is validated by bf
+             */
+            bool validate(const BitField* bf) const;
 
             /**
              * Returns the size of the BitField (in bits)
@@ -188,9 +197,10 @@ namespace my {
 
     enum status {
         OPT = 0,
-        TIMEL_F,
+        TIMEL_FEAS,
         TIMEL_NF,
-        USR_STOP,
+        USR_STOP_FEAS,
+        USR_STOP_NF,
         INFEAS,
         NOTFOUND
     };

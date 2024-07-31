@@ -75,9 +75,10 @@ void HPLUS_cpx_build_imai(CPXENVptr* env, CPXLPptr* lp, HPLUS_instance* inst) {
         for (int i = 0, count = 0; i < nvar; i++) for (int j = 0; j < variables[i] -> get_range(); j++) {
             objs[i] = 0;
             if (istate -> operator[](count) || gstate -> operator[](count)) lbs[count] = 1.0;  // fix variables of initial and goal state to 1
+            else lbs[count] = 0.0;
             ubs[count] = 1.0;
             types[count] = 'B';
-            snprintf(names[count], 20, "var(%d,%d)", i, j);
+            snprintf(names[count], 20, "var(%d_%d)", i, j);
             count++;
         }
 
@@ -90,7 +91,7 @@ void HPLUS_cpx_build_imai(CPXENVptr* env, CPXLPptr* lp, HPLUS_instance* inst) {
             lbs[count] = 1;
             ubs[count] = nact;
             types[count] = 'I';
-            snprintf(names[count], 20, "tvar(%d,%d)", i, j);
+            snprintf(names[count], 20, "tvar(%d_%d)", i, j);
             count++;
         }
 
@@ -106,7 +107,7 @@ void HPLUS_cpx_build_imai(CPXENVptr* env, CPXLPptr* lp, HPLUS_instance* inst) {
                 lbs[nfa] = 0.0;
                 ubs[nfa] = 1.0;
                 types[nfa] = 'B';
-                snprintf(names[nfa], 20, "fa(%d,%d,%d)", c, i, j);
+                snprintf(names[nfa], 20, "fa(%d_%d_%d)", c, i, j);
                 nfa++;
             }
         }
@@ -129,7 +130,7 @@ void HPLUS_cpx_build_imai(CPXENVptr* env, CPXLPptr* lp, HPLUS_instance* inst) {
 
         MYASSERT(!CPXnewcols(*env, *lp, sizes[i], objs, lbs, ubs, types, names));
 
-        for (int i = 0; i < sizes[i]; i++) { MYASSERT(names[i] != nullptr); delete[] names[i]; }
+        for (int j = 0; j < sizes[i]; j++) { MYASSERT(names[j] != nullptr); delete[] names[j]; }
         MYDELL(names);
         MYDELL(types);
         MYDELL(ubs);
@@ -206,6 +207,7 @@ void HPLUS_cpx_build_imai(CPXENVptr* env, CPXLPptr* lp, HPLUS_instance* inst) {
                 ind[j][nnz[j]] = HPLUS_env.cpx_fa_idx(count_fa++);
                 val[j][nnz[j]] = -1;
                 nnz[j]++;
+                MYASSERT(nnz[j] <= nact + 1);
             }
         }
     }
@@ -235,29 +237,77 @@ void HPLUS_run_imai(HPLUS_instance* inst) {
 
     MYASSERT(!CPXmipopt(env, lp));
 
-    // Temporary viewing the solution
-
-    double* xstar = (double*)malloc(2 * inst -> get_nact() * sizeof(double));
-    MYASSERT(!CPXgetx(env, lp, xstar, 0, 2 * inst -> get_nact()));
-
-    const HPLUS_action** actions = inst -> get_actions();
-    std::vector<std::pair<double, std::string>> result;
-
-    for (int i = 0; i < inst -> get_nact(); i++) {
-        std::pair<double, std::string> p;
-        p.first = xstar[inst -> get_nact() + i];
-        p.second = *actions[i] -> get_name();
-        if (xstar[i]) result.push_back(p);
+    switch ( int status = CPXgetstat(env, lp) ) {
+        case CPXMIP_TIME_LIM_FEAS:      // exceeded time limit, found intermediate solution
+            HPLUS_env.status = my::status::TIMEL_FEAS;
+            break;
+        case CPXMIP_TIME_LIM_INFEAS:    // exceeded time limit, no intermediate solution found
+            HPLUS_env.status = my::status::TIMEL_NF;
+            return;
+        case CPXMIP_INFEASIBLE:         // proven to be unfeasible
+            HPLUS_env.status = my::status::INFEAS;
+            return;
+        case CPXMIP_ABORT_FEAS:         // terminated by user, found solution
+            HPLUS_env.status = my::status::USR_STOP_FEAS;
+            break;
+        case CPXMIP_ABORT_INFEAS:       // terminated by user, not found solution
+            HPLUS_env.status = my::status::USR_STOP_NF;
+            return;
+        case CPXMIP_OPTIMAL_TOL:        // found optimal within the tollerance
+            HPLUS_env.logger.print_warn("Found optimal within the tolerance.");
+            HPLUS_env.status = my::status::OPT;
+            break;
+        case CPXMIP_OPTIMAL:            // found optimal
+            HPLUS_env.status = my::status::OPT;
+            break;
+        default:                        // unhandled status
+            HPLUS_env.logger.raise_error("Error in tsp_cplex: unhandled cplex status: %d.", status);
+            break;
     }
 
-    MYFREE(xstar);
+    // Check if solution is feasible
 
-    std::sort(result.begin(), result.end(), [](const std::pair<double, std::string> &x, const std::pair<double, std::string> &y) {
-        return x.first < y.first;
-    });
+    unsigned int nact = inst -> get_nact();
+    double* xstar = new double[2 * nact];
+    MYASSERT(!CPXgetx(env, lp, xstar, 0, 2 * nact - 1));
 
-    for (int i = 0; i < result.size(); i++) HPLUS_env.logger.print_info("%.1f : %s.", result[i].first, result[i].second.c_str());
+    std::vector<std::pair<double, int>> result;
 
-    // TODO: Integrity check on the returned solution
+    for (int i = 0; i < nact; i++) if (xstar[i] > .5) result.push_back(std::pair<double, int>(xstar[nact+i], i));
+
+    MYDELL(xstar);
+
+    std::sort(result.begin(), result.end(),
+        [](const std::pair<double, int> &x, const std::pair<double, int> &y) {
+            return x.first < y.first;
+        }
+    );
+
+    const HPLUS_action** actions = inst -> get_actions();
+    unsigned int bfsize = inst -> get_bfsize();
+    my::BitField checker = my::BitField(bfsize);
+    const my::BitField* istate = inst -> get_istate();
+    for (int i = 0; i < bfsize; i++) if (istate -> operator[](i)) checker.set(i);
+
+    for (auto pair : result) {
+        MYASSERT(pair.second < nact);
+        MYASSERT(checker.validate(actions[pair.second] -> get_pre()));     // this checks if at each step the preconditions are satisfied
+        for (int j = 0; j < bfsize; j++) if (actions[pair.second] -> get_eff() -> operator[](j)) checker.set(j);
+    }
+
+    std::vector<unsigned int> solution;
+    std::transform(result.begin(), result.end(), std::back_inserter(solution),
+        [](const std::pair<double, int> &p) {
+            return p.second;
+        }
+    );
+
+    inst -> update_best_solution(solution,
+        std::accumulate(solution.begin(), solution.end(), 0,
+            [&actions](int acc, int index) {
+                return acc + actions[index] -> get_cost();
+            }
+        )
+    );
 
 }

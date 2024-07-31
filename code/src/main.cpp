@@ -8,7 +8,6 @@ void signal_callback_handler(const int signum) {
     HPLUS_env.logger.print(LINE);
 
     HPLUS_env.cpx_terminate = 1;                        // signal cplex to stop
-    HPLUS_env.status = my::status::USR_STOP;            // set the status to "terminated by user"
 
 }
 
@@ -121,6 +120,37 @@ void HPLUS_run(HPLUS_instance* inst) {
     else HPLUS_env.logger.raise_error("The specified algorithm %s is not recognised. Please refer to the README.md for instructions.", HPLUS_env.alg.c_str());
 
     HPLUS_stats.exec_time = HPLUS_env.get_time() - start_time;
+
+    switch(HPLUS_env.status) {
+        case my::status::INFEAS:
+            HPLUS_env.logger.print("The problem is infeasible.");
+            return;
+        case my::status::NOTFOUND:
+            HPLUS_env.logger.print("No solution found.");
+            return;
+        case my::status::TIMEL_NF:
+            HPLUS_env.logger.print("No solution found due to time limit.");
+            return;
+        case my::status::USR_STOP_NF:
+            HPLUS_env.logger.print("No solution found due to the user terminating the execution.");
+            return;
+        case my::status::TIMEL_FEAS:
+            HPLUS_env.logger.print("The solution is not optimal due to time limit.");
+            break;
+        case my::status::USR_STOP_FEAS:
+            HPLUS_env.logger.print("The solution is not optimal due to the user terminating the execution.");
+            break;
+        default:
+            break;
+    }
+
+    const HPLUS_action** actions = inst -> get_actions();
+    std::vector<unsigned int> solution;
+    unsigned int cost;
+    inst -> get_best_solution(&solution, &cost);
+
+    HPLUS_env.logger.print("Cost of the solution: %d.", cost);
+    for(auto idx : solution) HPLUS_env.logger.print("(%s)", actions[idx] -> get_name() -> c_str());
 
 }
 
