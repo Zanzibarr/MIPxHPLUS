@@ -105,15 +105,19 @@ void HPLUS_instance::update_best_solution(const std::vector<unsigned int> soluti
     #if INTCHECKS
     bool* dbcheck = new bool[this -> n_act]();
     unsigned int costcheck = 0;
-    ASSERT(nact <= this -> n_act);
+    MYASSERT(nact <= this -> n_act);
+    my::BitField feas_checker = my::BitField(this -> bf_size);
+    for (int i = 0; i < this -> bf_size; i++) if (this -> initial_state -> operator[](i)) feas_checker.set(i);
     for (int i = 0; i < nact; i++) {
-        ASSERT(solution[i] < this -> n_act);
-        ASSERT(!dbcheck[solution[i]]);
+        MYASSERT(solution[i] < this -> n_act);
+        MYASSERT(!dbcheck[solution[i]]);
         dbcheck[solution[i]] = 1;
+        MYASSERT(feas_checker.validate(this -> actions[solution[i]] -> get_pre()));
+        for (int j = 0; j < this -> bf_size; j++) if (this -> actions[solution[i]] -> get_eff() -> operator[](j)) feas_checker.set(j);
         costcheck += this -> actions[solution[i]] -> get_cost();
     }
-    ASSERT(costcheck == cost);
-    DELL(dbcheck);
+    MYASSERT(costcheck == cost);
+    MYDELL(dbcheck);
     #endif
 
     if (cost >= this -> best_cost) return;
@@ -141,6 +145,13 @@ void HPLUS_instance::get_best_solution(std::vector<unsigned int>* solution, unsi
     (*solution) = std::vector<unsigned int>(this -> best_nact);
     for (int i = 0; i < this -> best_nact; i++) (*solution)[i] = this -> best_solution[i];
     *cost = this -> best_cost;
+
+}
+
+void HPLUS_instance::print_best_sol() {
+
+    HPLUS_env.logger.print("Cost of the solution: %d.", this -> best_cost);
+    for(int i = 0; i < this -> best_nact; i++) HPLUS_env.logger.print("(%s)", this -> actions[this -> best_solution[i]] -> get_name() -> c_str());
 
 }
 
@@ -240,7 +251,7 @@ void HPLUS_instance::parse_inst_file(std::ifstream* ifs) {
         std::getline(*ifs, line);   // pair 'variable goal'
         my::split(line, &tokens, ' ');
         MYASSERT(tokens.size() == 2);
-        MYASSERT(my::isint(tokens[0], 1, this -> n_var - 1)); // variable index
+        MYASSERT(my::isint(tokens[0], 0, this -> n_var - 1)); // variable index
         unsigned int var = (unsigned int) stoi(tokens[0]);
         MYASSERT(my::isint(tokens[1], 0, this -> variables[var] -> get_range() - 1)); // variable goal
         unsigned int value = (unsigned int) stoi(tokens[1]);

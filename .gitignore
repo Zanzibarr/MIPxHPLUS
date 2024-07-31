@@ -19,7 +19,7 @@ thesis/*.toc
 thesis/*.xmpi
 
 # code
-code/logs
+code/*logs
 code/build
 code/src/test.cpp
 code/src/test*

@@ -4,6 +4,12 @@
 // ############################### CPLEX ############################### //
 // ##################################################################### //
 
+/**
+ * Create tge cplex env and lp
+ *
+ * @param env: Pointer to the cplex environment
+ * @param lp: Pointer to the cplex linear problem
+*/
 void HPLUS_cpx_init(CPXENVptr* env, CPXLPptr* lp) {
 
     int cpxerror;
@@ -18,8 +24,49 @@ void HPLUS_cpx_init(CPXENVptr* env, CPXLPptr* lp) {
     // tolerance
     MYASSERT(!CPXsetdblparam(*env, CPXPARAM_MIP_Tolerances_MIPGap, 0));
 
+    // time limit
+    MYASSERT(!CPXsetdblparam(*env, CPXPARAM_TimeLimit, (double)HPLUS_env.time_limit));
+
     // terminate condition
     MYASSERT(!CPXsetterminate(*env, &HPLUS_env.cpx_terminate));
+
+}
+
+/**
+ * Parse cplex status and stores it into the HPLUS_env global variable
+ *
+ * @param env: Pointer to the cplex environment
+ * @param lp: Pointer to the cplex linear problem
+*/
+void HPLUS_parse_cplex_status(CPXENVptr* env, CPXLPptr* lp) {
+
+    switch ( int cpxstatus = CPXgetstat(*env, *lp) ) {
+        case CPXMIP_TIME_LIM_FEAS:      // exceeded time limit, found intermediate solution
+            HPLUS_env.status = my::status::TIMEL_FEAS;
+            break;
+        case CPXMIP_TIME_LIM_INFEAS:    // exceeded time limit, no intermediate solution found
+            HPLUS_env.status = my::status::TIMEL_NF;
+            break;
+        case CPXMIP_INFEASIBLE:         // proven to be unfeasible
+            HPLUS_env.status = my::status::INFEAS;
+            break;
+        case CPXMIP_ABORT_FEAS:         // terminated by user, found solution
+            HPLUS_env.status = my::status::USR_STOP_FEAS;
+            break;
+        case CPXMIP_ABORT_INFEAS:       // terminated by user, not found solution
+            HPLUS_env.status = my::status::USR_STOP_NF;
+            break;
+        case CPXMIP_OPTIMAL_TOL:        // found optimal within the tollerance
+            HPLUS_env.logger.print_warn("Found optimal within the tolerance.");
+            HPLUS_env.status = my::status::OPT;
+            break;
+        case CPXMIP_OPTIMAL:            // found optimal
+            HPLUS_env.status = my::status::OPT;
+            break;
+        default:                        // unhandled status
+            HPLUS_env.logger.raise_error("Error in tsp_cplex: unhandled cplex status: %d.", cpxstatus);
+            break;
+    }
 
 }
 
@@ -27,6 +74,13 @@ void HPLUS_cpx_init(CPXENVptr* env, CPXLPptr* lp) {
 // ################################ IMAI ############################### //
 // ##################################################################### //
 
+/**
+ * Build the basic imai model
+ *
+ * @param env: Pointer to the cplex environment
+ * @param lp: Pointer to the cplex linear problem
+ * @param inst: Instance to represent through the model
+*/
 void HPLUS_cpx_build_imai(CPXENVptr* env, CPXLPptr* lp, HPLUS_instance* inst) {
 
     unsigned int nvar = inst -> get_nvar();
@@ -45,6 +99,7 @@ void HPLUS_cpx_build_imai(CPXENVptr* env, CPXLPptr* lp, HPLUS_instance* inst) {
     char* types;
     char** names;
     unsigned int nfa = 0;
+    unsigned int sizes[5] = {nact, nact, bfsize, bfsize, bfsize * nact};
 
     auto lambda_add_acts = [nact, actions, &objs, &lbs, &ubs, &types, &names]() {
 
@@ -97,7 +152,7 @@ void HPLUS_cpx_build_imai(CPXENVptr* env, CPXLPptr* lp, HPLUS_instance* inst) {
 
     };
 
-    auto lambda_add_fa = [nvar, nact, variables, actions, &nfa, &objs, &lbs, &ubs, &types, &names]() {
+    auto lambda_add_fa = [nvar, nact, variables, actions, &sizes, &nfa, &objs, &lbs, &ubs, &types, &names]() {
 
         for (int c = 0; c < nact; c++) {
             const my::BitField* eff = actions[c] -> get_eff();
@@ -111,10 +166,10 @@ void HPLUS_cpx_build_imai(CPXENVptr* env, CPXLPptr* lp, HPLUS_instance* inst) {
                 nfa++;
             }
         }
+        sizes[4] = nfa;
 
     };
 
-    unsigned int sizes[5] = {nact, nact, bfsize, bfsize, bfsize * nact};
     std::vector<std::function<void()>> populate_variables = {lambda_add_acts, lambda_add_tacts, lambda_add_vars, lambda_add_tvars, lambda_add_fa};
 
     for (int i = 0; i < 5; i++) {
@@ -139,12 +194,13 @@ void HPLUS_cpx_build_imai(CPXENVptr* env, CPXLPptr* lp, HPLUS_instance* inst) {
 
     }
 
-    HPLUS_env.act_start = 0;
-    HPLUS_env.tact_start = nact;
-    HPLUS_env.var_start = HPLUS_env.tact_start + nact;
-    HPLUS_env.tvar_start = HPLUS_env.var_start + bfsize;
-    HPLUS_env.fa_start = HPLUS_env.tvar_start + bfsize;
-    HPLUS_env.cpx_ncols = HPLUS_env.fa_start + nfa;
+    // index at which each group of variables starts
+    unsigned int act_start = 0;
+    unsigned int tact_start = nact;
+    unsigned int var_start = tact_start + nact;
+    unsigned int tvar_start = var_start + bfsize;
+    unsigned int fa_start = tvar_start + bfsize;
+    unsigned int cpx_ncols = fa_start + nfa;
 
     // ~~~~~~~ Adding CPLEX constraints ~~~~~~ //
 
@@ -165,7 +221,7 @@ void HPLUS_cpx_build_imai(CPXENVptr* env, CPXLPptr* lp, HPLUS_instance* inst) {
         val[i] = new double[nact + 1];
         nnz[i] = 0;
         rhs[i] = istate -> operator[](i);
-        ind[i][nnz[i]] = HPLUS_env.cpx_var_idx(i);
+        ind[i][nnz[i]] = var_start + i;
         val[i][nnz[i]] = 1;
         nnz[i]++;
     }
@@ -176,35 +232,35 @@ void HPLUS_cpx_build_imai(CPXENVptr* env, CPXLPptr* lp, HPLUS_instance* inst) {
         for (unsigned int j = 0; j < bfsize; j++) {
             if (pre -> operator[](j)) {
                 // constraint 1: x_a <= y_vj, vj in pre(a)
-                ind1[0] = HPLUS_env.cpx_act_idx(i);
+                ind1[0] = act_start + i;
                 val1[0] = 1;
-                ind1[1] = HPLUS_env.cpx_var_idx(j);
+                ind1[1] = var_start + j;
                 val1[1] = -1;
                 MYASSERT(!CPXaddrows(*env, *lp, 0, 1, nnz1, &rhs1, &sensel, &begin, ind1, val1, nullptr, nullptr));
                 // constraint 4: t_vj <= t_a, vj in pre(a)
-                ind1[0] = HPLUS_env.cpx_tvar_idx(j);
+                ind1[0] = tvar_start + j;
                 val1[0] = 1;
-                ind1[1] = HPLUS_env.cpx_tact_idx(i);
+                ind1[1] = tact_start + i;
                 val1[1] = -1;
                 MYASSERT(!CPXaddrows(*env, *lp, 0, 1, nnz1, &rhs1, &sensel, &begin, ind1, val1, nullptr, nullptr));
             }
             if (eff -> operator[](j)) {
                 // constraint 2: z_avj <= x_a, vj in eff(a)
-                ind1[0] = HPLUS_env.cpx_fa_idx(count_fa);
+                ind1[0] = fa_start + count_fa;
                 val1[0] = 1;
-                ind1[1] = HPLUS_env.cpx_act_idx(i);
+                ind1[1] = act_start + i;
                 val1[1] = -1;
                 MYASSERT(!CPXaddrows(*env, *lp, 0, 1, nnz1, &rhs1, &sensel, &begin, ind1, val1, nullptr, nullptr));
                 // constraint 5: t_a + 1 <= t_vj + (|A|+1)(1-z_avj), vj in eff(a)
-                ind2[0] = HPLUS_env.cpx_tact_idx(i);
+                ind2[0] = tact_start + i;
                 val2[0] = 1;
-                ind2[1] = HPLUS_env.cpx_tvar_idx(j);
+                ind2[1] = tvar_start + j;
                 val2[1] = -1;
-                ind2[2] = HPLUS_env.cpx_fa_idx(count_fa);
+                ind2[2] = fa_start + count_fa;
                 val2[2] = nact + 1;
                 MYASSERT(!CPXaddrows(*env, *lp, 0, 1, nnz2, &rhs2, &sensel, &begin, ind2, val2, nullptr, nullptr));
                 // constraint 3: I(v_j) + sum(z_avj) = y_vj
-                ind[j][nnz[j]] = HPLUS_env.cpx_fa_idx(count_fa++);
+                ind[j][nnz[j]] = fa_start + count_fa++;
                 val[j][nnz[j]] = -1;
                 nnz[j]++;
                 MYASSERT(nnz[j] <= nact + 1);
@@ -225,6 +281,52 @@ void HPLUS_cpx_build_imai(CPXENVptr* env, CPXLPptr* lp, HPLUS_instance* inst) {
 
 }
 
+/**
+ * Check if this solution is the best one and if so, stores it
+ *
+ * @param env: Pointer to the cplex environment
+ * @param lp: Pointer to the cplex linear problem
+ * @param inst: Pointer to the current instance
+*/
+void HPLUS_store_imai_sol(CPXENVptr* env, CPXLPptr* lp, HPLUS_instance* inst) {
+
+    // get cplex result (interested only in the sequence of actions used and its ordering)
+    unsigned int nact = inst -> get_nact();
+    double* xstar = new double[2 * nact];
+    MYASSERT(!CPXgetx(*env, *lp, xstar, 0, 2 * nact - 1));
+
+    // convert to std collections for easier parsing
+    std::vector<std::pair<double, int>> cpx_result;
+    for (int i = 0; i < nact; i++) if (xstar[i] > .5) cpx_result.push_back(std::pair<double, int>(xstar[nact+i], i));
+    MYDELL(xstar);
+
+    // sort cpx_result based on actions timestamps
+    std::sort(cpx_result.begin(), cpx_result.end(),
+        [](const std::pair<double, int> &x, const std::pair<double, int> &y) {
+            return x.first < y.first;
+        }
+    );
+
+    // get solution from sorted cpx_result
+    std::vector<unsigned int> solution;
+    std::transform(cpx_result.begin(), cpx_result.end(), std::back_inserter(solution),
+        [](const std::pair<double, int> &p) {
+            return p.second;
+        }
+    );
+
+    // store solution
+    const HPLUS_action** actions = inst -> get_actions();
+    inst -> update_best_solution(solution,
+        std::accumulate(solution.begin(), solution.end(), 0,
+            [&actions](int acc, int index) {
+                return acc + actions[index] -> get_cost();
+            }
+        )
+    );
+
+}
+
 void HPLUS_run_imai(HPLUS_instance* inst) {
 
     HPLUS_env.logger.print_info("Running imai algorithm.");
@@ -237,77 +339,10 @@ void HPLUS_run_imai(HPLUS_instance* inst) {
 
     MYASSERT(!CPXmipopt(env, lp));
 
-    switch ( int status = CPXgetstat(env, lp) ) {
-        case CPXMIP_TIME_LIM_FEAS:      // exceeded time limit, found intermediate solution
-            HPLUS_env.status = my::status::TIMEL_FEAS;
-            break;
-        case CPXMIP_TIME_LIM_INFEAS:    // exceeded time limit, no intermediate solution found
-            HPLUS_env.status = my::status::TIMEL_NF;
-            return;
-        case CPXMIP_INFEASIBLE:         // proven to be unfeasible
-            HPLUS_env.status = my::status::INFEAS;
-            return;
-        case CPXMIP_ABORT_FEAS:         // terminated by user, found solution
-            HPLUS_env.status = my::status::USR_STOP_FEAS;
-            break;
-        case CPXMIP_ABORT_INFEAS:       // terminated by user, not found solution
-            HPLUS_env.status = my::status::USR_STOP_NF;
-            return;
-        case CPXMIP_OPTIMAL_TOL:        // found optimal within the tollerance
-            HPLUS_env.logger.print_warn("Found optimal within the tolerance.");
-            HPLUS_env.status = my::status::OPT;
-            break;
-        case CPXMIP_OPTIMAL:            // found optimal
-            HPLUS_env.status = my::status::OPT;
-            break;
-        default:                        // unhandled status
-            HPLUS_env.logger.raise_error("Error in tsp_cplex: unhandled cplex status: %d.", status);
-            break;
-    }
+    HPLUS_parse_cplex_status(&env, &lp);
 
-    // Check if solution is feasible
+    if (!HPLUS_env.found()) return;
 
-    unsigned int nact = inst -> get_nact();
-    double* xstar = new double[2 * nact];
-    MYASSERT(!CPXgetx(env, lp, xstar, 0, 2 * nact - 1));
-
-    std::vector<std::pair<double, int>> result;
-
-    for (int i = 0; i < nact; i++) if (xstar[i] > .5) result.push_back(std::pair<double, int>(xstar[nact+i], i));
-
-    MYDELL(xstar);
-
-    std::sort(result.begin(), result.end(),
-        [](const std::pair<double, int> &x, const std::pair<double, int> &y) {
-            return x.first < y.first;
-        }
-    );
-
-    const HPLUS_action** actions = inst -> get_actions();
-    unsigned int bfsize = inst -> get_bfsize();
-    my::BitField checker = my::BitField(bfsize);
-    const my::BitField* istate = inst -> get_istate();
-    for (int i = 0; i < bfsize; i++) if (istate -> operator[](i)) checker.set(i);
-
-    for (auto pair : result) {
-        MYASSERT(pair.second < nact);
-        MYASSERT(checker.validate(actions[pair.second] -> get_pre()));     // this checks if at each step the preconditions are satisfied
-        for (int j = 0; j < bfsize; j++) if (actions[pair.second] -> get_eff() -> operator[](j)) checker.set(j);
-    }
-
-    std::vector<unsigned int> solution;
-    std::transform(result.begin(), result.end(), std::back_inserter(solution),
-        [](const std::pair<double, int> &p) {
-            return p.second;
-        }
-    );
-
-    inst -> update_best_solution(solution,
-        std::accumulate(solution.begin(), solution.end(), 0,
-            [&actions](int acc, int index) {
-                return acc + actions[index] -> get_cost();
-            }
-        )
-    );
+    HPLUS_store_imai_sol(&env, &lp, inst);
 
 }

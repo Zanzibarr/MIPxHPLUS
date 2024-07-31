@@ -31,18 +31,27 @@
 #define HPLUS_CODE_DIR HPLUS_HOME_DIR"/code"
 #define HPLUS_INST_DIR HPLUS_CODE_DIR"/instances"
 #define HPLUS_LOG_DIR HPLUS_CODE_DIR"/logs"
-#define HPLUS_DEF_LOG_FILE "default.log"
 #define HPLUS_CPLEX_OUT_DIR HPLUS_CODE_DIR"/cpxout"
+
+// ##################################################################### //
+// ############################## DEFAULTS ############################# //
+// ##################################################################### //
+
+#define HPLUS_DEF_LOG_OPTION false
+#define HPLUS_DEF_LOG_FILE "default.log"
+#define HPLUS_DEF_RUN_NAME "Default run name"
+#define HPLUS_DEF_TIME_LIMIT 60
 
 // ##################################################################### //
 // ############################ PARSING CLI ############################ //
 // ##################################################################### //
 
-#define HPLUS_CLI_INPUT_FILE_FLAG "-i"            // flag for parsing input file
-#define HPLUS_CLI_LOG_FLAG "-l"                   // flag for using a log file
-#define HPLUS_CLI_LOG_NAME_FLAG "-ln"             // flag for parsing the log name
-#define HPLUS_CLI_RUN_NAME_FLAG "-rn"             // flag for parsing the run name
-#define HPLUS_CLI_ALG "-a"                        // flag for parsing the algorithm to use
+#define HPLUS_CLI_INPUT_FILE_FLAG "-i"          // flag for parsing input file
+#define HPLUS_CLI_LOG_FLAG "-l"                 // flag for using a log file
+#define HPLUS_CLI_LOG_NAME_FLAG "-ln"           // flag for parsing the log name
+#define HPLUS_CLI_RUN_NAME_FLAG "-rn"           // flag for parsing the run name
+#define HPLUS_CLI_ALG_FLAG "-a"                 // flag for parsing the algorithm to use
+#define HPLUS_CLI_TIMELIMIT_FLAG "-t"           // flag for parsing the time limit
 
 // ##################################################################### //
 // ####################### PRINTING AND DEBUGGING ###################### //
@@ -166,13 +175,13 @@ namespace my {
             Logger() {};
 
             /**
-             * Code executes always
+             * Code executes only if HPLUS_VERBOSE != 0
              * Prints and logs a formatted string
              */
             void print(const char* str, ...) const;
 
             /**
-             * Code executes only if VERBOSE >= 10
+             * Code executes only if HPLUS_VERBOSE >= 10
              * Prints and logs a formatted string (info format)
              */
             void print_info(const char* str, ...) const;
@@ -197,12 +206,12 @@ namespace my {
 
     enum status {
         OPT = 0,
-        TIMEL_FEAS,
-        TIMEL_NF,
-        USR_STOP_FEAS,
-        USR_STOP_NF,
-        INFEAS,
-        NOTFOUND
+        TIMEL_FEAS = 1,
+        USR_STOP_FEAS = 2,
+        INFEAS = 100,
+        TIMEL_NF = 101,
+        USR_STOP_NF = 102,
+        NOTFOUND = 103
     };
 
     /**
@@ -236,6 +245,12 @@ namespace my {
 extern struct HPLUS_Environment {
 
     my::status status;
+
+    /**
+     * @return true/false based on wether a solution has been found
+    */
+    bool found() const;
+
     int cpx_terminate;
 
     // Logging
@@ -248,23 +263,10 @@ extern struct HPLUS_Environment {
     std::string log_name;
     std::string run_name;
 
-    // Algorithms
+    // Algorithm tools
 
     std::string alg;
-
-    // CPLEX utils
-    unsigned int act_start;
-    unsigned int tact_start;
-    unsigned int var_start;
-    unsigned int fa_start;
-    unsigned int tvar_start;
-    unsigned int cpx_ncols;
-
-    unsigned int cpx_act_idx(unsigned int act_i);
-    unsigned int cpx_var_idx(unsigned int var_i);
-    unsigned int cpx_fa_idx(unsigned int fa_i);
-    unsigned int cpx_tact_idx(unsigned int tact_i);
-    unsigned int cpx_tvar_idx(unsigned int tvar_i);
+    int time_limit;
 
     // Time control
 
@@ -276,7 +278,7 @@ extern struct HPLUS_Environment {
     /**
      * Returns the execution time in seconds since the timer was started
      */
-    double get_time();
+    double get_time() const;
 
 } HPLUS_env;
 

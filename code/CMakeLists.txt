@@ -1,7 +1,14 @@
 cmake_minimum_required(VERSION 3.20)
-project(main)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-set(CMAKE_CXX_STANDARD 11)
+# Enforce out-of-source build
+if ("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
+    message(FATAL_ERROR "Please build the project from a build folder.\nCreate a separate build directory and run CMake from there:\n  mkdir build\n  cd build\n  cmake <buid_options> ..\n\nYou may delete the CMakeCache.txt file and the CMakeFiles folder that has been created.\n" )
+endif()
+
+project(main)
 
 # setting flags for optimization and debug builds
 set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3")
@@ -15,9 +22,7 @@ message(STATUS "WARN is set to ${WARN}")
 set(INTCHECK "1" CACHE STRING "Flag to enable integrity checks")
 message(STATUS "INTCHECK is set to ${INTCHECK}")
 set(CPLEX_DIR "/Applications/CPLEX_Studio2211/cplex/lib/arm64_osx/static_pic" CACHE STRING "Path to the CPLEX library")
-message(STATUS "CPLEX_DIR is set to ${CPLEX_DIR}")
 set(CPLEX_INCLUDE "/Applications/CPLEX_Studio2211/cplex/include/ilcplex" CACHE STRING "Path to the CPLEX headers")
-message(STATUS "CPLEX_INCLUDE is set to ${CPLEX_INCLUDE}")
 
 # check if all necessary folders exist
 cmake_path(GET CMAKE_HOME_DIRECTORY PARENT_PATH HOME_DIR)
@@ -41,6 +46,12 @@ endif()
 if(NOT EXISTS ${CPXLOG_DIR})
     file(MAKE_DIRECTORY ${CPXLOG_DIR})
     message(STATUS "Directory ${CPXLOG_DIR} created.")
+endif()
+if(NOT EXISTS ${CPLEX_DIR})
+    message(FATAL_ERROR "Directory ${CPLEX_DIR} doesn't exist... Please set with -DCPLEX_DIR=<path> the correct path to CPLEXs static pic folder.")
+endif()
+if(NOT EXISTS ${CPLEX_INCLUDE})
+message(FATAL_ERROR "Directory ${CPLEX_INCLUDE} doesn't exist... Please set with -DCPLEX_INCLUDE=<path> the correct path to CPLEXs headers folder.")
 endif()
 if(NOT EXISTS ${INST_DIR})
     message(FATAL_ERROR "Directory ${INST_DIR} doesn't exist... Please create it and put the instances in there")
@@ -74,10 +85,10 @@ find_library(CPLEX_LIBRARY
     PATHS ${CPLEX_DIR}
     NO_DEFAULT_PATH
 )
+
 if(NOT CPLEX_LIBRARY)
     message(FATAL_ERROR "CPLEX library not found in ${CPLEX_DIR}")
 endif()
-set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 add_executable(
     main
@@ -93,7 +104,7 @@ target_link_libraries(
 )
 
 # adding definitions
-add_definitions(-DHPLUS_VERBOSE=${VERBOSE} -DHPLUS_HOME_DIR="${HOME_DIR}" -DHPLUS_WARN=${WARN} -DHPLUS_INTCHECK=${INTCHECK})
+add_definitions(-DHPLUS_HOME_DIR="${HOME_DIR}" -DHPLUS_VERBOSE=${VERBOSE} -DHPLUS_WARN=${WARN} -DHPLUS_INTCHECK=${INTCHECK})
 
 # custom builds
 add_custom_target(opt

@@ -7,13 +7,10 @@ void signal_callback_handler(const int signum) {
     HPLUS_env.logger.print(" >>  Caught ctrl+C signal, exiting...  <<");
     HPLUS_env.logger.print(LINE);
 
-    HPLUS_env.cpx_terminate = 1;                        // signal cplex to stop
+    HPLUS_env.cpx_terminate = 1;                        // signals cplex to stop
 
 }
 
-/**
- * Initializations
- */
 void HPLUS_start() {
 
     HPLUS_env.start_timer();
@@ -21,9 +18,6 @@ void HPLUS_start() {
 
 }
 
-/**
- * Visual info of the execution of the code and the parsed problem
- */
 void HPLUS_show_info(const HPLUS_instance* inst) {
 
     HPLUS_env.logger.print(LINE);
@@ -35,7 +29,7 @@ void HPLUS_show_info(const HPLUS_instance* inst) {
     HPLUS_env.logger.print(LINE);
 
     #if HPLUS_VERBOSE >= 100
-    HPLUS_env.logger.print("Version: %d.", inst -> get_version());
+    HPLUS_env.logger.print("Fast Downward translator version: %d.", inst -> get_version());
     #endif
     HPLUS_env.logger.print("Metric: %s.", (inst -> unitary_cost() ? "unitary costs" : "integer costs"));
     HPLUS_env.logger.print("# variables: %d.", inst -> get_nvar());
@@ -67,16 +61,22 @@ void HPLUS_show_info(const HPLUS_instance* inst) {
     HPLUS_env.logger.print(LINE);
 
     if (HPLUS_INTCHECK) {
-        HPLUS_env.logger.print_warn("Integrity checks enabled.");
+        HPLUS_env.logger.print("Integrity checks enabled.");
         HPLUS_env.logger.print(LINE);
     }
 
+    HPLUS_env.logger.print("Time limit: %ds.", HPLUS_env.time_limit);
+    HPLUS_env.logger.print(LINE);
+
 }
 
-/**
- * Parse command-line arguments
- */
 void HPLUS_parse_cli(const int argc, const char** argv) {
+
+    // setting defaults
+    HPLUS_env.log = HPLUS_DEF_LOG_OPTION;
+    HPLUS_env.log_name = HPLUS_LOG_DIR"/" + std::string(HPLUS_DEF_LOG_FILE);
+    HPLUS_env.run_name = HPLUS_DEF_RUN_NAME;
+    HPLUS_env.time_limit = HPLUS_DEF_TIME_LIMIT;
 
     std::vector<std::string> unknown_args;
 
@@ -90,27 +90,23 @@ void HPLUS_parse_cli(const int argc, const char** argv) {
         else if (!strcmp(argv[i], HPLUS_CLI_LOG_FLAG)) HPLUS_env.log = true;
         else if (!strcmp(argv[i], HPLUS_CLI_LOG_NAME_FLAG)) HPLUS_env.log_name = HPLUS_LOG_DIR"/" + std::string(argv[++i]);
         else if (!strcmp(argv[i], HPLUS_CLI_RUN_NAME_FLAG)) HPLUS_env.run_name = argv[++i];
-        else if (!strcmp(argv[i], HPLUS_CLI_ALG)) HPLUS_env.alg = argv[++i];
+        else if (!strcmp(argv[i], HPLUS_CLI_TIMELIMIT_FLAG)) { my::assert(my::isint(argv[i+1]), "The time limit must be an integer."); HPLUS_env.time_limit = atoi(argv[++i]); }
+        else if (!strcmp(argv[i], HPLUS_CLI_ALG_FLAG)) HPLUS_env.alg = argv[++i];
 
         else unknown_args.push_back(argv[i]);
 
     }
 
+    for (int i = 0; i < unknown_args.size(); i++) HPLUS_env.logger.print_warn("Unknown command-line option '%s'.", unknown_args[i].c_str());
+    if (!unknown_args.empty()) HPLUS_env.logger.raise_error("Exiting due to unknown cli arguments.");
+
     my::assert(!HPLUS_env.infile.empty(), "No input file specified.");
-    if (HPLUS_env.log && HPLUS_env.log_name.empty()) { HPLUS_env.log_name = HPLUS_LOG_DIR"/" + std::string(HPLUS_DEF_LOG_FILE); }
-    if (HPLUS_env.run_name.empty()) { HPLUS_env.run_name = "UNNAMED RUN"; }
+    my::assert(!HPLUS_env.alg.empty(), "No algorithm specified.");
 
     HPLUS_env.logger = my::Logger(HPLUS_env.run_name, HPLUS_env.log_name);
 
-    my::assert(!HPLUS_env.alg.empty(), "No algorithm specified.");
-
-    for (int i = 0; i < unknown_args.size(); i++) HPLUS_env.logger.print_warn("Unknown command-line option '%s'.", unknown_args[i].c_str());
-
 }
 
-/**
- * Run the algorithm specified via cli
- */
 void HPLUS_run(HPLUS_instance* inst) {
 
     double start_time = HPLUS_env.get_time();
@@ -144,19 +140,10 @@ void HPLUS_run(HPLUS_instance* inst) {
             break;
     }
 
-    const HPLUS_action** actions = inst -> get_actions();
-    std::vector<unsigned int> solution;
-    unsigned int cost;
-    inst -> get_best_solution(&solution, &cost);
-
-    HPLUS_env.logger.print("Cost of the solution: %d.", cost);
-    for(auto idx : solution) HPLUS_env.logger.print("(%s)", actions[idx] -> get_name() -> c_str());
+    inst -> print_best_sol();
 
 }
 
-/**
- * Program termination hook
- */
 void HPLUS_end() {
 
     #if HPLUS_VERBOSE >= 1
@@ -184,6 +171,6 @@ int main(const int argc, const char** argv) {
 
     HPLUS_end();
 
-    return HPLUS_env.status;
+    return 0;
 
 }

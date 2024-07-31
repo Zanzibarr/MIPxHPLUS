@@ -207,8 +207,13 @@ my::Logger::Logger(const std::string run_title, const std::string log_name) {
 
 void my::Logger::print(const char* str, ...) const {
 
+    #if HPLUS_VERBOSE == 0
+    return;
+    #endif
+
     // logging file
-    FILE* log_file = fopen(this -> log_file_name.c_str(), "a");
+    FILE* log_file;
+    if (HPLUS_env.log) log_file = fopen(this -> log_file_name.c_str(), "a");
 
     // initializing list pointer
     va_list ptr;
@@ -220,7 +225,7 @@ void my::Logger::print(const char* str, ...) const {
     fprintf(stdout, "\n");
     if (HPLUS_env.log) fprintf(log_file, "\n");
 
-    fclose(log_file);
+    if (HPLUS_env.log) fclose(log_file);
 
     // ending traversal
     va_end(ptr);
@@ -234,7 +239,8 @@ void my::Logger::print_info(const char* str, ...) const {
     #endif
 
     // logging file
-    FILE* log_file = fopen(this -> log_file_name.c_str(), "a");
+    FILE* log_file;
+    if (HPLUS_env.log) log_file = fopen(this -> log_file_name.c_str(), "a");
 
     // initializing list pointer 
     va_list ptr; 
@@ -249,7 +255,7 @@ void my::Logger::print_info(const char* str, ...) const {
     fprintf(stdout, "\n");
     if (HPLUS_env.log) fprintf(log_file, "\n");
     
-    fclose(log_file);
+    if (HPLUS_env.log) fclose(log_file);
 
     // ending traversal 
     va_end(ptr);
@@ -263,7 +269,8 @@ void my::Logger::print_warn(const char* str, ...) const {
     #endif
 
     // logging file
-    FILE* log_file = fopen(this -> log_file_name.c_str(), "a");
+    FILE* log_file;
+    if (HPLUS_env.log) log_file = fopen(this -> log_file_name.c_str(), "a");
 
     // initializing list pointer 
     va_list ptr; 
@@ -278,7 +285,7 @@ void my::Logger::print_warn(const char* str, ...) const {
     fprintf(stdout, "\n");
     if (HPLUS_env.log) fprintf(log_file, "\n");
     
-    fclose(log_file);
+    if (HPLUS_env.log) fclose(log_file);
 
     // ending traversal 
     va_end(ptr);
@@ -288,7 +295,8 @@ void my::Logger::print_warn(const char* str, ...) const {
 void my::Logger::raise_error(const char* str, ...) const {
 
     // logging file
-    FILE* log_file = fopen(this -> log_file_name.c_str(), "a");
+    FILE* log_file;
+    if (HPLUS_env.log) log_file = fopen(this -> log_file_name.c_str(), "a");
 
     // initializing list pointer 
     va_list ptr; 
@@ -303,7 +311,7 @@ void my::Logger::raise_error(const char* str, ...) const {
     fprintf(stdout, "\n");
     if (HPLUS_env.log) fprintf(log_file, "\n");
     
-    fclose(log_file);
+    if (HPLUS_env.log) fclose(log_file);
 
     // ending traversal 
     va_end(ptr);
@@ -316,15 +324,10 @@ void my::Logger::raise_error(const char* str, ...) const {
 // ############################## GLOBALS ############################## //
 // ##################################################################### //
 
-unsigned int HPLUS_Environment::cpx_act_idx(unsigned int act_i) { return HPLUS_env.act_start + act_i; }
-unsigned int HPLUS_Environment::cpx_tact_idx(unsigned int tact_i) { return HPLUS_env.tact_start + tact_i; }
-unsigned int HPLUS_Environment::cpx_var_idx(unsigned int var_i) { return HPLUS_env.var_start + var_i; }
-unsigned int HPLUS_Environment::cpx_fa_idx(unsigned int fa_i) { return HPLUS_env.fa_start + fa_i; }
-unsigned int HPLUS_Environment::cpx_tvar_idx(unsigned int t_var_i) { return HPLUS_env.tvar_start + t_var_i; }
+bool HPLUS_Environment::found() const { return this -> status < my::status::INFEAS; }
 
-void HPLUS_Environment::start_timer() { timer = std::chrono::steady_clock::now(); }
-
-double HPLUS_Environment::get_time() { return ((double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - timer).count()) / 1000; }
+void HPLUS_Environment::start_timer() { this -> timer = std::chrono::steady_clock::now(); }
+double HPLUS_Environment::get_time() const { return ((double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - this -> timer).count()) / 1000; }
 
 void HPLUS_Statistics::print() const {
 
