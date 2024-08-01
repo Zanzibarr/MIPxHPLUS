@@ -2,6 +2,7 @@
 local/
 .DS_Store
 .vscode
+.idea
 .trunk
 
 # latex
@@ -20,7 +21,7 @@ thesis/*.xmpi
 
 # code
 code/*logs
-code/build
+code/build*
 code/src/test.cpp
 code/src/test*
 code/instances

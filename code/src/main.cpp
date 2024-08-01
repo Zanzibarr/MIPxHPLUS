@@ -37,11 +37,11 @@ void HPLUS_show_info(const HPLUS_instance* inst) {
     #if HPLUS_VERBOSE >= 100
     const unsigned int nvar = inst -> get_nvar();
     const HPLUS_variable** variables = inst -> get_variables();
-    for (int i = 0; i < nvar; i++) HPLUS_env.logger.print("name(var_%d) = '%s'.", i, variables[i] -> get_name() -> c_str());
-    for (int i = 0; i < nvar; i++) HPLUS_env.logger.print("range(var_%d) = '%d'.", i, variables[i] -> get_range());
-    for (int i = 0; i < nvar; i++){
+    for (unsigned int i = 0; i < nvar; i++) HPLUS_env.logger.print("name(var_%d) = '%s'.", i, variables[i] -> get_name() -> c_str());
+    for (unsigned int i = 0; i < nvar; i++) HPLUS_env.logger.print("range(var_%d) = '%d'.", i, variables[i] -> get_range());
+    for (unsigned int i = 0; i < nvar; i++){
         const std::string* val_names = variables[i] -> get_val_names();
-        for (int j = 0; j < variables[i] -> get_range(); j++)
+        for (unsigned int j = 0; j < variables[i] -> get_range(); j++)
             HPLUS_env.logger.print("name(var_%d[%d]) = '%s'.", i, j, val_names[j].c_str());
     }
     HPLUS_env.logger.print("Bitfield size: %d", inst -> get_bfsize());
@@ -51,7 +51,7 @@ void HPLUS_show_info(const HPLUS_instance* inst) {
     HPLUS_env.logger.print("# actions: %d.", inst -> get_nact());
     #if HPLUS_VERBOSE >= 100
     const HPLUS_action** actions = inst -> get_actions();
-    for (int act_i = 0; act_i < inst -> get_nact(); act_i++) {
+    for (unsigned int act_i = 0; act_i < inst -> get_nact(); act_i++) {
         HPLUS_env.logger.print("pre(act_%d) = '%s'.", act_i, actions[act_i] -> get_pre() -> view().c_str());
         HPLUS_env.logger.print("eff(act_%d) = '%s'.", act_i, actions[act_i] -> get_eff() -> view().c_str());
         HPLUS_env.logger.print("name(act_%d) = '%s'.", act_i, actions[act_i] -> get_name() -> c_str());
@@ -61,10 +61,10 @@ void HPLUS_show_info(const HPLUS_instance* inst) {
 
     HPLUS_env.logger.print(LINE);
 
-    if (HPLUS_INTCHECK) {
-        HPLUS_env.logger.print("Integrity checks enabled.");
-        HPLUS_env.logger.print(LINE);
-    }
+    #if HPLUS_INTCHECK
+    HPLUS_env.logger.print("Integrity checks enabled.");
+    HPLUS_env.logger.print(LINE);
+    #endif
 
     HPLUS_env.logger.print("Time limit: %ds.", HPLUS_env.time_limit);
     HPLUS_env.logger.print(LINE);
@@ -81,11 +81,11 @@ void HPLUS_parse_cli(const int argc, const char** argv) {
 
     std::vector<std::string> unknown_args;
 
-    for (int i = 1; i < argc; i++) {
+    for (unsigned int i = 1; i < argc; i++) {
 
         if (!strcmp(argv[i], HPLUS_CLI_INPUT_FILE_FLAG)) {
             HPLUS_env.infile = HPLUS_INST_DIR"/" + std::string(argv[++i]);
-            struct stat buffer;
+            struct stat buffer{};
             my::assert(stat((HPLUS_env.infile).c_str(), &buffer) == 0,  "Failed to open input file.");
         }
         else if (!strcmp(argv[i], HPLUS_CLI_LOG_FLAG)) HPLUS_env.log = true;
@@ -94,11 +94,11 @@ void HPLUS_parse_cli(const int argc, const char** argv) {
         else if (!strcmp(argv[i], HPLUS_CLI_TIMELIMIT_FLAG)) { my::assert(my::isint(argv[i+1]), "The time limit must be an integer."); HPLUS_env.time_limit = atoi(argv[++i]); }
         else if (!strcmp(argv[i], HPLUS_CLI_ALG_FLAG)) HPLUS_env.alg = argv[++i];
 
-        else unknown_args.push_back(argv[i]);
+        else unknown_args.emplace_back(argv[i]);
 
     }
 
-    for (int i = 0; i < unknown_args.size(); i++) HPLUS_env.logger.print_warn("Unknown command-line option '%s'.", unknown_args[i].c_str());
+    for (const auto & unknown_arg : unknown_args) HPLUS_env.logger.print_warn("Unknown command-line option '%s'.", unknown_arg.c_str());
     if (!unknown_args.empty()) HPLUS_env.logger.raise_error("Exiting due to unknown cli arguments.");
 
     my::assert(!HPLUS_env.infile.empty(), "No input file specified.");
@@ -160,7 +160,7 @@ int main(const int argc, const char** argv) {
 
     HPLUS_parse_cli(argc, argv);
 
-    HPLUS_instance* inst = new HPLUS_instance(HPLUS_env.infile);
+    auto* inst = new HPLUS_instance(HPLUS_env.infile);
 
     #if HPLUS_VERBOSE >= 1
     HPLUS_show_info(inst);

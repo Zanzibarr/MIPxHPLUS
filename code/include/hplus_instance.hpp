@@ -1,5 +1,5 @@
-#ifndef _HPLUS_INST_H
-#define _HPLUS_INST_H
+#ifndef HPLUS_INST_H
+#define HPLUS_INST_H
 
 #include "utils.hpp"
 
@@ -16,7 +16,7 @@ class HPLUS_variable {
          * @param name: The name of the variable
          * @param val_names: A list of name for each value the variable can be in
          */
-        HPLUS_variable(const unsigned int range, const std::string name, const std::vector<std::string> val_names);
+        HPLUS_variable(unsigned int range, const std::string& name, const std::vector<std::string>& val_names);
 
         ~HPLUS_variable();
 
@@ -57,7 +57,7 @@ class HPLUS_action  {
          * @param cost: Cost of the action
          * @param name: Name of the action
          */
-        HPLUS_action(my::BitField* pre_bf, my::BitField* eff_bf, const unsigned int cost, const std::string name);
+        HPLUS_action(my::BitField* pre_bf, my::BitField* eff_bf, unsigned int cost, const std::string& name);
 
         ~HPLUS_action();
 
@@ -114,9 +114,8 @@ class HPLUS_instance {
          * Create an HPLUS_instance from a file produced by the fast downward translator
          * 
          * @param file_path: Path of the file where to read the instance from
-         * @param problem: Pointer to the HPLUS_problem to build from this domain
          */
-        HPLUS_instance(const std::string file_path);
+        explicit HPLUS_instance(const std::string& file_path);
 
         ~HPLUS_instance();
 
@@ -172,15 +171,13 @@ class HPLUS_instance {
         /**
          * Compare a solution found with the best found so far and stores it if it's the new best one
          * @param solution: ordered sequence of actions (represented by their index in the domain) that represent the solution found
-         * @param nact: number of actions this solution has
          * @param cost: cost of this solution
          */
-        void update_best_solution(const std::vector<unsigned int> solution, const unsigned int cost);
+        void update_best_solution(const std::vector<unsigned int>& solution, unsigned int cost);
 
         /**
          * Get the best solution found so far
          * @param solution: Vector where to save the solution into (cleared and resized)
-         * @param nact: Integer where to save the number of actions into
          * @param cost: Integer where to save the cost into
          */
         void get_best_solution(std::vector<unsigned int>* solution, unsigned int* cost) const;
@@ -188,7 +185,7 @@ class HPLUS_instance {
         /**
          * Prints the best solution found so far
         */
-        void print_best_sol();
+        void print_best_sol() const;
 
         /**
          * @return The cost of the best solution found so far

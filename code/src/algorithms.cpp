@@ -1,5 +1,12 @@
 #include "../include/algorithms.hpp"
 
+#include <functional>
+#include <algorithm>
+#include <csignal>
+#include <unistd.h>
+#include <numeric>
+#include <cplex.h>
+
 // ##################################################################### //
 // ############################### CPLEX ############################### //
 // ##################################################################### //
@@ -51,7 +58,7 @@ void HPLUS_cpx_close(CPXENVptr* env, CPXLPptr* lp) {
  * @param env: Pointer to the cplex environment
  * @param lp: Pointer to the cplex linear problem
 */
-void HPLUS_parse_cplex_status(CPXENVptr* env, CPXLPptr* lp) {
+void HPLUS_parse_cplex_status(const CPXENVptr* env, const CPXLPptr* lp) {
 
     switch ( int cpxstatus = CPXgetstat(*env, *lp) ) {
         case CPXMIP_TIME_LIM_FEAS:      // exceeded time limit, found intermediate solution
@@ -94,11 +101,11 @@ void HPLUS_parse_cplex_status(CPXENVptr* env, CPXLPptr* lp) {
  * @param lp: Pointer to the cplex linear problem
  * @param inst: Instance to represent through the model
 */
-void HPLUS_cpx_build_imai(CPXENVptr* env, CPXLPptr* lp, HPLUS_instance* inst) {
+void HPLUS_cpx_build_imai(const CPXENVptr* env, const CPXLPptr* lp, const HPLUS_instance* inst) {
 
-    unsigned int nvar = inst -> get_nvar();
-    unsigned int nact = inst -> get_nact();
-    unsigned int bfsize = inst -> get_bfsize();
+    const unsigned int nvar = inst -> get_nvar();
+    const unsigned int nact = inst -> get_nact();
+    const unsigned int bfsize = inst -> get_bfsize();
     const HPLUS_action** actions = inst -> get_actions();
     const HPLUS_variable** variables = inst -> get_variables();
     const my::BitField* istate = inst -> get_istate();
@@ -116,7 +123,7 @@ void HPLUS_cpx_build_imai(CPXENVptr* env, CPXLPptr* lp, HPLUS_instance* inst) {
 
     auto lambda_add_acts = [nact, actions, &objs, &lbs, &ubs, &types, &names]() {
 
-        for (int i = 0; i < nact; i++) {
+        for (unsigned int i = 0; i < nact; i++) {
             objs[i] = actions[i] -> get_cost();
             lbs[i] = 0.0;
             ubs[i] = 1.0;
@@ -128,7 +135,7 @@ void HPLUS_cpx_build_imai(CPXENVptr* env, CPXLPptr* lp, HPLUS_instance* inst) {
 
     auto lambda_add_tacts = [nact, &objs, &lbs, &ubs, &types, &names]() {
 
-        for (int i = 0; i < nact; i++) {
+        for (unsigned int i = 0; i < nact; i++) {
             objs[i] = 0;
             lbs[i] = 0.0;
             ubs[i] = nact-1;
@@ -140,7 +147,7 @@ void HPLUS_cpx_build_imai(CPXENVptr* env, CPXLPptr* lp, HPLUS_instance* inst) {
 
     auto lambda_add_vars = [nvar, variables, istate, gstate, &objs, &lbs, &ubs, &types, &names]() {
 
-        for (int i = 0, count = 0; i < nvar; i++) for (int j = 0; j < variables[i] -> get_range(); j++) {
+        for (unsigned int i = 0, count = 0; i < nvar; i++) for (unsigned int j = 0; j < variables[i] -> get_range(); j++) {
             objs[i] = 0;
             if (istate -> operator[](count) || gstate -> operator[](count)) lbs[count] = 1.0;  // fix variables of initial and goal state to 1
             else lbs[count] = 0.0;
@@ -154,7 +161,7 @@ void HPLUS_cpx_build_imai(CPXENVptr* env, CPXLPptr* lp, HPLUS_instance* inst) {
 
     auto lambda_add_tvars = [nvar, nact, variables, &objs, &lbs, &ubs, &types, &names]() {
 
-        for (int i = 0, count = 0; i < nvar; i++) for (int j = 0; j < variables[i] -> get_range(); j++) {
+        for (unsigned int i = 0, count = 0; i < nvar; i++) for (unsigned int j = 0; j < variables[i] -> get_range(); j++) {
             objs[i] = 0;
             lbs[count] = 1;
             ubs[count] = nact;
@@ -167,9 +174,9 @@ void HPLUS_cpx_build_imai(CPXENVptr* env, CPXLPptr* lp, HPLUS_instance* inst) {
 
     auto lambda_add_fa = [nvar, nact, variables, actions, &sizes, &nfa, &objs, &lbs, &ubs, &types, &names]() {
 
-        for (int c = 0; c < nact; c++) {
+        for (unsigned int c = 0; c < nact; c++) {
             const my::BitField* eff = actions[c] -> get_eff();
-            for (int i = 0, k = 0; i < nvar; k += variables[i] -> get_range(), i++) for (int j = 0; j < variables[i] -> get_range(); j++) {
+            for (unsigned int i = 0, k = 0; i < nvar; k += variables[i] -> get_range(), i++) for (unsigned int j = 0; j < variables[i] -> get_range(); j++) {
                 if (!eff -> operator[](k + j)) continue;    // create a variable only for the effects of the action
                 objs[nfa] = 0;
                 lbs[nfa] = 0.0;
@@ -185,20 +192,20 @@ void HPLUS_cpx_build_imai(CPXENVptr* env, CPXLPptr* lp, HPLUS_instance* inst) {
 
     std::vector<std::function<void()>> populate_variables = {lambda_add_acts, lambda_add_tacts, lambda_add_vars, lambda_add_tvars, lambda_add_fa};
 
-    for (int i = 0; i < 5; i++) {
+    for (unsigned int i = 0; i < 5; i++) {
 
         objs = new double[sizes[i]];
         lbs = new double[sizes[i]];
         ubs = new double[sizes[i]];
         types = new char[sizes[i]];
         names = new char*[sizes[i]];
-        for (int j = 0; j < sizes[i]; j++) names[j] = new char[20];
+        for (unsigned int j = 0; j < sizes[i]; j++) names[j] = new char[20];
 
         populate_variables[i]();
 
         MYASSERT(!CPXnewcols(*env, *lp, sizes[i], objs, lbs, ubs, types, names));
 
-        for (int j = 0; j < ((i == 4) ? bfsize*nact : sizes[i]); j++) { delete[] names[j]; }
+        for (unsigned int j = 0; j < ((i == 4) ? bfsize*nact : sizes[i]); j++) { delete[] names[j]; }
         MYDELL(names);
         MYDELL(types);
         MYDELL(ubs);
@@ -213,7 +220,6 @@ void HPLUS_cpx_build_imai(CPXENVptr* env, CPXLPptr* lp, HPLUS_instance* inst) {
     unsigned int var_start = tact_start + nact;
     unsigned int tvar_start = var_start + bfsize;
     unsigned int fa_start = tvar_start + bfsize;
-    unsigned int cpx_ncols = fa_start + nfa;
 
     // ~~~~~~~ Adding CPLEX constraints ~~~~~~ //
 
@@ -229,7 +235,7 @@ void HPLUS_cpx_build_imai(CPXENVptr* env, CPXLPptr* lp, HPLUS_instance* inst) {
     std::vector<int> nnz(bfsize);
     std::vector<double> rhs(bfsize);
 
-    for (int i = 0; i < bfsize; i++) {
+    for (unsigned int i = 0; i < bfsize; i++) {
         ind[i] = new int[nact + 1];
         val[i] = new double[nact + 1];
         nnz[i] = 0;
@@ -281,9 +287,9 @@ void HPLUS_cpx_build_imai(CPXENVptr* env, CPXLPptr* lp, HPLUS_instance* inst) {
         }
     }
 
-    for (int i = 0; i < bfsize; i++) MYASSERT(!CPXaddrows(*env, *lp, 0, 1, nnz[i], &rhs[i], &sensee, &begin, ind[i], val[i], nullptr, nullptr));
+    for (unsigned int i = 0; i < bfsize; i++) MYASSERT(!CPXaddrows(*env, *lp, 0, 1, nnz[i], &rhs[i], &sensee, &begin, ind[i], val[i], nullptr, nullptr));
 
-    for (int i = 0; i < bfsize; i++) {
+    for (unsigned int i = 0; i < bfsize; i++) {
         MYDELL(ind[i]);
         MYDELL(val[i]);
     }
@@ -301,29 +307,29 @@ void HPLUS_cpx_build_imai(CPXENVptr* env, CPXLPptr* lp, HPLUS_instance* inst) {
  * @param lp: Pointer to the cplex linear problem
  * @param inst: Pointer to the current instance
 */
-void HPLUS_store_imai_sol(CPXENVptr* env, CPXLPptr* lp, HPLUS_instance* inst) {
+void HPLUS_store_imai_sol(const CPXENVptr* env, const CPXLPptr* lp, HPLUS_instance* inst) {
 
     // get cplex result (interested only in the sequence of actions used and its ordering)
     unsigned int nact = inst -> get_nact();
-    double* xstar = new double[2 * nact];
+    auto* xstar = new double[2 * nact];
     MYASSERT(!CPXgetx(*env, *lp, xstar, 0, 2 * nact - 1));
 
     // convert to std collections for easier parsing
-    std::vector<std::pair<double, int>> cpx_result;
-    for (int i = 0; i < nact; i++) if (xstar[i] > .5) cpx_result.push_back(std::pair<double, int>(xstar[nact+i], i));
+    std::vector<std::pair<double, unsigned int>> cpx_result;
+    for (unsigned int i = 0; i < nact; i++) if (xstar[i] > .5) cpx_result.emplace_back(xstar[nact+i], i);
     MYDELL(xstar);
 
     // sort cpx_result based on actions timestamps
-    std::sort(cpx_result.begin(), cpx_result.end(),
-        [](const std::pair<double, int> &x, const std::pair<double, int> &y) {
+    std::ranges::sort(cpx_result.begin(), cpx_result.end(),
+        [](const std::pair<double, unsigned int> &x, const std::pair<double, unsigned int> &y) {
             return x.first < y.first;
         }
     );
 
     // get solution from sorted cpx_result
     std::vector<unsigned int> solution;
-    std::transform(cpx_result.begin(), cpx_result.end(), std::back_inserter(solution),
-        [](const std::pair<double, int> &p) {
+    std::ranges::transform(cpx_result.begin(), cpx_result.end(), std::back_inserter(solution),
+        [](const std::pair<double, unsigned int> &p) {
             return p.second;
         }
     );
@@ -332,7 +338,7 @@ void HPLUS_store_imai_sol(CPXENVptr* env, CPXLPptr* lp, HPLUS_instance* inst) {
     const HPLUS_action** actions = inst -> get_actions();
     inst -> update_best_solution(solution,
         std::accumulate(solution.begin(), solution.end(), 0,
-            [&actions](int acc, int index) {
+            [&actions](const unsigned int acc, const unsigned int index) {
                 return acc + actions[index] -> get_cost();
             }
         )

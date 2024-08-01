@@ -9,8 +9,8 @@ HPLUS_Statistics HPLUS_stats;
 
 my::BitField::BitField(unsigned int size) {
 
-    #if INTCHECKS
-    ASSERT(size > 0);
+    #if HPLUS_INTCHECK
+    MYASSERT(size > 0);
     #endif
     this -> len = size; this -> field = new char[(size+7)/8]();
 
@@ -18,19 +18,19 @@ my::BitField::BitField(unsigned int size) {
 
 my::BitField::~BitField() { MYDELL(this->field); }
 
-void my::BitField::set(const unsigned int i) {
+void my::BitField::set(const unsigned int i) const {
     
-    #if INTCHECKS
-    ASSERT(i < this -> len);
+    #if HPLUS_INTCHECK
+    MYASSERT(i < this -> len);
     #endif
     this -> field[i/8] |= (1 << i%8);
     
 }
 
-void my::BitField::unset(const unsigned int i) {
+void my::BitField::unset(const unsigned int i) const {
     
-    #if INTCHECKS
-    ASSERT(i < this -> len);
+    #if HPLUS_INTCHECK
+    MYASSERT(i < this -> len);
     #endif
     this -> field[i/8] &= ~(1 << i%8);
     
@@ -38,8 +38,8 @@ void my::BitField::unset(const unsigned int i) {
 
 bool my::BitField::operator[](const unsigned int i) const {
     
-    #if INTCHECKS
-    ASSERT(i < this -> len);
+    #if HPLUS_INTCHECK
+    MYASSERT(i < this -> len);
     #endif
     return this -> field[i/8] & (1 << i%8);
     
@@ -47,26 +47,35 @@ bool my::BitField::operator[](const unsigned int i) const {
 
 my::BitField my::BitField::intersects(const BitField* bf) const {
 
-    #if INTCHECKS
-    ASSERT(this -> len == bf.len);
+    #if HPLUS_INTCHECK
+    MYASSERT(bf != nullptr);
+    MYASSERT(this -> len == bf -> len);
     #endif
     BitField ret = BitField(this -> len);
-    for (int i = 0; i < this -> len; i++) if (this -> operator[](i) && bf -> operator[](i)) ret.set(i);
+    for (unsigned int i = 0; i < this -> len; i++) if (this -> operator[](i) && bf -> operator[](i)) ret.set(i);
     return ret;
 
 }
 
 bool my::BitField::equals(const BitField* bf) const {
 
-    #if INTCHECKS
-    ASSERT(this -> len == bf.len);
+    #if HPLUS_INTCHECK
+    MYASSERT(bf != nullptr);
+    MYASSERT(this -> len == bf -> len);
     #endif
-    for (int i = 0; i < (this -> len + 7) / 8; i++) if (this -> field[i] != bf -> field[i]) return false;
+    for (unsigned int i = 0; i < (this -> len + 7) / 8; i++) if (this -> field[i] != bf -> field[i]) return false;
     return true;
 
 }
 
-bool my::BitField::validate(const BitField* bf) const { return this -> intersects(bf).equals(bf); }
+bool my::BitField::validate(const BitField* bf) const {
+
+    #if HPLUS_INTCHECK
+    MYASSERT(bf != nullptr);
+    #endif
+    return this -> intersects(bf).equals(bf);
+
+}
 
 
 unsigned int my::BitField::size() const { return this -> len; }
@@ -74,7 +83,7 @@ unsigned int my::BitField::size() const { return this -> len; }
 std::string my::BitField::view() const {
 
     std::string ret;
-    for (int i = 0; i < this -> len; i++) ret.append(std::to_string(this -> operator[](i)));
+    for (unsigned int i = 0; i < this -> len; i++) ret.append(std::to_string(this -> operator[](i)));
     return ret;
 
 }
@@ -83,7 +92,7 @@ std::string my::BitField::view() const {
 // ############################### LOGGER ############################## //
 // ##################################################################### //
 
-void my::Logger::_format_output(const char* str, va_list ptr, FILE* log_file, const bool show_time) const {
+void my::Logger::_format_output(const char* str, va_list ptr, FILE* log_file, const bool show_time) {
 
     if (show_time) {
         double elapsed_time = HPLUS_env.get_time();
@@ -97,7 +106,7 @@ void my::Logger::_format_output(const char* str, va_list ptr, FILE* log_file, co
     int k = 0; 
 
     // parsing the formatted string 
-    for (int i = 0; str[i] != '\0'; i++) { 
+    for (int i = 0; str[i] != '\0'; i++) {
 
         token[k++] = str[i];
 
@@ -113,7 +122,7 @@ void my::Logger::_format_output(const char* str, va_list ptr, FILE* log_file, co
             } else { 
 
                 int j = 1; 
-                char ch1 = 0; 
+                char ch1;
 
                 // this loop is required when printing formatted value like 0.2f, when ch1='f' loop ends 
                 while ((ch1 = token[j++]) < 58) {}
@@ -194,7 +203,7 @@ void my::Logger::_format_output(const char* str, va_list ptr, FILE* log_file, co
     }
 }
 
-my::Logger::Logger(const std::string run_title, const std::string log_name) {
+my::Logger::Logger(const std::string& run_title, const std::string& log_name) {
 
     this -> log_file_name = log_name;
     if (HPLUS_env.log)  {
@@ -212,7 +221,7 @@ void my::Logger::print(const char* str, ...) const {
     #endif
 
     // logging file
-    FILE* log_file;
+    FILE* log_file = nullptr;
     if (HPLUS_env.log) log_file = fopen(this -> log_file_name.c_str(), "a");
 
     // initializing list pointer
@@ -239,7 +248,7 @@ void my::Logger::print_info(const char* str, ...) const {
     #endif
 
     // logging file
-    FILE* log_file;
+    FILE* log_file = nullptr;
     if (HPLUS_env.log) log_file = fopen(this -> log_file_name.c_str(), "a");
 
     // initializing list pointer 
@@ -269,7 +278,7 @@ void my::Logger::print_warn(const char* str, ...) const {
     #endif
 
     // logging file
-    FILE* log_file;
+    FILE* log_file = nullptr;
     if (HPLUS_env.log) log_file = fopen(this -> log_file_name.c_str(), "a");
 
     // initializing list pointer 
@@ -295,7 +304,7 @@ void my::Logger::print_warn(const char* str, ...) const {
 void my::Logger::raise_error(const char* str, ...) const {
 
     // logging file
-    FILE* log_file;
+    FILE* log_file = nullptr;
     if (HPLUS_env.log) log_file = fopen(this -> log_file_name.c_str(), "a");
 
     // initializing list pointer 
@@ -344,28 +353,28 @@ void HPLUS_Statistics::print() const {
 // ############################ MY NAMESPACE ########################### //
 // ##################################################################### //
 
-void my::split(const std::string str, std::vector<std::string>* tokens, const char del) {
+void my::split(const std::string& str, std::vector<std::string>* tokens, const char del) {
 
-    (*tokens).clear();
+    tokens -> clear();
 
     std::string tmp;
     for (int i = 0; i < str.length(); i++) {
         if (str[i] == del) {
-            if (tmp != "") (*tokens).push_back(tmp);
+            if (!tmp.empty()) tokens -> push_back(tmp);
             tmp = "";
         } else tmp += str[i];
     }
-    if (tmp != "") (*tokens).push_back(tmp);
+    if (!tmp.empty()) tokens -> push_back(tmp);
 
 }
 
-void my::assert(const bool condition, const std::string message) { if (!condition) HPLUS_env.logger.raise_error("%s - Assert check failed.", message.c_str()); }
+void my::assert(const bool condition, const std::string& message) { if (!condition) HPLUS_env.logger.raise_error("%s - Assert check failed.", message.c_str()); }
 
-bool my::isint(const std::string str, const int from, const int to) {
+bool my::isint(const std::string& str, const int from, const int to) {
 
     try {
         int num = stoi(str);
         return num >= from && num <= to;
-    } catch (std::invalid_argument) { return false; }
+    } catch (std::invalid_argument&) { return false; }
 
 }

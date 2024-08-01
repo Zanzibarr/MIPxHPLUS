@@ -1,25 +1,18 @@
-#ifndef _UTILS_H
-#define _UTILS_H
+#ifndef UTILS_H
+#define UTILS_H
 
 // ##################################################################### //
 // ############################## INCLUDE ############################## //
 // ##################################################################### //
 
 #include <iostream>
-#include <cstring>
-#include <fstream>
 #include <string>
 #include <vector>
 #include <chrono>
 #include <climits>
-#include <functional>
-#include <algorithm>
-#include <stdarg.h>
-#include <signal.h>
+#include <cstdarg>
 #include <sys/stat.h>
-#include <unistd.h>
-#include <numeric>
-#include <cplex.h>
+#include <fstream>
 
 // ##################################################################### //
 // ######################### PATHS AND FOLDERS ######################### //
@@ -87,7 +80,7 @@ namespace my {
              *
              * @param size: number of bits the BitField has
              */
-            BitField(unsigned int size);
+            explicit BitField(unsigned int size);
 
             /**
              * Destructor of the BitField
@@ -99,14 +92,14 @@ namespace my {
              *
              * @param i: Index of the bit to set to 1
              */
-            void set(const unsigned int i);
+            void set(unsigned int i) const;
 
             /**
              * Set the i th bit to 0
              *
              * @param i: Index of the bit to set to 0
              */
-            void unset(const unsigned int i);
+            void unset(unsigned int i) const;
 
             /**
              * Access the i th bit
@@ -114,7 +107,7 @@ namespace my {
              * @param i: Index of the bit to access
              * @return The value of the bit in i th position
              */
-            bool operator[](const unsigned int i) const;
+            bool operator[](unsigned int i) const;
 
             /**
              * Bitwise and of two BitFields
@@ -170,9 +163,9 @@ namespace my {
              * @param run_title Title of the run to be logged
              * @param log_name (optional, def = default.log) Name of the log file
              */
-            Logger(const std::string run_title, const std::string log_name = HPLUS_DEF_LOG_FILE);
+            explicit Logger(const std::string& run_title, const std::string& log_name = HPLUS_DEF_LOG_FILE);
 
-            Logger() {};
+            Logger() = default;
 
             /**
              * Code executes only if HPLUS_VERBOSE != 0
@@ -200,9 +193,13 @@ namespace my {
 
         private:
             std::string log_file_name;
-            void _format_output(const char* str, va_list ptr, FILE* log_file, const bool show_time = true) const;
+            static void _format_output(const char* str, va_list ptr, FILE* log_file, bool show_time = true);
 
     };
+
+    // ##################################################################### //
+    // ############################### UTILS ############################### //
+    // ##################################################################### //
 
     enum status {
         OPT = 0,
@@ -215,23 +212,19 @@ namespace my {
     };
 
     /**
-     * Utils functions
-     */
-
-    /**
      * Splits a string into a vector of strings based on the specified delimiter
      */
-    void split(const std::string str, std::vector<std::string>* tokens, const char del);
+    void split(const std::string& str, std::vector<std::string>* tokens, char del);
 
     /**
      * Interrupts the execution of the code if the condition is false
      */
-    void assert(bool condition, const std::string message);
+    void assert(bool condition, const std::string& message);
 
     /**
      * Asserts that a string is a number (if specified also checks the range (both inclusive))
      */
-    bool isint(const std::string str, const int from = INT_MIN, const int to = INT_MAX);
+    bool isint(const std::string& str, const int from = INT_MIN, const int to = INT_MAX);
 
 }
 
@@ -266,7 +259,7 @@ extern struct HPLUS_Environment {
     // Algorithm tools
 
     std::string alg;
-    int time_limit;
+    unsigned int time_limit;
 
     // Time control
 
