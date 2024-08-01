@@ -113,113 +113,87 @@ void HPLUS_cpx_build_imai(const CPXENVptr* env, const CPXLPptr* lp, const HPLUS_
 
     // ~~~~~~~~ Adding CPLEX variables ~~~~~~~ //
 
-    double* objs;
-    double* lbs;
-    double* ubs;
-    char* types;
-    char** names;
-    unsigned int nfa = 0;
-    unsigned int sizes[5] = {nact, nact, bfsize, bfsize, bfsize * nact};
+    unsigned int maxcpxcols = 2 * nact + 2 * bfsize + nact * bfsize;
+    double* objs = new double[maxcpxcols];
+    double* lbs = new double[maxcpxcols];
+    double* ubs = new double[maxcpxcols];
+    char* types = new char[maxcpxcols];
+    char** names = new char*[maxcpxcols];
+    for (unsigned int i = 0; i < maxcpxcols; i++) names[i] = new char[20];
 
-    auto lambda_add_acts = [nact, actions, &objs, &lbs, &ubs, &types, &names]() {
+    unsigned int curr_col = 0;
 
-        for (unsigned int i = 0; i < nact; i++) {
-            objs[i] = actions[i] -> get_cost();
-            lbs[i] = 0.0;
-            ubs[i] = 1.0;
-            types[i] = 'B';
-            snprintf(names[i], 20, "act(%d)", i);
-        }
-
-    };
-
-    auto lambda_add_tacts = [nact, &objs, &lbs, &ubs, &types, &names]() {
-
-        for (unsigned int i = 0; i < nact; i++) {
-            objs[i] = 0;
-            lbs[i] = 0.0;
-            ubs[i] = nact-1;
-            types[i] = 'I';
-            snprintf(names[i], 20, "tact(%d)", i);
-        }
-
-    };
-
-    auto lambda_add_vars = [nvar, variables, istate, gstate, &objs, &lbs, &ubs, &types, &names]() {
-
-        for (unsigned int i = 0, count = 0; i < nvar; i++) for (unsigned int j = 0; j < variables[i] -> get_range(); j++) {
-            objs[i] = 0;
-            if (istate -> operator[](count) || gstate -> operator[](count)) lbs[count] = 1.0;  // fix variables of initial and goal state to 1
-            else lbs[count] = 0.0;
-            ubs[count] = 1.0;
-            types[count] = 'B';
-            snprintf(names[count], 20, "var(%d_%d)", i, j);
-            count++;
-        }
-
-    };
-
-    auto lambda_add_tvars = [nvar, nact, variables, &objs, &lbs, &ubs, &types, &names]() {
-
-        for (unsigned int i = 0, count = 0; i < nvar; i++) for (unsigned int j = 0; j < variables[i] -> get_range(); j++) {
-            objs[i] = 0;
-            lbs[count] = 1;
-            ubs[count] = nact;
-            types[count] = 'I';
-            snprintf(names[count], 20, "tvar(%d_%d)", i, j);
-            count++;
-        }
-
-    };
-
-    auto lambda_add_fa = [nvar, nact, variables, actions, &sizes, &nfa, &objs, &lbs, &ubs, &types, &names]() {
-
-        for (unsigned int c = 0; c < nact; c++) {
-            const my::BitField* eff = actions[c] -> get_eff();
-            for (unsigned int i = 0, k = 0; i < nvar; k += variables[i] -> get_range(), i++) for (unsigned int j = 0; j < variables[i] -> get_range(); j++) {
-                if (!eff -> operator[](k + j)) continue;    // create a variable only for the effects of the action
-                objs[nfa] = 0;
-                lbs[nfa] = 0.0;
-                ubs[nfa] = 1.0;
-                types[nfa] = 'B';
-                snprintf(names[nfa], 20, "fa(%d_%d_%d)", c, i, j);
-                nfa++;
-            }
-        }
-        sizes[4] = nfa;
-
-    };
-
-    std::vector<std::function<void()>> populate_variables = {lambda_add_acts, lambda_add_tacts, lambda_add_vars, lambda_add_tvars, lambda_add_fa};
-
-    for (unsigned int i = 0; i < 5; i++) {
-
-        objs = new double[sizes[i]];
-        lbs = new double[sizes[i]];
-        ubs = new double[sizes[i]];
-        types = new char[sizes[i]];
-        names = new char*[sizes[i]];
-        for (unsigned int j = 0; j < sizes[i]; j++) names[j] = new char[20];
-
-        populate_variables[i]();
-
-        MYASSERT(!CPXnewcols(*env, *lp, sizes[i], objs, lbs, ubs, types, names));
-
-        for (unsigned int j = 0; j < ((i == 4) ? bfsize*nact : sizes[i]); j++) { delete[] names[j]; }
-        MYDELL(names);
-        MYDELL(types);
-        MYDELL(ubs);
-        MYDELL(lbs);
-        MYDELL(objs);
-
+    // actions
+    unsigned int act_start = curr_col;
+    for (unsigned int i = 0; i < nact; i++) {
+        objs[curr_col + i] = actions[i] -> get_cost();
+        lbs[curr_col + i] = 0.0;
+        ubs[curr_col + i] = 1.0;
+        types[curr_col + i] = 'B';
+        snprintf(names[curr_col + i], 20, "act(%d)", i);
     }
+    curr_col += nact;
 
-    // index at which each group of variables starts
-    unsigned int act_start = 0;
-    unsigned int tact_start = nact;
-    unsigned int var_start = tact_start + nact;
-    unsigned int tvar_start = var_start + bfsize;
-    unsigned int fa_start = tvar_start + bfsize;
+    // action timestamps
+    unsigned int tact_start = curr_col;
+    for (unsigned int i = 0; i < nact; i++) {
+        objs[curr_col + i] = 0;
+        lbs[curr_col + i] = 0.0;
+        ubs[curr_col + i] = nact-1;
+        types[curr_col + i] = 'I';
+        snprintf(names[curr_col + i], 20, "tact(%d)", i);
+    }
+    curr_col += nact;
+
+    // variables
+    unsigned int var_start = curr_col;
+    for (unsigned int i = 0, count = 0; i < nvar; i++) for (unsigned int j = 0; j < variables[i] -> get_range(); j++, count++) {
+        objs[curr_col + count] = 0;
+        lbs[curr_col + count] = (istate -> operator[](count) || gstate -> operator[](count)) ? 1.0 : 0.0;  // fix variables of initial and goal state to 1
+        ubs[curr_col + count] = 1.0;
+        types[curr_col + count] = 'B';
+        snprintf(names[curr_col + count], 20, "var(%d_%d)", i, j);
+    }
+    curr_col += bfsize;
+
+    // variable timestamps
+    unsigned int tvar_start = curr_col;
+    for (unsigned int i = 0, count = 0; i < nvar; i++) for (unsigned int j = 0; j < variables[i] -> get_range(); j++, count++) {
+        objs[curr_col + count] = 0;
+        lbs[curr_col + count] = 1;
+        ubs[curr_col + count] = nact;
+        types[curr_col + count] = 'I';
+        snprintf(names[curr_col + count], 20, "tvar(%d_%d)", i, j);
+    }
+    curr_col += bfsize;
+
+    // first archievers
+    unsigned int nfa = 0;
+    unsigned int fa_start = curr_col;
+    for (unsigned int c = 0; c < nact; c++) {
+        const my::BitField* eff = actions[c] -> get_eff();
+        for (unsigned int i = 0, k = 0; i < nvar; k += variables[i] -> get_range(), i++) for (unsigned int j = 0; j < variables[i] -> get_range(); j++) {
+            if (!eff -> operator[](k + j)) continue;    // create a variable only for the effects of the action
+            objs[curr_col + nfa] = 0;
+            lbs[curr_col + nfa] = 0.0;
+            ubs[curr_col + nfa] = 1.0;
+            types[curr_col + nfa] = 'B';
+            snprintf(names[curr_col + nfa], 20, "fa(%d_%d_%d)", c, i, j);
+            nfa++;
+        }
+    }
+    curr_col += nfa;
+
+    MYASSERT(curr_col <= maxcpxcols);
+
+    MYASSERT(!CPXnewcols(*env, *lp, curr_col, objs, lbs, ubs, types, names));
+
+    for (unsigned int i = 0; i < maxcpxcols; i++) delete[] names[i];
+    MYDELL(names);
+    MYDELL(types);
+    MYDELL(ubs);
+    MYDELL(lbs);
+    MYDELL(objs);
 
     // ~~~~~~~ Adding CPLEX constraints ~~~~~~ //
 
