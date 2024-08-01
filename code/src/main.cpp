@@ -1,6 +1,9 @@
 #include "../include/hplus_instance.hpp"
 #include "../include/algorithms.hpp"
 
+#include <cstring>
+#include <csignal>
+
 void signal_callback_handler(const int signum) {
 
     HPLUS_env.logger.print("\n%s", LINE);
