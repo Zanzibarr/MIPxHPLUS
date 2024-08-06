@@ -14,9 +14,6 @@
 
 /**
  * Create the cplex env and lp
- *
- * @param env: Pointer to the cplex environment
- * @param lp: Pointer to the cplex linear problem
 */
 void HPLUS_cpx_init(CPXENVptr& env, CPXLPptr& lp) {
 
@@ -42,9 +39,6 @@ void HPLUS_cpx_init(CPXENVptr& env, CPXLPptr& lp) {
 
 /**
  * Delete the cplex env and lp
- *
- * @param env: Pointer to the cplex environment
- * @param lp: Pointer to the cplex linear problem
 */
 void HPLUS_cpx_close(CPXENVptr& env, CPXLPptr& lp) {
 
@@ -55,9 +49,6 @@ void HPLUS_cpx_close(CPXENVptr& env, CPXLPptr& lp) {
 
 /**
  * Parse cplex status and stores it into the HPLUS_env global variable
- *
- * @param env: Pointer to the cplex environment
- * @param lp: Pointer to the cplex linear problem
 */
 void HPLUS_parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp) {
 
@@ -96,11 +87,7 @@ void HPLUS_parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp) {
 // ##################################################################### //
 
 /**
- * Build the basic imai model
- *
- * @param env: Pointer to the cplex environment
- * @param lp: Pointer to the cplex linear problem
- * @param inst: Instance to represent through the model
+ * Build the basic Imai model
 */
 void HPLUS_cpx_build_imai(const CPXENVptr& env, const CPXLPptr& lp, const HPLUS_instance& inst) {
 
@@ -309,10 +296,7 @@ void HPLUS_cpx_build_imai(const CPXENVptr& env, const CPXLPptr& lp, const HPLUS_
 }
 
 /**
- * Fact landmarks extracting method from imai's paper
- *
- * @param inst: Instance to solve
- * @param fact_landmarks: Vector to save the landmarks into
+ * Fact landmarks extracting method from Imai's paper
  */
 void HPLUS_imai_extract_fact_landmarks(HPLUS_instance& inst, std::vector<my::BitField>& fact_landmarks) {
 
@@ -321,18 +305,17 @@ void HPLUS_imai_extract_fact_landmarks(HPLUS_instance& inst, std::vector<my::Bit
     fact_landmarks = std::vector<my::BitField>(bfsize);
     const my::BitField& istate = inst.get_istate();
     for (unsigned int p = 0; p < bfsize; p++) {
-        //  using the bit at position bfsize as a flag for "full set of variables"
+        // using the bit at position bfsize as a flag for "full set of variables"
         fact_landmarks[p] = my::BitField(bfsize + 1);
         if (istate[p]) fact_landmarks[p].set(p);                                                                                                    //  L[p] <- {p} for each p in I
         else fact_landmarks[p].set(bfsize);                                                                                                         //  L[p] <- P for each p not in I
     }
 
     const std::vector<HPLUS_action>& actions = inst.get_actions();
-    unsigned int nact = inst.get_nact();
     my::BitField s(inst.get_istate());                                                                                                              //  S <- I
 
     std::deque<int> actions_queue;
-    for (unsigned int i = 0; i < nact; i++)                                                                                                         //  for a in A do
+    for (unsigned int i = 0; i < inst.get_nact(); i++)                                                                                                         //  for a in A do
         if(s.contains(actions[i].get_pre())) actions_queue.push_back(i);                                                                            //      insert a into a FIFO queue if pre(a) is in S
 
     while(!actions_queue.empty()) {                                                                                                                 //  while Q is not empty do
@@ -374,7 +357,7 @@ void HPLUS_imai_extract_fact_landmarks(HPLUS_instance& inst, std::vector<my::Bit
                 if (fact_landmarks[p][bfsize] || !x.equals(fact_landmarks[p])) {                                                                    //          if L[p] != X then
 
                     fact_landmarks[p] = my::BitField(x);                                                                                            //              L[p] <- X
-                    for (unsigned int i = 0; i < nact; i++) if (actions[i].get_pre()[p]) {                                                          //              for a' in A : p in pre(a)
+                    for (unsigned int i = 0; i < inst.get_nact(); i++) if (actions[i].get_pre()[p]) {                                                          //              for a' in A : p in pre(a)
                         if (s.contains(actions[i].get_pre()) && std::find(actions_queue.begin(), actions_queue.end(), i) == actions_queue.end())    //                  if pre(a') is in S and a' is not in Q
                             actions_queue.push_back(i);                                                                                             //                      insert a' into Q
                     }
@@ -389,17 +372,15 @@ void HPLUS_imai_extract_fact_landmarks(HPLUS_instance& inst, std::vector<my::Bit
 }
 
 /**
- * Variable elimination method from Imai's paper
+ * Fix landmarks as explained in Imai's paper
  */
-void HPLUS_imai_variable_elimination(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst) {
+void HPLUS_imai_fix_landmarks(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst, std::vector<my::BitField>& fact_landmarks) {
 
-    const unsigned int bfsize = inst.get_bfsize();
     const unsigned int nact = inst.get_nact();
+    const unsigned int bfsize = inst.get_bfsize();
     const my::BitField& istate = inst.get_istate();
     const my::BitField& gstate = inst.get_gstate();
-    std::vector<my::BitField> fact_landmarks;
-
-    HPLUS_imai_extract_fact_landmarks(inst, fact_landmarks);
+    const std::vector<HPLUS_action>& actions = inst.get_actions();
 
     int nnz_var = 0;
     int* ind_var = new int[bfsize];
@@ -410,38 +391,29 @@ void HPLUS_imai_variable_elimination(CPXENVptr& env, CPXLPptr& lp, HPLUS_instanc
     char* lu_act = new char[nact];
     double* bd_act = new double[nact];
 
-    const std::vector<HPLUS_action>& actions = inst.get_actions();
-
     my::BitField dbact_checker(nact);
     my::BitField dbvar_checker(bfsize);
 
     for (auto i : gstate) {
-        for (unsigned int j = 0; j < bfsize; j++) if (!istate[j]) {                                             // -> if a variable is in the initial state it's already been fixed when building the
+        for (unsigned int j = 0; j < bfsize; j++) if (!istate[j]) {                                             // -->  if a variable is in the initial state it's already been fixed when building the
             if(!dbvar_checker[j] && (fact_landmarks[i][bfsize] || fact_landmarks[i][j])) {                      //      model; also fixing actions that have as an effect variables in the initial
-                // fixing fact landmarks                                                                        //      state means to fix actions that might not have been used in the optimal solution,
-                dbvar_checker.set(j);                                                                           //      since those variables don't need actions to be used to be archieved.
+                                                                                                                //      state means to fix actions that might not have been used in the optimal solution,
+                // fixing fact landmarks                                                                        //      since those variables don't need actions to be used to be archieved.
+                dbvar_checker.set(j);
                 ind_var[nnz_var] = 2 * nact + j;
                 lu_var[nnz_var] = 'L';
                 bd_var[nnz_var++] = 1.0;
-            }
-            int act_cand;
-            bool fix = false;
-            for (unsigned int k = 0, act_cnt = 0; k < nact; k++) {
-                if ((fact_landmarks[i][bfsize] || fact_landmarks[i][j]) && actions[k].get_eff()[j]) {
-                    act_cnt++;
-                    if (act_cnt >= 2) {
-                        fix = false;
-                        break;
-                    }
-                    act_cand = k;
-                    fix = true;
+
+                // fixing act landmarks
+                unsigned int act_count = 0;
+                for (unsigned int k = 0; k < nact && act_count < 2; k++) if (actions[k].get_eff()[j]) {
+                    act_count++;
+                    ind_act[nnz_act] = k;
+                    lu_act[nnz_act] = 'L';
+                    bd_act[nnz_act] = 1.0;
                 }
-            }
-            if (fix && !dbact_checker[act_cand]) {
-                dbact_checker.set(act_cand);
-                ind_act[nnz_act] = act_cand;
-                lu_act[nnz_act] = 'L';
-                bd_act[nnz_act++] = 1.0;
+                if (act_count == 1) dbact_checker.set(ind_act[nnz_act++]);
+
             }
         }
     }
@@ -455,15 +427,28 @@ void HPLUS_imai_variable_elimination(CPXENVptr& env, CPXLPptr& lp, HPLUS_instanc
     MYDELL(bd_var);
     MYDELL(lu_var);
     MYDELL(ind_var);
+}
+
+/**
+ * Variable elimination method from Imai's paper
+ */
+void HPLUS_imai_variable_elimination(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst) {
+
+    std::vector<my::BitField> fact_landmarks;
+
+    // HPLUS_imai_relevance_analysis(inst);
+    HPLUS_imai_extract_fact_landmarks(inst, fact_landmarks);
+    HPLUS_imai_fix_landmarks(env, lp, inst, fact_landmarks);
+    // while (exist a variable that can be eliminated) {
+        // HPLUS_imai_immediate_actions_application(env, lp, inst);
+        // HPLUS_imai_dominated_actions_elimination(env, lp, inst);
+        // HPLUS_imai_relevance_analysis(inst);
+    // }
 
 }
 
 /**
  * Check if this solution is the best one and if so, stores it
- *
- * @param env: Pointer to the cplex environment
- * @param lp: Pointer to the cplex linear problem
- * @param inst: Pointer to the current instance
 */
 void HPLUS_store_imai_sol(const CPXENVptr& env, const CPXLPptr& lp, HPLUS_instance& inst) {
 
@@ -473,21 +458,21 @@ void HPLUS_store_imai_sol(const CPXENVptr& env, const CPXLPptr& lp, HPLUS_instan
     MYASSERT(!CPXgetx(env, lp, xstar, 0, 2 * nact - 1));
 
     // convert to std collections for easier parsing
-    std::vector<std::pair<double, unsigned int>> cpx_result;
-    for (unsigned int i = 0; i < nact; i++) if (xstar[i] > .5) cpx_result.emplace_back(xstar[nact+i], i);
+    std::vector<std::pair<unsigned int, unsigned int>> cpx_result;
+    for (unsigned int i = 0; i < nact; i++) if (xstar[i] > .5) cpx_result.emplace_back((unsigned int)xstar[nact+i], i);
     MYDELL(xstar);
 
     // sort cpx_result based on actions timestamps
-    std::ranges::sort(cpx_result.begin(), cpx_result.end(),
-        [](const std::pair<double, unsigned int> &x, const std::pair<double, unsigned int> &y) {
+    std::sort(cpx_result.begin(), cpx_result.end(),
+        [](const std::pair<unsigned int, unsigned int> &x, const std::pair<unsigned int, unsigned int> &y) {
             return x.first < y.first;
         }
     );
 
     // get solution from sorted cpx_result
     std::vector<unsigned int> solution;
-    std::ranges::transform(cpx_result.begin(), cpx_result.end(), std::back_inserter(solution),
-        [](const std::pair<double, unsigned int> &p) {
+    std::transform(cpx_result.begin(), cpx_result.end(), std::back_inserter(solution),
+        [](const std::pair<unsigned int, unsigned int> &p) {
             return p.second;
         }
     );

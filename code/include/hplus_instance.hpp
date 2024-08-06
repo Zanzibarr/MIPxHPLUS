@@ -11,7 +11,7 @@ class HPLUS_variable {
 
     public:
         
-        explicit HPLUS_variable() {}
+        explicit HPLUS_variable() = default;
 
         /**
          * @param range: The range of values [0, range - 1] this variable can be in
@@ -51,7 +51,7 @@ class HPLUS_action  {
 
     public:
 
-        explicit HPLUS_action() {}
+        explicit HPLUS_action() = default;
 
         /**
          * @param pre_bf: BitField of the precondition state for this action

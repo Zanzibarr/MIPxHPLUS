@@ -64,14 +64,16 @@ bool my::BitField::equals(const BitField& bf) const {
     #if HPLUS_INTCHECK
     MYASSERT(this -> size_ == bf.size_);
     #endif
-    unsigned int i;
-    for (i = 0; i < this -> field_.size() && this -> field_[i] == bf.field_[i]; i++) {}
-    return i == this -> field_.size();
+    for (unsigned int i = 0; i < this -> field_.size(); i++)  if (this -> field_[i] != bf.field_[i]) return false;
+    return true;
 
 }
 
 bool my::BitField::contains(const BitField& bf) const {
 
+    #if HPLUS_INTCHECK
+    MYASSERT(this -> size_ == bf.size_);
+    #endif
     for (auto i : bf) if (!this -> operator[](i)) return false;
     return true;
 

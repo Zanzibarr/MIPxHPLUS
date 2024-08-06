@@ -140,39 +140,39 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
 
     // * version section
     std::getline(*ifs, line);   // begin_version
-    MYASSERT(line == "begin_version");
+    my::assert(line == "begin_version", "Corrupted file.");
     std::getline(*ifs, line);   // version_number
-    MYASSERT(my::isint(line));
+    my::assert(my::isint(line), "Corrupted file.");
     this -> version_ = std::stoi(line);
     std::getline(*ifs, line);   // end_version
-    MYASSERT(line == "end_version");
+    my::assert(line == "end_version", "Corrupted file.");
 
     // * metric section
     std::getline(*ifs, line);   // begin_metric
-    MYASSERT(line == "begin_metric");
+    my::assert(line == "begin_metric", "Corrupted file.");
     std::getline(*ifs, line);   // metric
-    MYASSERT(my::isint(line, 0, 1));
+    my::assert(my::isint(line, 0, 1), "Corrupted file.");
     this -> use_costs_ = stoi(line) == 1;
     std::getline(*ifs, line);   // end_metric
-    MYASSERT(line == "end_metric");
+    my::assert(line == "end_metric", "Corrupted file.");
 
     // * variables section
     HPLUS_env.logger.print_warn("Ignoring axiom layers.");
     std::getline(*ifs, line);   // n_var
-    MYASSERT(my::isint(line, 0));
+    my::assert(my::isint(line, 0), "Corrupted file.");
     this -> n_var_ = std::stoi(line);
     this -> variables_ = std::vector<HPLUS_variable>(this -> n_var_);
     this -> bf_size_ = 0;
     for (unsigned int var_i = 0; var_i < this -> n_var_; var_i++) {
         // process each variable
         std::getline(*ifs, line);   // begin_variable
-        MYASSERT(line == "begin_variable");
+        my::assert(line == "begin_variable", "Corrupted file.");
         std::string name;
         std::getline(*ifs, name);   // variable name
         std::getline(*ifs, line);   // axiom layer (ignored)
         if (line != "-1") HPLUS_env.logger.print_warn("Axiom layer is %s.", line.c_str());
         std::getline(*ifs, line);   // range of variable
-        MYASSERT(my::isint(line, 0));
+        my::assert(my::isint(line, 0), "Corrupted file.");
         unsigned int range = stoi(line);
         this -> bf_size_ += range;
         std::vector<std::string> val_names(range);
@@ -182,92 +182,92 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
         }
         this -> variables_[var_i] = HPLUS_variable(range, name, val_names);
         std::getline(*ifs, line);   // end_variable
-        MYASSERT(line == "end_variable");
+        my::assert(line == "end_variable", "Corrupted file.");
     }
     
     // * mutex section (ignored)
     HPLUS_env.logger.print_warn("Ignoring mutex section.");
     std::getline(*ifs, line);   // number of mutex groups
-    MYASSERT(my::isint(line, 0));
+    my::assert(my::isint(line, 0), "Corrupted file.");
     unsigned int nmgroups = stoi(line);
     for (unsigned int i = 0; i < nmgroups; i++) {
         std::getline(*ifs, line);   // begin_mutex_group
-        MYASSERT(line == "begin_mutex_group");
+        my::assert(line == "begin_mutex_group", "Corrupted file.");
         while (line != "end_mutex_group") {
             std::getline(*ifs, line); // reach end_mutex_group (ignore all content)
-            MYASSERT(line != "begin_state");
+            my::assert(line != "begin_state", "Corrupted file.");
         }
     }
 
     // * initial state section
     std::getline(*ifs, line);   // begin_state
-    MYASSERT(line == "begin_state");
+    my::assert(line == "begin_state", "Corrupted file.");
     this -> initial_state_ = my::BitField(this -> bf_size_);
     for (unsigned int var_i = 0, c = 0; var_i < this -> n_var_; c += this -> variables_[var_i].get_range(), var_i++) {
         std::getline(*ifs, line);   // initial value of var_i
-        MYASSERT(my::isint(line, 0, this -> variables_[var_i].get_range() - 1));
+        my::assert(my::isint(line, 0, this -> variables_[var_i].get_range() - 1), "Corrupted file.");
         unsigned int val = stoi(line);
         this -> initial_state_.set(c + val);
     }
     std::getline(*ifs, line);   // end_state
-    MYASSERT(line == "end_state");
+    my::assert(line == "end_state", "Corrupted file.");
 
     // * goal state section
     std::getline(*ifs, line);   // begin_goal
-    MYASSERT(line == "begin_goal");
+    my::assert(line == "begin_goal", "Corrupted file.");
     this -> goal_state_ = my::BitField(this -> bf_size_);
     std::getline(*ifs, line);   // number of goals
-    MYASSERT(my::isint(line, 0, this -> n_var_));
+    my::assert(my::isint(line, 0, this -> n_var_), "Corrupted file.");
     unsigned int ngoals = stoi(line);
     for (unsigned int i = 0; i < ngoals; i++) {
         // parsing each goal
         std::vector<std::string> tokens;
         std::getline(*ifs, line);   // pair 'variable goal'
         my::split(line, &tokens, ' ');
-        MYASSERT(tokens.size() == 2);
-        MYASSERT(my::isint(tokens[0], 0, this -> n_var_ - 1)); // variable index
+        my::assert(tokens.size() == 2, "Corrupted file.");
+        my::assert(my::isint(tokens[0], 0, this -> n_var_ - 1), "Corrupted file."); // variable index
         unsigned int var = stoi(tokens[0]);
-        MYASSERT(my::isint(tokens[1], 0, this -> variables_[var].get_range() - 1)); // variable goal
+        my::assert(my::isint(tokens[1], 0, this -> variables_[var].get_range() - 1), "Corrupted file."); // variable goal
         unsigned int value = stoi(tokens[1]);
         unsigned int c = 0;
         for (unsigned int j = 0; j < var; c += this -> variables_[j].get_range(), j++) {}
         this -> goal_state_.set(c + value);
     }
     std::getline(*ifs, line);   // end_goal
-    MYASSERT(line == "end_goal");
+    my::assert(line == "end_goal", "Corrupted file.");
 
     // * operator (actions) section
     HPLUS_env.logger.print_warn("Ignoring effect conditions.");
     std::getline(*ifs, line);   // n_act
-    MYASSERT(my::isint(line, 0));
+    my::assert(my::isint(line, 0), "Corrupted file.");
     this -> n_act_ = stoi(line);
     this -> actions_ = std::vector<HPLUS_action>(this -> n_act_);
     for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++) {
         // process each action
         std::getline(*ifs, line);   // begin_operator
-        MYASSERT(line == "begin_operator");
+        my::assert(line == "begin_operator", "Corrupted file.");
         std::getline(*ifs, line);   // symbolic action name
         std::string name = line;
         my::BitField act_pre(this -> bf_size_);
         std::getline(*ifs, line);   // number of prevail conditions
-        MYASSERT(my::isint(line, 0, this -> n_var_));
+        my::assert(my::isint(line, 0, this -> n_var_), "Corrupted file.");
         unsigned int n_pre = stoi(line);
         for (unsigned int pre_i = 0; pre_i < n_pre; pre_i++) {
             // parsing each prevail condition
             std::vector<std::string> tokens;
             std::getline(*ifs, line);   // pair 'variable value'
             my::split(line, &tokens, ' ');
-            MYASSERT(tokens.size() == 2);
-            MYASSERT(my::isint(tokens[0], 0, this -> n_var_ - 1)); // variable index
+            my::assert(tokens.size() == 2, "Corrupted file.");
+            my::assert(my::isint(tokens[0], 0, this -> n_var_ - 1), "Corrupted file."); // variable index
             unsigned int var = stoi(tokens[0]);
-            MYASSERT(my::isint(tokens[1], 0, this -> variables_[var].get_range() - 1)); // variable value
+            my::assert(my::isint(tokens[1], 0, this -> variables_[var].get_range() - 1), "Corrupted file."); // variable value
             unsigned int value = stoi(tokens[1]);
             unsigned int c = 0;
             for (unsigned int i = 0; i < var; c += this -> variables_[i].get_range(), i++) {}
             act_pre.set(c + value);
         }
         std::getline(*ifs, line);   // number of effects
-        MYASSERT(my::isint(line, 0));
+        my::assert(my::isint(line, 0), "Corrupted file.");
         unsigned int n_eff = stoi(line);
         my::BitField act_eff(this -> bf_size_);
         for (unsigned int eff_i = 0; eff_i < n_eff; eff_i++) {
@@ -275,13 +275,13 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
             std::getline(*ifs, line);   // effect line
             std::vector<std::string> tokens;
             my::split(line, &tokens, ' ');
-            MYASSERT(tokens.size() == 4); // not expecting effect conditions
-            MYASSERT(my::isint(tokens[0], 0, 0)); // number of effect conditions (ignored and check to be 0)
-            MYASSERT(my::isint(tokens[1], 0, this -> n_var_ - 1));   // variable affected by the action
+            my::assert(tokens.size() == 4, "This program won't handle effect conditions."); // not expecting effect conditions
+            my::assert(my::isint(tokens[0], 0, 0), "This program won't handle effect conditions."); // number of effect conditions (ignored and check to be 0)
+            my::assert(my::isint(tokens[1], 0, this -> n_var_ - 1), "Corrupted file.");   // variable affected by the action
             unsigned int var = stoi(tokens[1]);
-            MYASSERT(my::isint(tokens[2], -1, this -> variables_[var].get_range() - 1));    // precondition of the variable
+            my::assert(my::isint(tokens[2], -1, this -> variables_[var].get_range() - 1), "Corrupted file.");    // precondition of the variable
             int pre_val = stoi(tokens[2]);
-            MYASSERT(my::isint(tokens[3], 0, this -> variables_[var].get_range() - 1)); // precondition of the variable
+            my::assert(my::isint(tokens[3], 0, this -> variables_[var].get_range() - 1), "Corrupted file."); // effect of the variable
             unsigned int eff_val = stoi(tokens[3]);
             unsigned int c = 0;
             for (unsigned int i = 0; i < var; c += this -> variables_[i].get_range(), i++){}
@@ -289,11 +289,11 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
             act_eff.set(c + eff_val);
         }
         std::getline(*ifs, line);   // action cost
-        MYASSERT(my::isint(line));
+        my::assert(my::isint(line), "Corrupted file.");
         unsigned int cost = 1;
         if (this -> use_costs_) cost = stoi(line);
         std::getline(*ifs, line);   // end_operator
-        MYASSERT(line == "end_operator");
+        my::assert(line == "end_operator", "Corrupted file.");
         this -> actions_[act_i] = HPLUS_action(act_pre, act_eff, cost, name);
     }
 

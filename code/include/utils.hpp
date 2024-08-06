@@ -77,7 +77,7 @@ namespace my {
 
         public:
 
-            explicit BitField() { }
+            explicit BitField() = default;
 
             /**
              * Constructor of the BitField
@@ -285,7 +285,7 @@ extern struct HPLUS_Environment {
     my::status status;
 
     /**
-     * @return true/false based on wether a solution has been found
+     * @return true/false based on wether a solution has been found (looks at the status)
     */
     bool found() const;
 

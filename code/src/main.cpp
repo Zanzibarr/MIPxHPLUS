@@ -41,26 +41,26 @@ void HPLUS_show_info(const HPLUS_instance& inst) {
     HPLUS_env.logger.print("# variables: %d.", inst.get_nvar());
     #if HPLUS_VERBOSE >= 100
     const unsigned int nvar = inst.get_nvar();
-    const HPLUS_variable** variables = inst.get_variables();
-    for (unsigned int i = 0; i < nvar; i++) HPLUS_env.logger.print("name(var_%d) = '%s'.", i, variables[i] -> get_name() -> c_str());
-    for (unsigned int i = 0; i < nvar; i++) HPLUS_env.logger.print("range(var_%d) = '%d'.", i, variables[i] -> get_range());
+    const std::vector<HPLUS_variable>& variables = inst.get_variables();
+    for (unsigned int i = 0; i < nvar; i++) HPLUS_env.logger.print("name(var_%d) = '%s'.", i, variables[i].get_name().c_str());
+    for (unsigned int i = 0; i < nvar; i++) HPLUS_env.logger.print("range(var_%d) = '%d'.", i, variables[i].get_range());
     for (unsigned int i = 0; i < nvar; i++){
-        const std::string* val_names = variables[i] -> get_val_names();
-        for (unsigned int j = 0; j < variables[i] -> get_range(); j++)
+        const std::vector<std::string>& val_names = variables[i].get_val_names();
+        for (unsigned int j = 0; j < variables[i].get_range(); j++)
             HPLUS_env.logger.print("name(var_%d[%d]) = '%s'.", i, j, val_names[j].c_str());
     }
     HPLUS_env.logger.print("Bitfield size: %d", inst.get_bfsize());
-    HPLUS_env.logger.print("Initial state: %s.", inst.get_istate() -> view().c_str());
-    HPLUS_env.logger.print("Goal state: %s.", inst.get_gstate() -> view().c_str());
+    HPLUS_env.logger.print("Initial state: %s.", inst.get_istate().view().c_str());
+    HPLUS_env.logger.print("Goal state: %s.", inst.get_gstate().view().c_str());
     #endif
     HPLUS_env.logger.print("# actions: %d.", inst.get_nact());
     #if HPLUS_VERBOSE >= 100
-    const HPLUS_action** actions = inst.get_actions();
+    const std::vector<HPLUS_action>& actions = inst.get_actions();
     for (unsigned int act_i = 0; act_i < inst.get_nact(); act_i++) {
-        HPLUS_env.logger.print("pre(act_%d) = '%s'.", act_i, actions[act_i] -> get_pre() -> view().c_str());
-        HPLUS_env.logger.print("eff(act_%d) = '%s'.", act_i, actions[act_i] -> get_eff() -> view().c_str());
-        HPLUS_env.logger.print("name(act_%d) = '%s'.", act_i, actions[act_i] -> get_name() -> c_str());
-        HPLUS_env.logger.print("cost(act_%d) = '%d'.", act_i, actions[act_i] -> get_cost());
+        HPLUS_env.logger.print("pre(act_%d) = '%s'.", act_i, actions[act_i].get_pre().view().c_str());
+        HPLUS_env.logger.print("eff(act_%d) = '%s'.", act_i, actions[act_i].get_eff().view().c_str());
+        HPLUS_env.logger.print("name(act_%d) = '%s'.", act_i, actions[act_i].get_name().c_str());
+        HPLUS_env.logger.print("cost(act_%d) = '%d'.", act_i, actions[act_i].get_cost());
     }
     #endif
 
@@ -152,9 +152,7 @@ void HPLUS_run(HPLUS_instance& inst) {
 
 void HPLUS_end() {
 
-    #if HPLUS_VERBOSE >= 1
     HPLUS_stats.print();
-    #endif
 
 }
 
@@ -162,19 +160,12 @@ int main(const int argc, const char** argv) {
 
     signal(SIGINT, signal_callback_handler);
     HPLUS_start();
-
     HPLUS_parse_cli(argc, argv);
-
     HPLUS_instance inst = HPLUS_instance(HPLUS_env.infile);
-
-    #if HPLUS_VERBOSE >= 1
     HPLUS_show_info(inst);
-    #endif
-
     HPLUS_run(inst);
-
     HPLUS_end();
 
-    return 0;
+    return !HPLUS_env.found();
 
 }
