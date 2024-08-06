@@ -7,83 +7,82 @@ HPLUS_Statistics HPLUS_stats;
 // ############################## BITFIELD ############################# //
 // ##################################################################### //
 
-my::BitField::BitField(unsigned int size) {
+my::BitField::BitField(unsigned int size) { this -> size_ = size; this -> field_ = std::vector<char>((size+7)/8, 0); }
 
-    #if HPLUS_INTCHECK
-    MYASSERT(size > 0);
-    #endif
-    this -> len = size; this -> field = new char[(size+7)/8]();
+my::BitField::BitField(const BitField& bf) { this -> size_ = bf.size_; this -> field_ = std::vector<char>(bf.field_); }
 
-}
-
-my::BitField::~BitField() { MYDELL(this->field); }
-
-void my::BitField::set(const unsigned int i) const {
+void my::BitField::set(const unsigned int i) {
     
     #if HPLUS_INTCHECK
-    MYASSERT(i < this -> len);
+    MYASSERT(i < this -> size_);
     #endif
-    this -> field[i/8] |= (1 << i%8);
+    this -> field_[i/8] |= (1 << i%8);
     
 }
 
-void my::BitField::unset(const unsigned int i) const {
+void my::BitField::unset(const unsigned int i) {
     
     #if HPLUS_INTCHECK
-    MYASSERT(i < this -> len);
+    MYASSERT(i < this -> size_);
     #endif
-    this -> field[i/8] &= ~(1 << i%8);
+    this -> field_[i/8] &= ~(1 << i%8);
     
 }
 
 bool my::BitField::operator[](const unsigned int i) const {
     
     #if HPLUS_INTCHECK
-    MYASSERT(i < this -> len);
+    MYASSERT(i < this -> size_);
     #endif
-    return this -> field[i/8] & (1 << i%8);
+    return this -> field_[i/8] & (1 << i%8);
     
 }
 
-my::BitField my::BitField::intersects(const BitField* bf) const {
+void my::BitField::intersect(const BitField& bf) {
 
     #if HPLUS_INTCHECK
-    MYASSERT(bf != nullptr);
-    MYASSERT(this -> len == bf -> len);
+    MYASSERT(this -> size_ == bf.size_);
     #endif
-    BitField ret = BitField(this -> len);
-    for (unsigned int i = 0; i < this -> len; i++) if (this -> operator[](i) && bf -> operator[](i)) ret.set(i);
-    return ret;
+    for (auto i : *this) {
+        if (bf[i]) this -> set(i);
+        else this -> unset(i);
+    }
 
 }
 
-bool my::BitField::equals(const BitField* bf) const {
+void my::BitField::unificate(const BitField& bf) {
 
     #if HPLUS_INTCHECK
-    MYASSERT(bf != nullptr);
-    MYASSERT(this -> len == bf -> len);
+    MYASSERT(this -> size_ == bf.size_);
     #endif
-    for (unsigned int i = 0; i < (this -> len + 7) / 8; i++) if (this -> field[i] != bf -> field[i]) return false;
+    for (auto i : bf) this -> set(i);
+
+}
+
+bool my::BitField::equals(const BitField& bf) const {
+
+    #if HPLUS_INTCHECK
+    MYASSERT(this -> size_ == bf.size_);
+    #endif
+    for (unsigned int i = 0; i < (this -> field_.size() + 7) / 8; i++) if (this -> field_[i] != bf.field_[i]) return false;
     return true;
 
 }
 
-bool my::BitField::validate(const BitField* bf) const {
+bool my::BitField::contains(const BitField& bf) const {
 
-    #if HPLUS_INTCHECK
-    MYASSERT(bf != nullptr);
-    #endif
-    return this -> intersects(bf).equals(bf);
+    for (auto i : bf) if (!this -> operator[](i)) return false;
+    return true;
 
 }
 
 
-unsigned int my::BitField::size() const { return this -> len; }
+unsigned int my::BitField::size() const { return this -> size_; }
 
 std::string my::BitField::view() const {
 
     std::string ret;
-    for (unsigned int i = 0; i < this -> len; i++) ret.append(std::to_string(this -> operator[](i)));
+    for (unsigned int i = 0; i < this -> field_.size(); i++) ret.append(std::to_string(this -> operator[](i)));
     return ret;
 
 }
@@ -92,7 +91,7 @@ std::string my::BitField::view() const {
 // ############################### LOGGER ############################## //
 // ##################################################################### //
 
-void my::Logger::_format_output(const char* str, va_list ptr, FILE* log_file, const bool show_time) {
+void my::Logger::format_output_(const char* str, va_list ptr, FILE* log_file, const bool show_time) {
 
     if (show_time) {
         double elapsed_time = HPLUS_env.get_time();
@@ -205,9 +204,9 @@ void my::Logger::_format_output(const char* str, va_list ptr, FILE* log_file, co
 
 my::Logger::Logger(const std::string& run_title, const std::string& log_name) {
 
-    this -> log_file_name = log_name;
+    this -> log_file_name_ = log_name;
     if (HPLUS_env.log)  {
-        FILE* log_file = fopen(this -> log_file_name.c_str(), "a");
+        FILE* log_file = fopen(this -> log_file_name_.c_str(), "a");
         fprintf(log_file, "\n%s\nRUN_NAME: %s\n%s\n", THICK_LINE, run_title.c_str(), THICK_LINE);
         fclose(log_file);
     }
@@ -222,14 +221,14 @@ void my::Logger::print(const char* str, ...) const {
 
     // logging file
     FILE* log_file = nullptr;
-    if (HPLUS_env.log) log_file = fopen(this -> log_file_name.c_str(), "a");
+    if (HPLUS_env.log) log_file = fopen(this -> log_file_name_.c_str(), "a");
 
     // initializing list pointer
     va_list ptr;
     va_start(ptr, str);
 
     // printing and logging the formatted message
-    _format_output(str, ptr, log_file, false);
+    format_output_(str, ptr, log_file, false);
 
     fprintf(stdout, "\n");
     if (HPLUS_env.log) fprintf(log_file, "\n");
@@ -249,7 +248,7 @@ void my::Logger::print_info(const char* str, ...) const {
 
     // logging file
     FILE* log_file = nullptr;
-    if (HPLUS_env.log) log_file = fopen(this -> log_file_name.c_str(), "a");
+    if (HPLUS_env.log) log_file = fopen(this -> log_file_name_.c_str(), "a");
 
     // initializing list pointer 
     va_list ptr; 
@@ -259,7 +258,7 @@ void my::Logger::print_info(const char* str, ...) const {
     if (HPLUS_env.log) fprintf(log_file, "[ INFO  ] -- ");
 
     // printing and logging the formatted message
-    _format_output(str, ptr, log_file);
+    format_output_(str, ptr, log_file);
 
     fprintf(stdout, "\n");
     if (HPLUS_env.log) fprintf(log_file, "\n");
@@ -279,7 +278,7 @@ void my::Logger::print_warn(const char* str, ...) const {
 
     // logging file
     FILE* log_file = nullptr;
-    if (HPLUS_env.log) log_file = fopen(this -> log_file_name.c_str(), "a");
+    if (HPLUS_env.log) log_file = fopen(this -> log_file_name_.c_str(), "a");
 
     // initializing list pointer 
     va_list ptr; 
@@ -289,7 +288,7 @@ void my::Logger::print_warn(const char* str, ...) const {
     if (HPLUS_env.log) fprintf(log_file, "[ WARN  ] -- ");
 
     // printing and logging the formatted message
-    _format_output(str, ptr, log_file);
+    format_output_(str, ptr, log_file);
 
     fprintf(stdout, "\n");
     if (HPLUS_env.log) fprintf(log_file, "\n");
@@ -305,7 +304,7 @@ void my::Logger::raise_error(const char* str, ...) const {
 
     // logging file
     FILE* log_file = nullptr;
-    if (HPLUS_env.log) log_file = fopen(this -> log_file_name.c_str(), "a");
+    if (HPLUS_env.log) log_file = fopen(this -> log_file_name_.c_str(), "a");
 
     // initializing list pointer 
     va_list ptr; 
@@ -315,7 +314,7 @@ void my::Logger::raise_error(const char* str, ...) const {
     if (HPLUS_env.log) fprintf(log_file, "[ ERROR ] -- ");
 
     // printing and logging the formatted message
-    _format_output(str, ptr, log_file);
+    format_output_(str, ptr, log_file);
 
     fprintf(stdout, "\n");
     if (HPLUS_env.log) fprintf(log_file, "\n");
@@ -344,6 +343,7 @@ void HPLUS_Statistics::print() const {
     HPLUS_env.logger.print("-------------   Statistics   -------------");
     HPLUS_env.logger.print("------------------------------------------\n");
     HPLUS_env.logger.print(" >>  Parsing time         %10.3fs  <<", this->parsing_time);
+    HPLUS_env.logger.print(" >>  Build time           %10.3fs  <<", this->build_time);
     HPLUS_env.logger.print(" >>  Exec time            %10.3fs  <<", this->exec_time);
     HPLUS_env.logger.print("\n\n");
 

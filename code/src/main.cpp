@@ -22,10 +22,12 @@ void HPLUS_start() {
 
 }
 
-void HPLUS_show_info(const HPLUS_instance* inst) {
+void HPLUS_show_info(const HPLUS_instance& inst) {
 
     HPLUS_env.logger.print(LINE);
 
+    std::time_t time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+    HPLUS_env.logger.print("%s%s", std::ctime(&time), LINE);
     HPLUS_env.logger.print("Input file: %s.", HPLUS_env.infile.c_str());
     if (!HPLUS_env.log_name.empty()) HPLUS_env.logger.print("Log name: %s.", HPLUS_env.log_name.c_str());
     if (!HPLUS_env.run_name.empty()) HPLUS_env.logger.print("Run name: %s.", HPLUS_env.run_name.c_str());
@@ -33,13 +35,13 @@ void HPLUS_show_info(const HPLUS_instance* inst) {
     HPLUS_env.logger.print(LINE);
 
     #if HPLUS_VERBOSE >= 100
-    HPLUS_env.logger.print("Fast Downward translator version: %d.", inst -> get_version());
+    HPLUS_env.logger.print("Fast Downward translator version: %d.", inst.get_version());
     #endif
-    HPLUS_env.logger.print("Metric: %s.", (inst -> unitary_cost() ? "unitary costs" : "integer costs"));
-    HPLUS_env.logger.print("# variables: %d.", inst -> get_nvar());
+    HPLUS_env.logger.print("Metric: %s.", (inst.unitary_cost() ? "unitary costs" : "integer costs"));
+    HPLUS_env.logger.print("# variables: %d.", inst.get_nvar());
     #if HPLUS_VERBOSE >= 100
-    const unsigned int nvar = inst -> get_nvar();
-    const HPLUS_variable** variables = inst -> get_variables();
+    const unsigned int nvar = inst.get_nvar();
+    const HPLUS_variable** variables = inst.get_variables();
     for (unsigned int i = 0; i < nvar; i++) HPLUS_env.logger.print("name(var_%d) = '%s'.", i, variables[i] -> get_name() -> c_str());
     for (unsigned int i = 0; i < nvar; i++) HPLUS_env.logger.print("range(var_%d) = '%d'.", i, variables[i] -> get_range());
     for (unsigned int i = 0; i < nvar; i++){
@@ -47,14 +49,14 @@ void HPLUS_show_info(const HPLUS_instance* inst) {
         for (unsigned int j = 0; j < variables[i] -> get_range(); j++)
             HPLUS_env.logger.print("name(var_%d[%d]) = '%s'.", i, j, val_names[j].c_str());
     }
-    HPLUS_env.logger.print("Bitfield size: %d", inst -> get_bfsize());
-    HPLUS_env.logger.print("Initial state: %s.", inst -> get_istate() -> view().c_str());
-    HPLUS_env.logger.print("Goal state: %s.", inst -> get_gstate() -> view().c_str());
+    HPLUS_env.logger.print("Bitfield size: %d", inst.get_bfsize());
+    HPLUS_env.logger.print("Initial state: %s.", inst.get_istate() -> view().c_str());
+    HPLUS_env.logger.print("Goal state: %s.", inst.get_gstate() -> view().c_str());
     #endif
-    HPLUS_env.logger.print("# actions: %d.", inst -> get_nact());
+    HPLUS_env.logger.print("# actions: %d.", inst.get_nact());
     #if HPLUS_VERBOSE >= 100
-    const HPLUS_action** actions = inst -> get_actions();
-    for (unsigned int act_i = 0; act_i < inst -> get_nact(); act_i++) {
+    const HPLUS_action** actions = inst.get_actions();
+    for (unsigned int act_i = 0; act_i < inst.get_nact(); act_i++) {
         HPLUS_env.logger.print("pre(act_%d) = '%s'.", act_i, actions[act_i] -> get_pre() -> view().c_str());
         HPLUS_env.logger.print("eff(act_%d) = '%s'.", act_i, actions[act_i] -> get_eff() -> view().c_str());
         HPLUS_env.logger.print("name(act_%d) = '%s'.", act_i, actions[act_i] -> get_name() -> c_str());
@@ -97,7 +99,7 @@ void HPLUS_parse_cli(const int argc, const char** argv) {
         else if (!strcmp(argv[i], HPLUS_CLI_TIMELIMIT_FLAG)) { my::assert(my::isint(argv[i+1]), "The time limit must be an integer."); HPLUS_env.time_limit = atoi(argv[++i]); }
         else if (!strcmp(argv[i], HPLUS_CLI_ALG_FLAG)) HPLUS_env.alg = argv[++i];
 
-        else unknown_args.emplace_back(argv[i]);
+        else unknown_args.push_back(argv[i]);
 
     }
 
@@ -111,7 +113,7 @@ void HPLUS_parse_cli(const int argc, const char** argv) {
 
 }
 
-void HPLUS_run(HPLUS_instance* inst) {
+void HPLUS_run(HPLUS_instance& inst) {
 
     double start_time = HPLUS_env.get_time();
 
@@ -144,7 +146,7 @@ void HPLUS_run(HPLUS_instance* inst) {
             break;
     }
 
-    inst -> print_best_sol();
+    inst.print_best_sol();
 
 }
 
@@ -163,15 +165,13 @@ int main(const int argc, const char** argv) {
 
     HPLUS_parse_cli(argc, argv);
 
-    auto* inst = new HPLUS_instance(HPLUS_env.infile);
+    HPLUS_instance inst = HPLUS_instance(HPLUS_env.infile);
 
     #if HPLUS_VERBOSE >= 1
     HPLUS_show_info(inst);
     #endif
 
     HPLUS_run(inst);
-
-    MYDEL(inst);
 
     HPLUS_end();
 

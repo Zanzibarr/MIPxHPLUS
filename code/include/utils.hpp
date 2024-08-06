@@ -13,6 +13,7 @@
 #include <cstdarg>
 #include <sys/stat.h>
 #include <fstream>
+#include <iterator>
 
 // ##################################################################### //
 // ######################### PATHS AND FOLDERS ######################### //
@@ -75,6 +76,9 @@ namespace my {
     class BitField {
 
         public:
+
+            explicit BitField() { }
+
             /**
              * Constructor of the BitField
              *
@@ -83,23 +87,23 @@ namespace my {
             explicit BitField(unsigned int size);
 
             /**
-             * Destructor of the BitField
-             */
-            ~BitField();
+             * Copy constructor
+            */
+            explicit BitField(const BitField& bf);
 
             /**
              * Set the i th bit to 1
              *
              * @param i: Index of the bit to set to 1
              */
-            void set(unsigned int i) const;
+            void set(unsigned int i);
 
             /**
              * Set the i th bit to 0
              *
              * @param i: Index of the bit to set to 0
              */
-            void unset(unsigned int i) const;
+            void unset(unsigned int i);
 
             /**
              * Access the i th bit
@@ -110,12 +114,18 @@ namespace my {
             bool operator[](unsigned int i) const;
 
             /**
-             * Bitwise and of two BitFields
+             * Bitwise and of two BitFields (result saved in this BitField)
              *
              * @param bf: BitField to do the and with
-             * @return The resulting BitField
              */
-            BitField intersects(const BitField* bf) const;
+            void intersect(const BitField& bf);
+
+            /**
+             * Bitwise or of two BitFields (result saved in this BitField)
+             *
+             * @para bf: BitField to do the or with
+            */
+            void unificate(const BitField& bf);
 
             /**
              * Compare two BitField
@@ -123,15 +133,15 @@ namespace my {
              * @param bf: BitField to compare with
              * @return true/false based on if the two bitfields are equal
              */
-            bool equals(const BitField* bf) const;
+            bool equals(const BitField& bf) const;
 
             /**
              * Check if all true bits of the passed bitfield are true in this bitfield
              *
-             * @param bf: BitField used to validate this one
-             * @return true/false based on if this bitfield is validated by bf
+             * @param bf: BitField to check
+             * @return true/false based on if this bitfield contains bf
              */
-            bool validate(const BitField* bf) const;
+            bool contains(const BitField& bf) const;
 
             /**
              * Returns the size of the BitField (in bits)
@@ -142,9 +152,44 @@ namespace my {
 
             std::string view() const;
 
+            // Iterator class for iterating over bits set to 1
+            class Iterator {
+
+                public:
+
+                    Iterator(const BitField *bitField, unsigned int index) : bf(bitField), index_(index) { if (index_ < bf->size() && !(*bf)[index_]) ++(*this); }
+
+                    Iterator& operator++() {
+                        do {
+                            ++index_;
+                        } while (index_ < bf -> size() && !(*bf)[index_]);
+                        return *this;
+                    }
+
+                    Iterator operator++(int) {
+                        Iterator tmp = *this;
+                        ++(*this);
+                        return tmp;
+                    }
+
+                    unsigned int operator*() const { return index_; }
+
+                    bool operator!=(const Iterator &other) const { return index_ != other.index_; }
+
+                private:
+
+                    const BitField* bf;
+                    unsigned int index_;
+
+            };
+
+            Iterator begin() const { return Iterator(this, 0); }
+
+            Iterator end() const { return Iterator(this, size_); }
+
         private:
-            char* field;
-            unsigned int len;
+            std::vector<char> field_;
+            unsigned int size_;
 
     };
 
@@ -192,8 +237,8 @@ namespace my {
             void raise_error(const char* str, ...) const;
 
         private:
-            std::string log_file_name;
-            static void _format_output(const char* str, va_list ptr, FILE* log_file, bool show_time = true);
+            std::string log_file_name_;
+            static void format_output_(const char* str, va_list ptr, FILE* log_file, bool show_time = true);
 
     };
 
@@ -281,6 +326,7 @@ extern struct HPLUS_Environment {
 extern struct HPLUS_Statistics {
 
     double parsing_time;
+    double build_time;
     double exec_time;
 
     void print() const;
