@@ -7,7 +7,7 @@
 HPLUS_variable::HPLUS_variable(const unsigned int range, const std::string& name, const std::vector<std::string>& val_names) {
 
     #if HPLUS_INTCHECK
-    MYASSERT(val_names.size() == range);
+    my::assert(val_names.size() == range, "HPLUS_variable:HPLUS_variable failed.");
     #endif
 
     this -> range_ = range;
@@ -56,7 +56,7 @@ HPLUS_instance::HPLUS_instance(const std::string& file_path) {
     this -> bf_size_ = 0;
 
     std::ifstream file(file_path.c_str(), std::ifstream::in);
-    MYASSERT(file.good());
+    my::assert(file.good(), "Opening instance file failed.");
     parse_inst_file_(&file);
     file.close();
 
@@ -89,20 +89,20 @@ const my::BitField& HPLUS_instance::get_gstate() const { return this -> goal_sta
 void HPLUS_instance::update_best_solution(const std::vector<unsigned int>& solution, const unsigned int cost) {
 
     #if HPLUS_INTCHECK
-    std::vector<bool> dbcheck(this -> n_act_, false);
+    my::BitField dbcheck = my::BitField(this -> n_act_);
     unsigned int costcheck = 0;
-    MYASSERT(solution.size() <= this -> n_act_);    // check that there aren't more actions that there exists
+    my::assert(solution.size() <= this -> n_act_, "Solution has more actions that there actually exists.");    // check that there aren't more actions that there exists
     my::BitField feas_checker(this -> bf_size_);
     for (auto p : this -> initial_state_) feas_checker.set(p);
     for (auto act_i : solution) {
-        MYASSERT(act_i < this -> n_act_);     // check that the solution only contains existing actions
-        MYASSERT(!dbcheck[act_i]);            // check that there are no duplicates
-        dbcheck[act_i] = true;
-        MYASSERT(feas_checker.contains(this -> actions_[act_i].get_pre()));       // check if the preconditions are respected at each step
+        my::assert(act_i < this -> n_act_, "Solution contains unexisting action.");     // check that the solution only contains existing actions
+        my::assert(!dbcheck[act_i], "Solution contains duplicate action.");            // check that there are no duplicates
+        dbcheck.set(act_i);
+        my::assert(feas_checker.contains(this -> actions_[act_i].get_pre()), "Preconditions are not respected.");       // check if the preconditions are respected at each step
         feas_checker.unificate(this -> actions_[act_i].get_eff());
         costcheck += this -> actions_[act_i].get_cost();
     }
-    MYASSERT(costcheck == cost);        // check if the cost is the declared one
+    my::assert(costcheck == cost, "Declared cost is different from calculated one.");        // check if the cost is the declared one
     #endif
 
     if (cost >= this -> best_cost_) return;

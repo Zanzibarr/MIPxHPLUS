@@ -157,12 +157,12 @@ namespace my {
 
                 public:
 
-                    Iterator(const BitField *bitField, unsigned int index) : bf(bitField), index_(index) { if (index_ < bf->size() && !(*bf)[index_]) ++(*this); }
+                    Iterator(const BitField *bitField, unsigned int index) : bf_(bitField), index_(index) { if (index_ < bf_->size() && !(*bf_)[index_]) ++(*this); }
 
                     Iterator& operator++() {
                         do {
                             ++index_;
-                        } while (index_ < bf -> size() && !(*bf)[index_]);
+                        } while (index_ < bf_ -> size() && !(*bf_)[index_]);
                         return *this;
                     }
 
@@ -178,7 +178,7 @@ namespace my {
 
                 private:
 
-                    const BitField* bf;
+                    const BitField* bf_;
                     unsigned int index_;
 
             };
@@ -264,7 +264,7 @@ namespace my {
     /**
      * Interrupts the execution of the code if the condition is false
      */
-    void assert(bool condition, const std::string& message);
+    void assert(bool condition, const std::string message);
 
     /**
      * Asserts that a string is a number (if specified also checks the range (both inclusive))
@@ -332,14 +332,5 @@ extern struct HPLUS_Statistics {
     void print() const;
 
 } HPLUS_stats;
-
-// ##################################################################### //
-// ############################### MACROS ############################## //
-// ##################################################################### //
-
-#define MYASSERT(cond) my::assert(cond, std::string(__FILE__":")+std::to_string(__LINE__))
-#define MYFREE(ptr) { MYASSERT(ptr != nullptr); free(ptr); ptr = nullptr; }
-#define MYDEL(ptr) { MYASSERT(ptr != nullptr); delete ptr; ptr = nullptr; }
-#define MYDELL(ptr) { MYASSERT(ptr != nullptr); delete[] ptr; ptr = nullptr; }
 
 #endif

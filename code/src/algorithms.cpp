@@ -18,22 +18,22 @@
 void HPLUS_cpx_init(CPXENVptr& env, CPXLPptr& lp) {
 
     int cpxerror;
-    env = CPXopenCPLEX(&cpxerror); MYASSERT(!cpxerror);
-    lp = CPXcreateprob(env, &cpxerror, "HPLUS"); MYASSERT(!cpxerror);
+    env = CPXopenCPLEX(&cpxerror); my::assert(!cpxerror, "CPXopenCPLEX failed.");
+    lp = CPXcreateprob(env, &cpxerror, "HPLUS"); my::assert(!cpxerror, "CPXcreateprob failed.");
 
     // log file
-    MYASSERT(!CPXsetintparam(env, CPXPARAM_ScreenOutput, CPX_OFF));
-    MYASSERT(!CPXsetlogfilename(env, (HPLUS_CPLEX_OUT_DIR"/log/"+HPLUS_env.run_name+".log").c_str(), "w"));
-    MYASSERT(!CPXsetintparam(env, CPX_PARAM_CLONELOG, -1));
+    my::assert(!CPXsetintparam(env, CPXPARAM_ScreenOutput, CPX_OFF), "CPXsetintparam failed (CPXPARAM_ScreenOutput).");
+    my::assert(!CPXsetlogfilename(env, (HPLUS_CPLEX_OUT_DIR"/log/"+HPLUS_env.run_name+".log").c_str(), "w"), "CPXsetlogfilename failed.");
+    my::assert(!CPXsetintparam(env, CPX_PARAM_CLONELOG, -1), "CPXsetintparam (CPX_PARAM_CLONELOG) failed.");
 
     // tolerance
-    MYASSERT(!CPXsetdblparam(env, CPXPARAM_MIP_Tolerances_MIPGap, 0));
+    my::assert(!CPXsetdblparam(env, CPXPARAM_MIP_Tolerances_MIPGap, 0), "CPXsetdblparam (CPXPARAM_MIP_Tolerances_MIPGap) failed.");
 
     // time limit
-    MYASSERT(!CPXsetdblparam(env, CPXPARAM_TimeLimit, (double)HPLUS_env.time_limit));
+    my::assert(!CPXsetdblparam(env, CPXPARAM_TimeLimit, (double)HPLUS_env.time_limit), "CPXsetdblparam (CPXPARAM_TimeLimit) failed.");
 
     // terminate condition
-    MYASSERT(!CPXsetterminate(env, &HPLUS_env.cpx_terminate));
+    my::assert(!CPXsetterminate(env, &HPLUS_env.cpx_terminate), "CPXsetterminate failed.");
 
 }
 
@@ -75,6 +75,9 @@ void HPLUS_parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp) {
         case CPXMIP_OPTIMAL:            // found optimal
             HPLUS_env.status = my::status::OPT;
             break;
+        case 0:
+            HPLUS_env.status = my::status::NOTFOUND;
+            break;
         default:                        // unhandled status
             HPLUS_env.logger.raise_error("Error in tsp_cplex: unhandled cplex status: %d.", cpxstatus);
             break;
@@ -89,7 +92,7 @@ void HPLUS_parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp) {
 /**
  * Build the basic Imai model
 */
-void HPLUS_cpx_build_imai(const CPXENVptr& env, const CPXLPptr& lp, const HPLUS_instance& inst) {
+void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& inst) {
 
     const unsigned int nvar = inst.get_nvar();
     const unsigned int nact = inst.get_nact();
@@ -121,7 +124,7 @@ void HPLUS_cpx_build_imai(const CPXENVptr& env, const CPXLPptr& lp, const HPLUS_
     }
     curr_col += nact;
 
-    MYASSERT(!CPXnewcols(env, lp, nact, objs, lbs, ubs, types, names));
+    my::assert(!CPXnewcols(env, lp, nact, objs, lbs, ubs, types, names), "CPXnewcols (actions) failed.");
 
     // action timestamps
     unsigned int tact_start = curr_col;
@@ -134,14 +137,14 @@ void HPLUS_cpx_build_imai(const CPXENVptr& env, const CPXLPptr& lp, const HPLUS_
     }
     curr_col += nact;
 
-    MYASSERT(!CPXnewcols(env, lp, nact, objs, lbs, ubs, types, names));
+    my::assert(!CPXnewcols(env, lp, nact, objs, lbs, ubs, types, names), "CPXnewcols (action timestamps) failed.");
 
     for (unsigned int i = 0; i < nact; i++) delete[] names[i];
-    MYDELL(names);
-    MYDELL(types);
-    MYDELL(ubs);
-    MYDELL(lbs);
-    MYDELL(objs);
+    delete[] names; names = nullptr;
+    delete[] types; types = nullptr;
+    delete[] ubs; ubs = nullptr;
+    delete[] lbs; lbs = nullptr;
+    delete[] objs; objs = nullptr;
 
     objs = new double[bfsize];
     lbs = new double[bfsize];
@@ -161,7 +164,7 @@ void HPLUS_cpx_build_imai(const CPXENVptr& env, const CPXLPptr& lp, const HPLUS_
     }
     curr_col += bfsize;
 
-    MYASSERT(!CPXnewcols(env, lp, bfsize, objs, lbs, ubs, types, names));
+    my::assert(!CPXnewcols(env, lp, bfsize, objs, lbs, ubs, types, names), "CPXnewcols (variables) failed.");
 
     // variable timestamps
     unsigned int tvar_start = curr_col;
@@ -174,14 +177,14 @@ void HPLUS_cpx_build_imai(const CPXENVptr& env, const CPXLPptr& lp, const HPLUS_
     }
     curr_col += bfsize;
 
-    MYASSERT(!CPXnewcols(env, lp, bfsize, objs, lbs, ubs, types, names));
+    my::assert(!CPXnewcols(env, lp, bfsize, objs, lbs, ubs, types, names), "CPXnewcols (variable timestamps) failed.");
 
     for (unsigned int i = 0; i < bfsize; i++) delete[] names[i];
-    MYDELL(names);
-    MYDELL(types);
-    MYDELL(ubs);
-    MYDELL(lbs);
-    MYDELL(objs);
+    delete[] names; names = nullptr;
+    delete[] types; types = nullptr;
+    delete[] ubs; ubs = nullptr;
+    delete[] lbs; lbs = nullptr;
+    delete[] objs; objs = nullptr;
 
     objs = new double[nact * bfsize];
     lbs = new double[nact * bfsize];
@@ -207,14 +210,14 @@ void HPLUS_cpx_build_imai(const CPXENVptr& env, const CPXLPptr& lp, const HPLUS_
     }
     curr_col += nfa;
 
-    MYASSERT(!CPXnewcols(env, lp, nfa, objs, lbs, ubs, types, names));
+    my::assert(!CPXnewcols(env, lp, nfa, objs, lbs, ubs, types, names), "CPXnewcols (first archievers) failed.");
 
     for (unsigned int i = 0; i < nact * bfsize; i++) delete[] names[i];
-    MYDELL(names);
-    MYDELL(types);
-    MYDELL(ubs);
-    MYDELL(lbs);
-    MYDELL(objs);
+    delete[] names; names = nullptr;
+    delete[] types; types = nullptr;
+    delete[] ubs; ubs = nullptr;
+    delete[] lbs; lbs = nullptr;
+    delete[] objs; objs = nullptr;
 
     // ~~~~~~~ Adding CPLEX constraints ~~~~~~ //
 
@@ -250,13 +253,13 @@ void HPLUS_cpx_build_imai(const CPXENVptr& env, const CPXLPptr& lp, const HPLUS_
                 val1[0] = 1;
                 ind1[1] = var_start + j;
                 val1[1] = -1;
-                MYASSERT(!CPXaddrows(env, lp, 0, 1, nnz1, &rhs1, &sensel, &begin, ind1, val1, nullptr, nullptr));
+                my::assert(!CPXaddrows(env, lp, 0, 1, nnz1, &rhs1, &sensel, &begin, ind1, val1, nullptr, nullptr), "CPXaddrows (c1) failed.");
                 // constraint 4: t_vj <= t_a, vj in pre(a)
                 ind1[0] = tvar_start + j;
                 val1[0] = 1;
                 ind1[1] = tact_start + i;
                 val1[1] = -1;
-                MYASSERT(!CPXaddrows(env, lp, 0, 1, nnz1, &rhs1, &sensel, &begin, ind1, val1, nullptr, nullptr));
+                my::assert(!CPXaddrows(env, lp, 0, 1, nnz1, &rhs1, &sensel, &begin, ind1, val1, nullptr, nullptr), "CPXaddrows (c4) failed.");
             }
             if (eff[j]) {
                 // constraint 2: z_avj <= x_a, vj in eff(a)
@@ -264,7 +267,7 @@ void HPLUS_cpx_build_imai(const CPXENVptr& env, const CPXLPptr& lp, const HPLUS_
                 val1[0] = 1;
                 ind1[1] = act_start + i;
                 val1[1] = -1;
-                MYASSERT(!CPXaddrows(env, lp, 0, 1, nnz1, &rhs1, &sensel, &begin, ind1, val1, nullptr, nullptr));
+                my::assert(!CPXaddrows(env, lp, 0, 1, nnz1, &rhs1, &sensel, &begin, ind1, val1, nullptr, nullptr), "CPXaddrows (c2) failed.");
                 // constraint 5: t_a + 1 <= t_vj + (|A|+1)(1-z_avj), vj in eff(a)
                 ind2[0] = tact_start + i;
                 val2[0] = 1;
@@ -272,24 +275,23 @@ void HPLUS_cpx_build_imai(const CPXENVptr& env, const CPXLPptr& lp, const HPLUS_
                 val2[1] = -1;
                 ind2[2] = fa_start + count_fa;
                 val2[2] = nact + 1;
-                MYASSERT(!CPXaddrows(env, lp, 0, 1, nnz2, &rhs2, &sensel, &begin, ind2, val2, nullptr, nullptr));
+                my::assert(!CPXaddrows(env, lp, 0, 1, nnz2, &rhs2, &sensel, &begin, ind2, val2, nullptr, nullptr), "CPXaddrows (c5) failed.");
                 // constraint 3: I(v_j) + sum(z_avj) = y_vj
                 ind[j][nnz[j]] = fa_start + count_fa++;
                 val[j][nnz[j]] = -1;
                 nnz[j]++;
-                MYASSERT(nnz[j] <= nact + 1);
             }
         }
     }
 
-    for (unsigned int i = 0; i < bfsize; i++) MYASSERT(!CPXaddrows(env, lp, 0, 1, nnz[i], &rhs[i], &sensee, &begin, ind[i], val[i], nullptr, nullptr));
+    for (unsigned int i = 0; i < bfsize; i++) my::assert(!CPXaddrows(env, lp, 0, 1, nnz[i], &rhs[i], &sensee, &begin, ind[i], val[i], nullptr, nullptr), "CPXaddrows (c3) failed.");
 
     for (unsigned int i = 0; i < bfsize; i++) {
-        MYDELL(ind[i]);
-        MYDELL(val[i]);
+        delete[] ind[i]; ind[i] = nullptr;
+        delete[] val[i]; val[i] = nullptr;
     }
 
-    MYASSERT(!CPXwriteprob(env, lp, (HPLUS_CPLEX_OUT_DIR"/lp/"+HPLUS_env.run_name+".lp").c_str(), "LP"));
+    my::assert(!CPXwriteprob(env, lp, (HPLUS_CPLEX_OUT_DIR"/lp/"+HPLUS_env.run_name+".lp").c_str(), "LP"), "CPXwriteprob failed.");
 
     HPLUS_env.logger.print_info("Created CPLEX lp for imai.");
 
@@ -298,7 +300,7 @@ void HPLUS_cpx_build_imai(const CPXENVptr& env, const CPXLPptr& lp, const HPLUS_
 /**
  * Fact landmarks extracting method from Imai's paper
  */
-void HPLUS_imai_extract_fact_landmarks(HPLUS_instance& inst, std::vector<my::BitField>& fact_landmarks) {
+void HPLUS_imai_extract_fact_landmarks(const HPLUS_instance& inst, std::vector<my::BitField>& fact_landmarks) {
 
     const unsigned int bfsize = inst.get_bfsize();
 
@@ -374,25 +376,25 @@ void HPLUS_imai_extract_fact_landmarks(HPLUS_instance& inst, std::vector<my::Bit
 /**
  * Fix landmarks as explained in Imai's paper
  */
-void HPLUS_imai_fix_landmarks(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst, std::vector<my::BitField>& fact_landmarks) {
+void HPLUS_imai_fix_landmarks(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& inst, const std::vector<my::BitField>& fact_landmarks) {
 
     const unsigned int nact = inst.get_nact();
     const unsigned int bfsize = inst.get_bfsize();
     const my::BitField& istate = inst.get_istate();
     const my::BitField& gstate = inst.get_gstate();
-    const std::vector<HPLUS_action>& actions = inst.get_actions();
 
     int nnz_var = 0;
     int* ind_var = new int[bfsize];
     char* lu_var = new char[bfsize];
     double* bd_var = new double[bfsize];
+
     int nnz_act = 0;
     int* ind_act = new int[nact];
     char* lu_act = new char[nact];
     double* bd_act = new double[nact];
 
-    my::BitField dbact_checker(nact);
     my::BitField dbvar_checker(bfsize);
+    my::BitField dbact_checker(nact);
 
     for (auto i : gstate) {
         for (unsigned int j = 0; j < bfsize; j++) if (!istate[j]) {                                             // -->  if a variable is in the initial state it's already been fixed when building the
@@ -406,7 +408,7 @@ void HPLUS_imai_fix_landmarks(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst
 
                 // fixing act landmarks
                 unsigned int act_count = 0;
-                for (unsigned int k = 0; k < nact && act_count < 2; k++) if (actions[k].get_eff()[j]) {
+                for (unsigned int k = 0; k < nact && act_count < 2; k++) if (inst.get_actions()[k].get_eff()[j]) {
                     act_count++;
                     ind_act[nnz_act] = k;
                     lu_act[nnz_act] = 'L';
@@ -418,15 +420,16 @@ void HPLUS_imai_fix_landmarks(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst
         }
     }
 
-    MYASSERT(!CPXchgbds(env, lp, nnz_var, ind_var, lu_var, bd_var));
-    MYASSERT(!CPXchgbds(env, lp, nnz_act, ind_act, lu_act, bd_act));
+    my::assert(!CPXchgbds(env, lp, nnz_var, ind_var, lu_var, bd_var), "CPXchgbds (variables) failed.");
+    my::assert(!CPXchgbds(env, lp, nnz_act, ind_act, lu_act, bd_act), "CPXchgbds (actions) failed.");
 
-    MYDELL(bd_act);
-    MYDELL(lu_act);
-    MYDELL(ind_act);
-    MYDELL(bd_var);
-    MYDELL(lu_var);
-    MYDELL(ind_var);
+    delete[] bd_act;
+    delete[] lu_act;
+    delete[] ind_act;
+    delete[] bd_var;
+    delete[] lu_var;
+    delete[] ind_var;
+
 }
 
 /**
@@ -438,6 +441,7 @@ void HPLUS_imai_variable_elimination(CPXENVptr& env, CPXLPptr& lp, HPLUS_instanc
 
     // HPLUS_imai_relevance_analysis(inst);
     HPLUS_imai_extract_fact_landmarks(inst, fact_landmarks);
+
     HPLUS_imai_fix_landmarks(env, lp, inst, fact_landmarks);
     // while (exist a variable that can be eliminated) {
         // HPLUS_imai_immediate_actions_application(env, lp, inst);
@@ -455,12 +459,12 @@ void HPLUS_store_imai_sol(const CPXENVptr& env, const CPXLPptr& lp, HPLUS_instan
     // get cplex result (interested only in the sequence of actions used and its ordering)
     unsigned int nact = inst.get_nact();
     auto* xstar = new double[2 * nact];
-    MYASSERT(!CPXgetx(env, lp, xstar, 0, 2 * nact - 1));
+    my::assert(!CPXgetx(env, lp, xstar, 0, 2 * nact - 1), "CPXgetx failed.");
 
     // convert to std collections for easier parsing
     std::vector<std::pair<unsigned int, unsigned int>> cpx_result;
     for (unsigned int i = 0; i < nact; i++) if (xstar[i] > .5) cpx_result.emplace_back((unsigned int)xstar[nact+i], i);
-    MYDELL(xstar);
+    delete[] xstar; xstar = nullptr;
 
     // sort cpx_result based on actions timestamps
     std::sort(cpx_result.begin(), cpx_result.end(),
@@ -500,11 +504,11 @@ void HPLUS_run_imai(HPLUS_instance& inst) {
 
     HPLUS_cpx_init(env, lp);
     HPLUS_cpx_build_imai(env, lp, inst);
-    HPLUS_imai_variable_elimination(env, lp, inst);
+    // HPLUS_imai_variable_elimination(env, lp, inst);
 
     HPLUS_stats.build_time = HPLUS_env.get_time() - start_time;
 
-    MYASSERT(!CPXmipopt(env, lp));
+    my::assert(!CPXmipopt(env, lp), "CPXmipopt failed.");
 
     HPLUS_parse_cplex_status(env, lp);
 

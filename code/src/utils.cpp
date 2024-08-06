@@ -14,7 +14,7 @@ my::BitField::BitField(const BitField& bf) { this -> size_ = bf.size_; this -> f
 void my::BitField::set(const unsigned int i) {
     
     #if HPLUS_INTCHECK
-    MYASSERT(i < this -> size_);
+    my::assert(i < this -> size_, "BitField:set failed.");
     #endif
     this -> field_[i/8] |= (1 << i%8);
     
@@ -23,7 +23,7 @@ void my::BitField::set(const unsigned int i) {
 void my::BitField::unset(const unsigned int i) {
     
     #if HPLUS_INTCHECK
-    MYASSERT(i < this -> size_);
+    my::assert(i < this -> size_, "BitField:unset failed.");
     #endif
     this -> field_[i/8] &= ~(1 << i%8);
     
@@ -32,7 +32,7 @@ void my::BitField::unset(const unsigned int i) {
 bool my::BitField::operator[](const unsigned int i) const {
     
     #if HPLUS_INTCHECK
-    MYASSERT(i < this -> size_);
+    my::assert(i < this -> size_, "BitField:[] failed.");
     #endif
     return this -> field_[i/8] & (1 << i%8);
     
@@ -41,7 +41,7 @@ bool my::BitField::operator[](const unsigned int i) const {
 void my::BitField::intersect(const BitField& bf) {
 
     #if HPLUS_INTCHECK
-    MYASSERT(this -> size_ == bf.size_);
+    my::assert(this -> size_ == bf.size_, "BitField:intersect failed.");
     #endif
     for (auto i : *this) {
         if (bf[i]) this -> set(i);
@@ -53,7 +53,7 @@ void my::BitField::intersect(const BitField& bf) {
 void my::BitField::unificate(const BitField& bf) {
 
     #if HPLUS_INTCHECK
-    MYASSERT(this -> size_ == bf.size_);
+    my::assert(this -> size_ == bf.size_, "BitField:unificate failed.");
     #endif
     for (auto i : bf) this -> set(i);
 
@@ -62,7 +62,7 @@ void my::BitField::unificate(const BitField& bf) {
 bool my::BitField::equals(const BitField& bf) const {
 
     #if HPLUS_INTCHECK
-    MYASSERT(this -> size_ == bf.size_);
+    my::assert(this -> size_ == bf.size_, "BitField:equals failed.");
     #endif
     for (unsigned int i = 0; i < this -> field_.size(); i++)  if (this -> field_[i] != bf.field_[i]) return false;
     return true;
@@ -72,7 +72,7 @@ bool my::BitField::equals(const BitField& bf) const {
 bool my::BitField::contains(const BitField& bf) const {
 
     #if HPLUS_INTCHECK
-    MYASSERT(this -> size_ == bf.size_);
+    my::assert(this -> size_ == bf.size_, "BitField:contains failed.");
     #endif
     for (auto i : bf) if (!this -> operator[](i)) return false;
     return true;
@@ -371,7 +371,7 @@ void my::split(const std::string& str, std::vector<std::string>* tokens, const c
 
 }
 
-void my::assert(const bool condition, const std::string& message) { if (!condition) HPLUS_env.logger.raise_error("%s - Assert check failed.", message.c_str()); }
+void my::assert(const bool condition, const std::string message) { if (!condition) HPLUS_env.logger.raise_error("%s - Assert check failed.", message.c_str()); }
 
 bool my::isint(const std::string& str, const int from, const int to) {
 

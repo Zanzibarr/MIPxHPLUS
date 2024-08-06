@@ -162,6 +162,7 @@ int main(const int argc, const char** argv) {
     HPLUS_start();
     HPLUS_parse_cli(argc, argv);
     HPLUS_instance inst = HPLUS_instance(HPLUS_env.infile);
+    if (inst.get_nact() >= 500) HPLUS_env.logger.raise_error("Testing small instances only.");
     HPLUS_show_info(inst);
     HPLUS_run(inst);
     HPLUS_end();
