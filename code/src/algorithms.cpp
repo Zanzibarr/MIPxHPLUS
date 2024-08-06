@@ -395,6 +395,7 @@ void HPLUS_imai_variable_elimination(CPXENVptr& env, CPXLPptr& lp, HPLUS_instanc
 
     const unsigned int bfsize = inst.get_bfsize();
     const unsigned int nact = inst.get_nact();
+    const my::BitField& istate = inst.get_istate();
     const my::BitField& gstate = inst.get_gstate();
     std::vector<my::BitField> fact_landmarks;
 
@@ -414,39 +415,39 @@ void HPLUS_imai_variable_elimination(CPXENVptr& env, CPXLPptr& lp, HPLUS_instanc
     my::BitField dbact_checker(nact);
     my::BitField dbvar_checker(bfsize);
 
-    for (auto i : gstate)
-        for (unsigned int j = 0; j < bfsize; j++) if(!dbvar_checker[j] && (fact_landmarks[i][bfsize] || fact_landmarks[i][j])) {
-
-            // fixing action landmarks
-            // unsigned int cand_act = 0;
-            // bool fix_act = false;
-            // for (unsigned int k = 0, act_count = 0; k < nact; k++) if (actions[k] -> get_eff()[j]) {
-            //     fix_act = true;
-            //     act_count++;
-            //     if (act_count == 2) {
-            //         fix_act = false;
-            //         break;
-            //     }
-            //     cand_act = k;
-            // }
-
-            // if (fix_act) {
-            //     ind_act[nnz_act] = cand_act;
-            //     lu_act[nnz_act] = 'L';
-            //     bd_act[nnz_act] = 1.0;
-            //     nnz_act++;
-            // }
-
-            // fixing fact landmarks
-            dbvar_checker.set(j);
-            ind_var[nnz_var] = 2 * nact + j;
-            lu_var[nnz_var] = 'L';
-            bd_var[nnz_var] = 1.0;
-            nnz_var++;
+    for (auto i : gstate) {
+        for (unsigned int j = 0; j < bfsize; j++) if (!istate[j]) {                                             // -> if a variable is in the initial state it's already been fixed when building the
+            if(!dbvar_checker[j] && (fact_landmarks[i][bfsize] || fact_landmarks[i][j])) {                      //      model; also fixing actions that have as an effect variables in the initial
+                // fixing fact landmarks                                                                        //      state means to fix actions that might not have been used in the optimal solution,
+                dbvar_checker.set(j);                                                                           //      since those variables don't need actions to be used to be archieved.
+                ind_var[nnz_var] = 2 * nact + j;
+                lu_var[nnz_var] = 'L';
+                bd_var[nnz_var++] = 1.0;
+            }
+            int act_cand;
+            bool fix = false;
+            for (unsigned int k = 0, act_cnt = 0; k < nact; k++) {
+                if ((fact_landmarks[i][bfsize] || fact_landmarks[i][j]) && actions[k].get_eff()[j]) {
+                    act_cnt++;
+                    if (act_cnt >= 2) {
+                        fix = false;
+                        break;
+                    }
+                    act_cand = k;
+                    fix = true;
+                }
+            }
+            if (fix && !dbact_checker[act_cand]) {
+                dbact_checker.set(act_cand);
+                ind_act[nnz_act] = act_cand;
+                lu_act[nnz_act] = 'L';
+                bd_act[nnz_act++] = 1.0;
+            }
         }
+    }
 
     MYASSERT(!CPXchgbds(env, lp, nnz_var, ind_var, lu_var, bd_var));
-    // MYASSERT(!CPXchgbds(env, lp, nnz_act, ind_act, lu_act, bd_act));
+    MYASSERT(!CPXchgbds(env, lp, nnz_act, ind_act, lu_act, bd_act));
 
     MYDELL(bd_act);
     MYDELL(lu_act);
@@ -514,7 +515,7 @@ void HPLUS_run_imai(HPLUS_instance& inst) {
 
     HPLUS_cpx_init(env, lp);
     HPLUS_cpx_build_imai(env, lp, inst);
-    // HPLUS_imai_variable_elimination(env, lp, inst);
+    HPLUS_imai_variable_elimination(env, lp, inst);
 
     HPLUS_stats.build_time = HPLUS_env.get_time() - start_time;
 

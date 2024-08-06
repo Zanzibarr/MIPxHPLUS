@@ -64,8 +64,9 @@ bool my::BitField::equals(const BitField& bf) const {
     #if HPLUS_INTCHECK
     MYASSERT(this -> size_ == bf.size_);
     #endif
-    for (unsigned int i = 0; i < (this -> field_.size() + 7) / 8; i++) if (this -> field_[i] != bf.field_[i]) return false;
-    return true;
+    unsigned int i;
+    for (i = 0; i < this -> field_.size() && this -> field_[i] == bf.field_[i]; i++) {}
+    return i == this -> field_.size();
 
 }
 
@@ -82,7 +83,7 @@ unsigned int my::BitField::size() const { return this -> size_; }
 std::string my::BitField::view() const {
 
     std::string ret;
-    for (unsigned int i = 0; i < this -> field_.size(); i++) ret.append(std::to_string(this -> operator[](i)));
+    for (unsigned int i = 0; i < this -> size_; i++) ret.append(std::to_string(this -> operator[](i)));
     return ret;
 
 }
