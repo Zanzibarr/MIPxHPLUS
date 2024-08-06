@@ -130,7 +130,7 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     unsigned int tact_start = curr_col;
     for (unsigned int i = 0; i < nact; i++) {
         objs[i] = 0;
-        lbs[i] = 0.0;
+        lbs[i] = 0;
         ubs[i] = nact-1;
         types[i] = 'I';
         snprintf(names[i], 20, "tact(%d)", i);
@@ -158,7 +158,7 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     for (unsigned int i = 0, count = 0; i < nvar; i++) for (unsigned int j = 0; j < variables[i].get_range(); j++, count++) {
         objs[count] = 0;
         lbs[count] = (istate[count] || gstate[count]) ? 1.0 : 0.0;  // fix variables of initial and goal state to 1
-        ubs[count] = 1.0;
+        ubs[count] = 1;
         types[count] = 'B';
         snprintf(names[count], 20, "var(%d_%d)", i, j);
     }
@@ -201,8 +201,8 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
         for (unsigned int i = 0, k = 0; i < nvar; k += variables[i].get_range(), i++) for (unsigned int j = 0; j < variables[i].get_range(); j++) {
             if (!eff[k + j]) continue;    // create a variable only for the effects of the action
             objs[nfa] = 0;
-            lbs[nfa] = 0.0;
-            ubs[nfa] = 1.0;
+            lbs[nfa] = 0;
+            ubs[nfa] = 1;
             types[nfa] = 'B';
             snprintf(names[nfa], 20, "fa(%d_%d_%d)", c, i, j);
             nfa++;
@@ -462,13 +462,13 @@ void HPLUS_store_imai_sol(const CPXENVptr& env, const CPXLPptr& lp, HPLUS_instan
     my::assert(!CPXgetx(env, lp, xstar, 0, 2 * nact - 1), "CPXgetx failed.");
 
     // convert to std collections for easier parsing
-    std::vector<std::pair<unsigned int, unsigned int>> cpx_result;
-    for (unsigned int i = 0; i < nact; i++) if (xstar[i] > .5) cpx_result.emplace_back((unsigned int)xstar[nact+i], i);
+    std::vector<std::pair<double, unsigned int>> cpx_result;
+    for (unsigned int i = 0; i < nact; i++) if (xstar[i] > .5) cpx_result.emplace_back(xstar[nact+i], i);
     delete[] xstar; xstar = nullptr;
 
     // sort cpx_result based on actions timestamps
     std::sort(cpx_result.begin(), cpx_result.end(),
-        [](const std::pair<unsigned int, unsigned int> &x, const std::pair<unsigned int, unsigned int> &y) {
+        [](const std::pair<double, unsigned int> &x, const std::pair<double, unsigned int> &y) {
             return x.first < y.first;
         }
     );
@@ -476,7 +476,7 @@ void HPLUS_store_imai_sol(const CPXENVptr& env, const CPXLPptr& lp, HPLUS_instan
     // get solution from sorted cpx_result
     std::vector<unsigned int> solution;
     std::transform(cpx_result.begin(), cpx_result.end(), std::back_inserter(solution),
-        [](const std::pair<unsigned int, unsigned int> &p) {
+        [](const std::pair<double, unsigned int> &p) {
             return p.second;
         }
     );
