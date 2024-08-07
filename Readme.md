@@ -65,7 +65,7 @@ make <target_option>
 
 - **-i** <input_file> : (rel path) specify the input file (relative to the code/instances folder)
 - **-a** <algorithm_name> : specify the algorithm to use
-  - **imai** : to use the baseline model from the Imai15 paper
+  - **imai** : to use the model from the Imai15 paper
 - **-t** <time_limit> : (int) specify the time limit (in seconds)
 
 #### Logging

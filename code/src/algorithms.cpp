@@ -359,7 +359,7 @@ void HPLUS_imai_extract_fact_landmarks(const HPLUS_instance& inst, std::vector<m
                 if (fact_landmarks[p][bfsize] || !x.equals(fact_landmarks[p])) {                                                                    //          if L[p] != X then
 
                     fact_landmarks[p] = my::BitField(x);                                                                                            //              L[p] <- X
-                    for (unsigned int i = 0; i < inst.get_nact(); i++) if (actions[i].get_pre()[p]) {                                                          //              for a' in A : p in pre(a)
+                    for (unsigned int i = 0; i < inst.get_nact(); i++) if (actions[i].get_pre()[p]) {                                               //              for a' in A : p in pre(a)
                         if (s.contains(actions[i].get_pre()) && std::find(actions_queue.begin(), actions_queue.end(), i) == actions_queue.end())    //                  if pre(a') is in S and a' is not in Q
                             actions_queue.push_back(i);                                                                                             //                      insert a' into Q
                     }
@@ -439,15 +439,8 @@ void HPLUS_imai_variable_elimination(CPXENVptr& env, CPXLPptr& lp, HPLUS_instanc
 
     std::vector<my::BitField> fact_landmarks;
 
-    // HPLUS_imai_relevance_analysis(inst);
     HPLUS_imai_extract_fact_landmarks(inst, fact_landmarks);
-
     HPLUS_imai_fix_landmarks(env, lp, inst, fact_landmarks);
-    // while (exist a variable that can be eliminated) {
-        // HPLUS_imai_immediate_actions_application(env, lp, inst);
-        // HPLUS_imai_dominated_actions_elimination(env, lp, inst);
-        // HPLUS_imai_relevance_analysis(inst);
-    // }
 
 }
 
@@ -503,8 +496,8 @@ void HPLUS_run_imai(HPLUS_instance& inst) {
     double start_time = HPLUS_env.get_time();
 
     HPLUS_cpx_init(env, lp);
-    HPLUS_cpx_build_imai(env, lp, inst);
-    HPLUS_imai_variable_elimination(env, lp, inst);
+    HPLUS_cpx_build_imai(env, lp, inst);                                            // baseline
+    HPLUS_imai_variable_elimination(env, lp, inst);                                 // apply iterative variable elimination
 
     HPLUS_stats.build_time = HPLUS_env.get_time() - start_time;
 
