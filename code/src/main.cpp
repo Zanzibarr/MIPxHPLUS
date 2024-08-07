@@ -29,7 +29,7 @@ void HPLUS_show_info(const HPLUS_instance& inst) {
     std::time_t time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     HPLUS_env.logger.print("%s%s", std::ctime(&time), LINE);
     HPLUS_env.logger.print("Input file: %s.", HPLUS_env.infile.c_str());
-    if (!HPLUS_env.log_name.empty()) HPLUS_env.logger.print("Log name: %s.", HPLUS_env.log_name.c_str());
+    if (HPLUS_env.log && !HPLUS_env.log_name.empty()) HPLUS_env.logger.print("Log name: %s.", HPLUS_env.log_name.c_str());
     if (!HPLUS_env.run_name.empty()) HPLUS_env.logger.print("Run name: %s.", HPLUS_env.run_name.c_str());
 
     HPLUS_env.logger.print(LINE);
