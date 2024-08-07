@@ -71,5 +71,5 @@ make <target_option>
 #### Logging
 
 - **-l** : (optional) tells the program to log output to file (as well as stdout)
-- **-ln** <log_name> : (string/"string with spaces") (optional) specify the name of the log file (will be located inside the code/logs folder); if not specified and the _-l_ flag is used, a default log file will be used
+- **-ln** <log*name> : (string/"string with spaces") (optional) specify the name of the log file (will be located inside the code/logs folder); if not specified and the *-l\_ flag is used, a default log file will be used
 - **-rn** <run_name> : (string/"string with spaces") (optional) set a run name that will show in the log file (used also to create log/lp files for cplex)
