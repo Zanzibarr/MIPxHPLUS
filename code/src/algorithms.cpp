@@ -90,6 +90,82 @@ void HPLUS_parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp) {
 // ##################################################################### //
 
 /**
+ * Fact landmarks extracting method from Imai's paper
+ */
+void HPLUS_imai_extract_fact_landmarks(const HPLUS_instance& inst, std::vector<my::BitField>& fact_landmarks) {
+
+    const unsigned int bfsize = inst.get_bfsize();
+
+    fact_landmarks = std::vector<my::BitField>(bfsize);
+    const my::BitField& istate = inst.get_istate();
+    for (unsigned int p = 0; p < bfsize; p++) {
+        // using the bit at position bfsize as a flag for "full set of variables"
+        fact_landmarks[p] = my::BitField(bfsize + 1);
+        if (istate[p]) fact_landmarks[p].set(p);                                                                                                    //  L[p] <- {p} for each p in I
+        else fact_landmarks[p].set(bfsize);                                                                                                         //  L[p] <- P for each p not in I
+    }
+
+    const std::vector<HPLUS_action>& actions = inst.get_actions();
+    my::BitField s(inst.get_istate());                                                                                                              //  S <- I
+
+    std::deque<int> actions_queue;
+    for (unsigned int i = 0; i < inst.get_nact(); i++)                                                                                                         //  for a in A do
+        if(s.contains(actions[i].get_pre())) actions_queue.push_back(i);                                                                            //      insert a into a FIFO queue if pre(a) is in S
+
+    while(!actions_queue.empty()) {                                                                                                                 //  while Q is not empty do
+
+        const HPLUS_action a = actions[actions_queue.front()];                                                                                      //      retrieve an action a from Q
+        actions_queue.pop_front();
+
+        const my::BitField& pre_a = a.get_pre();
+        const my::BitField& add_a = a.get_eff();
+
+        for (auto p : add_a) {                                                                                                                      //      for p in add(a) do
+
+            s.set(p);                                                                                                                               //          S <- S union {p}
+
+            my::BitField x = my::BitField(bfsize + 1);
+            for (auto p : add_a) x.set(p);                                                                                                          //          X <- add(a)
+
+            for (auto pp : pre_a) {                                                                                                                 //          for p' in pre(a)
+                // if variable p has the "full" flag then the unification
+                // generates a "full" bitfield -> no need to unificate, just set the flag
+                if (fact_landmarks[pp][bfsize]) {
+                    x.set(bfsize);
+                    // if x is now full we can exit, since all further unions wont change x
+                    break;
+                } else x.unificate(fact_landmarks[pp]);                                                                                             //              X <- X union L[p']
+            }
+
+            // we then check if L[p] != X, and if they are the same we skip,
+            // if X = P, then (X intersection L[P]) = L[P], hence we can already skip
+            if (!x[bfsize]) {
+
+                // if the set for variable p is the full set of variables,
+                // the intersection generates back x -> we can skip the intersection
+                if (!fact_landmarks[p][bfsize]) x.intersect(fact_landmarks[p]);                                                                     //          X <- X intersection L[p]
+
+                // we already know that x is not the full set now, so if
+                // the set for variable p is the full set, we know that x is not
+                // equal to the set for variable p -> we can skip the check
+                if (fact_landmarks[p][bfsize] || !x.equals(fact_landmarks[p])) {                                                                    //          if L[p] != X then
+
+                    fact_landmarks[p] = my::BitField(x);                                                                                            //              L[p] <- X
+                    for (unsigned int i = 0; i < inst.get_nact(); i++) if (actions[i].get_pre()[p]) {                                               //              for a' in A : p in pre(a)
+                        if (s.contains(actions[i].get_pre()) && std::find(actions_queue.begin(), actions_queue.end(), i) == actions_queue.end())    //                  if pre(a') is in S and a' is not in Q
+                            actions_queue.push_back(i);                                                                                             //                      insert a' into Q
+                    }
+
+                }
+            }
+
+        }
+
+    }                                                                                                                                               //  at this point, L[p] contains sets of fact landmarks for p in P
+
+}
+
+/**
  * Build the basic Imai model
 */
 void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& inst) {
@@ -101,6 +177,11 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     const std::vector<HPLUS_variable>& variables = inst.get_variables();
     const my::BitField& istate = inst.get_istate();
     const my::BitField& gstate = inst.get_gstate();
+    std::vector<my::BitField> landmarks_set;
+    my::BitField fact_landmarks(istate);                            // the initial state is a set of fact landmarks since they are true since the beginning
+    my::BitField act_landmarks = my::BitField(nact);
+
+    HPLUS_imai_extract_fact_landmarks(inst, landmarks_set);
 
     // ~~~~~~~~ Adding CPLEX variables ~~~~~~~ //
 
@@ -113,14 +194,27 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     auto** names = new char*[nact];
     for (unsigned int i = 0; i < nact; i++) names[i] = new char[20];
 
+    // landmarks
+    unsigned int cand_act;
+    for (auto i : gstate) for (unsigned int j = 0; j < bfsize; j++)
+            if (!fact_landmarks[j] && (landmarks_set[i][j] || landmarks_set[i][bfsize])) {
+                fact_landmarks.set(j);  // fact landmarks
+                unsigned int count = 0;
+                for (unsigned int act_i = 0; act_i < nact && count <= 1; act_i++) if (actions[act_i].get_eff()[j]) {
+                    cand_act = act_i;
+                    count++;
+                }
+                if (count == 1) act_landmarks.set(cand_act);    // action landmarks
+            }
+
     // actions
     unsigned int act_start = curr_col;
-    for (unsigned int i = 0; i < nact; i++) {
-        objs[i] = actions[i].get_cost();
-        lbs[i] = 0.0;
-        ubs[i] = 1.0;
-        types[i] = 'B';
-        snprintf(names[i], 20, "act(%d)", i);
+    for (unsigned int act_i = 0; act_i < nact; act_i++) {
+        objs[act_i] = actions[act_i].get_cost();
+        lbs[act_i] = act_landmarks[act_i] ? 1 : 0;
+        ubs[act_i] = 1;
+        types[act_i] = 'B';
+        snprintf(names[act_i], 20, "act(%d)", act_i);
     }
     curr_col += nact;
 
@@ -157,7 +251,7 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     unsigned int var_start = curr_col;
     for (unsigned int i = 0, count = 0; i < nvar; i++) for (unsigned int j = 0; j < variables[i].get_range(); j++, count++) {
         objs[count] = 0;
-        lbs[count] = (istate[count] || gstate[count]) ? 1.0 : 0.0;  // fix variables of initial and goal state to 1
+        lbs[count] = (fact_landmarks[count] || gstate[count]) ? 1 : 0;
         ubs[count] = 1;
         types[count] = 'B';
         snprintf(names[count], 20, "var(%d_%d)", i, j);
@@ -170,8 +264,8 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     unsigned int tvar_start = curr_col;
     for (unsigned int i = 0, count = 0; i < nvar; i++) for (unsigned int j = 0; j < variables[i].get_range(); j++, count++) {
         objs[count] = 0;
-        lbs[count] = 1;
-        ubs[count] = nact;
+        lbs[count] = istate[count] ? 0 : 1;                     // if a variable is in the initial state, its timestamp can be fixed to 0
+        ubs[count] = istate[count] ? 0 : nact;
         types[count] = 'I';
         snprintf(names[count], 20, "tvar(%d_%d)", i, j);
     }
@@ -298,153 +392,6 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
 }
 
 /**
- * Fact landmarks extracting method from Imai's paper
- */
-void HPLUS_imai_extract_fact_landmarks(const HPLUS_instance& inst, std::vector<my::BitField>& fact_landmarks) {
-
-    const unsigned int bfsize = inst.get_bfsize();
-
-    fact_landmarks = std::vector<my::BitField>(bfsize);
-    const my::BitField& istate = inst.get_istate();
-    for (unsigned int p = 0; p < bfsize; p++) {
-        // using the bit at position bfsize as a flag for "full set of variables"
-        fact_landmarks[p] = my::BitField(bfsize + 1);
-        if (istate[p]) fact_landmarks[p].set(p);                                                                                                    //  L[p] <- {p} for each p in I
-        else fact_landmarks[p].set(bfsize);                                                                                                         //  L[p] <- P for each p not in I
-    }
-
-    const std::vector<HPLUS_action>& actions = inst.get_actions();
-    my::BitField s(inst.get_istate());                                                                                                              //  S <- I
-
-    std::deque<int> actions_queue;
-    for (unsigned int i = 0; i < inst.get_nact(); i++)                                                                                                         //  for a in A do
-        if(s.contains(actions[i].get_pre())) actions_queue.push_back(i);                                                                            //      insert a into a FIFO queue if pre(a) is in S
-
-    while(!actions_queue.empty()) {                                                                                                                 //  while Q is not empty do
-
-        const HPLUS_action a = actions[actions_queue.front()];                                                                                      //      retrieve an action a from Q
-        actions_queue.pop_front();
-
-        const my::BitField& pre_a = a.get_pre();
-        const my::BitField& add_a = a.get_eff();
-
-        for (auto p : add_a) {                                                                                                                      //      for p in add(a) do
-
-            s.set(p);                                                                                                                               //          S <- S union {p}
-
-            my::BitField x = my::BitField(bfsize + 1);
-            for (auto p : add_a) x.set(p);                                                                                                          //          X <- add(a)
-
-            for (auto pp : pre_a) {                                                                                                                 //          for p' in pre(a)
-                // if variable p has the "full" flag then the unification
-                // generates a "full" bitfield -> no need to unificate, just set the flag
-                if (fact_landmarks[pp][bfsize]) {
-                    x.set(bfsize);
-                    // if x is now full we can exit, since all further unions wont change x
-                    break;
-                } else x.unificate(fact_landmarks[pp]);                                                                                             //              X <- X union L[p']
-            }
-
-            // we then check if L[p] != X, and if they are the same we skip,
-            // if X = P, then (X intersection L[P]) = L[P], hence we can already skip
-            if (!x[bfsize]) {
-
-                // if the set for variable p is the full set of variables,
-                // the intersection generates back x -> we can skip the intersection
-                if (!fact_landmarks[p][bfsize]) x.intersect(fact_landmarks[p]);                                                                     //          X <- X intersection L[p]
-
-                // we already know that x is not the full set now, so if
-                // the set for variable p is the full set, we know that x is not
-                // equal to the set for variable p -> we can skip the check
-                if (fact_landmarks[p][bfsize] || !x.equals(fact_landmarks[p])) {                                                                    //          if L[p] != X then
-
-                    fact_landmarks[p] = my::BitField(x);                                                                                            //              L[p] <- X
-                    for (unsigned int i = 0; i < inst.get_nact(); i++) if (actions[i].get_pre()[p]) {                                               //              for a' in A : p in pre(a)
-                        if (s.contains(actions[i].get_pre()) && std::find(actions_queue.begin(), actions_queue.end(), i) == actions_queue.end())    //                  if pre(a') is in S and a' is not in Q
-                            actions_queue.push_back(i);                                                                                             //                      insert a' into Q
-                    }
-
-                }
-            }
-
-        }
-
-    }                                                                                                                                               //  at this point, L[p] contains sets of fact landmarks for p in P
-
-}
-
-/**
- * Fix landmarks as explained in Imai's paper
- */
-void HPLUS_imai_fix_landmarks(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& inst, const std::vector<my::BitField>& fact_landmarks) {
-
-    const unsigned int nact = inst.get_nact();
-    const unsigned int bfsize = inst.get_bfsize();
-    const my::BitField& istate = inst.get_istate();
-    const my::BitField& gstate = inst.get_gstate();
-
-    int nnz_var = 0;
-    int* ind_var = new int[bfsize];
-    char* lu_var = new char[bfsize];
-    double* bd_var = new double[bfsize];
-
-    int nnz_act = 0;
-    int* ind_act = new int[nact];
-    char* lu_act = new char[nact];
-    double* bd_act = new double[nact];
-
-    my::BitField dbvar_checker(bfsize);
-    my::BitField dbact_checker(nact);
-
-    for (auto i : gstate) {
-        for (unsigned int j = 0; j < bfsize; j++) if (!istate[j]) {                                             // -->  if a variable is in the initial state it's already been fixed when building the
-            if(!dbvar_checker[j] && (fact_landmarks[i][bfsize] || fact_landmarks[i][j])) {                      //      model; also fixing actions that have as an effect variables in the initial
-                                                                                                                //      state means to fix actions that might not have been used in the optimal solution,
-                // fixing fact landmarks                                                                        //      since those variables don't need actions to be used to be archieved.
-                dbvar_checker.set(j);
-                ind_var[nnz_var] = 2 * nact + j;
-                lu_var[nnz_var] = 'L';
-                bd_var[nnz_var++] = 1.0;
-
-                // fixing act landmarks
-                unsigned int act_count = 0;
-                for (unsigned int k = 0; k < nact && act_count < 2; k++) if (inst.get_actions()[k].get_eff()[j]) {
-                    act_count++;
-                    ind_act[nnz_act] = k;
-                    lu_act[nnz_act] = 'L';
-                    bd_act[nnz_act] = 1.0;
-                }
-                if (act_count == 1 && !dbact_checker[ind_act[nnz_act]]) dbact_checker.set(ind_act[nnz_act++]);
-
-            }
-        }
-    }
-
-    my::assert(!CPXchgbds(env, lp, nnz_var, ind_var, lu_var, bd_var), "CPXchgbds (variables) failed.");
-    my::assert(!CPXchgbds(env, lp, nnz_act, ind_act, lu_act, bd_act), "CPXchgbds (actions) failed.");
-
-    delete[] bd_act;
-    delete[] lu_act;
-    delete[] ind_act;
-    delete[] bd_var;
-    delete[] lu_var;
-    delete[] ind_var;
-
-}
-
-/**
- * Variable elimination method from Imai's paper
- */
-void HPLUS_imai_variable_elimination(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst) {
-
-    std::vector<my::BitField> fact_landmarks;
-
-    HPLUS_imai_extract_fact_landmarks(inst, fact_landmarks);
-    HPLUS_imai_fix_landmarks(env, lp, inst, fact_landmarks);
-
-}
-
-/**
  * Check if this solution is the best one and if so, stores it
 */
 void HPLUS_store_imai_sol(const CPXENVptr& env, const CPXLPptr& lp, HPLUS_instance& inst) {
@@ -496,8 +443,7 @@ void HPLUS_run_imai(HPLUS_instance& inst) {
     double start_time = HPLUS_env.get_time();
 
     HPLUS_cpx_init(env, lp);
-    HPLUS_cpx_build_imai(env, lp, inst);                                            // baseline
-    HPLUS_imai_variable_elimination(env, lp, inst);                                 // apply iterative variable elimination
+    HPLUS_cpx_build_imai(env, lp, inst);
 
     HPLUS_stats.build_time = HPLUS_env.get_time() - start_time;
 
