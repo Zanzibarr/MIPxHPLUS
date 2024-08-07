@@ -140,7 +140,7 @@ class HPLUS_instance {
         /**
          * @return The size of the bitfields used in this domain
          */
-        unsigned int get_bfsize() const;
+        unsigned int get_nvarstrips() const;
 
         /**
          * @return The list of variables this domain has
@@ -197,7 +197,7 @@ class HPLUS_instance {
 
         unsigned int n_var_;
         unsigned int n_act_;
-        unsigned int bf_size_;
+        unsigned int nvarstrips_;
 
         std::vector<HPLUS_variable> variables_;
         std::vector<HPLUS_action> actions_;

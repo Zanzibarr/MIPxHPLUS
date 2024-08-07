@@ -53,7 +53,7 @@ HPLUS_instance::HPLUS_instance(const std::string& file_path) {
     this -> use_costs_ = false;
     this -> n_var_ = 0;
     this -> n_act_ = 0;
-    this -> bf_size_ = 0;
+    this -> nvarstrips_ = 0;
 
     std::ifstream file(file_path.c_str(), std::ifstream::in);
     my::assert(file.good(), "Opening instance file failed.");
@@ -75,7 +75,7 @@ unsigned int HPLUS_instance::get_nvar() const { return this -> n_var_; }
 
 unsigned int HPLUS_instance::get_nact() const { return this -> n_act_; }
 
-unsigned int HPLUS_instance::get_bfsize() const { return this -> bf_size_; }
+unsigned int HPLUS_instance::get_nvarstrips() const { return this -> nvarstrips_; }
 
 const std::vector<HPLUS_variable>& HPLUS_instance::get_variables() const { return this -> variables_; }
 
@@ -92,7 +92,7 @@ void HPLUS_instance::update_best_solution(const std::vector<unsigned int>& solut
     my::BitField dbcheck = my::BitField(this -> n_act_);
     unsigned int costcheck = 0;
     my::assert(solution.size() <= this -> n_act_, "Solution has more actions that there actually exists.");    // check that there aren't more actions that there exists
-    my::BitField feas_checker(this -> bf_size_);
+    my::BitField feas_checker(this -> nvarstrips_);
     for (auto p : this -> initial_state_) feas_checker.set(p);
     for (auto act_i : solution) {
         my::assert(act_i < this -> n_act_, "Solution contains unexisting action.");     // check that the solution only contains existing actions
@@ -162,7 +162,7 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
     my::assert(my::isint(line, 0), "Corrupted file.");
     this -> n_var_ = std::stoi(line);
     this -> variables_ = std::vector<HPLUS_variable>(this -> n_var_);
-    this -> bf_size_ = 0;
+    this -> nvarstrips_ = 0;
     for (unsigned int var_i = 0; var_i < this -> n_var_; var_i++) {
         // process each variable
         std::getline(*ifs, line);   // begin_variable
@@ -174,7 +174,7 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
         std::getline(*ifs, line);   // range of variable
         my::assert(my::isint(line, 0), "Corrupted file.");
         unsigned int range = stoi(line);
-        this -> bf_size_ += range;
+        this -> nvarstrips_ += range;
         std::vector<std::string> val_names(range);
         for (unsigned int j = 0; j < range; j++) {
             std::getline(*ifs, line);   // name for variable value
@@ -202,7 +202,7 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
     // * initial state section
     std::getline(*ifs, line);   // begin_state
     my::assert(line == "begin_state", "Corrupted file.");
-    this -> initial_state_ = my::BitField(this -> bf_size_);
+    this -> initial_state_ = my::BitField(this -> nvarstrips_);
     for (unsigned int var_i = 0, c = 0; var_i < this -> n_var_; c += this -> variables_[var_i].get_range(), var_i++) {
         std::getline(*ifs, line);   // initial value of var_i
         my::assert(my::isint(line, 0, this -> variables_[var_i].get_range() - 1), "Corrupted file.");
@@ -215,7 +215,7 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
     // * goal state section
     std::getline(*ifs, line);   // begin_goal
     my::assert(line == "begin_goal", "Corrupted file.");
-    this -> goal_state_ = my::BitField(this -> bf_size_);
+    this -> goal_state_ = my::BitField(this -> nvarstrips_);
     std::getline(*ifs, line);   // number of goals
     my::assert(my::isint(line, 0, this -> n_var_), "Corrupted file.");
     unsigned int ngoals = stoi(line);
@@ -248,7 +248,7 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
         my::assert(line == "begin_operator", "Corrupted file.");
         std::getline(*ifs, line);   // symbolic action name
         std::string name = line;
-        my::BitField act_pre(this -> bf_size_);
+        my::BitField act_pre(this -> nvarstrips_);
         std::getline(*ifs, line);   // number of prevail conditions
         my::assert(my::isint(line, 0, this -> n_var_), "Corrupted file.");
         unsigned int n_pre = stoi(line);
@@ -269,7 +269,7 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
         std::getline(*ifs, line);   // number of effects
         my::assert(my::isint(line, 0), "Corrupted file.");
         unsigned int n_eff = stoi(line);
-        my::BitField act_eff(this -> bf_size_);
+        my::BitField act_eff(this -> nvarstrips_);
         for (unsigned int eff_i = 0; eff_i < n_eff; eff_i++) {
             // parsing each effect
             std::getline(*ifs, line);   // effect line

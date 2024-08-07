@@ -92,68 +92,68 @@ void HPLUS_parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp) {
 /**
  * Fact landmarks extracting method from Imai's paper
  */
-void HPLUS_imai_extract_fact_landmarks(const HPLUS_instance& inst, std::vector<my::BitField>& fact_landmarks) {
+void HPLUS_imai_extract_landmarks(const HPLUS_instance& inst, my::BitField& fact_landmarks, my::BitField& act_landmarks) {
 
-    const unsigned int bfsize = inst.get_bfsize();
+    const unsigned int nvarstrips = inst.get_nvarstrips();
 
-    fact_landmarks = std::vector<my::BitField>(bfsize);
+    std::vector<my::BitField> landmarks_set = std::vector<my::BitField>(nvarstrips);
     const my::BitField& istate = inst.get_istate();
-    for (unsigned int p = 0; p < bfsize; p++) {
-        // using the bit at position bfsize as a flag for "full set of variables"
-        fact_landmarks[p] = my::BitField(bfsize + 1);
-        if (istate[p]) fact_landmarks[p].set(p);                                                                                                    //  L[p] <- {p} for each p in I
-        else fact_landmarks[p].set(bfsize);                                                                                                         //  L[p] <- P for each p not in I
+    for (unsigned int p = 0; p < nvarstrips; p++) {
+        // using the bit at position nvarstrips as a flag for "full set of variables"
+        landmarks_set[p] = my::BitField(nvarstrips + 1);
+        if (istate[p]) landmarks_set[p].set(p);
+        else landmarks_set[p].set(nvarstrips);
     }
 
     const std::vector<HPLUS_action>& actions = inst.get_actions();
-    my::BitField s(inst.get_istate());                                                                                                              //  S <- I
+    my::BitField s(inst.get_istate());
 
     std::deque<int> actions_queue;
-    for (unsigned int i = 0; i < inst.get_nact(); i++)                                                                                                         //  for a in A do
-        if(s.contains(actions[i].get_pre())) actions_queue.push_back(i);                                                                            //      insert a into a FIFO queue if pre(a) is in S
+    for (unsigned int i = 0; i < inst.get_nact(); i++)
+        if(s.contains(actions[i].get_pre())) actions_queue.push_back(i);
 
-    while(!actions_queue.empty()) {                                                                                                                 //  while Q is not empty do
+    while(!actions_queue.empty()) {
 
-        const HPLUS_action a = actions[actions_queue.front()];                                                                                      //      retrieve an action a from Q
+        const HPLUS_action a = actions[actions_queue.front()];
         actions_queue.pop_front();
 
         const my::BitField& pre_a = a.get_pre();
         const my::BitField& add_a = a.get_eff();
 
-        for (auto p : add_a) {                                                                                                                      //      for p in add(a) do
+        for (auto p : add_a) {
 
-            s.set(p);                                                                                                                               //          S <- S union {p}
+            s.set(p);
 
-            my::BitField x = my::BitField(bfsize + 1);
-            for (auto p : add_a) x.set(p);                                                                                                          //          X <- add(a)
+            my::BitField x = my::BitField(nvarstrips + 1);
+            for (auto p : add_a) x.set(p);
 
-            for (auto pp : pre_a) {                                                                                                                 //          for p' in pre(a)
+            for (auto pp : pre_a) {
                 // if variable p has the "full" flag then the unification
                 // generates a "full" bitfield -> no need to unificate, just set the flag
-                if (fact_landmarks[pp][bfsize]) {
-                    x.set(bfsize);
+                if (landmarks_set[pp][nvarstrips]) {
+                    x.set(nvarstrips);
                     // if x is now full we can exit, since all further unions wont change x
                     break;
-                } else x.unificate(fact_landmarks[pp]);                                                                                             //              X <- X union L[p']
+                } else x.unificate(landmarks_set[pp]);
             }
 
             // we then check if L[p] != X, and if they are the same we skip,
             // if X = P, then (X intersection L[P]) = L[P], hence we can already skip
-            if (!x[bfsize]) {
+            if (!x[nvarstrips]) {
 
                 // if the set for variable p is the full set of variables,
                 // the intersection generates back x -> we can skip the intersection
-                if (!fact_landmarks[p][bfsize]) x.intersect(fact_landmarks[p]);                                                                     //          X <- X intersection L[p]
+                if (!landmarks_set[p][nvarstrips]) x.intersect(landmarks_set[p]);
 
                 // we already know that x is not the full set now, so if
                 // the set for variable p is the full set, we know that x is not
                 // equal to the set for variable p -> we can skip the check
-                if (fact_landmarks[p][bfsize] || !x.equals(fact_landmarks[p])) {                                                                    //          if L[p] != X then
+                if (landmarks_set[p][nvarstrips] || !x.equals(landmarks_set[p])) {
 
-                    fact_landmarks[p] = my::BitField(x);                                                                                            //              L[p] <- X
-                    for (unsigned int i = 0; i < inst.get_nact(); i++) if (actions[i].get_pre()[p]) {                                               //              for a' in A : p in pre(a)
-                        if (s.contains(actions[i].get_pre()) && std::find(actions_queue.begin(), actions_queue.end(), i) == actions_queue.end())    //                  if pre(a') is in S and a' is not in Q
-                            actions_queue.push_back(i);                                                                                             //                      insert a' into Q
+                    landmarks_set[p] = my::BitField(x);
+                    for (unsigned int i = 0; i < inst.get_nact(); i++) if (actions[i].get_pre()[p]) {
+                        if (s.contains(actions[i].get_pre()) && std::find(actions_queue.begin(), actions_queue.end(), i) == actions_queue.end())
+                            actions_queue.push_back(i);
                     }
 
                 }
@@ -161,7 +161,21 @@ void HPLUS_imai_extract_fact_landmarks(const HPLUS_instance& inst, std::vector<m
 
         }
 
-    }                                                                                                                                               //  at this point, L[p] contains sets of fact landmarks for p in P
+    }
+
+    fact_landmarks.unificate(istate);
+
+    unsigned int cand_act;
+    for (auto i : inst.get_gstate()) for (unsigned int j = 0; j < nvarstrips; j++)
+        if (!fact_landmarks[j] && (landmarks_set[i][j] || landmarks_set[i][nvarstrips])) {
+            fact_landmarks.set(j);                          // fact landmarks
+            unsigned int count = 0;
+            for (unsigned int act_i = 0; act_i < inst.get_nact() && count <= 1; act_i++) if (actions[act_i].get_eff()[j]) {
+                cand_act = act_i;
+                count++;
+            }
+            if (count == 1) act_landmarks.set(cand_act);    // action landmarks
+        }
 
 }
 
@@ -172,16 +186,11 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
 
     const unsigned int nvar = inst.get_nvar();
     const unsigned int nact = inst.get_nact();
-    const unsigned int bfsize = inst.get_bfsize();
+    const unsigned int nvarstrips = inst.get_nvarstrips();
     const std::vector<HPLUS_action>& actions = inst.get_actions();
     const std::vector<HPLUS_variable>& variables = inst.get_variables();
     const my::BitField& istate = inst.get_istate();
     const my::BitField& gstate = inst.get_gstate();
-    std::vector<my::BitField> landmarks_set;
-    my::BitField fact_landmarks(istate);                            // the initial state is a set of fact landmarks since they are true since the beginning
-    my::BitField act_landmarks = my::BitField(nact);
-
-    HPLUS_imai_extract_fact_landmarks(inst, landmarks_set);
 
     // ~~~~~~~~ Adding CPLEX variables ~~~~~~~ //
 
@@ -195,17 +204,9 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     for (unsigned int i = 0; i < nact; i++) names[i] = new char[20];
 
     // landmarks
-    unsigned int cand_act;
-    for (auto i : gstate) for (unsigned int j = 0; j < bfsize; j++)
-            if (!fact_landmarks[j] && (landmarks_set[i][j] || landmarks_set[i][bfsize])) {
-                fact_landmarks.set(j);  // fact landmarks
-                unsigned int count = 0;
-                for (unsigned int act_i = 0; act_i < nact && count <= 1; act_i++) if (actions[act_i].get_eff()[j]) {
-                    cand_act = act_i;
-                    count++;
-                }
-                if (count == 1) act_landmarks.set(cand_act);    // action landmarks
-            }
+    my::BitField fact_landmarks(nvarstrips);
+    my::BitField act_landmarks(nact);
+    HPLUS_imai_extract_landmarks(inst, fact_landmarks, act_landmarks);
 
     // actions
     unsigned int act_start = curr_col;
@@ -240,12 +241,12 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     delete[] lbs; lbs = nullptr;
     delete[] objs; objs = nullptr;
 
-    objs = new double[bfsize];
-    lbs = new double[bfsize];
-    ubs = new double[bfsize];
-    types = new char[bfsize];
-    names = new char*[bfsize];
-    for (unsigned int i = 0; i < bfsize; i++) names[i] = new char[20];
+    objs = new double[nvarstrips];
+    lbs = new double[nvarstrips];
+    ubs = new double[nvarstrips];
+    types = new char[nvarstrips];
+    names = new char*[nvarstrips];
+    for (unsigned int i = 0; i < nvarstrips; i++) names[i] = new char[20];
 
     // variables
     unsigned int var_start = curr_col;
@@ -256,9 +257,9 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
         types[count] = 'B';
         snprintf(names[count], 20, "var(%d_%d)", i, j);
     }
-    curr_col += bfsize;
+    curr_col += nvarstrips;
 
-    my::assert(!CPXnewcols(env, lp, bfsize, objs, lbs, ubs, types, names), "CPXnewcols (variables) failed.");
+    my::assert(!CPXnewcols(env, lp, nvarstrips, objs, lbs, ubs, types, names), "CPXnewcols (variables) failed.");
 
     // variable timestamps
     unsigned int tvar_start = curr_col;
@@ -269,23 +270,23 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
         types[count] = 'I';
         snprintf(names[count], 20, "tvar(%d_%d)", i, j);
     }
-    curr_col += bfsize;
+    curr_col += nvarstrips;
 
-    my::assert(!CPXnewcols(env, lp, bfsize, objs, lbs, ubs, types, names), "CPXnewcols (variable timestamps) failed.");
+    my::assert(!CPXnewcols(env, lp, nvarstrips, objs, lbs, ubs, types, names), "CPXnewcols (variable timestamps) failed.");
 
-    for (unsigned int i = 0; i < bfsize; i++) delete[] names[i];
+    for (unsigned int i = 0; i < nvarstrips; i++) delete[] names[i];
     delete[] names; names = nullptr;
     delete[] types; types = nullptr;
     delete[] ubs; ubs = nullptr;
     delete[] lbs; lbs = nullptr;
     delete[] objs; objs = nullptr;
 
-    objs = new double[nact * bfsize];
-    lbs = new double[nact * bfsize];
-    ubs = new double[nact * bfsize];
-    types = new char[nact * bfsize];
-    names = new char*[nact * bfsize];
-    for (unsigned int i = 0; i < nact * bfsize; i++) names[i] = new char[20];
+    objs = new double[nact * nvarstrips];
+    lbs = new double[nact * nvarstrips];
+    ubs = new double[nact * nvarstrips];
+    types = new char[nact * nvarstrips];
+    names = new char*[nact * nvarstrips];
+    for (unsigned int i = 0; i < nact * nvarstrips; i++) names[i] = new char[20];
 
     // first archievers
     unsigned int nfa = 0;
@@ -306,7 +307,7 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
 
     my::assert(!CPXnewcols(env, lp, nfa, objs, lbs, ubs, types, names), "CPXnewcols (first archievers) failed.");
 
-    for (unsigned int i = 0; i < nact * bfsize; i++) delete[] names[i];
+    for (unsigned int i = 0; i < nact * nvarstrips; i++) delete[] names[i];
     delete[] names; names = nullptr;
     delete[] types; types = nullptr;
     delete[] ubs; ubs = nullptr;
@@ -322,12 +323,12 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     double rhs1 = 0, rhs2 = nact;
     int begin = 0;
 
-    std::vector<int*> ind(bfsize);
-    std::vector<double*> val(bfsize);
-    std::vector<int> nnz(bfsize);
-    std::vector<double> rhs(bfsize);
+    std::vector<int*> ind(nvarstrips);
+    std::vector<double*> val(nvarstrips);
+    std::vector<int> nnz(nvarstrips);
+    std::vector<double> rhs(nvarstrips);
 
-    for (unsigned int i = 0; i < bfsize; i++) {
+    for (unsigned int i = 0; i < nvarstrips; i++) {
         ind[i] = new int[nact + 1];
         val[i] = new double[nact + 1];
         nnz[i] = 0;
@@ -340,7 +341,7 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     for (unsigned int i = 0, count_fa = 0; i < nact; i++) {
         const my::BitField& pre = actions[i].get_pre();
         const my::BitField& eff = actions[i].get_eff();
-        for (unsigned int j = 0; j < bfsize; j++) {
+        for (unsigned int j = 0; j < nvarstrips; j++) {
             if (pre[j]) {
                 // constraint 1: x_a <= y_vj, vj in pre(a)
                 ind1[0] = act_start + i;
@@ -378,9 +379,9 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
         }
     }
 
-    for (unsigned int i = 0; i < bfsize; i++) my::assert(!CPXaddrows(env, lp, 0, 1, nnz[i], &rhs[i], &sensee, &begin, ind[i], val[i], nullptr, nullptr), "CPXaddrows (c3) failed.");
+    for (unsigned int i = 0; i < nvarstrips; i++) my::assert(!CPXaddrows(env, lp, 0, 1, nnz[i], &rhs[i], &sensee, &begin, ind[i], val[i], nullptr, nullptr), "CPXaddrows (c3) failed.");
 
-    for (unsigned int i = 0; i < bfsize; i++) {
+    for (unsigned int i = 0; i < nvarstrips; i++) {
         delete[] ind[i]; ind[i] = nullptr;
         delete[] val[i]; val[i] = nullptr;
     }

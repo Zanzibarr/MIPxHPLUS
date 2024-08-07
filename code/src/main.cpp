@@ -49,7 +49,7 @@ void HPLUS_show_info(const HPLUS_instance& inst) {
         for (unsigned int j = 0; j < variables[i].get_range(); j++)
             HPLUS_env.logger.print("name(var_%d[%d]) = '%s'.", i, j, val_names[j].c_str());
     }
-    HPLUS_env.logger.print("Bitfield size: %d", inst.get_bfsize());
+    HPLUS_env.logger.print("Total number of variable states: %d", inst.get_nvarstrips());
     HPLUS_env.logger.print("Initial state: %s.", inst.get_istate().view().c_str());
     HPLUS_env.logger.print("Goal state: %s.", inst.get_gstate().view().c_str());
     #endif
