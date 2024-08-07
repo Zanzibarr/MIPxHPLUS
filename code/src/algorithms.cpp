@@ -414,7 +414,7 @@ void HPLUS_imai_fix_landmarks(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance
                     lu_act[nnz_act] = 'L';
                     bd_act[nnz_act] = 1.0;
                 }
-                if (act_count == 1) dbact_checker.set(ind_act[nnz_act++]);
+                if (act_count == 1 && !dbact_checker[ind_act[nnz_act]]) dbact_checker.set(ind_act[nnz_act++]);
 
             }
         }
@@ -504,7 +504,7 @@ void HPLUS_run_imai(HPLUS_instance& inst) {
 
     HPLUS_cpx_init(env, lp);
     HPLUS_cpx_build_imai(env, lp, inst);
-    // HPLUS_imai_variable_elimination(env, lp, inst);
+    HPLUS_imai_variable_elimination(env, lp, inst);
 
     HPLUS_stats.build_time = HPLUS_env.get_time() - start_time;
 

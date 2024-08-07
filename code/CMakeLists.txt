@@ -12,7 +12,7 @@ project(main)
 
 # setting flags for optimization and debug builds
 set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3")
-set(CMAKE_CXX_FLAGS_DEBUG "-Og -ggdb")
+set(CMAKE_CXX_FLAGS_DEBUG "-Og -ggdb -fsanitize=address")
 
 # setting the default verbose/warn/intchecks (edited with the -D flag)
 set(VERBOSE "10" CACHE STRING "Verbose setting set from command line")
