@@ -92,11 +92,11 @@ void HPLUS_parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp) {
 /**
  * Fact landmarks extracting method from Imai's paper
  */
-void HPLUS_imai_extract_landmarks(const HPLUS_instance& inst, my::BitField& fact_landmarks, my::BitField& act_landmarks) {
+void HPLUS_imai_extract_landmarks(const HPLUS_instance& inst, std::vector<my::BitField>& landmarks_set, my::BitField& fact_landmarks, my::BitField& act_landmarks) {
 
     const unsigned int nvarstrips = inst.get_nvarstrips();
 
-    std::vector<my::BitField> landmarks_set = std::vector<my::BitField>(nvarstrips);
+    landmarks_set = std::vector<my::BitField>(nvarstrips);
     const my::BitField& istate = inst.get_istate();
     for (unsigned int p = 0; p < nvarstrips; p++) {
         // using the bit at position nvarstrips as a flag for "full set of variables"
@@ -179,6 +179,64 @@ void HPLUS_imai_extract_landmarks(const HPLUS_instance& inst, my::BitField& fact
 
 }
 
+void HPLUS_imai_extract_first_archievers(const HPLUS_instance& inst, const std::vector<my::BitField>& landmarks_set, std::vector<my::BitField>& first_archievers) {
+
+    const auto& actions = inst.get_actions();
+    const auto nact = inst.get_nact();
+    const auto nvarstrips = inst.get_nvarstrips();
+
+    first_archievers = std::vector<my::BitField>(nact);
+
+    for (unsigned int act_i = 0; act_i < nact; act_i++) {
+        first_archievers[act_i] = my::BitField(nvarstrips);
+        for (auto eff : actions[act_i].get_eff()) {
+            bool landmark = false;
+            for (auto pre : actions[act_i].get_pre()) {
+                if (landmarks_set[pre][eff]) {
+                    landmark = true;
+                    break;
+                }
+            }
+            if (!landmark) first_archievers[act_i].set(eff);
+        }
+    }
+
+}
+
+void HPLUS_imai_extract_relevant(const HPLUS_instance& inst, std::vector<my::BitField>& first_archievers,my::BitField& relevant_variables, my::BitField& relevant_actions) {
+
+    const auto& actions = inst.get_actions();
+    const auto nact = inst.get_nact();
+
+    for (unsigned int act_i = 0; act_i < nact; act_i++) {
+        for (auto p : inst.get_gstate()) if (first_archievers[act_i][p]) {
+            relevant_actions.set(act_i);
+            break;
+        }
+    }
+
+    bool new_rel_found = true;
+
+    while (new_rel_found) {
+        new_rel_found = false;
+        for (unsigned int act_i = 0; act_i < nact; act_i++) if (!relevant_actions[act_i]) {
+            for (auto i : relevant_actions) {
+                bool skip = false;
+                for (auto p : first_archievers[act_i]) if(actions[i].get_pre()[p]) {
+                    new_rel_found = true;
+                    skip = true;
+                    relevant_actions.set(act_i);
+                    break;
+                }
+                if (skip) break;
+            }
+        }
+    }
+
+    for (auto act_i : relevant_actions) relevant_variables.unificate(actions[act_i].get_pre());
+
+}
+
 /**
  * Build the basic Imai model
 */
@@ -204,16 +262,26 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     for (unsigned int i = 0; i < nact; i++) names[i] = new char[20];
 
     // landmarks
+    std::vector<my::BitField> landmarks_set;
     my::BitField fact_landmarks(nvarstrips);
     my::BitField act_landmarks(nact);
-    HPLUS_imai_extract_landmarks(inst, fact_landmarks, act_landmarks);
+    HPLUS_imai_extract_landmarks(inst, landmarks_set, fact_landmarks, act_landmarks);
+
+    // first archievers
+    std::vector<my::BitField> first_archievers;
+    HPLUS_imai_extract_first_archievers(inst, landmarks_set, first_archievers);
+
+    // relevance analysis
+    my::BitField relevant_variables(gstate);
+    my::BitField relevant_actions(nact);
+    HPLUS_imai_extract_relevant(inst, first_archievers, relevant_variables, relevant_actions);
 
     // actions
     unsigned int act_start = curr_col;
     for (unsigned int act_i = 0; act_i < nact; act_i++) {
         objs[act_i] = actions[act_i].get_cost();
         lbs[act_i] = act_landmarks[act_i] ? 1 : 0;
-        ubs[act_i] = 1;
+        ubs[act_i] = relevant_actions[act_i] ? 1 : 0;
         types[act_i] = 'B';
         snprintf(names[act_i], 20, "act(%d)", act_i);
     }
@@ -253,7 +321,7 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     for (unsigned int i = 0, count = 0; i < nvar; i++) for (unsigned int j = 0; j < variables[i].get_range(); j++, count++) {
         objs[count] = 0;
         lbs[count] = (fact_landmarks[count] || gstate[count]) ? 1 : 0;
-        ubs[count] = 1;
+        ubs[count] = (relevant_variables[count] || fact_landmarks[count]) ? 1 : 0;
         types[count] = 'B';
         snprintf(names[count], 20, "var(%d_%d)", i, j);
     }
@@ -294,10 +362,10 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     for (unsigned int c = 0; c < nact; c++) {
         const my::BitField& eff = actions[c].get_eff();
         for (unsigned int i = 0, k = 0; i < nvar; k += variables[i].get_range(), i++) for (unsigned int j = 0; j < variables[i].get_range(); j++) {
-            if (!eff[k + j]) continue;    // create a variable only for the effects of the action
+            if (!eff[k + j]) continue;
             objs[nfa] = 0;
             lbs[nfa] = 0;
-            ubs[nfa] = 1;
+            ubs[nfa] = first_archievers[c][k+j] ? 1 : 0;
             types[nfa] = 'B';
             snprintf(names[nfa], 20, "fa(%d_%d_%d)", c, i, j);
             nfa++;
