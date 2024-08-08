@@ -43,10 +43,7 @@ void my::BitField::intersect(const BitField& bf) {
     #if HPLUS_INTCHECK
     my::assert(this -> size_ == bf.size_, "BitField:intersect failed.");
     #endif
-    for (auto i : *this) {
-        if (bf[i]) this -> set(i);
-        else this -> unset(i);
-    }
+    for (unsigned int i = 0; i < this -> field_.size(); i++) this -> field_[i] &= bf.field_[i];
 
 }
 
@@ -55,7 +52,7 @@ void my::BitField::unificate(const BitField& bf) {
     #if HPLUS_INTCHECK
     my::assert(this -> size_ == bf.size_, "BitField:unificate failed.");
     #endif
-    for (auto i : bf) this -> set(i);
+    for (unsigned int i = 0; i < this -> field_.size(); i++) this -> field_[i] |= bf.field_[i];
 
 }
 

@@ -179,61 +179,54 @@ void HPLUS_imai_extract_landmarks(const HPLUS_instance& inst, std::vector<my::Bi
 
 }
 
-void HPLUS_imai_extract_first_archievers(const HPLUS_instance& inst, const std::vector<my::BitField>& landmarks_set, std::vector<my::BitField>& first_archievers) {
+void HPLUS_imai_extract_fadd(const HPLUS_instance& inst, const std::vector<my::BitField>& landmarks_set, std::vector<my::BitField>& fadd) {
 
     const auto& actions = inst.get_actions();
     const auto nact = inst.get_nact();
     const auto nvarstrips = inst.get_nvarstrips();
 
-    first_archievers = std::vector<my::BitField>(nact);
+    fadd = std::vector<my::BitField>(nact);
 
     for (unsigned int act_i = 0; act_i < nact; act_i++) {
-        first_archievers[act_i] = my::BitField(nvarstrips);
-        for (auto eff : actions[act_i].get_eff()) {
-            bool landmark = false;
-            for (auto pre : actions[act_i].get_pre()) {
-                if (landmarks_set[pre][eff]) {
-                    landmark = true;
-                    break;
-                }
-            }
-            if (!landmark) first_archievers[act_i].set(eff);
-        }
+        fadd[act_i] = my::BitField(nvarstrips);
+        const my::BitField& pre = actions[act_i].get_pre();
+        const my::BitField& eff = actions[act_i].get_eff();
+        my::BitField f_lm_a(nvarstrips);
+        for (auto p : pre) for (unsigned int i = 0; i < nvarstrips; i++) if (landmarks_set[p][i] || landmarks_set[p][nvarstrips]) f_lm_a.set(i);
+        for (auto p : eff) if (!f_lm_a[p]) fadd[act_i].set(p);
     }
 
 }
 
-void HPLUS_imai_extract_relevant(const HPLUS_instance& inst, std::vector<my::BitField>& first_archievers,my::BitField& relevant_variables, my::BitField& relevant_actions) {
+void HPLUS_imai_extract_relevant(const HPLUS_instance& inst, std::vector<my::BitField>& fadd,my::BitField& relevant_variables, my::BitField& relevant_actions) {
 
     const auto& actions = inst.get_actions();
     const auto nact = inst.get_nact();
 
     for (unsigned int act_i = 0; act_i < nact; act_i++) {
-        for (auto p : inst.get_gstate()) if (first_archievers[act_i][p]) {
+        for (auto p : inst.get_gstate()) if (fadd[act_i][p]) {
             relevant_actions.set(act_i);
+            relevant_variables.unificate(actions[act_i].get_pre());
             break;
         }
     }
 
-    bool new_rel_found = true;
-
-    while (new_rel_found) {
-        new_rel_found = false;
-        for (unsigned int act_i = 0; act_i < nact; act_i++) if (!relevant_actions[act_i]) {
-            for (auto i : relevant_actions) {
-                bool skip = false;
-                for (auto p : first_archievers[act_i]) if(actions[i].get_pre()[p]) {
-                    new_rel_found = true;
-                    skip = true;
-                    relevant_actions.set(act_i);
-                    break;
-                }
-                if (skip) break;
+    std::vector<unsigned int> cand_actions;
+    for (unsigned int i = 0; i < nact; i++) if (!relevant_actions[i]) cand_actions.push_back(i);
+    bool new_act = true;
+    while (new_act) {
+        new_act = false;
+        for (unsigned int i = 0; i < cand_actions.size(); i++) {
+            for (auto p : actions[cand_actions[i]].get_eff()) if (relevant_variables[p]) {
+                relevant_actions.set(cand_actions[i]);
+                relevant_variables.unificate(actions[cand_actions[i]].get_pre());
+                cand_actions.erase(cand_actions.begin() + i);
+                new_act = true;
+                break;
             }
+            if (new_act) break;
         }
     }
-
-    for (auto act_i : relevant_actions) relevant_variables.unificate(actions[act_i].get_pre());
 
 }
 
@@ -268,13 +261,13 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     HPLUS_imai_extract_landmarks(inst, landmarks_set, fact_landmarks, act_landmarks);
 
     // first archievers
-    std::vector<my::BitField> first_archievers;
-    HPLUS_imai_extract_first_archievers(inst, landmarks_set, first_archievers);
+    std::vector<my::BitField> fadd;
+    HPLUS_imai_extract_fadd(inst, landmarks_set, fadd);
 
     // relevance analysis
     my::BitField relevant_variables(gstate);
     my::BitField relevant_actions(nact);
-    HPLUS_imai_extract_relevant(inst, first_archievers, relevant_variables, relevant_actions);
+    HPLUS_imai_extract_relevant(inst, fadd, relevant_variables, relevant_actions);
 
     // actions
     unsigned int act_start = curr_col;
@@ -365,7 +358,7 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
             if (!eff[k + j]) continue;
             objs[nfa] = 0;
             lbs[nfa] = 0;
-            ubs[nfa] = first_archievers[c][k+j] ? 1 : 0;
+            ubs[nfa] = fadd[c][k+j] ? 1 : 0;
             types[nfa] = 'B';
             snprintf(names[nfa], 20, "fa(%d_%d_%d)", c, i, j);
             nfa++;
