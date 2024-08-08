@@ -269,12 +269,35 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     my::BitField relevant_actions(nact);
     HPLUS_imai_extract_relevant(inst, fadd, relevant_variables, relevant_actions);
 
+    // fixed & eliminated
+    my::BitField eliminated_variables(nvarstrips);
+    my::BitField fixed_variables(nvarstrips);
+    my::BitField eliminated_actions(nact);
+    my::BitField fixed_actions(nact);
+    for (unsigned int var_i = 0; var_i < nvarstrips; var_i++) {
+        if (!relevant_variables[var_i] && !fact_landmarks[var_i]) eliminated_variables.set(var_i);
+        if (fact_landmarks[var_i] || gstate[var_i]) fixed_variables.set(var_i);
+    }
+    for (unsigned int act_i = 0; act_i < nact; act_i++) {
+        if (!relevant_actions[act_i]) eliminated_actions.set(act_i);
+        if (act_landmarks[act_i]) fixed_actions.set(act_i);
+    }
+
+    #if HPLUS_INTCHECK
+    my::BitField variables_check(eliminated_variables);
+    my::BitField actions_check(eliminated_actions);
+    variables_check.intersect(fixed_variables);
+    actions_check.intersect(fixed_actions);
+    my::assert(variables_check.equals(my::BitField(nvarstrips)), "Eliminated variables set intersects the fixed variables set.");
+    my::assert(actions_check.equals(my::BitField(nact)), "Eliminated actions set intersects the fixed actions set.");
+    #endif
+
     // actions
     unsigned int act_start = curr_col;
     for (unsigned int act_i = 0; act_i < nact; act_i++) {
         objs[act_i] = actions[act_i].get_cost();
-        lbs[act_i] = act_landmarks[act_i] ? 1 : 0;
-        ubs[act_i] = relevant_actions[act_i] ? 1 : 0;
+        lbs[act_i] = fixed_actions[act_i] ? 1 : 0;
+        ubs[act_i] = eliminated_actions[act_i] ? 0 : 1;
         types[act_i] = 'B';
         snprintf(names[act_i], 20, "act(%d)", act_i);
     }
@@ -284,12 +307,12 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
 
     // action timestamps
     unsigned int tact_start = curr_col;
-    for (unsigned int i = 0; i < nact; i++) {
-        objs[i] = 0;
-        lbs[i] = 0;
-        ubs[i] = nact-1;
-        types[i] = 'I';
-        snprintf(names[i], 20, "tact(%d)", i);
+    for (unsigned int act_i = 0; act_i < nact; act_i++) {
+        objs[act_i] = 0;
+        lbs[act_i] = 0;
+        ubs[act_i] = eliminated_actions[act_i] ? 0 : nact-1;
+        types[act_i] = 'I';
+        snprintf(names[act_i], 20, "tact(%d)", act_i);
     }
     curr_col += nact;
 
@@ -313,8 +336,8 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     unsigned int var_start = curr_col;
     for (unsigned int i = 0, count = 0; i < nvar; i++) for (unsigned int j = 0; j < variables[i].get_range(); j++, count++) {
         objs[count] = 0;
-        lbs[count] = (fact_landmarks[count] || gstate[count]) ? 1 : 0;
-        ubs[count] = (relevant_variables[count] || fact_landmarks[count]) ? 1 : 0;
+        lbs[count] = fixed_variables[count] ? 1 : 0;
+        ubs[count] = eliminated_variables[count] ? 0 : 1;
         types[count] = 'B';
         snprintf(names[count], 20, "var(%d_%d)", i, j);
     }
@@ -326,8 +349,8 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     unsigned int tvar_start = curr_col;
     for (unsigned int i = 0, count = 0; i < nvar; i++) for (unsigned int j = 0; j < variables[i].get_range(); j++, count++) {
         objs[count] = 0;
-        lbs[count] = istate[count] ? 0 : 1;                     // if a variable is in the initial state, its timestamp can be fixed to 0
-        ubs[count] = istate[count] ? 0 : nact;
+        lbs[count] = (istate[count] || eliminated_variables[count]) ? 0 : 1;
+        ubs[count] = (istate[count] || eliminated_variables[count]) ? 0 : nact;
         types[count] = 'I';
         snprintf(names[count], 20, "tvar(%d_%d)", i, j);
     }
@@ -352,15 +375,15 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     // first archievers
     unsigned int nfa = 0;
     unsigned int fa_start = curr_col;
-    for (unsigned int c = 0; c < nact; c++) {
-        const my::BitField& eff = actions[c].get_eff();
+    for (unsigned int act_i = 0; act_i < nact; act_i++) {
+        const my::BitField& eff = actions[act_i].get_eff();
         for (unsigned int i = 0, k = 0; i < nvar; k += variables[i].get_range(), i++) for (unsigned int j = 0; j < variables[i].get_range(); j++) {
             if (!eff[k + j]) continue;
             objs[nfa] = 0;
             lbs[nfa] = 0;
-            ubs[nfa] = fadd[c][k+j] ? 1 : 0;
+            ubs[nfa] = (eliminated_variables[k+j] || eliminated_actions[act_i] || !fadd[act_i][k+j]) ? 0 : 1;
             types[nfa] = 'B';
-            snprintf(names[nfa], 20, "fa(%d_%d_%d)", c, i, j);
+            snprintf(names[nfa], 20, "fa(%d_%d_%d)", act_i, i, j);
             nfa++;
         }
     }
