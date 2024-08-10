@@ -38,7 +38,7 @@ bool my::BitField::operator[](const unsigned int i) const {
     
 }
 
-void my::BitField::intersect(const BitField& bf) {
+void my::BitField::intersection_with(const BitField& bf) {
 
     #if HPLUS_INTCHECK
     my::assert(this -> size_ == bf.size_, "BitField:intersect failed.");
@@ -47,7 +47,7 @@ void my::BitField::intersect(const BitField& bf) {
 
 }
 
-void my::BitField::unificate(const BitField& bf) {
+void my::BitField::union_with(const BitField& bf) {
 
     #if HPLUS_INTCHECK
     my::assert(this -> size_ == bf.size_, "BitField:unificate failed.");
@@ -66,6 +66,16 @@ bool my::BitField::equals(const BitField& bf) const {
 
 }
 
+bool my::BitField::intersects(const BitField& bf) const {
+
+    #if HPLUS_INTCHECK
+    my::assert(this -> size_ == bf.size_, "BitField:contains failed.");
+    #endif
+    for (auto i : bf) if (this -> operator[](i)) return true;
+    return false;
+
+}
+
 bool my::BitField::contains(const BitField& bf) const {
 
     #if HPLUS_INTCHECK
@@ -81,8 +91,9 @@ unsigned int my::BitField::size() const { return this -> size_; }
 
 std::string my::BitField::view() const {
 
-    std::string ret;
-    for (unsigned int i = 0; i < this -> size_; i++) ret.append(std::to_string(this -> operator[](i)));
+    std::string ret = "[";
+    for (unsigned int i = 0; i < this -> size_; i++) ret.append(this -> operator[](i) ? "X" : " ");
+    ret.append("]");
     return ret;
 
 }

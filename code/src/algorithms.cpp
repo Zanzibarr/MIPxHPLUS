@@ -134,7 +134,7 @@ void HPLUS_imai_extract_landmarks(const HPLUS_instance& inst, std::vector<my::Bi
                     x.set(nvarstrips);
                     // if x is now full we can exit, since all further unions wont change x
                     break;
-                } else x.unificate(landmarks_set[pp]);
+                } else x.union_with(landmarks_set[pp]);
             }
 
             // we then check if L[p] != X, and if they are the same we skip,
@@ -143,7 +143,7 @@ void HPLUS_imai_extract_landmarks(const HPLUS_instance& inst, std::vector<my::Bi
 
                 // if the set for variable p is the full set of variables,
                 // the intersection generates back x -> we can skip the intersection
-                if (!landmarks_set[p][nvarstrips]) x.intersect(landmarks_set[p]);
+                if (!landmarks_set[p][nvarstrips]) x.intersection_with(landmarks_set[p]);
 
                 // we already know that x is not the full set now, so if
                 // the set for variable p is the full set, we know that x is not
@@ -163,7 +163,7 @@ void HPLUS_imai_extract_landmarks(const HPLUS_instance& inst, std::vector<my::Bi
 
     }
 
-    fact_landmarks.unificate(istate);
+    fact_landmarks.union_with(istate);
 
     unsigned int cand_act;
     for (auto i : inst.get_gstate()) for (unsigned int j = 0; j < nvarstrips; j++)
@@ -201,13 +201,13 @@ void HPLUS_imai_extract_fadd(const HPLUS_instance& inst, const std::vector<my::B
 void HPLUS_imai_extract_relevant(const HPLUS_instance& inst, std::vector<my::BitField>& fadd,my::BitField& relevant_variables, my::BitField& relevant_actions) {
 
     const auto& actions = inst.get_actions();
+    const auto& gstate = inst.get_gstate();
     const auto nact = inst.get_nact();
 
     for (unsigned int act_i = 0; act_i < nact; act_i++) {
-        for (auto p : inst.get_gstate()) if (fadd[act_i][p]) {
+        if (fadd[act_i].intersects(gstate)) {
             relevant_actions.set(act_i);
-            relevant_variables.unificate(actions[act_i].get_pre());
-            break;
+            relevant_variables.union_with(actions[act_i].get_pre());
         }
     }
 
@@ -217,14 +217,12 @@ void HPLUS_imai_extract_relevant(const HPLUS_instance& inst, std::vector<my::Bit
     while (new_act) {
         new_act = false;
         for (unsigned int i = 0; i < cand_actions.size(); i++) {
-            for (auto p : actions[cand_actions[i]].get_eff()) if (relevant_variables[p]) {
+            if (actions[cand_actions[i]].get_eff().intersects(relevant_variables)) {
                 relevant_actions.set(cand_actions[i]);
-                relevant_variables.unificate(actions[cand_actions[i]].get_pre());
+                relevant_variables.union_with(actions[cand_actions[i]].get_pre());
                 cand_actions.erase(cand_actions.begin() + i);
                 new_act = true;
-                break;
             }
-            if (new_act) break;
         }
     }
 
@@ -243,16 +241,7 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     const my::BitField& istate = inst.get_istate();
     const my::BitField& gstate = inst.get_gstate();
 
-    // ~~~~~~~~ Adding CPLEX variables ~~~~~~~ //
-
-    unsigned int curr_col = 0;
-
-    auto* objs = new double[nact];
-    auto* lbs = new double[nact];
-    auto* ubs = new double[nact];
-    auto* types = new char[nact];
-    auto** names = new char*[nact];
-    for (unsigned int i = 0; i < nact; i++) names[i] = new char[20];
+    // ~~~~~~~~~~~~ Enhanced model ~~~~~~~~~~~ //
 
     // landmarks
     std::vector<my::BitField> landmarks_set;
@@ -265,9 +254,10 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     HPLUS_imai_extract_fadd(inst, landmarks_set, fadd);
 
     // relevance analysis
-    my::BitField relevant_variables(gstate);
+    my::BitField relevant_variables(nvarstrips);
     my::BitField relevant_actions(nact);
     HPLUS_imai_extract_relevant(inst, fadd, relevant_variables, relevant_actions);
+    relevant_variables.union_with(gstate);
 
     // fixed & eliminated
     my::BitField eliminated_variables(nvarstrips);
@@ -286,11 +276,22 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     #if HPLUS_INTCHECK
     my::BitField variables_check(eliminated_variables);
     my::BitField actions_check(eliminated_actions);
-    variables_check.intersect(fixed_variables);
-    actions_check.intersect(fixed_actions);
+    variables_check.intersection_with(fixed_variables);
+    actions_check.intersection_with(fixed_actions);
     my::assert(variables_check.equals(my::BitField(nvarstrips)), "Eliminated variables set intersects the fixed variables set.");
     my::assert(actions_check.equals(my::BitField(nact)), "Eliminated actions set intersects the fixed actions set.");
     #endif
+
+    // ~~~~~~~~ Adding CPLEX variables ~~~~~~~ //
+
+    unsigned int curr_col = 0;
+
+    auto* objs = new double[nact];
+    auto* lbs = new double[nact];
+    auto* ubs = new double[nact];
+    auto* types = new char[nact];
+    auto** names = new char*[nact];
+    for (unsigned int i = 0; i < nact; i++) names[i] = new char[20];
 
     // actions
     unsigned int act_start = curr_col;
@@ -310,7 +311,7 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     for (unsigned int act_i = 0; act_i < nact; act_i++) {
         objs[act_i] = 0;
         lbs[act_i] = 0;
-        ubs[act_i] = eliminated_actions[act_i] ? 0 : nact-1;
+        ubs[act_i] = nact-1;
         types[act_i] = 'I';
         snprintf(names[act_i], 20, "tact(%d)", act_i);
     }

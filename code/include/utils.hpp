@@ -93,53 +93,41 @@ namespace my {
 
             /**
              * Set the i th bit to 1
-             *
-             * @param i: Index of the bit to set to 1
              */
             void set(unsigned int i);
 
             /**
              * Set the i th bit to 0
-             *
-             * @param i: Index of the bit to set to 0
              */
             void unset(unsigned int i);
 
             /**
              * Access the i th bit
-             *
-             * @param i: Index of the bit to access
-             * @return The value of the bit in i th position
              */
             bool operator[](unsigned int i) const;
 
             /**
              * Bitwise and of two BitFields (result saved in this BitField)
-             *
-             * @param bf: BitField to do the and with
              */
-            void intersect(const BitField& bf);
+            void intersection_with(const BitField& bf);
 
             /**
              * Bitwise or of two BitFields (result saved in this BitField)
-             *
-             * @para bf: BitField to do the or with
             */
-            void unificate(const BitField& bf);
+            void union_with(const BitField& bf);
 
             /**
              * Compare two BitField
-             *
-             * @param bf: BitField to compare with
-             * @return true/false based on if the two bitfields are equal
              */
             bool equals(const BitField& bf) const;
 
             /**
+             * Check if the two bitfields intersect
+             */
+            bool intersects(const BitField& bf) const;
+
+            /**
              * Check if all true bits of the passed bitfield are true in this bitfield
-             *
-             * @param bf: BitField to check
-             * @return true/false based on if this bitfield contains bf
              */
             bool contains(const BitField& bf) const;
 

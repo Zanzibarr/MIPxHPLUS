@@ -85,7 +85,6 @@ const my::BitField& HPLUS_instance::get_istate() const { return this -> initial_
 
 const my::BitField& HPLUS_instance::get_gstate() const { return this -> goal_state_; }
 
-// TODO: Maybe make thread safe?
 void HPLUS_instance::update_best_solution(const std::vector<unsigned int>& solution, const unsigned int cost) {
 
     #if HPLUS_INTCHECK
@@ -99,7 +98,7 @@ void HPLUS_instance::update_best_solution(const std::vector<unsigned int>& solut
         my::assert(!dbcheck[act_i], "Solution contains duplicate action.");            // check that there are no duplicates
         dbcheck.set(act_i);
         my::assert(feas_checker.contains(this -> actions_[act_i].get_pre()), "Preconditions are not respected.");       // check if the preconditions are respected at each step
-        feas_checker.unificate(this -> actions_[act_i].get_eff());
+        feas_checker.union_with(this -> actions_[act_i].get_eff());
         costcheck += this -> actions_[act_i].get_cost();
     }
     my::assert(costcheck == cost, "Declared cost is different from calculated one.");        // check if the cost is the declared one
