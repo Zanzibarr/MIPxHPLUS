@@ -222,7 +222,7 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
         // parsing each goal
         std::vector<std::string> tokens;
         std::getline(*ifs, line);   // pair 'variable goal'
-        my::split(line, &tokens, ' ');
+        tokens = my::split_string(line, ' ');
         my::assert(tokens.size() == 2, "Corrupted file.");
         my::assert(my::isint(tokens[0], 0, this -> n_var_ - 1), "Corrupted file."); // variable index
         unsigned int var = stoi(tokens[0]);
@@ -240,6 +240,7 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
     std::getline(*ifs, line);   // n_act
     my::assert(my::isint(line, 0), "Corrupted file.");
     this -> n_act_ = stoi(line);
+    if (this -> n_act_ >= 500) HPLUS_env.logger.raise_error("Testing small instances only.");   // TODO: remove this
     this -> actions_ = std::vector<HPLUS_action>(this -> n_act_);
     for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++) {
         // process each action
@@ -255,7 +256,7 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
             // parsing each prevail condition
             std::vector<std::string> tokens;
             std::getline(*ifs, line);   // pair 'variable value'
-            my::split(line, &tokens, ' ');
+            tokens = my::split_string(line, ' ');
             my::assert(tokens.size() == 2, "Corrupted file.");
             my::assert(my::isint(tokens[0], 0, this -> n_var_ - 1), "Corrupted file."); // variable index
             unsigned int var = stoi(tokens[0]);
@@ -273,7 +274,7 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
             // parsing each effect
             std::getline(*ifs, line);   // effect line
             std::vector<std::string> tokens;
-            my::split(line, &tokens, ' ');
+            tokens = my::split_string(line, ' ');
             my::assert(tokens.size() == 4, "This program won't handle effect conditions."); // not expecting effect conditions
             my::assert(my::isint(tokens[0], 0, 0), "This program won't handle effect conditions."); // number of effect conditions (ignored and check to be 0)
             my::assert(my::isint(tokens[1], 0, this -> n_var_ - 1), "Corrupted file.");   // variable affected by the action

@@ -45,6 +45,9 @@
 #define HPLUS_CLI_LOG_NAME_FLAG "-ln"           // flag for parsing the log name
 #define HPLUS_CLI_RUN_NAME_FLAG "-rn"           // flag for parsing the run name
 #define HPLUS_CLI_ALG_FLAG "-a"                 // flag for parsing the algorithm to use
+
+#define HPLUS_CLI_IMAI_BASE "-base"             // flag for using imai baseline
+
 #define HPLUS_CLI_TIMELIMIT_FLAG "-t"           // flag for parsing the time limit
 
 // ##################################################################### //
@@ -84,12 +87,12 @@ namespace my {
              *
              * @param size: number of bits the BitField has
              */
-            explicit BitField(unsigned int size);
+            explicit BitField(unsigned int size, bool full_flag = false);
 
             /**
              * Copy constructor
             */
-            explicit BitField(const BitField& bf);
+            BitField(const BitField& bf);
 
             /**
              * Set the i th bit to 1
@@ -105,6 +108,11 @@ namespace my {
              * Access the i th bit
              */
             bool operator[](unsigned int i) const;
+
+            /**
+             * Get the complementary bitfield
+             */
+            BitField complementary() const;
 
             /**
              * Bitwise and of two BitFields (result saved in this BitField)
@@ -247,7 +255,7 @@ namespace my {
     /**
      * Splits a string into a vector of strings based on the specified delimiter
      */
-    void split(const std::string& str, std::vector<std::string>* tokens, char del);
+    std::vector<std::string> split_string(const std::string& str, char del);
 
     /**
      * Interrupts the execution of the code if the condition is false
@@ -293,6 +301,8 @@ extern struct HPLUS_Environment {
 
     std::string alg;
     unsigned int time_limit;
+
+    bool imai_baseline;
 
     // Time control
 

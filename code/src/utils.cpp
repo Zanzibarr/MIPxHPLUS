@@ -1,4 +1,5 @@
 #include "../include/utils.hpp"
+#include <bitset>
 
 HPLUS_Environment HPLUS_env;
 HPLUS_Statistics HPLUS_stats;
@@ -7,7 +8,7 @@ HPLUS_Statistics HPLUS_stats;
 // ############################## BITFIELD ############################# //
 // ##################################################################### //
 
-my::BitField::BitField(unsigned int size) { this -> size_ = size; this -> field_ = std::vector<char>((size+7)/8, 0); }
+my::BitField::BitField(unsigned int size, bool full_flag) { this -> size_ = size; this -> field_ = std::vector<char>((size+7)/8, full_flag ? ~0u : 0); }
 
 my::BitField::BitField(const BitField& bf) { this -> size_ = bf.size_; this -> field_ = std::vector<char>(bf.field_); }
 
@@ -38,10 +39,18 @@ bool my::BitField::operator[](const unsigned int i) const {
     
 }
 
+my::BitField my::BitField::complementary() const {
+
+    BitField ret(this -> size_);
+    for (unsigned int i = 0; i < this -> field_.size(); i++) ret.field_[i] = ~ this -> field_[i];
+    return ret;
+
+}
+
 void my::BitField::intersection_with(const BitField& bf) {
 
     #if HPLUS_INTCHECK
-    my::assert(this -> size_ == bf.size_, "BitField:intersect failed.");
+    my::assert(this -> size_ == bf.size_, "BitField:intersection_with failed.");
     #endif
     for (unsigned int i = 0; i < this -> field_.size(); i++) this -> field_[i] &= bf.field_[i];
 
@@ -50,7 +59,7 @@ void my::BitField::intersection_with(const BitField& bf) {
 void my::BitField::union_with(const BitField& bf) {
 
     #if HPLUS_INTCHECK
-    my::assert(this -> size_ == bf.size_, "BitField:unificate failed.");
+    my::assert(this -> size_ == bf.size_, "BitField:union_with failed.");
     #endif
     for (unsigned int i = 0; i < this -> field_.size(); i++) this -> field_[i] |= bf.field_[i];
 
@@ -69,9 +78,9 @@ bool my::BitField::equals(const BitField& bf) const {
 bool my::BitField::intersects(const BitField& bf) const {
 
     #if HPLUS_INTCHECK
-    my::assert(this -> size_ == bf.size_, "BitField:contains failed.");
+    my::assert(this -> size_ == bf.size_, "BitField:intersects failed.");
     #endif
-    for (auto i : bf) if (this -> operator[](i)) return true;
+    for (unsigned int i = 0; i < this -> field_.size(); i++) if (this -> field_[i] & bf.field_[i]) return true;
     return false;
 
 }
@@ -81,13 +90,14 @@ bool my::BitField::contains(const BitField& bf) const {
     #if HPLUS_INTCHECK
     my::assert(this -> size_ == bf.size_, "BitField:contains failed.");
     #endif
-    for (auto i : bf) if (!this -> operator[](i)) return false;
+    for (unsigned int i = 0; i < this -> field_.size(); i++) if (~ this -> field_[i] & bf.field_[i]) return false;
     return true;
 
 }
 
 
 unsigned int my::BitField::size() const { return this -> size_; }
+
 
 std::string my::BitField::view() const {
 
@@ -364,18 +374,20 @@ void HPLUS_Statistics::print() const {
 // ############################ MY NAMESPACE ########################### //
 // ##################################################################### //
 
-void my::split(const std::string& str, std::vector<std::string>* tokens, const char del) {
+std::vector<std::string> my::split_string(const std::string& str, const char del) {
 
-    tokens -> clear();
+    std::vector<std::string> tokens;
 
     std::string tmp;
     for (int i = 0; i < str.length(); i++) {
         if (str[i] == del) {
-            if (!tmp.empty()) tokens -> push_back(tmp);
+            if (!tmp.empty()) tokens.push_back(tmp);
             tmp = "";
         } else tmp += str[i];
     }
-    if (!tmp.empty()) tokens -> push_back(tmp);
+    if (!tmp.empty()) tokens.push_back(tmp);
+
+    return tokens;
 
 }
 

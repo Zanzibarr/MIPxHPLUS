@@ -12,6 +12,9 @@ void signal_callback_handler(const int signum) {
 
     HPLUS_env.cpx_terminate = 1;                        // signals cplex to stop
 
+    //TODO: Remove this
+    exit(1);
+
 }
 
 void HPLUS_start() {
@@ -71,6 +74,7 @@ void HPLUS_show_info(const HPLUS_instance& inst) {
     HPLUS_env.logger.print(LINE);
     #endif
 
+    HPLUS_env.logger.print("Algorithm: %s.", ((!strcmp(HPLUS_env.alg.c_str(), "imai") && HPLUS_env.imai_baseline) ? "imai (base model)" : HPLUS_env.alg.c_str()));
     HPLUS_env.logger.print("Time limit: %ds.", HPLUS_env.time_limit);
     HPLUS_env.logger.print(LINE);
 
@@ -98,6 +102,7 @@ void HPLUS_parse_cli(const int argc, const char** argv) {
         else if (!strcmp(argv[i], HPLUS_CLI_RUN_NAME_FLAG)) HPLUS_env.run_name = argv[++i];
         else if (!strcmp(argv[i], HPLUS_CLI_TIMELIMIT_FLAG)) { my::assert(my::isint(argv[i+1]), "The time limit must be an integer."); HPLUS_env.time_limit = atoi(argv[++i]); }
         else if (!strcmp(argv[i], HPLUS_CLI_ALG_FLAG)) HPLUS_env.alg = argv[++i];
+        else if (!strcmp(argv[i], HPLUS_CLI_IMAI_BASE)) HPLUS_env.imai_baseline = true;
 
         else unknown_args.push_back(argv[i]);
 
@@ -162,7 +167,6 @@ int main(const int argc, const char** argv) {
     HPLUS_start();
     HPLUS_parse_cli(argc, argv);
     HPLUS_instance inst = HPLUS_instance(HPLUS_env.infile);
-    // if (inst.get_nact() >= 500) HPLUS_env.logger.raise_error("Testing small instances only.");
     HPLUS_show_info(inst);
     HPLUS_run(inst);
     HPLUS_end();
