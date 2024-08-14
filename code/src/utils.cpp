@@ -8,14 +8,20 @@ HPLUS_Statistics HPLUS_stats;
 // ############################## BITFIELD ############################# //
 // ##################################################################### //
 
-my::BitField::BitField(unsigned int size, bool full_flag) { this -> size_ = size; this -> field_ = std::vector<char>((size+7)/8, full_flag ? ~0u : 0); }
+my::BitField::BitField(unsigned int size, bool full_flag) {
+    this -> size_ = size;
+    this -> field_ = std::vector<char>((size+7)/8, full_flag ? (char)~0u : 0);
+}
 
-my::BitField::BitField(const BitField& bf) { this -> size_ = bf.size_; this -> field_ = std::vector<char>(bf.field_); }
+my::BitField::BitField(const BitField& other_bitfield) {
+    this -> size_ = other_bitfield.size_;
+    this -> field_ = std::vector<char>(other_bitfield.field_);
+}
 
-void my::BitField::set(const unsigned int i) {
+void my::BitField::set(unsigned int i) {
     
     #if HPLUS_INTCHECK
-    my::assert(i < this -> size_, "BitField:set failed.");
+    my::assert(i < this -> size_, "BitField::set failed.");
     #endif
     this -> field_[i/8] |= (1 << i%8);
     
@@ -24,7 +30,7 @@ void my::BitField::set(const unsigned int i) {
 void my::BitField::unset(const unsigned int i) {
     
     #if HPLUS_INTCHECK
-    my::assert(i < this -> size_, "BitField:unset failed.");
+    my::assert(i < this -> size_, "BitField::unset failed.");
     #endif
     this -> field_[i/8] &= ~(1 << i%8);
     
@@ -33,73 +39,130 @@ void my::BitField::unset(const unsigned int i) {
 bool my::BitField::operator[](const unsigned int i) const {
     
     #if HPLUS_INTCHECK
-    my::assert(i < this -> size_, "BitField:[] failed.");
+    my::assert(i < this -> size_, "BitField::[] failed.");
     #endif
     return this -> field_[i/8] & (1 << i%8);
     
 }
 
-my::BitField my::BitField::complementary() const {
-
-    BitField ret(this -> size_);
-    for (unsigned int i = 0; i < this -> field_.size(); i++) ret.field_[i] = ~ this -> field_[i];
-    return ret;
-
-}
-
-void my::BitField::intersection_with(const BitField& bf) {
-
-    #if HPLUS_INTCHECK
-    my::assert(this -> size_ == bf.size_, "BitField:intersection_with failed.");
-    #endif
-    for (unsigned int i = 0; i < this -> field_.size(); i++) this -> field_[i] &= bf.field_[i];
-
-}
-
-void my::BitField::union_with(const BitField& bf) {
-
-    #if HPLUS_INTCHECK
-    my::assert(this -> size_ == bf.size_, "BitField:union_with failed.");
-    #endif
-    for (unsigned int i = 0; i < this -> field_.size(); i++) this -> field_[i] |= bf.field_[i];
-
-}
-
-bool my::BitField::equals(const BitField& bf) const {
-
-    #if HPLUS_INTCHECK
-    my::assert(this -> size_ == bf.size_, "BitField:equals failed.");
-    #endif
-    for (unsigned int i = 0; i < this -> field_.size(); i++)  if (this -> field_[i] != bf.field_[i]) return false;
-    return true;
-
-}
-
-bool my::BitField::intersects(const BitField& bf) const {
-
-    #if HPLUS_INTCHECK
-    my::assert(this -> size_ == bf.size_, "BitField:intersects failed.");
-    #endif
-    for (unsigned int i = 0; i < this -> field_.size(); i++) if (this -> field_[i] & bf.field_[i]) return true;
-    return false;
-
-}
-
-bool my::BitField::contains(const BitField& bf) const {
-
-    #if HPLUS_INTCHECK
-    my::assert(this -> size_ == bf.size_, "BitField:contains failed.");
-    #endif
-    for (unsigned int i = 0; i < this -> field_.size(); i++) if (~ this -> field_[i] & bf.field_[i]) return false;
-    return true;
-
-}
-
-
 unsigned int my::BitField::size() const { return this -> size_; }
 
+my::BitField my::BitField::operator&(const BitField& other_bitfield) const {
 
-std::string my::BitField::view() const {
+    #if HPLUS_INTCHECK
+    my::assert(this -> size_ == other_bitfield.size_, "BitField::& failed.");
+    #endif
+    my::BitField new_bitfield(*this);
+    for (unsigned int i = 0; i < this -> field_.size(); i++) new_bitfield.field_[i] &= other_bitfield.field_[i];
+    return new_bitfield;
+
+}
+
+my::BitField& my::BitField::operator&=(const BitField& other_bitfield) {
+
+    #if HPLUS_INTCHECK
+    my::assert(this -> size_ == other_bitfield.size_, "BitField::& failed.");
+    #endif
+    for (unsigned int i = 0; i < this -> field_.size(); i++) this -> field_[i] &= other_bitfield.field_[i];
+    return *this;
+
+}
+
+my::BitField my::BitField::operator|(const BitField& other_bitfield) const {
+
+    #if HPLUS_INTCHECK
+    my::assert(this -> size_ == other_bitfield.size_, "BitField::& failed.");
+    #endif
+    my::BitField new_bitfield(*this);
+    for (unsigned int i = 0; i < this -> field_.size(); i++) new_bitfield.field_[i] |= other_bitfield.field_[i];
+    return new_bitfield;
+
+}
+
+my::BitField& my::BitField::operator|=(const BitField& other_bitfield) {
+
+    #if HPLUS_INTCHECK
+    my::assert(this -> size_ == other_bitfield.size_, "BitField::& failed.");
+    #endif
+    for (unsigned int i = 0; i < this -> field_.size(); i++) this -> field_[i] |= other_bitfield.field_[i];
+    return *this;
+
+}
+
+my::BitField my::BitField::operator-(const BitField& other_bitfield) const {
+
+    #if HPLUS_INTCHECK
+    my::assert(this -> size_ == other_bitfield.size_, "BitField::& failed.");
+    #endif
+    my::BitField new_bitfield(*this);
+    for (unsigned int i = 0; i < this -> field_.size(); i++) new_bitfield.field_[i] &= ~other_bitfield.field_[i];
+    return new_bitfield;
+
+}
+
+my::BitField& my::BitField::operator-=(const BitField& other_bitfield) {
+
+    #if HPLUS_INTCHECK
+    my::assert(this -> size_ == other_bitfield.size_, "BitField::& failed.");
+    #endif
+    for (unsigned int i = 0; i < this -> field_.size(); i++) this -> field_[i] &= ~other_bitfield.field_[i];
+    return *this;
+
+}
+
+my::BitField my::BitField::operator!() const {
+
+    my::BitField new_bitfield(this -> size_);
+    for (unsigned int i = 0; i < this -> field_.size(); i++) new_bitfield.field_[i] = ~this -> field_[i];
+    return new_bitfield;
+
+}
+
+bool my::BitField::operator==(const BitField& other_bitfield) const {
+
+    #if HPLUS_INTCHECK
+    my::assert(this -> size_ == other_bitfield.size_, "BitField:equals failed.");
+    #endif
+    unsigned int i;
+    for (i = 0; i < this -> field_.size() && this -> field_[i] == other_bitfield.field_[i]; i++);
+    return i == this -> field_.size();
+
+}
+
+bool my::BitField::operator!=(const BitField& other_bitfield) const {
+
+    #if HPLUS_INTCHECK
+    my::assert(this -> size_ == other_bitfield.size_, "BitField:equals failed.");
+    #endif
+    unsigned int i;
+    for (i = 0; i < this -> field_.size() && this -> field_[i] == other_bitfield.field_[i]; i++);
+    return i != this -> field_.size();
+
+}
+
+bool my::BitField::intersects(const BitField& other_bitfield) const {
+
+    #if HPLUS_INTCHECK
+    my::assert(this -> size_ == other_bitfield.size_, "BitField:intersects failed.");
+    #endif
+    unsigned int i;
+    for (i = 0; i < this -> field_.size() && !(this -> field_[i] & other_bitfield.field_[i]); i++);
+    return i != this -> field_.size();
+
+}
+
+bool my::BitField::contains(const BitField& other_bitfield) const {
+
+    #if HPLUS_INTCHECK
+    my::assert(this -> size_ == other_bitfield.size_, "BitField:intersects failed.");
+    #endif
+    unsigned int i;
+    for (i = 0; i < this -> field_.size() && !(~this -> field_[i] & other_bitfield.field_[i]); i++);
+    return i == this -> field_.size();
+
+}
+
+my::BitField::operator std::string() const {
 
     std::string ret = "[";
     for (unsigned int i = 0; i < this -> size_; i++) ret.append(this -> operator[](i) ? "X" : " ");

@@ -4,8 +4,8 @@
 #include "hplus_instance.hpp"
 
 /**
- * @param inst: Instance to run the algorithm on
-*/
+ * Runs algorithm from Imai's paper
+ */
 void HPLUS_run_imai(HPLUS_instance& inst);
 
 #endif

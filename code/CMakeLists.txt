@@ -80,6 +80,12 @@ add_library(
     include/algorithms.hpp
 )
 
+add_library(
+    IMAI_model
+    src/imai_model.cpp
+    include/imai_model.hpp
+)
+
 find_library(CPLEX_LIBRARY
     NAMES cplex
     PATHS ${CPLEX_DIR}
@@ -100,6 +106,7 @@ target_link_libraries(
     Utils
     HPLUS_instance
     HPLUS_algorithms
+    IMAI_model
     ${CPLEX_LIBRARY}
 )
 

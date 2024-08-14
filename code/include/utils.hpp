@@ -7,6 +7,7 @@
 
 #include <iostream>
 #include <string>
+#include <cstring>
 #include <vector>
 #include <chrono>
 #include <climits>
@@ -14,6 +15,13 @@
 #include <sys/stat.h>
 #include <fstream>
 #include <iterator>
+#include <functional>
+#include <algorithm>
+#include <csignal>
+#include <unistd.h>
+#include <numeric>
+#include <queue>
+#include <cplex.h>
 
 // ##################################################################### //
 // ######################### PATHS AND FOLDERS ######################### //
@@ -74,79 +82,36 @@ namespace my {
     // ##################################################################### //
 
     /**
-    BitField used to compactly store size bits into a single data structure
-    */
+     * BitField used to compactly store size bits into a single data structure
+     */
     class BitField {
 
         public:
 
             explicit BitField() = default;
+            explicit BitField(unsigned int num_bits, bool full_flag = false);
+            BitField(const BitField& other_bitfield);
 
-            /**
-             * Constructor of the BitField
-             *
-             * @param size: number of bits the BitField has
-             */
-            explicit BitField(unsigned int size, bool full_flag = false);
-
-            /**
-             * Copy constructor
-            */
-            BitField(const BitField& bf);
-
-            /**
-             * Set the i th bit to 1
-             */
             void set(unsigned int i);
-
-            /**
-             * Set the i th bit to 0
-             */
             void unset(unsigned int i);
-
-            /**
-             * Access the i th bit
-             */
             bool operator[](unsigned int i) const;
 
-            /**
-             * Get the complementary bitfield
-             */
-            BitField complementary() const;
-
-            /**
-             * Bitwise and of two BitFields (result saved in this BitField)
-             */
-            void intersection_with(const BitField& bf);
-
-            /**
-             * Bitwise or of two BitFields (result saved in this BitField)
-            */
-            void union_with(const BitField& bf);
-
-            /**
-             * Compare two BitField
-             */
-            bool equals(const BitField& bf) const;
-
-            /**
-             * Check if the two bitfields intersect
-             */
-            bool intersects(const BitField& bf) const;
-
-            /**
-             * Check if all true bits of the passed bitfield are true in this bitfield
-             */
-            bool contains(const BitField& bf) const;
-
-            /**
-             * Returns the size of the BitField (in bits)
-             *
-             * @return The number of bits the BitField contains
-             */
             unsigned int size() const;
 
-            std::string view() const;
+            BitField operator&(const BitField& other_bitfield) const;        // set intersection
+            BitField& operator&=(const BitField& other_bitfield);
+            BitField operator|(const BitField& other_bitfield) const;        // set union
+            BitField& operator|=(const BitField& other_bitfield);
+            BitField operator-(const BitField& other_bitfield) const;        // set difference
+            BitField& operator-=(const BitField& other_bitfield);
+            BitField operator!() const;                                      // set complement
+
+            bool operator==(const BitField& other_bitfield) const;           // wether this equals other_bitfield
+            bool operator!=(const BitField& other_bitfield) const;           // wether this is not equal to other_bitfield
+            bool intersects(const BitField& other_bitfield) const;           // wether this intersects other_bitfield
+            bool contains(const BitField& other_bitfield) const;             // wether this contains other_bitfield
+
+            operator std::string() const;
 
             // Iterator class for iterating over bits set to 1
             class Iterator {
@@ -180,7 +145,6 @@ namespace my {
             };
 
             Iterator begin() const { return Iterator(this, 0); }
-
             Iterator end() const { return Iterator(this, size_); }
 
         private:
@@ -200,13 +164,13 @@ namespace my {
 
         public:
 
+            Logger() = default;
+
             /**
              * @param run_title Title of the run to be logged
              * @param log_name (optional, def = default.log) Name of the log file
              */
             explicit Logger(const std::string& run_title, const std::string& log_name = HPLUS_DEF_LOG_FILE);
-
-            Logger() = default;
 
             /**
              * Code executes only if HPLUS_VERBOSE != 0

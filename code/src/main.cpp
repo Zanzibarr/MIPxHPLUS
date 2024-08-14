@@ -1,8 +1,4 @@
-#include "../include/hplus_instance.hpp"
 #include "../include/algorithms.hpp"
-
-#include <cstring>
-#include <csignal>
 
 void signal_callback_handler(const int signum) {
 
@@ -11,9 +7,6 @@ void signal_callback_handler(const int signum) {
     HPLUS_env.logger.print(LINE);
 
     HPLUS_env.cpx_terminate = 1;                        // signals cplex to stop
-
-    //TODO: Remove this
-    exit(1);
 
 }
 

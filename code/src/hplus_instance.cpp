@@ -75,7 +75,7 @@ unsigned int HPLUS_instance::get_nvar() const { return this -> n_var_; }
 
 unsigned int HPLUS_instance::get_nact() const { return this -> n_act_; }
 
-unsigned int HPLUS_instance::get_nvarstrips() const { return this -> nvarstrips_; }
+unsigned int HPLUS_instance::get_nvar_strips() const { return this -> nvarstrips_; }
 
 const std::vector<HPLUS_variable>& HPLUS_instance::get_variables() const { return this -> variables_; }
 
@@ -98,7 +98,7 @@ void HPLUS_instance::update_best_solution(const std::vector<unsigned int>& solut
         my::assert(!dbcheck[act_i], "Solution contains duplicate action.");            // check that there are no duplicates
         dbcheck.set(act_i);
         my::assert(feas_checker.contains(this -> actions_[act_i].get_pre()), "Preconditions are not respected.");       // check if the preconditions are respected at each step
-        feas_checker.union_with(this -> actions_[act_i].get_eff());
+        feas_checker |= this -> actions_[act_i].get_eff();
         costcheck += this -> actions_[act_i].get_cost();
     }
     my::assert(costcheck == cost, "Declared cost is different from calculated one.");        // check if the cost is the declared one

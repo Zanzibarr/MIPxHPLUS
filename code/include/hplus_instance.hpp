@@ -140,7 +140,7 @@ class HPLUS_instance {
         /**
          * @return The size of the bitfields used in this domain
          */
-        unsigned int get_nvarstrips() const;
+        unsigned int get_nvar_strips() const;
 
         /**
          * @return The list of variables this domain has
