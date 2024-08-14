@@ -85,7 +85,11 @@ void HPLUS_run_imai(HPLUS_instance& inst) {
 
     HPLUS_stats.build_time = HPLUS_env.get_time() - start_time;
 
+    start_time = HPLUS_env.get_time();
+
     my::assert(!CPXmipopt(env, lp), "CPXmipopt failed.");
+
+    HPLUS_stats.exec_time = HPLUS_env.get_time() - start_time;
 
     HPLUS_parse_cplex_status(env, lp);
 

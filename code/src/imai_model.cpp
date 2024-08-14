@@ -252,8 +252,6 @@ void HPLUS_imai_iterative_variable_elimination(const HPLUS_instance& inst, my::B
     const auto& istate = inst.get_istate();
     const auto& actions = inst.get_actions();
 
-    // fixed_variables |= istate;
-
     // using the bit at position nvarstrips as a flag for "full set of variables"
     std::vector<my::BitField> landmarks_set(nvarstrips, my::BitField(nvarstrips+1));
     my::BitField fact_landmarks(nvarstrips);
@@ -332,7 +330,8 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
         // (section 4.5 of Imai's paper)
         HPLUS_imai_iterative_variable_elimination(inst, eliminated_variables, fixed_variables, eliminated_actions, fixed_actions, eliminated_fas, fixed_fas, fixed_var_timestamps, fixed_act_timestamps);
 
-        // for (auto p : istate) fixed_var_timestamps[p] = 0;
+        for (auto p : istate) fixed_var_timestamps[p] = 0;
+
         // for (auto p : eliminated_variables) {
         //     fixed_var_timestamps[p] = 0;
         //     for (unsigned int i = 0; i < nact; i++) eliminated_fas[i].set(p);
@@ -433,7 +432,7 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     unsigned int tvar_start = curr_col;
     for (unsigned int i = 0, count = 0; i < nvar; i++) for (unsigned int j = 0; j < variables[i].get_range(); j++, count++) {
         objs[count] = 0;
-        lbs[count] = fixed_var_timestamps[count] >= 0 ? fixed_var_timestamps[count] : 1;
+        lbs[count] = fixed_var_timestamps[count] >= 0 ? fixed_var_timestamps[count] : 0;
         ubs[count] = fixed_var_timestamps[count] >= 0 ? fixed_var_timestamps[count] : nact;
         types[count] = 'I';
         snprintf(names[count], 20, "tvar(%d_%d)", i, j);

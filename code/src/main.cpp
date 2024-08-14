@@ -113,13 +113,9 @@ void HPLUS_parse_cli(const int argc, const char** argv) {
 
 void HPLUS_run(HPLUS_instance& inst) {
 
-    double start_time = HPLUS_env.get_time();
-
     if (HPLUS_env.alg == "imai") HPLUS_run_imai(inst);
 
     else HPLUS_env.logger.raise_error("The specified algorithm %s is not recognised. Please refer to the README.md for instructions.", HPLUS_env.alg.c_str());
-
-    HPLUS_stats.exec_time = HPLUS_env.get_time() - start_time;
 
     switch(HPLUS_env.status) {
         case my::status::INFEAS:
