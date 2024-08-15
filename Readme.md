@@ -41,16 +41,16 @@ make <target_option>
 - **-DVERBOSE=**\<verbose_option> : set the verbose option
   - = **0** : no output
   - \> **0** : basic output
-  - \>= **10** (or _none_) : basic steps progress
+  - \>= **10** : basic steps progress (default)
   - \>= **100** : full verbose
 - **-DWARN=**\<warning_option> : set the warning option
   - **0** : all warnings suppressed
-  - **1** (or _none_) : warnings will be showed
+  - **1** : warnings will be showed (default)
 - **-DINTCHECK=**\<integrity_check_option> : set the integrity checks option
   - **0** : no integrity checks
-  - **1** (or _none_) : integrity checks enabled (might slow down the execution)
-- **-DCPLEX_DIR=**\<path_to_cplex_lib>: (abs path) optional, specify a custom path to the CPLEX library (see the CMakeLists.txt to see which is the default one)
-- **-DCPLEX_INCLUDE=**\<path_to_cplex_headers>: (abs path) optional, specify a custom path to the CPLEX headers (see the CMakeLists.txt to see which is the default one)
+  - **1** : integrity checks enabled (default, might slow down the execution)
+- **-DCPLEX_DIR=**\<path_to_cplex_lib>: (abs path), specify a custom path to the CPLEX library (see the CMakeLists.txt to see which is the default one)
+- **-DCPLEX_INCLUDE=**\<path_to_cplex_headers>: (abs path), specify a custom path to the CPLEX headers (see the CMakeLists.txt to see which is the default one)
 
 ### Make flags
 
@@ -66,7 +66,9 @@ make <target_option>
 
 - **-i** <input_file> : (rel path) specify the input file (relative to the code/instances folder)
 - **-a** <algorithm_name> : specify the algorithm to use
-  - **imai** : to use the model from the Imai15 paper
+  - **imai** : to use the model from the [Imai15 paper](references/Imai15.pdf)
+    - **-base** : to use the base model (section 3 of the paper)
+    - _none_ : to use the enhanced model (section 4 of the paper)
 - **-t** <time_limit> : (int) specify the time limit (in seconds)
 
 #### Logging

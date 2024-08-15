@@ -22,7 +22,7 @@ void HPLUS_imai_extract_landmarks(const HPLUS_instance& inst, std::vector<my::Bi
         else landmarks_set[p].set(nvarstrips);
     }
 
-    my::BitField s_set = istate;
+    auto s_set = istate;
 
     std::deque<int> actions_queue;
     for (unsigned int i = 0; i < nact; i++)
@@ -33,14 +33,14 @@ void HPLUS_imai_extract_landmarks(const HPLUS_instance& inst, std::vector<my::Bi
         const HPLUS_action a = actions[actions_queue.front()];
         actions_queue.pop_front();
 
-        const my::BitField& pre_a = a.get_pre();
-        const my::BitField& add_a = a.get_eff();
+        const auto& pre_a = a.get_pre();
+        const auto& add_a = a.get_eff();
 
         for (auto p : add_a) {
 
             s_set.set(p);
 
-            my::BitField x = my::BitField(nvarstrips + 1);
+            auto x = my::BitField(nvarstrips + 1);
             for (auto p : add_a) x.set(p);
 
             for (auto pp : pre_a) {
@@ -140,7 +140,7 @@ void HPLUS_imai_relevance_analysis(const HPLUS_instance& inst, const std::vector
         }
     }
 
-    my::BitField cand_actions = !relevant_actions;
+    auto cand_actions = !relevant_actions;
 
     bool new_act = true;
     while (new_act) {
@@ -172,8 +172,8 @@ void HPLUS_imai_immediate_action_application(const HPLUS_instance& inst, const m
     const auto nact = inst.get_nact();
     const auto& actions = inst.get_actions();
 
-    my::BitField current_state = my::BitField(inst.get_istate());
-    my::BitField actions_left = !eliminated_actions;
+    auto current_state = inst.get_istate();
+    auto actions_left = !eliminated_actions;
 
     int counter = 0;
     bool found_next_action = true;
@@ -221,12 +221,12 @@ void HPLUS_imai_dominated_actions_elimination(const HPLUS_instance& inst, const 
     const auto& istate = inst.get_istate();
     const auto& actions = inst.get_actions();
 
-    my::BitField remaining_actions = !eliminated_actions;
+    auto remaining_actions = !eliminated_actions;
 
-    for (auto act_i : remaining_actions) {
+    for (auto act_i : remaining_actions) {                              // FIXME: O(nact^2)
 
         remaining_actions.unset(act_i);
-        my::BitField f_lm_a = my::BitField(istate);
+        auto f_lm_a = istate;
         for (auto p : actions[act_i].get_pre()) for (unsigned int i = 0; i < nvarstrips; i++) if (landmarks_set[p][i] || landmarks_set[p][nvarstrips]) f_lm_a.set(i);
 
         for (auto act_j : remaining_actions) {
@@ -332,17 +332,8 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
 
         for (auto p : istate) fixed_var_timestamps[p] = 0;
 
-        // for (auto p : eliminated_variables) {
-        //     fixed_var_timestamps[p] = 0;
-        //     for (unsigned int i = 0; i < nact; i++) eliminated_fas[i].set(p);
-        // }
-        // for (auto a : eliminated_actions) {
-        //     fixed_act_timestamps[a] = nact-1;
-        //     for (unsigned int i = 0; i < nvarstrips; i++) eliminated_fas[a].set(i);
-        // }
-
         // (section 4.6 of Imai's paper)
-        for (auto act_i : !eliminated_actions) {
+        for (auto act_i : !eliminated_actions) {                                                    // FIXME: O(nact^2)
             const auto& pre = actions[act_i].get_pre();
             const auto& eff = actions[act_i].get_eff();
             for (unsigned int act_j = act_i + 1; act_j < nact; act_j++) if (!eliminated_actions[act_j]) {
@@ -368,11 +359,11 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
 
     unsigned int curr_col = 0;
 
-    auto* objs = new double[nact];
-    auto* lbs = new double[nact];
-    auto* ubs = new double[nact];
-    auto* types = new char[nact];
-    auto** names = new char*[nact];
+    double* objs = new double[nact];
+    double* lbs = new double[nact];
+    double* ubs = new double[nact];
+    char* types = new char[nact];
+    char** names = new char*[nact];
     for (unsigned int i = 0; i < nact; i++) names[i] = new char[20];
 
     // actions
@@ -463,8 +454,7 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
         fa_individual_start[act_i] = nfa;
         const my::BitField& eff = actions[act_i].get_eff();
         for (unsigned int i = 0, k = 0; i < nvar; k += variables[i].get_range(), i++) {
-            for (unsigned int j = 0; j < variables[i].get_range(); j++) {
-                if (!eff[k + j]) continue;
+            for (unsigned int j = 0; j < variables[i].get_range(); j++) if (eff[k + j]) {
                 objs[nfa] = 0;
                 lbs[nfa] = fixed_fas[act_i][k+j] ? 1 : 0;
                 ubs[nfa] = eliminated_fas[act_i][k+j] ? 0 : 1;
@@ -488,28 +478,28 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     // ~~~~~~~ Adding CPLEX constraints ~~~~~~ //
     // (section 3 of Imai's paper)
 
-    int* ind0 = new int[nact+1];
-    double* val0 = new double[nact+1];
-    int ind1[2], ind2[3];
-    double val1[2], val2[3];
-    int nnz1 = 2, nnz2 = 3;
-    char sensel = 'L', sensee = 'E';
-    double rhs1 = 0, rhs2 = nact;
-    int begin = 0;
+    int* ind_c1 = new int[nact+1];
+    double* val_c1 = new double[nact+1];
+    int ind_c2_4[2], ind_c5[3];
+    double val_c2_4[2], val_c5[3];
+    const int nnz_c2_4 = 2, nnz_c5 = 3;
+    const char sensel = 'L', sensee = 'E';
+    const double rhs_c1_2_4 = 0, rhs_c5 = nact;
+    const int begin = 0;
 
-    std::vector<int*> ind(nvarstrips);
-    std::vector<double*> val(nvarstrips);
-    std::vector<int> nnz(nvarstrips);
-    std::vector<double> rhs(nvarstrips);
+    std::vector<int*> ind_c3(nvarstrips);
+    std::vector<double*> val_c3(nvarstrips);
+    std::vector<int> nnz_c3(nvarstrips);
+    std::vector<double> rhs_c3(nvarstrips);
 
     for (unsigned int i = 0; i < nvarstrips; i++) {
-        ind[i] = new int[nact + 1];
-        val[i] = new double[nact + 1];
-        nnz[i] = 0;
-        rhs[i] = istate[i];
-        ind[i][nnz[i]] = var_start + i;
-        val[i][nnz[i]] = 1;
-        nnz[i]++;
+        ind_c3[i] = new int[nact + 1];
+        val_c3[i] = new double[nact + 1];
+        nnz_c3[i] = 0;
+        rhs_c3[i] = istate[i];
+        ind_c3[i][nnz_c3[i]] = var_start + i;
+        val_c3[i][nnz_c3[i]] = 1;
+        nnz_c3[i]++;
     }
 
     for (unsigned int i = 0, count_fa = 0; i < nact; i++) {
@@ -518,10 +508,10 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
         for (unsigned int j = 0; j < nvarstrips; j++) {
             if (pre[j]) {
                 // constraint 1: x_a + sum_{inv(a, p)}(z_a'vj) <= y_vj, vj in pre(a)
-                ind0[0] = act_start + i;
-                val0[0] = 1;
-                ind0[1] = var_start + j;
-                val0[1] = -1;
+                ind_c1[0] = act_start + i;
+                val_c1[0] = 1;
+                ind_c1[1] = var_start + j;
+                val_c1[1] = -1;
                 int nnz0 = 2;
                 // (section 4.6 of Imai's paper)
                 for (auto inv_act : inverse_actions[i]) {
@@ -532,49 +522,49 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
                             if (p == j) break;
                             var_cnt++;
                         }
-                        ind0[nnz0] = fa_start + fa_individual_start[inv_act] + var_cnt;
-                        val0[nnz0++] = 1;
+                        ind_c1[nnz0] = fa_start + fa_individual_start[inv_act] + var_cnt;
+                        val_c1[nnz0++] = 1;
                     }
                 }
-                my::assert(!CPXaddrows(env, lp, 0, 1, nnz0, &rhs1, &sensel, &begin, ind0, val0, nullptr, nullptr), "CPXaddrows (c1) failed.");
+                my::assert(!CPXaddrows(env, lp, 0, 1, nnz0, &rhs_c1_2_4, &sensel, &begin, ind_c1, val_c1, nullptr, nullptr), "CPXaddrows (c1) failed.");
                 // constraint 4: t_vj <= t_a, vj in pre(a)
-                ind1[0] = tvar_start + j;
-                val1[0] = 1;
-                ind1[1] = tact_start + i;
-                val1[1] = -1;
-                my::assert(!CPXaddrows(env, lp, 0, 1, nnz1, &rhs1, &sensel, &begin, ind1, val1, nullptr, nullptr), "CPXaddrows (c4) failed.");
+                ind_c2_4[0] = tvar_start + j;
+                val_c2_4[0] = 1;
+                ind_c2_4[1] = tact_start + i;
+                val_c2_4[1] = -1;
+                my::assert(!CPXaddrows(env, lp, 0, 1, nnz_c2_4, &rhs_c1_2_4, &sensel, &begin, ind_c2_4, val_c2_4, nullptr, nullptr), "CPXaddrows (c4) failed.");
             }
             if (eff[j]) {
                 // constraint 2: z_avj <= x_a, vj in eff(a)
-                ind1[0] = fa_start + count_fa;
-                val1[0] = 1;
-                ind1[1] = act_start + i;
-                val1[1] = -1;
-                my::assert(!CPXaddrows(env, lp, 0, 1, nnz1, &rhs1, &sensel, &begin, ind1, val1, nullptr, nullptr), "CPXaddrows (c2) failed.");
+                ind_c2_4[0] = fa_start + count_fa;
+                val_c2_4[0] = 1;
+                ind_c2_4[1] = act_start + i;
+                val_c2_4[1] = -1;
+                my::assert(!CPXaddrows(env, lp, 0, 1, nnz_c2_4, &rhs_c1_2_4, &sensel, &begin, ind_c2_4, val_c2_4, nullptr, nullptr), "CPXaddrows (c2) failed.");
                 // constraint 5: t_a + 1 <= t_vj + (|A|+1)(1-z_avj), vj in eff(a)
-                ind2[0] = tact_start + i;
-                val2[0] = 1;
-                ind2[1] = tvar_start + j;
-                val2[1] = -1;
-                ind2[2] = fa_start + count_fa;
-                val2[2] = nact + 1;
-                my::assert(!CPXaddrows(env, lp, 0, 1, nnz2, &rhs2, &sensel, &begin, ind2, val2, nullptr, nullptr), "CPXaddrows (c5) failed.");
+                ind_c5[0] = tact_start + i;
+                val_c5[0] = 1;
+                ind_c5[1] = tvar_start + j;
+                val_c5[1] = -1;
+                ind_c5[2] = fa_start + count_fa;
+                val_c5[2] = nact + 1;
+                my::assert(!CPXaddrows(env, lp, 0, 1, nnz_c5, &rhs_c5, &sensel, &begin, ind_c5, val_c5, nullptr, nullptr), "CPXaddrows (c5) failed.");
                 // constraint 3: I(v_j) + sum(z_avj) = y_vj
-                ind[j][nnz[j]] = fa_start + count_fa++;
-                val[j][nnz[j]] = -1;
-                nnz[j]++;
+                ind_c3[j][nnz_c3[j]] = fa_start + count_fa++;
+                val_c3[j][nnz_c3[j]] = -1;
+                nnz_c3[j]++;
             }
         }
     }
 
-    for (unsigned int i = 0; i < nvarstrips; i++) my::assert(!CPXaddrows(env, lp, 0, 1, nnz[i], &rhs[i], &sensee, &begin, ind[i], val[i], nullptr, nullptr), "CPXaddrows (c3) failed.");
+    for (unsigned int i = 0; i < nvarstrips; i++) my::assert(!CPXaddrows(env, lp, 0, 1, nnz_c3[i], &rhs_c3[i], &sensee, &begin, ind_c3[i], val_c3[i], nullptr, nullptr), "CPXaddrows (c3) failed.");
 
     for (unsigned int i = 0; i < nvarstrips; i++) {
-        delete[] ind[i]; ind[i] = nullptr;
-        delete[] val[i]; val[i] = nullptr;
+        delete[] ind_c3[i]; ind_c3[i] = nullptr;
+        delete[] val_c3[i]; val_c3[i] = nullptr;
     }
-    delete[] val0; val0 = nullptr;
-    delete[] ind0; ind0 = nullptr;
+    delete[] val_c1; val_c1 = nullptr;
+    delete[] ind_c1; ind_c1 = nullptr;
 
     my::assert(!CPXwriteprob(env, lp, (HPLUS_CPLEX_OUT_DIR"/lp/"+HPLUS_env.run_name+".lp").c_str(), "LP"), "CPXwriteprob failed.");
 
@@ -587,15 +577,15 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
 */
 void HPLUS_store_imai_sol(const CPXENVptr& env, const CPXLPptr& lp, HPLUS_instance& inst) {
 
-    // get cplex result (interested only in the sequence of actions used and its ordering)
+    // get cplex result (interested only in the sequence of actions [0/nact-1] used and its ordering [nact/2nact-1])
     unsigned int nact = inst.get_nact();
-    auto* xstar = new double[2 * nact];
-    my::assert(!CPXgetx(env, lp, xstar, 0, 2 * nact - 1), "CPXgetx failed.");
+    auto* plan = new double[2 * nact];
+    my::assert(!CPXgetx(env, lp, plan, 0, 2 * nact - 1), "CPXgetx failed.");
 
     // convert to std collections for easier parsing
     std::vector<std::pair<double, unsigned int>> cpx_result;
-    for (unsigned int i = 0; i < nact; i++) if (xstar[i] > .5) cpx_result.emplace_back(xstar[nact+i], i);
-    delete[] xstar; xstar = nullptr;
+    for (unsigned int i = 0; i < nact; i++) if (plan[i] > .5) cpx_result.emplace_back(plan[nact+i], i);
+    delete[] plan; plan = nullptr;
 
     // sort cpx_result based on actions timestamps
     std::sort(cpx_result.begin(), cpx_result.end(),
@@ -613,7 +603,7 @@ void HPLUS_store_imai_sol(const CPXENVptr& env, const CPXLPptr& lp, HPLUS_instan
     );
 
     // store solution
-    const std::vector<HPLUS_action>& actions = inst.get_actions();
+    const auto& actions = inst.get_actions();
     inst.update_best_solution(solution,
         std::accumulate(solution.begin(), solution.end(), 0,
             [&actions](const unsigned int acc, const unsigned int index) {
