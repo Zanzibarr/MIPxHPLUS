@@ -1,8 +1,10 @@
 #ifndef IMAI_MODEL_H
 #define IMAI_MODEL_H
 
-#include "../include/utils.hpp"
-#include "../include/hplus_instance.hpp"
+#include "hplus_instance.hpp"
+#include <queue>
+#include <algorithm>
+#include <numeric>
 #include <cplex.h>
 
 /**

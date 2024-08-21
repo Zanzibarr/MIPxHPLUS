@@ -1,5 +1,5 @@
 #include "../include/algorithms.hpp"
-#include "../include/imai_model.hpp"
+#include <cplex.h>
 
 // ##################################################################### //
 // ############################### CPLEX ############################### //
@@ -69,11 +69,12 @@ void HPLUS_parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp) {
 
 }
 
-// ~~~~~~~~~~~~~~~~~ IMAI ~~~~~~~~~~~~~~~~ //
+void HPLUS_run(HPLUS_instance& inst) {
 
-void HPLUS_run_imai(HPLUS_instance& inst) {
+    if (HPLUS_env.alg != HPLUS_CLI_IMAI && HPLUS_env.alg != HPLUS_CLI_RANKOOH) HPLUS_env.logger.raise_error("The algorithm specified (%s) is not on the list of possible algorithms... Please read the README.md for instructions.", HPLUS_env.alg.c_str());
 
-    HPLUS_env.logger.print_info("Running imai algorithm.");
+    if (HPLUS_env.alg == HPLUS_CLI_IMAI) HPLUS_env.logger.print_info("Running imai algorithm.");
+    else if (HPLUS_env.alg == HPLUS_CLI_RANKOOH) HPLUS_env.logger.print_info("Running rankooh algorithm.");
 
     CPXENVptr env = nullptr;
     CPXLPptr lp = nullptr;
@@ -81,7 +82,8 @@ void HPLUS_run_imai(HPLUS_instance& inst) {
     double start_time = HPLUS_env.get_time();
 
     HPLUS_cpx_init(env, lp);
-    HPLUS_cpx_build_imai(env, lp, inst);
+    if (HPLUS_env.alg == HPLUS_CLI_IMAI) HPLUS_cpx_build_imai(env, lp, inst);
+    else if (HPLUS_env.alg == HPLUS_CLI_RANKOOH) HPLUS_cpx_build_rankooh(env, lp, inst);
 
     HPLUS_stats.build_time = HPLUS_env.get_time() - start_time;
 
@@ -92,9 +94,36 @@ void HPLUS_run_imai(HPLUS_instance& inst) {
     HPLUS_stats.exec_time = HPLUS_env.get_time() - start_time;
 
     HPLUS_parse_cplex_status(env, lp);
-
-    if (HPLUS_env.found()) HPLUS_store_imai_sol(env, lp, inst);
+    if (HPLUS_env.found()) {
+        if (HPLUS_env.alg == HPLUS_CLI_IMAI) HPLUS_store_imai_sol(env, lp, inst);
+        else if (HPLUS_env.alg == HPLUS_CLI_RANKOOH) HPLUS_store_rankooh_sol(env, lp, inst);
+    }
 
     HPLUS_cpx_close(env, lp);
+
+    switch(HPLUS_env.status) {
+        case my::status::INFEAS:
+            HPLUS_env.logger.print("The problem is infeasible.");
+            return;
+        case my::status::NOTFOUND:
+            HPLUS_env.logger.print("No solution found.");
+            return;
+        case my::status::TIMEL_NF:
+            HPLUS_env.logger.print("No solution found due to time limit.");
+            return;
+        case my::status::USR_STOP_NF:
+            HPLUS_env.logger.print("No solution found due to the user terminating the execution.");
+            return;
+        case my::status::TIMEL_FEAS:
+            HPLUS_env.logger.print("The solution is not optimal due to time limit.");
+            break;
+        case my::status::USR_STOP_FEAS:
+            HPLUS_env.logger.print("The solution is not optimal due to the user terminating the execution.");
+            break;
+        default:
+            break;
+    }
+
+    inst.print_best_sol();
 
 }

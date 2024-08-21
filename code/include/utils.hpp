@@ -6,22 +6,17 @@
 // ##################################################################### //
 
 #include <iostream>
+#include <fstream>
 #include <string>
 #include <cstring>
 #include <vector>
 #include <chrono>
 #include <climits>
 #include <cstdarg>
-#include <sys/stat.h>
-#include <fstream>
-#include <iterator>
-#include <functional>
-#include <algorithm>
-#include <csignal>
-#include <unistd.h>
-#include <numeric>
-#include <queue>
-#include <cplex.h>
+// #include <iterator>
+// #include <functional>
+// #include <unistd.h>
+// #include <cplex.h>
 
 // ##################################################################### //
 // ######################### PATHS AND FOLDERS ######################### //
@@ -54,7 +49,9 @@
 #define HPLUS_CLI_RUN_NAME_FLAG "-rn"           // flag for parsing the run name
 #define HPLUS_CLI_ALG_FLAG "-a"                 // flag for parsing the algorithm to use
 
-#define HPLUS_CLI_IMAI_BASE "-base"             // flag for using imai baseline
+#define HPLUS_CLI_IMAI "imai"
+#define HPLUS_CLI_IMAI_BASE "-base"
+#define HPLUS_CLI_RANKOOH "rankooh"
 
 #define HPLUS_CLI_TIMELIMIT_FLAG "-t"           // flag for parsing the time limit
 
@@ -63,7 +60,7 @@
 // ##################################################################### //
 
 #ifndef HPLUS_VERBOSE
-#define HPLUS_VERBOSE 10    // overwritten by cmake
+#define HPLUS_VERBOSE 1     // overwritten by cmake
 #endif
 #ifndef HPLUS_WARN
 #define HPLUS_WARN 1        // overwritten by cmake
@@ -230,6 +227,11 @@ namespace my {
      * Asserts that a string is a number (if specified also checks the range (both inclusive))
      */
     bool isint(const std::string& str, const int from = INT_MIN, const int to = INT_MAX);
+
+    /**
+     * Interrupts the execution with a todo message
+     */
+    void todo();
 
 }
 

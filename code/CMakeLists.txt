@@ -15,7 +15,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3")
 set(CMAKE_CXX_FLAGS_DEBUG "-Og -ggdb")
 
 # setting the default verbose/warn/intchecks (edited with the -D flag)
-set(VERBOSE "10" CACHE STRING "Verbose setting set from command line")
+set(VERBOSE "1" CACHE STRING "Verbose setting set from command line")
 message(STATUS "VERBOSE is set to ${VERBOSE}")
 set(WARN "1" CACHE STRING "Flag to enable warning messages")
 message(STATUS "WARN is set to ${WARN}")
@@ -86,6 +86,12 @@ add_library(
     include/imai_model.hpp
 )
 
+add_library(
+    RANKOOH_model
+    src/rankooh_model.cpp
+    include/rankooh_model.hpp
+)
+
 find_library(CPLEX_LIBRARY
     NAMES cplex
     PATHS ${CPLEX_DIR}
@@ -107,6 +113,7 @@ target_link_libraries(
     HPLUS_instance
     HPLUS_algorithms
     IMAI_model
+    RANKOOH_model
     ${CPLEX_LIBRARY}
 )
 

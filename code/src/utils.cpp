@@ -1,5 +1,4 @@
 #include "../include/utils.hpp"
-#include <bitset>
 
 HPLUS_Environment HPLUS_env;
 HPLUS_Statistics HPLUS_stats;
@@ -423,6 +422,10 @@ double HPLUS_Environment::get_time() const { return ((double) std::chrono::durat
 
 void HPLUS_Statistics::print() const {
 
+    #if HPLUS_VERBOSE < 5
+    return;
+    #endif
+
     HPLUS_env.logger.print("\n\n------------------------------------------");
     HPLUS_env.logger.print("-------------   Statistics   -------------");
     HPLUS_env.logger.print("------------------------------------------\n");
@@ -464,3 +467,5 @@ bool my::isint(const std::string& str, const int from, const int to) {
     } catch (std::invalid_argument&) { return false; }
 
 }
+
+void my::todo() { HPLUS_env.logger.raise_error("UNIMPLEMENTED."); }

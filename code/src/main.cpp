@@ -1,3 +1,5 @@
+#include <csignal>
+#include <sys/stat.h>
 #include "../include/algorithms.hpp"
 
 void signal_callback_handler(const int signum) {
@@ -19,6 +21,10 @@ void HPLUS_start() {
 }
 
 void HPLUS_show_info(const HPLUS_instance& inst) {
+
+    #if HPLUS_VERBOSE <= 1
+    return;
+    #endif
 
     HPLUS_env.logger.print(LINE);
 
@@ -67,7 +73,7 @@ void HPLUS_show_info(const HPLUS_instance& inst) {
     HPLUS_env.logger.print(LINE);
     #endif
 
-    HPLUS_env.logger.print("Algorithm: %s.", ((!strcmp(HPLUS_env.alg.c_str(), "imai") && HPLUS_env.imai_baseline) ? "imai (base model)" : HPLUS_env.alg.c_str()));
+    HPLUS_env.logger.print("Algorithm: %s.", (HPLUS_env.alg == "imai" && HPLUS_env.imai_baseline) ? "imai (base model)" : HPLUS_env.alg.c_str());
     HPLUS_env.logger.print("Time limit: %ds.", HPLUS_env.time_limit);
     HPLUS_env.logger.print(LINE);
 
@@ -90,11 +96,14 @@ void HPLUS_parse_cli(const int argc, const char** argv) {
             struct stat buffer{};
             my::assert(stat((HPLUS_env.infile).c_str(), &buffer) == 0,  "Failed to open input file.");
         }
+        // -------- LOGGING ------- //
         else if (!strcmp(argv[i], HPLUS_CLI_LOG_FLAG)) HPLUS_env.log = true;
         else if (!strcmp(argv[i], HPLUS_CLI_LOG_NAME_FLAG)) HPLUS_env.log_name = HPLUS_LOG_DIR"/" + std::string(argv[++i]);
         else if (!strcmp(argv[i], HPLUS_CLI_RUN_NAME_FLAG)) HPLUS_env.run_name = argv[++i];
+        // ------- EXECUTION ------ //
         else if (!strcmp(argv[i], HPLUS_CLI_TIMELIMIT_FLAG)) { my::assert(my::isint(argv[i+1]), "The time limit must be an integer."); HPLUS_env.time_limit = atoi(argv[++i]); }
         else if (!strcmp(argv[i], HPLUS_CLI_ALG_FLAG)) HPLUS_env.alg = argv[++i];
+        // --------- IMAI --------- //
         else if (!strcmp(argv[i], HPLUS_CLI_IMAI_BASE)) HPLUS_env.imai_baseline = true;
 
         else unknown_args.push_back(argv[i]);
@@ -108,39 +117,6 @@ void HPLUS_parse_cli(const int argc, const char** argv) {
     my::assert(!HPLUS_env.alg.empty(), "No algorithm specified.");
 
     HPLUS_env.logger = my::Logger(HPLUS_env.run_name, HPLUS_env.log_name);
-
-}
-
-void HPLUS_run(HPLUS_instance& inst) {
-
-    if (HPLUS_env.alg == "imai") HPLUS_run_imai(inst);
-
-    else HPLUS_env.logger.raise_error("The specified algorithm %s is not recognised. Please refer to the README.md for instructions.", HPLUS_env.alg.c_str());
-
-    switch(HPLUS_env.status) {
-        case my::status::INFEAS:
-            HPLUS_env.logger.print("The problem is infeasible.");
-            return;
-        case my::status::NOTFOUND:
-            HPLUS_env.logger.print("No solution found.");
-            return;
-        case my::status::TIMEL_NF:
-            HPLUS_env.logger.print("No solution found due to time limit.");
-            return;
-        case my::status::USR_STOP_NF:
-            HPLUS_env.logger.print("No solution found due to the user terminating the execution.");
-            return;
-        case my::status::TIMEL_FEAS:
-            HPLUS_env.logger.print("The solution is not optimal due to time limit.");
-            break;
-        case my::status::USR_STOP_FEAS:
-            HPLUS_env.logger.print("The solution is not optimal due to the user terminating the execution.");
-            break;
-        default:
-            break;
-    }
-
-    inst.print_best_sol();
 
 }
 

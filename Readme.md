@@ -40,8 +40,9 @@ make <target_option>
 
 - **-DVERBOSE=**\<verbose_option> : set the verbose option
   - = **0** : no output
-  - \> **0** : basic output
-  - \>= **10** : basic steps progress (default)
+  - < **5** : just solution (default 1)
+  - \>= **5** : view time statistics
+  - \>= **10** : basic steps progress
   - \>= **100** : full verbose
 - **-DWARN=**\<warning_option> : set the warning option
   - **0** : all warnings suppressed

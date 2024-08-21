@@ -1,9 +1,5 @@
 #include "../include/imai_model.hpp"
 
-// ##################################################################### //
-// ################################ IMAI ############################### //
-// ##################################################################### //
-
 /**
  * Explanation: Section 4.1 of Imai's paper
  */
@@ -304,7 +300,7 @@ void HPLUS_imai_iterative_variable_elimination(const HPLUS_instance& inst, my::B
 */
 void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& inst) {
 
-    const unsigned int nvar = inst.get_nvar();
+    const auto nvar = inst.get_nvar();
     const auto nact = inst.get_nact();
     const auto nvarstrips = inst.get_nvar_strips();
     const auto& actions = inst.get_actions();

@@ -1,11 +1,9 @@
 #ifndef ALGS_H
 #define ALGS_H
 
-#include "hplus_instance.hpp"
+#include "imai_model.hpp"
+#include "rankooh_model.hpp"
 
-/**
- * Runs algorithm from Imai's paper
- */
-void HPLUS_run_imai(HPLUS_instance& inst);
+void HPLUS_run(HPLUS_instance& inst);
 
 #endif
