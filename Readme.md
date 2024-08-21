@@ -70,10 +70,11 @@ make <target_option>
   - **imai** : to use the model from the [Imai15 paper](references/Imai15.pdf)
     - **-base** : to use the base model (section 3 of the paper)
     - _none_ : to use the enhanced model (section 4 of the paper)
+  - **rankooh** : to use the model from the [Rankooh22 paper](references/Rankooh22.pdf)
 - **-t** <time_limit> : (int) specify the time limit (in seconds)
 
 #### Logging
 
 - **-l** : (optional) tells the program to log output to file (as well as stdout)
-- **-ln** <log*name> : (string/"string with spaces") (optional) specify the name of the log file (will be located inside the code/logs folder); if not specified and the *-l* flag is used, a default log file will be used
+- **-ln** <log_name> : (string/"string with spaces") (optional) specify the name of the log file (will be located inside the code/logs folder); if not specified and the *-l* flag is used, a default log file will be used
 - **-rn** <run_name> : (string/"string with spaces") (optional) set a run name that will show in the log file (used also to create log/lp files for cplex)

@@ -49,9 +49,9 @@
 #define HPLUS_CLI_RUN_NAME_FLAG "-rn"           // flag for parsing the run name
 #define HPLUS_CLI_ALG_FLAG "-a"                 // flag for parsing the algorithm to use
 
-#define HPLUS_CLI_IMAI "imai"
-#define HPLUS_CLI_IMAI_BASE "-base"
-#define HPLUS_CLI_RANKOOH "rankooh"
+#define HPLUS_CLI_IMAI "imai"                   // using the algorithm from the Imai15 paper
+#define HPLUS_CLI_IMAI_BASE "-base"             // flag for using the base imai model
+#define HPLUS_CLI_RANKOOH "rankooh"             // using the algorithm from the Rankooh22 paper
 
 #define HPLUS_CLI_TIMELIMIT_FLAG "-t"           // flag for parsing the time limit
 
