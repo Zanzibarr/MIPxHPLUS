@@ -240,6 +240,7 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
     std::getline(*ifs, line);   // n_act
     my::assert(my::isint(line, 0), "Corrupted file.");
     this -> n_act_ = stoi(line);
+    my::assert(this -> n_act_ <= 1000, "Testing small instances only.");                // TODO: Remove this
     this -> actions_ = std::vector<HPLUS_action>(this -> n_act_);
     for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++) {
         // process each action

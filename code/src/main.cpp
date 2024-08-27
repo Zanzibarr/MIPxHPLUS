@@ -73,7 +73,7 @@ void HPLUS_show_info(const HPLUS_instance& inst) {
     HPLUS_env.logger.print(LINE);
     #endif
 
-    HPLUS_env.logger.print("Algorithm: %s.", (HPLUS_env.alg == "imai" && HPLUS_env.imai_baseline) ? "imai (base model)" : HPLUS_env.alg.c_str());
+    HPLUS_env.logger.print("Algorithm: %s.", HPLUS_env.alg.c_str());
     HPLUS_env.logger.print("Time limit: %ds.", HPLUS_env.time_limit);
     HPLUS_env.logger.print(LINE);
 
@@ -103,8 +103,6 @@ void HPLUS_parse_cli(const int argc, const char** argv) {
         // ------- EXECUTION ------ //
         else if (!strcmp(argv[i], HPLUS_CLI_TIMELIMIT_FLAG)) { my::assert(my::isint(argv[i+1]), "The time limit must be an integer."); HPLUS_env.time_limit = atoi(argv[++i]); }
         else if (!strcmp(argv[i], HPLUS_CLI_ALG_FLAG)) HPLUS_env.alg = argv[++i];
-        // --------- IMAI --------- //
-        else if (!strcmp(argv[i], HPLUS_CLI_IMAI_BASE)) HPLUS_env.imai_baseline = true;
 
         else unknown_args.push_back(argv[i]);
 

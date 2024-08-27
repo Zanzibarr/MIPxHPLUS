@@ -321,32 +321,28 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     std::vector<int> fixed_act_timestamps(nact, -1);
     std::vector<my::BitField> inverse_actions(nact, my::BitField(nact));
 
-    if (!HPLUS_env.imai_baseline) {
+    // (section 4.5 of Imai's paper)
+    HPLUS_imai_iterative_variable_elimination(inst, eliminated_variables, fixed_variables, eliminated_actions, fixed_actions, eliminated_fas, fixed_fas, fixed_var_timestamps, fixed_act_timestamps);
 
-        // (section 4.5 of Imai's paper)
-        HPLUS_imai_iterative_variable_elimination(inst, eliminated_variables, fixed_variables, eliminated_actions, fixed_actions, eliminated_fas, fixed_fas, fixed_var_timestamps, fixed_act_timestamps);
+    for (auto p : istate) fixed_var_timestamps[p] = 0;
 
-        for (auto p : istate) fixed_var_timestamps[p] = 0;
-
-        // (section 4.6 of Imai's paper)
-        for (auto act_i : !eliminated_actions) {                                                    // FIXME: O(nact^2)
-            const auto& pre = actions[act_i].get_pre();
-            const auto& eff = actions[act_i].get_eff();
-            for (unsigned int act_j = act_i + 1; act_j < nact; act_j++) if (!eliminated_actions[act_j]) {
-                if (pre.contains(actions[act_j].get_eff()) && actions[act_j].get_pre().contains(eff)) {
-                    if (!fixed_actions[act_j]) inverse_actions[act_i].set(act_j);
-                    if (!fixed_actions[act_i]) inverse_actions[act_j].set(act_i);
-                }
+    // (section 4.6 of Imai's paper)
+    for (auto act_i : !eliminated_actions) {                                                    // FIXME: O(nact^2)
+        const auto& pre = actions[act_i].get_pre();
+        const auto& eff = actions[act_i].get_eff();
+        for (unsigned int act_j = act_i + 1; act_j < nact; act_j++) if (!eliminated_actions[act_j]) {
+            if (pre.contains(actions[act_j].get_eff()) && actions[act_j].get_pre().contains(eff)) {
+                if (!fixed_actions[act_j]) inverse_actions[act_i].set(act_j);
+                if (!fixed_actions[act_i]) inverse_actions[act_j].set(act_i);
             }
         }
-
-        #if HPLUS_VERBOSE >= 10
-        int count = 0;
-        for (unsigned int i = 0; i < nact; i++) for (auto j : inverse_actions[i]) count++;
-        HPLUS_env.logger.print_info("Found %d pairs of inverse actions.", count/2);
-        #endif
-
     }
+
+    #if HPLUS_VERBOSE >= 10
+    int count = 0;
+    for (unsigned int i = 0; i < nact; i++) for (auto j : inverse_actions[i]) count++;
+    HPLUS_env.logger.print_info("Found %d pairs of inverse actions.", count/2);
+    #endif
 
     fixed_variables |= gstate;
 

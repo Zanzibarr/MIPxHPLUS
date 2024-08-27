@@ -68,8 +68,6 @@ make <target_option>
 - **-i** <input_file> : (rel path) specify the input file (relative to the code/instances folder)
 - **-a** <algorithm_name> : specify the algorithm to use
   - **imai** : to use the model from the [Imai15 paper](references/Imai15.pdf)
-    - **-base** : to use the base model (section 3 of the paper)
-    - _none_ : to use the enhanced model (section 4 of the paper)
   - **rankooh** : to use the model from the [Rankooh22 paper](references/Rankooh22.pdf)
 - **-t** <time_limit> : (int) specify the time limit (in seconds)
 

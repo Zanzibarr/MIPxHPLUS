@@ -117,6 +117,8 @@ my::BitField my::BitField::operator!() const {
 
 }
 
+void my::BitField::clear() { this -> field_ = std::vector<char>((this -> size_+7)/8, 0); }
+
 bool my::BitField::operator==(const BitField& other_bitfield) const {
 
     #if HPLUS_INTCHECK

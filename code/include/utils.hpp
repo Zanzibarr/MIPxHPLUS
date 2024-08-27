@@ -13,10 +13,16 @@
 #include <chrono>
 #include <climits>
 #include <cstdarg>
+#include <tuple>
+#include <algorithm>
+#include <numeric>
 // #include <iterator>
 // #include <functional>
 // #include <unistd.h>
 // #include <cplex.h>
+
+template<typename T1, typename T2, typename T3>
+using triple = std::tuple<T1, T2, T3>;
 
 // ##################################################################### //
 // ######################### PATHS AND FOLDERS ######################### //
@@ -50,7 +56,6 @@
 #define HPLUS_CLI_ALG_FLAG "-a"                 // flag for parsing the algorithm to use
 
 #define HPLUS_CLI_IMAI "imai"                   // using the algorithm from the Imai15 paper
-#define HPLUS_CLI_IMAI_BASE "-base"             // flag for using the base imai model
 #define HPLUS_CLI_RANKOOH "rankooh"             // using the algorithm from the Rankooh22 paper
 
 #define HPLUS_CLI_TIMELIMIT_FLAG "-t"           // flag for parsing the time limit
@@ -92,6 +97,8 @@ namespace my {
             void set(unsigned int i);
             void unset(unsigned int i);
             bool operator[](unsigned int i) const;
+
+            void clear();
 
             unsigned int size() const;
 
@@ -267,8 +274,6 @@ extern struct HPLUS_Environment {
 
     std::string alg;
     unsigned int time_limit;
-
-    bool imai_baseline;
 
     // Time control
 

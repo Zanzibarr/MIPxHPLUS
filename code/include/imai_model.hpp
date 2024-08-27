@@ -3,9 +3,9 @@
 
 #include "hplus_instance.hpp"
 #include <queue>
-#include <algorithm>
-#include <numeric>
 #include <cplex.h>
+
+void HPLUS_imai_iterative_variable_elimination(const HPLUS_instance& inst, my::BitField& eliminated_variables, my::BitField& fixed_variables, my::BitField& eliminated_actions, my::BitField& fixed_actions, std::vector<my::BitField>& eliminated_fas, std::vector<my::BitField>& fixed_fas, std::vector<int>& fixed_var_timestamps, std::vector<int>& fixed_act_timestamps);
 
 /**
  * Build the model from Imai's paper
