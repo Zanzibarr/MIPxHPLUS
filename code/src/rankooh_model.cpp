@@ -1,5 +1,4 @@
 #include "../include/rankooh_model.hpp"
-#include "../include/imai_model.hpp"
 
 void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& inst) {
 
@@ -9,7 +8,6 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
     const auto& actions = inst.get_actions();
     const auto& variables = inst.get_variables();
     const auto& istate = inst.get_istate();
-    const auto& gstate = inst.get_gstate();
 
     // ~~~~~~~~~~ VERTEX ELIMINATION ~~~~~~~~~ //
 
@@ -42,45 +40,23 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
         graph[i].clear();
     }
 
-    // ~~~~~~~~~~ MODEL ENHANCEMENT ~~~~~~~~~~ //
-
-    HPLUS_env.logger.print_info("Model enhancement from Imai's paper.");
+    // ~~~~~~~~~~~~ Enhanced model ~~~~~~~~~~~ //
+    // (section 4 of Imai's paper)
 
     my::BitField eliminated_variables(nvarstrips);
     my::BitField fixed_variables(nvarstrips);
     my::BitField eliminated_actions(nact);
     my::BitField fixed_actions(nact);
-    std::vector<my::BitField> eliminated_fas(nact, my::BitField(nvarstrips));
-    std::vector<my::BitField> fixed_fas(nact, my::BitField(nvarstrips));
+    std::vector<my::BitField> eliminated_first_archievers(nact, my::BitField(nvarstrips));
+    std::vector<my::BitField> fixed_first_archievers(nact, my::BitField(nvarstrips));
     std::vector<int> fixed_var_timestamps(nvarstrips, -1);
     std::vector<int> fixed_act_timestamps(nact, -1);
     std::vector<my::BitField> inverse_actions(nact, my::BitField(nact));
 
-    // (section 4.5 of Imai's paper)
-    HPLUS_imai_iterative_variable_elimination(inst, eliminated_variables, fixed_variables, eliminated_actions, fixed_actions, eliminated_fas, fixed_fas, fixed_var_timestamps, fixed_act_timestamps);
-
-    for (auto p : istate) fixed_var_timestamps[p] = 0;
-
-    // (section 4.6 of Imai's paper)
-    for (auto act_i : !eliminated_actions) {                                                    // FIXME: O(nact^2)
-        const auto& pre = actions[act_i].get_pre();
-        const auto& eff = actions[act_i].get_eff();
-        for (unsigned int act_j = act_i + 1; act_j < nact; act_j++) if (!eliminated_actions[act_j]) {
-            if (pre.contains(actions[act_j].get_eff()) && actions[act_j].get_pre().contains(eff)) {
-                if (!fixed_actions[act_j]) inverse_actions[act_i].set(act_j);
-                if (!fixed_actions[act_i]) inverse_actions[act_j].set(act_i);
-            }
-        }
-    }
-
-    #if HPLUS_VERBOSE >= 10
-    int count = 0;
-    for (unsigned int i = 0; i < nact; i++) for (auto j : inverse_actions[i]) count++;
-    HPLUS_env.logger.print_info("Found %d pairs of inverse actions.", count/2);
-    #endif
+    inst.extract_imai_enhancements(eliminated_variables, fixed_variables, eliminated_actions, fixed_actions, inverse_actions, eliminated_first_archievers, fixed_first_archievers, fixed_var_timestamps, fixed_act_timestamps);
 
     eliminated_variables |= istate;
-    fixed_variables |= gstate;
+    fixed_variables |= inst.get_gstate();
     fixed_variables -= istate;
 
     // ~~~~~~~~ Adding CPLEX variables ~~~~~~~ //
@@ -164,8 +140,8 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
         for (unsigned int i = 0, k = 0; i < nvar; k += variables[i].get_range(), i++) {
             for (unsigned int j = 0; j < variables[i].get_range(); j++) if (eff[k + j] && !istate[k + j]) {
                 objs[nfa] = 0;
-                lbs[nfa] = fixed_fas[act_i][k+j] ? 1 : 0;
-                ubs[nfa] = eliminated_fas[act_i][k+j] ? 0 : 1;
+                lbs[nfa] = fixed_first_archievers[act_i][k+j] ? 1 : 0;
+                ubs[nfa] = eliminated_first_archievers[act_i][k+j] ? 0 : 1;
                 types[nfa] = 'B';
                 snprintf(names[nfa], 20, "fa(%d_%d_%d)", act_i, i, j);
                 nfa++;

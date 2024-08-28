@@ -190,6 +190,136 @@ class HPLUS_instance {
          */
         unsigned int get_best_cost() const;
 
+        // ====================================================== //
+        // ===================== ALGORITHMS ===================== //
+        // ====================================================== //
+
+        /**
+         * Extracts landmarks
+         * (Section 4.1 of Imai's paper)
+         *
+         * @param landmarks_set (output) Fact landmarks for each variable (strips representation) (landmarks_set[4] is a bitfield representing all fact landmarks for variable 4); each bitfield has one more bit (in the last position) to represent the full set
+         * @param fact_landmarks (output) Set of fact landmarks for the goal state
+         * @param act_landmarks (output) Set of act landmarks for the goal state
+         */
+        void landmarks_extraction(
+            std::vector<my::BitField>& landmarks_set,
+            my::BitField& fact_landmarks,
+            my::BitField& act_landmarks
+        ) const;
+
+        /**
+         * Extract first adders
+         * (Section 4.2 of Imai's paper)
+         *
+         * @param landmarks_set Fact landmarks for each variable -> You can get this from the landmarks_extraction method
+         * @param fadd (output) List of first adders for each action
+         */
+        void first_adders_extraction(
+            const std::vector<my::BitField>& landmarks_set,
+            std::vector<my::BitField>& fadd
+        ) const;
+
+        /**
+         * Extract relevant variables/actions
+         * (Section 4.2 of Imai's paper)
+         *
+         * @param fact_landmarks Fact landmarks for each variable -> You can get this from the landmarks_extraction method
+         * @param fadd List of first adders for each action -> You can get this from the first_adders_extraction method
+         * @param relevant_variables (output) Set of relevant variables
+         * @param relevant_actions (output) Set of relevant actions
+         */
+        void relevance_analysis(
+            const my::BitField& fact_landmarks,
+            const std::vector<my::BitField>& fadd,
+            my::BitField& relevant_variables,
+            my::BitField& relevant_actions
+        ) const;
+
+        /**
+         * Extract dominated actions
+         * (Section 4.3 of Imai's paper)
+         *
+         * @param landmarks_set Fact landmarks for each variable -> You can get this from the landmarks_extraction method
+         * @param fadd List of first adders for each action -> You can get this from the first_adders_extraction method
+         * @param eliminated_actions List of actions that have been (so far) eliminated
+         * @param fixed_actions List of actions that have been (so far) fixed
+         * @param dominated_actions (output) Set of dominated actions
+         */
+        void dominated_actions_extraction(
+            const std::vector<my::BitField>& landmarks_set,
+            const std::vector<my::BitField>& fadd,
+            const my::BitField& eliminated_actions,
+            const my::BitField& fixed_actions,
+            my::BitField& dominated_actions
+        ) const;
+
+        /**
+         * Immediate action application
+         * (Section 4.4 of Imai's paper)
+         *
+         * @param act_landmarks Set of act landmarks for the goal state
+         * @param eliminated_variables List of variables that have been (so far) eliminated
+         * @param fixed_variables (edited) List of variables that have been (so far) fixed
+         * @param eliminated_actions List of actions that have been (so far) eliminated
+         * @param fixed_actions (edited) List of actions that have been (so far) fixed
+         * @param eliminated_first_archievers List of first archievers that have been (so far) eliminated
+         * @param fixed_first_archievers (edited) List of first archievers that have been (so far) fixed
+         * @param fixed_var_timestamps (edited) List of timestamp for variables to be fixed
+         * @param fixed_act_timestamps (edited) List of timestamp for actions to be fixed
+         */
+        void immediate_action_application(
+            const my::BitField& act_landmarks,
+            const my::BitField& eliminated_variables,
+            my::BitField& fixed_variables,
+            const my::BitField& eliminated_actions,
+            my::BitField& fixed_actions,
+            std::vector<my::BitField>& eliminated_first_archievers,
+            std::vector<my::BitField>& fixed_first_archievers,
+            std::vector<int>& fixed_var_timestamps,
+            std::vector<int>& fixed_act_timestamps
+        ) const;
+
+        /**
+         * Extract inverse oactions
+         * (Section 4.6 of Imai's paper)
+         *
+         * @param eliminated_actions List of actions that have been (so far) eliminated
+         * @param fixed_actions List of actions that have been (so far) fixed
+         * @param inverse_actions (output) Set of inverse action for each action
+         */
+        void inverse_actions_extraction(
+            const my::BitField& eliminated_actions,
+            const my::BitField& fixed_actions,
+            std::vector<my::BitField>& inverse_actions
+        ) const;
+
+        /**
+         * Model enhancement form Imai's paper
+         * (Section 4 of Imai's paper)
+         *
+         * @param eliminated_variables (output) List of variables that can be eliminated (set to 0)
+         * @param fixed_variables (output) List of variables that can be fixed (set to 1)
+         * @param eliminated_actions (output) List of actions that can be eliminated (set to 0)
+         * @param fixed_actions (output) List of actions that can be fixed (set to 1)
+         * @param inverse_actions (output) List of inverse actions for each action (if an action is used, it's inverse isn't in the optimal plan)
+         * @param eliminated_first_archievers (output) List of first archievers that can be eliminated (set to 0)
+         * @param fixed_first_archievers (output) List of first archievers that can be fixed (set to 1)
+         * @param fixed_var_timestamps (output) List of timestamps for variables that can be fixed (for models that use timestamps)
+         * @param fixed_act_timestamps (output) List of timestamps for actions that can be fixed (for models that use timestamps)
+         */
+        void extract_imai_enhancements(
+            my::BitField& eliminated_variables,
+            my::BitField& fixed_variables,
+            my::BitField& eliminated_actions,
+            my::BitField& fixed_actions,
+            std::vector<my::BitField>& inverse_actions,
+            std::vector<my::BitField>& eliminated_first_archievers,
+            std::vector<my::BitField>& fixed_first_archievers,
+            std::vector<int>& fixed_var_timestamps,
+            std::vector<int>& fixed_act_timestamp
+        ) const;
+
     private:
 
         int version_;

@@ -1,6 +1,297 @@
 #include "../include/hplus_instance.hpp"
 
 // ##################################################################### //
+// ##################### HPLUS_INSTANCE ALGORITHMS ##################### //
+// ##################################################################### //
+
+void HPLUS_instance::landmarks_extraction(std::vector<my::BitField>& landmarks_set, my::BitField& fact_landmarks, my::BitField& act_landmarks) const {
+
+    HPLUS_env.logger.print_info("Extracting landmarks.");
+
+    landmarks_set = std::vector<my::BitField>(this -> nvarstrips_, my::BitField(this -> nvarstrips_ + 1));
+    fact_landmarks = my::BitField(this -> nvarstrips_);
+    act_landmarks = my::BitField(this -> n_act_);
+
+    for (unsigned int p = 0; p < this -> nvarstrips_; p++) {
+        if (this -> initial_state_[p]) landmarks_set[p].set(p);
+        // using the last bit as "full set" flag
+        else landmarks_set[p].set(this -> nvarstrips_);
+    }
+
+    auto s_set = this -> initial_state_;
+
+    std::deque<int> actions_queue;
+    for (unsigned int i = 0; i < this -> n_act_; i++)
+        if(s_set.contains(this -> actions_[i].get_pre())) actions_queue.push_back(i);
+
+    while(!actions_queue.empty()) {
+
+        const HPLUS_action a = this -> actions_[actions_queue.front()];
+        actions_queue.pop_front();
+
+        const auto& pre_a = a.get_pre();
+        const auto& add_a = a.get_eff();
+
+        for (auto p : add_a) {
+
+            s_set.set(p);
+
+            auto x = my::BitField(this -> nvarstrips_ + 1);
+            for (auto p : add_a) x.set(p);
+
+            for (auto pp : pre_a) {
+                // if variable p' has the "full" flag then the unification
+                // generates a "full" bitfield -> no need to unificate, just set the flag
+                if (landmarks_set[pp][this -> nvarstrips_]) {
+                    x.set(this -> nvarstrips_);
+                    // if x is now full we can exit, since all further unions won't change x
+                    break;
+                } else x |= landmarks_set[pp];
+            }
+
+            // we then check if L[p] != X, and if they are the same we skip,
+            // if X = P, then (X intersection L[P]) = L[P], hence we can already skip
+            if (!x[this -> nvarstrips_]) {
+
+                // if the set for variable p is the full set of variables,
+                // the intersection generates back x -> we can skip the intersection
+                if (!landmarks_set[p][this -> nvarstrips_]) x &= landmarks_set[p];
+
+                // we already know that x is not the full set now, so if
+                // the set for variable p is the full set, we know that x is not
+                // equal to the set for variable p -> we can skip the check
+                if (landmarks_set[p][this -> nvarstrips_] || x != landmarks_set[p]) {
+
+                    landmarks_set[p] = x;
+                    for (unsigned int aa = 0; aa < this -> n_act_; aa++) if (this -> actions_[aa].get_pre()[p])
+                        if (s_set.contains(this -> actions_[aa].get_pre()) && std::find(actions_queue.begin(), actions_queue.end(), aa) == actions_queue.end())
+                            actions_queue.push_back(aa);
+
+                }
+
+            }
+
+        }
+
+    }
+
+    fact_landmarks |= this -> initial_state_;
+
+    for (auto p : this -> goal_state_) for (auto j : !fact_landmarks) if (landmarks_set[p][j] || landmarks_set[p][this -> nvarstrips_]) {
+        fact_landmarks.set(j);
+        unsigned int count = 0, cand_act;
+        for (unsigned int act_i = 0; act_i < this -> n_act_ && count <= 1; act_i++) if (this -> actions_[act_i].get_eff()[j]) {
+            cand_act = act_i;
+            count++;
+        }
+        if (count == 1) act_landmarks.set(cand_act);
+    }
+
+}
+
+void HPLUS_instance::first_adders_extraction(const std::vector<my::BitField>& landmarks_set, std::vector<my::BitField>& fadd) const {
+
+    HPLUS_env.logger.print_info("Extracting first adders.");
+
+    fadd = std::vector<my::BitField>(this -> n_act_, my::BitField(this -> nvarstrips_));
+
+    for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++) {
+        // f_lm_a is the set of fact landmarks of action act_i
+        my::BitField f_lm_a(this -> nvarstrips_);
+        for (auto p : this -> actions_[act_i].get_pre()) for (unsigned int i = 0; i < this -> nvarstrips_; i++)
+            if (landmarks_set[p][i] || landmarks_set[p][this -> nvarstrips_]) f_lm_a.set(i);
+
+        // fadd[a] := { p in add(a) s.t. p is not a fact landmark for a }
+        fadd[act_i] |= (this -> actions_[act_i].get_eff() & !f_lm_a);
+
+    }
+}
+
+void HPLUS_instance::relevance_analysis(const my::BitField& fact_landmarks, const std::vector<my::BitField>& fadd, my::BitField& relevant_variables, my::BitField& relevant_actions) const {
+
+    HPLUS_env.logger.print_info("Relevance analysis.");
+
+    relevant_variables = my::BitField(this -> nvarstrips_);
+    relevant_actions = my::BitField(this -> n_act_);
+
+    for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++) {
+        if (fadd[act_i].intersects(this -> goal_state_)) {
+            relevant_variables |= this -> actions_[act_i].get_pre();
+            relevant_actions.set(act_i);
+        }
+    }
+
+    auto cand_actions = !relevant_actions;
+
+    bool new_act = true;
+    while (new_act) {
+        new_act = false;
+        for (auto act_i : cand_actions) {
+            if (this -> actions_[act_i].get_eff().intersects(relevant_variables)) {
+                relevant_actions.set(act_i);
+                relevant_variables |= this -> actions_[act_i].get_pre();
+                cand_actions.unset(act_i);
+                new_act = true;
+                break;
+            }
+        }
+    }
+    relevant_variables |= this -> goal_state_;
+
+}
+
+void HPLUS_instance::dominated_actions_extraction(const std::vector<my::BitField>& landmarks_set, const std::vector<my::BitField>& fadd, const my::BitField& eliminated_actions, const my::BitField& fixed_actions, my::BitField& dominated_actions) const {
+
+    HPLUS_env.logger.print_info("Extracting dominated actions.");
+
+    dominated_actions =  my::BitField(this -> n_act_);
+    auto remaining_actions = !eliminated_actions;
+
+    for (auto act_i : remaining_actions) if (!fixed_actions[act_i]) {                              // FIXME: O(nact^2)
+
+        remaining_actions.unset(act_i);
+        auto f_lm_a = this -> initial_state_;
+        for (auto p : this -> actions_[act_i].get_pre()) for (unsigned int i = 0; i < this -> nvarstrips_; i++) if (landmarks_set[p][i] || landmarks_set[p][this -> nvarstrips_]) f_lm_a.set(i);
+
+        for (auto act_j : remaining_actions) {
+
+            if (this -> actions_[act_i].get_cost() < this -> actions_[act_j].get_cost() || !fadd[act_j].contains(fadd[act_i]) || !f_lm_a.contains(this -> actions_[act_j].get_pre())) continue;
+
+            dominated_actions.set(act_i);
+            break;
+
+        }
+
+    }
+
+}
+
+void HPLUS_instance::immediate_action_application(const my::BitField& act_landmarks, const my::BitField& eliminated_variables, my::BitField& fixed_variables, const my::BitField& eliminated_actions, my::BitField& fixed_actions, std::vector<my::BitField>& eliminated_first_archievers, std::vector<my::BitField>& fixed_first_archievers, std::vector<int>& fixed_var_timestamps, std::vector<int>& fixed_act_timestamps) const {
+
+    HPLUS_env.logger.print_info("Immediate action application.");
+
+    auto current_state = this -> initial_state_;
+    auto actions_left = !eliminated_actions;
+
+    int counter = 0;
+    bool found_next_action = true;
+    while (found_next_action) {
+
+        found_next_action = false;
+
+        for (auto act_i : actions_left) {
+
+            const auto& pre = this -> actions_[act_i].get_pre();
+            auto add_eff = this -> actions_[act_i].get_eff() & !eliminated_variables;
+
+            if (current_state.contains(pre) && (act_landmarks[act_i] || this -> actions_[act_i].get_cost() == 0)) {
+
+                actions_left.unset(act_i);
+                fixed_actions.set(act_i);
+                fixed_act_timestamps[act_i] = counter;
+                fixed_variables |= pre;
+                for (auto p : add_eff & !current_state) {
+                    fixed_variables.set(p);
+                    fixed_var_timestamps[p] = counter+1;
+                    fixed_first_archievers[act_i].set(p);
+                    for (auto act_j : actions_left) eliminated_first_archievers[act_j].set(p);
+                }
+                current_state |= add_eff;
+                counter++;
+                found_next_action = true;
+
+            }
+
+        }
+
+    }
+
+}
+
+void HPLUS_instance::inverse_actions_extraction(const my::BitField& eliminated_actions, const my::BitField& fixed_actions, std::vector<my::BitField>& inverse_actions) const {
+
+    HPLUS_env.logger.print_info("Extracting inverse actions.");
+
+    for (auto act_i : !eliminated_actions) {         // FIXME: O(nact^2)
+        const auto& pre = this -> actions_[act_i].get_pre();
+        const auto& eff = this -> actions_[act_i].get_eff();
+        for (unsigned int act_j = act_i + 1; act_j < this -> n_act_; act_j++) if (!eliminated_actions[act_j]) {
+            if (pre.contains(this -> actions_[act_j].get_eff()) && this -> actions_[act_j].get_pre().contains(eff)) {
+                if (!fixed_actions[act_i]) inverse_actions[act_i].set(act_j);
+                if (!fixed_actions[act_j]) inverse_actions[act_j].set(act_i);
+            }
+        }
+    }
+
+}
+
+void HPLUS_instance::extract_imai_enhancements(my::BitField& eliminated_variables, my::BitField& fixed_variables, my::BitField& eliminated_actions, my::BitField& fixed_actions, std::vector<my::BitField>& inverse_actions, std::vector<my::BitField>& eliminated_first_archievers, std::vector<my::BitField>& fixed_first_archievers, std::vector<int>& fixed_var_timestamps, std::vector<int>& fixed_act_timestamp) const {
+
+    HPLUS_env.logger.print_info("Model enhancement from Imai's paper.");
+
+    std::vector<my::BitField> landmarks_set;
+    my::BitField fact_landmarks;
+    my::BitField act_landmarks;
+    std::vector<my::BitField> fadd;
+    my::BitField relevant_variables;
+    my::BitField relevant_actions;
+    my::BitField dominated_actions;
+
+    this -> landmarks_extraction(landmarks_set, fact_landmarks, act_landmarks);
+
+    fixed_variables |= fact_landmarks;
+    fixed_actions |= act_landmarks;
+
+    this -> first_adders_extraction(landmarks_set, fadd);
+
+    for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++) eliminated_first_archievers[act_i] |= (this -> actions_[act_i].get_eff() & !fadd[act_i]);
+
+    this -> relevance_analysis(fact_landmarks, fadd, relevant_variables, relevant_actions);
+
+    eliminated_variables |= (!relevant_variables & !fact_landmarks);
+    eliminated_actions |= !relevant_actions;
+
+    this -> immediate_action_application(act_landmarks, eliminated_variables, fixed_variables, eliminated_actions, fixed_actions, eliminated_first_archievers, fixed_first_archievers, fixed_var_timestamps, fixed_act_timestamp);
+
+    this -> dominated_actions_extraction(landmarks_set, fadd, eliminated_actions, fixed_actions, dominated_actions);
+
+    eliminated_actions |= dominated_actions;
+
+    for (auto p : this -> initial_state_) fixed_var_timestamps[p] = 0;
+
+    this -> inverse_actions_extraction(eliminated_actions, fixed_actions, inverse_actions);
+
+    #if HPLUS_VERBOSE >= 10
+    int count = 0;
+    for (auto p : eliminated_variables) count++;
+    for (auto p : fixed_variables) count++;
+    HPLUS_env.logger.print_info("Eliminated %d/%d variables.", count, this -> nvarstrips_);
+    count = 0;
+    for (auto p : eliminated_actions) count++;
+    for (auto p : fixed_actions) count++;
+    HPLUS_env.logger.print_info("Eliminated %d/%d actions.", count, this -> n_act_);
+    count = 0;
+    int count2 = 0;
+    for (unsigned int a = 0; a < this -> n_act_; a++) {
+        for (auto i : eliminated_first_archievers[a]) count++;
+        for (auto i : fixed_first_archievers[a]) count++;
+        count2 += 2 * this -> nvarstrips_;
+    }
+    HPLUS_env.logger.print_info("Eliminated %d/%d first archievers.", count, count2);
+    count = 0;
+    for (unsigned int i = 0; i < this -> n_act_; i++) for (auto j : inverse_actions[i]) count++;
+    HPLUS_env.logger.print_info("Found %d pairs of inverse actions.", count/2);
+    #endif
+
+    #if HPLUS_INTCHECK
+    my::assert(!eliminated_variables.intersects(fixed_variables), "Eliminated variables set intersects the fixed variables set.");
+    my::assert(!eliminated_actions.intersects(fixed_actions), "Eliminated actions set intersects the fixed actions set.");
+    for (unsigned int i = 0; i < this -> n_act_; i++) my::assert(!eliminated_first_archievers[i].intersects(fixed_first_archievers[i]), "Eliminated first archievers set intersects the fixed first archievers set.");
+    #endif
+
+}
+
+// ##################################################################### //
 // ########################### HPLUS_VARIABLE ########################## //
 // ##################################################################### //
 
@@ -240,7 +531,7 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
     std::getline(*ifs, line);   // n_act
     my::assert(my::isint(line, 0), "Corrupted file.");
     this -> n_act_ = stoi(line);
-    // my::assert(this -> n_act_ <= 1000, "Testing small instances only.");                // TODO: Remove this
+    my::assert(this -> n_act_ <= 1000, "Testing small instances only.");                // TODO: Remove this
     this -> actions_ = std::vector<HPLUS_action>(this -> n_act_);
     for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++) {
         // process each action

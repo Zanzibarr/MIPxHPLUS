@@ -69,6 +69,10 @@ void HPLUS_parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp) {
 
 }
 
+// ##################################################################### //
+// ############################# EXECUTION ############################# //
+// ##################################################################### //
+
 void HPLUS_run(HPLUS_instance& inst) {
 
     if (HPLUS_env.alg != HPLUS_CLI_IMAI && HPLUS_env.alg != HPLUS_CLI_RANKOOH) HPLUS_env.logger.raise_error("The algorithm specified (%s) is not on the list of possible algorithms... Please read the README.md for instructions.", HPLUS_env.alg.c_str());
@@ -82,6 +86,7 @@ void HPLUS_run(HPLUS_instance& inst) {
     double start_time = HPLUS_env.get_time();
 
     HPLUS_cpx_init(env, lp);
+
     if (HPLUS_env.alg == HPLUS_CLI_IMAI) HPLUS_cpx_build_imai(env, lp, inst);
     else if (HPLUS_env.alg == HPLUS_CLI_RANKOOH) HPLUS_cpx_build_rankooh(env, lp, inst);
 

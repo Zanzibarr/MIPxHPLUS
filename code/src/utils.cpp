@@ -60,7 +60,7 @@ my::BitField my::BitField::operator&(const BitField& other_bitfield) const {
 my::BitField& my::BitField::operator&=(const BitField& other_bitfield) {
 
     #if HPLUS_INTCHECK
-    my::assert(this -> size_ == other_bitfield.size_, "BitField::& failed.");
+    my::assert(this -> size_ == other_bitfield.size_, "BitField::&= failed.");
     #endif
     for (unsigned int i = 0; i < this -> field_.size(); i++) this -> field_[i] &= other_bitfield.field_[i];
     return *this;
@@ -70,7 +70,7 @@ my::BitField& my::BitField::operator&=(const BitField& other_bitfield) {
 my::BitField my::BitField::operator|(const BitField& other_bitfield) const {
 
     #if HPLUS_INTCHECK
-    my::assert(this -> size_ == other_bitfield.size_, "BitField::& failed.");
+    my::assert(this -> size_ == other_bitfield.size_, "BitField::| failed.");
     #endif
     my::BitField new_bitfield(*this);
     for (unsigned int i = 0; i < this -> field_.size(); i++) new_bitfield.field_[i] |= other_bitfield.field_[i];
@@ -81,7 +81,7 @@ my::BitField my::BitField::operator|(const BitField& other_bitfield) const {
 my::BitField& my::BitField::operator|=(const BitField& other_bitfield) {
 
     #if HPLUS_INTCHECK
-    my::assert(this -> size_ == other_bitfield.size_, "BitField::& failed.");
+    my::assert(this -> size_ == other_bitfield.size_, "BitField::|= failed.");
     #endif
     for (unsigned int i = 0; i < this -> field_.size(); i++) this -> field_[i] |= other_bitfield.field_[i];
     return *this;
@@ -91,7 +91,7 @@ my::BitField& my::BitField::operator|=(const BitField& other_bitfield) {
 my::BitField my::BitField::operator-(const BitField& other_bitfield) const {
 
     #if HPLUS_INTCHECK
-    my::assert(this -> size_ == other_bitfield.size_, "BitField::& failed.");
+    my::assert(this -> size_ == other_bitfield.size_, "BitField::- failed.");
     #endif
     my::BitField new_bitfield(*this);
     for (unsigned int i = 0; i < this -> field_.size(); i++) new_bitfield.field_[i] &= ~other_bitfield.field_[i];
@@ -102,7 +102,7 @@ my::BitField my::BitField::operator-(const BitField& other_bitfield) const {
 my::BitField& my::BitField::operator-=(const BitField& other_bitfield) {
 
     #if HPLUS_INTCHECK
-    my::assert(this -> size_ == other_bitfield.size_, "BitField::& failed.");
+    my::assert(this -> size_ == other_bitfield.size_, "BitField::-= failed.");
     #endif
     for (unsigned int i = 0; i < this -> field_.size(); i++) this -> field_[i] &= ~other_bitfield.field_[i];
     return *this;
@@ -122,7 +122,7 @@ void my::BitField::clear() { this -> field_ = std::vector<char>((this -> size_+7
 bool my::BitField::operator==(const BitField& other_bitfield) const {
 
     #if HPLUS_INTCHECK
-    my::assert(this -> size_ == other_bitfield.size_, "BitField:equals failed.");
+    my::assert(this -> size_ == other_bitfield.size_, "BitField:== failed.");
     #endif
     unsigned int i;
     for (i = 0; i < this -> field_.size() && this -> field_[i] == other_bitfield.field_[i]; i++);
@@ -133,7 +133,7 @@ bool my::BitField::operator==(const BitField& other_bitfield) const {
 bool my::BitField::operator!=(const BitField& other_bitfield) const {
 
     #if HPLUS_INTCHECK
-    my::assert(this -> size_ == other_bitfield.size_, "BitField:equals failed.");
+    my::assert(this -> size_ == other_bitfield.size_, "BitField:!= failed.");
     #endif
     unsigned int i;
     for (i = 0; i < this -> field_.size() && this -> field_[i] == other_bitfield.field_[i]; i++);
@@ -155,7 +155,7 @@ bool my::BitField::intersects(const BitField& other_bitfield) const {
 bool my::BitField::contains(const BitField& other_bitfield) const {
 
     #if HPLUS_INTCHECK
-    my::assert(this -> size_ == other_bitfield.size_, "BitField:intersects failed.");
+    my::assert(this -> size_ == other_bitfield.size_, "BitField:contains failed.");
     #endif
     unsigned int i;
     for (i = 0; i < this -> field_.size() && !(~this -> field_[i] & other_bitfield.field_[i]); i++);
@@ -176,11 +176,11 @@ my::BitField::operator std::string() const {
 // ############################### LOGGER ############################## //
 // ##################################################################### //
 
-void my::Logger::format_output_(const char* str, va_list ptr, FILE* log_file, const bool show_time) {
+void my::Logger::format_output_(const char* str, va_list ptr, FILE* log_file, const bool show_time, bool error) {
 
     if (show_time) {
         double elapsed_time = HPLUS_env.get_time();
-        fprintf(stdout, "%8.3f : ", elapsed_time);
+        fprintf(error ? stderr : stdout, "%8.3f : ", elapsed_time);
         if (HPLUS_env.log) fprintf(log_file, "%8.3f : ", elapsed_time);
     }
 
@@ -200,7 +200,7 @@ void my::Logger::format_output_(const char* str, va_list ptr, FILE* log_file, co
             k = 0;
             if (token[0] != '%') {
 
-                fprintf(stdout, "%s", token); // printing the whole token if it is not a format specifier
+                fprintf(error ? stderr : stdout, "%s", token); // printing the whole token if it is not a format specifier
                 if (HPLUS_env.log) fprintf(log_file, "%s", token);
 
             } else { 
@@ -214,19 +214,19 @@ void my::Logger::format_output_(const char* str, va_list ptr, FILE* log_file, co
                 if (ch1 == 'i' || ch1 == 'd' || ch1 == 'u' || ch1 == 'h') { // for integers
 
                     int value = va_arg(ptr, int);
-                    fprintf(stdout, token, value);
+                    fprintf(error ? stderr : stdout, token, value);
                     if (HPLUS_env.log) fprintf(log_file, token, value);
 
                 } else if (ch1 == 'c') { // for chars
 
                     char value = va_arg(ptr, int);
-                    fprintf(stdout, token, value);
+                    fprintf(error ? stderr : stdout, token, value);
                     if (HPLUS_env.log) fprintf(log_file, token, value);
 
                 } else if (ch1 == 'f') { // for float values 
 
                     double value = va_arg(ptr, double);
-                    fprintf(stdout, token, value);
+                    fprintf(error ? stderr : stdout, token, value);
                     if (HPLUS_env.log) fprintf(log_file, token, value);
 
                 } else if (ch1 == 'l') { // for long values
@@ -236,13 +236,13 @@ void my::Logger::format_output_(const char* str, va_list ptr, FILE* log_file, co
                     if (ch2 == 'u' || ch2 == 'd' || ch2 == 'i') { // for long int values 
 
                         long value = va_arg(ptr, long);
-                        fprintf(stdout, token, value);
+                        fprintf(error ? stderr : stdout, token, value);
                         if (HPLUS_env.log) fprintf(log_file, token, value);
 
                     } else if (ch2 == 'f') {  // for double values 
 
                         double value = va_arg(ptr, double);
-                        fprintf(stdout, token, value);
+                        fprintf(error ? stderr : stdout, token, value);
                         if (HPLUS_env.log) fprintf(log_file, token, value);
 
                     } 
@@ -254,7 +254,7 @@ void my::Logger::format_output_(const char* str, va_list ptr, FILE* log_file, co
                     if (ch2 == 'u' || ch2 == 'd' || ch2 == 'i') { // for long long int values 
 
                         long long value = va_arg(ptr, long long);
-                        fprintf(stdout, token, value);
+                        fprintf(error ? stderr : stdout, token, value);
                         if (HPLUS_env.log) fprintf(log_file, token, value);
 
                     } 
@@ -262,7 +262,7 @@ void my::Logger::format_output_(const char* str, va_list ptr, FILE* log_file, co
                     else if (ch2 == 'f') { // for long double values 
 
                         long double value = va_arg(ptr, long double);
-                        fprintf(stdout, token, value);
+                        fprintf(error ? stderr : stdout, token, value);
                         if (HPLUS_env.log) fprintf(log_file, token, value);
 
                     } 
@@ -270,12 +270,12 @@ void my::Logger::format_output_(const char* str, va_list ptr, FILE* log_file, co
                 } else if (ch1 == 's') { // for string values 
 
                     char* value = va_arg(ptr, char*);
-                    fprintf(stdout, token, value);
+                    fprintf(error ? stderr : stdout, token, value);
                     if (HPLUS_env.log) fprintf(log_file, token, value);
 
                 } else { // print the whole token if no case is matched 
 
-                    fprintf(stdout, "%s", token);
+                    fprintf(error ? stderr : stdout, "%s", token);
                     if (HPLUS_env.log) fprintf(log_file, "%s", token);
 
                 } 
@@ -395,13 +395,13 @@ void my::Logger::raise_error(const char* str, ...) const {
     va_list ptr; 
     va_start(ptr, str);
 
-    fprintf(stdout, "\033[91m\033[1m[ ERROR ]\033[0m -- ");
+    fprintf(stderr, "\033[91m\033[1m[ ERROR ]\033[0m -- ");
     if (HPLUS_env.log) fprintf(log_file, "[ ERROR ] -- ");
 
     // printing and logging the formatted message
-    format_output_(str, ptr, log_file);
+    format_output_(str, ptr, log_file, true, true);
 
-    fprintf(stdout, "\n");
+    fprintf(stderr, "\n");
     if (HPLUS_env.log) fprintf(log_file, "\n");
     
     if (HPLUS_env.log) fclose(log_file);

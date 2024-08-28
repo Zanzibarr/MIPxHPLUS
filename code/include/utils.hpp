@@ -16,6 +16,7 @@
 #include <tuple>
 #include <algorithm>
 #include <numeric>
+#include <queue>
 // #include <iterator>
 // #include <functional>
 // #include <unistd.h>
@@ -202,7 +203,7 @@ namespace my {
 
         private:
             std::string log_file_name_;
-            static void format_output_(const char* str, va_list ptr, FILE* log_file, bool show_time = true);
+            static void format_output_(const char* str, va_list ptr, FILE* log_file, bool show_time = true, bool error = false);
 
     };
 
