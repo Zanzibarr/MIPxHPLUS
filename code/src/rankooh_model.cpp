@@ -27,7 +27,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
         }
     }
 
-    auto find_min = [nvarstrips](std::vector<my::BitField> graph) {
+    auto find_min = [nvarstrips](std::vector<my::BitField> graph) {     // TODO: Make faster
 
         int min = INT_MAX, min_idx = -1;
         for (unsigned int i = 0; i < nvarstrips; i++) {

@@ -98,8 +98,7 @@ void HPLUS_instance::first_adders_extraction(const std::vector<my::BitField>& la
     for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++) {
         // f_lm_a is the set of fact landmarks of action act_i
         my::BitField f_lm_a(this -> nvarstrips_);
-        for (auto p : this -> actions_[act_i].get_pre()) for (unsigned int i = 0; i < this -> nvarstrips_; i++)
-            if (landmarks_set[p][i] || landmarks_set[p][this -> nvarstrips_]) f_lm_a.set(i);
+        for (auto p : this -> actions_[act_i].get_pre()) for (unsigned int i = 0; i < this -> nvarstrips_; i++) if (landmarks_set[p][i] || landmarks_set[p][this -> nvarstrips_]) f_lm_a.set(i);
 
         // fadd[a] := { p in add(a) s.t. p is not a fact landmark for a }
         fadd[act_i] |= (this -> actions_[act_i].get_eff() & !f_lm_a);
@@ -249,7 +248,7 @@ void HPLUS_instance::extract_imai_enhancements(my::BitField& eliminated_variable
     this -> relevance_analysis(fact_landmarks, fadd, relevant_variables, relevant_actions);
 
     eliminated_variables |= (!relevant_variables - fact_landmarks);
-    eliminated_actions |= (!relevant_actions - act_landmarks);
+    eliminated_actions |= !relevant_actions;
 
     this -> immediate_action_application(act_landmarks, eliminated_variables, fixed_variables, eliminated_actions, fixed_actions, eliminated_first_archievers, fixed_first_archievers, fixed_var_timestamps, fixed_act_timestamp);
 
@@ -460,7 +459,7 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
         std::string name;
         std::getline(*ifs, name);   // variable name
         std::getline(*ifs, line);   // axiom layer (ignored)
-        if (line != "-1") HPLUS_env.logger.print_warn("Axiom layer is %s.", line.c_str());
+        my::assert(line == "-1", "Axiom layer is not -1, this software is not made for this instance.");
         std::getline(*ifs, line);   // range of variable
         my::assert(my::isint(line, 0), "Corrupted file.");
         unsigned int range = stoi(line);
