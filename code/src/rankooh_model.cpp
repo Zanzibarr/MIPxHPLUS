@@ -27,17 +27,36 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
         }
     }
 
-    // G_i
-    for (unsigned int i = 0; i < nvarstrips; i++) {
-        for (unsigned int p = 0; p < nvarstrips; p++) if (graph[p][i]) {
-            graph[p] |= graph[i];
-            cumulative_graph[p] |= graph[i];
-            graph[p].unset(i);
-            for (auto q : graph[i]) {
-                triples_list.push_back(std::make_tuple(p, i, q));
+    auto find_min = [nvarstrips](std::vector<my::BitField> graph) {
+
+        int min = INT_MAX, min_idx = -1;
+        for (unsigned int i = 0; i < nvarstrips; i++) {
+            int count = 0;
+            for (unsigned int j = 0; j < nvarstrips; j++) {
+                if (graph[j][i]) count++;       // ingoing
+                if (graph[i][j]) count++;       // outgoing
+            }
+            if (count < min && count != 0) {
+                min = count;
+                min_idx = i;
             }
         }
-        graph[i].clear();
+
+        return min_idx;
+
+    };
+
+    // G_i (minimum degree heuristics)
+    for (unsigned int i = 0; i < nvarstrips; i++) {
+        int idx = find_min(graph);
+        if (idx == -1) break;
+        for (unsigned int p = 0; p < nvarstrips; p++) if (graph[p][idx]) {
+            graph[p] |= graph[idx];
+            cumulative_graph[p] |= graph[idx];
+            graph[p].unset(idx);
+            for (auto q : graph[idx]) triples_list.push_back(std::make_tuple(p, idx, q));
+        }
+        graph[idx].clear();
     }
 
     // ~~~~~~~~~~~~ Enhanced model ~~~~~~~~~~~ //
@@ -61,7 +80,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
 
     // ~~~~~~~~ Adding CPLEX variables ~~~~~~~ //
 
-    HPLUS_env.logger.print_info("Adding actions to the model.");
+    HPLUS_env.logger.print_info("(debug) Adding actions to the model.");
 
     unsigned int curr_col = 0;
 
@@ -92,7 +111,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
     delete[] lbs; lbs = nullptr;
     delete[] objs; objs = nullptr;
 
-    HPLUS_env.logger.print_info("Adding variables to the model.");
+    HPLUS_env.logger.print_info("(debug) Adding variables to the model.");
 
     objs = new double[nvarstrips];
     lbs = new double[nvarstrips];
@@ -121,7 +140,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
     delete[] lbs; lbs = nullptr;
     delete[] objs; objs = nullptr;
 
-    HPLUS_env.logger.print_info("Adding first adders to the model.");
+    HPLUS_env.logger.print_info("(debug) Adding first adders to the model.");
 
     objs = new double[nact * nvarstrips];
     lbs = new double[nact * nvarstrips];
@@ -131,26 +150,25 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
     for (unsigned int i = 0; i < nact * nvarstrips; i++) names[i] = new char[20];
 
     // first archievers
-    unsigned int nfa = 0;
     unsigned int fa_start = curr_col;
     std::vector<unsigned int> fa_individual_start(nact);
-    for (unsigned int act_i = 0; act_i < nact; act_i++) {
+    for (unsigned int act_i = 0, nfa = 0; act_i < nact; act_i++) {
         fa_individual_start[act_i] = nfa;
         const my::BitField& eff = actions[act_i].get_eff();
         for (unsigned int i = 0, k = 0; i < nvar; k += variables[i].get_range(), i++) {
-            for (unsigned int j = 0; j < variables[i].get_range(); j++) if (eff[k + j] && !istate[k + j]) {
+            for (unsigned int j = 0; j < variables[i].get_range(); j++) {
                 objs[nfa] = 0;
                 lbs[nfa] = fixed_first_archievers[act_i][k+j] ? 1 : 0;
-                ubs[nfa] = eliminated_first_archievers[act_i][k+j] ? 0 : 1;
+                ubs[nfa] = (!eff[k+j] || eliminated_first_archievers[act_i][k+j]) ? 0 : 1;          // I create a first archiever variable for each pair action-variable, but I already fix at 0 the pairs that are not action - effect (easier to find the variables later -- cplex simplifies the model on his own)
                 types[nfa] = 'B';
                 snprintf(names[nfa], 20, "fa(%d_%d_%d)", act_i, i, j);
                 nfa++;
             }
         }
     }
-    curr_col += nfa;
+    curr_col += nact * nvarstrips;
 
-    my::assert(!CPXnewcols(env, lp, nfa, objs, lbs, ubs, types, names), "CPXnewcols (first archievers) failed.");
+    my::assert(!CPXnewcols(env, lp, nact * nvarstrips, objs, lbs, ubs, types, names), "CPXnewcols (first archievers) failed.");
 
     for (unsigned int i = 0; i < nact * nvarstrips; i++) delete[] names[i];
     delete[] names; names = nullptr;
@@ -159,7 +177,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
     delete[] lbs; lbs = nullptr;
     delete[] objs; objs = nullptr;
 
-    HPLUS_env.logger.print_info("Adding vertex elimination variables to the model.");
+    HPLUS_env.logger.print_info("(debug) Adding vertex elimination variables to the model.");
 
     objs = new double[nvarstrips * nvarstrips];
     lbs = new double[nvarstrips * nvarstrips];
@@ -192,7 +210,11 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
 
     // // ~~~~~~~ Adding CPLEX constraints ~~~~~~ //
 
-    HPLUS_env.logger.print_info("Adding c2 to the model.");
+    // accessing cplex variables
+    auto get_act_idx = [act_start](int idx) { return act_start + idx; };
+    auto get_var_idx = [var_start](int idx) { return var_start + idx; };
+    auto get_fa_idx = [fa_start, fa_individual_start](int act_idx, int var_idx) { return fa_start + fa_individual_start[act_idx] + var_idx; };
+    auto get_veg_idx = [veg_edges_start, nvarstrips](int idx_i, int idx_j) { return veg_edges_start + idx_i * nvarstrips + idx_j; };
 
     int* ind = new int[nact + 1];
     double* val = new double[nact + 1];
@@ -201,23 +223,17 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
     const double rhs_0 = 0, rhs_1 = 1;
     const int begin = 0;
 
+    HPLUS_env.logger.print_info("(debug) Adding c2 to the model.");
+
     for (auto p : !istate) {
 
         nnz = 0;
-        ind[nnz] = var_start + p;
+        ind[nnz] = get_var_idx(p);
         val[nnz++] = 1;
 
         for (unsigned int i = 0; i < nact; i++) {
-            const auto& eff = actions[i].get_eff() - istate;
-            if (eff[p]) {
-
-                int var_cnt = 0;
-                for (auto j : eff) {
-                    if(j == p) break;
-                    var_cnt++;
-                }
-
-                ind[nnz] = fa_start + fa_individual_start[i] + var_cnt;
+            if ((actions[i].get_eff() - istate)[p]) {
+                ind[nnz] = get_fa_idx(i, p);
                 val[nnz++] = -1;
             }
         }
@@ -226,34 +242,24 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
 
     }
 
-    HPLUS_env.logger.print_info("Adding c3 to the model.");
+    HPLUS_env.logger.print_info("(debug) Adding c3 to the model.");
 
-    for (auto p : !istate) {                                                // FIXME: O(nvarstrips ^ 3 * nact)
+    for (auto p : !istate) {
         for (auto q : !istate) {
             nnz = 0;
-            ind[nnz] = var_start + q;
+            ind[nnz] = get_var_idx(q);
             val[nnz++] = -1;
             for (unsigned int act_i = 0; act_i < nact; act_i++) {
-                const auto& pre = actions[act_i].get_pre() - istate;
-                if (pre[q]) {
-                    const auto& eff = actions[act_i].get_eff() - istate;
-                    if (eff[p]) {
-                        int var_cnt = 0;
-                        for (auto j : eff) {
-                            if(j == p) break;
-                            var_cnt++;
-                        }
-
-                        ind[nnz] = fa_start + fa_individual_start[act_i] + var_cnt;
-                        val[nnz++] = 1;
-                    }
+                if ((actions[act_i].get_pre() - istate)[q] && (actions[act_i].get_eff() - istate)[p]) {
+                    ind[nnz] = get_fa_idx(act_i, p);
+                    val[nnz++] = 1;
                 }
             }
             my::assert(!CPXaddrows(env, lp, 0, 1, nnz, &rhs_0, &sense_l, &begin, ind, val, nullptr, nullptr), "CPXaddwors (c3) failed.");
         }
     }
 
-    HPLUS_env.logger.print_info("Adding c5 to the model.");
+    HPLUS_env.logger.print_info("(debug) Adding c5 to the model.");
 
     delete[] val; val = nullptr;
     delete[] ind; ind = nullptr;
@@ -262,55 +268,51 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
     double val_c5_c6_c7[2], val_c8[3];
 
     for (unsigned int act_i = 0; act_i < nact; act_i++) {
-        int var_cnt = 0;
         for (auto p : actions[act_i].get_eff() - istate) {
-            ind_c5_c6_c7[0] = act_i;
+            ind_c5_c6_c7[0] = get_act_idx(act_i);
             val_c5_c6_c7[0] = -1;
-            ind_c5_c6_c7[1] = fa_start + fa_individual_start[act_i] + var_cnt;
+            ind_c5_c6_c7[1] = get_fa_idx(act_i, p);
             val_c5_c6_c7[1] = 1;
-            var_cnt++;
             my::assert(!CPXaddrows(env, lp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr), "CPXaddrows (c5) faliled.");
         }
     }
 
-    HPLUS_env.logger.print_info("Adding c6 to the model.");
+    HPLUS_env.logger.print_info("(debug) Adding c6 to the model.");
 
     for (unsigned int act_i = 0; act_i < nact; act_i++) {
-        const auto& pre = actions[act_i].get_pre() - istate;
         const auto& eff = actions[act_i].get_eff() - istate;
-        for (auto i : pre) {
-            int var_cnt = 0;
+        for (auto i : actions[act_i].get_pre() - istate) {
             for (auto j : eff) {
-                ind_c5_c6_c7[0] = veg_edges_start + i * nvarstrips + j;
+                ind_c5_c6_c7[0] = get_veg_idx(i, j);
                 val_c5_c6_c7[0] = -1;
-                ind_c5_c6_c7[1] = fa_start + fa_individual_start[act_i] + var_cnt;
+                ind_c5_c6_c7[1] = get_fa_idx(act_i, j);
                 val_c5_c6_c7[1] = 1;
-                var_cnt++;
                 my::assert(!CPXaddrows(env, lp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr), "CPXaddrows (c6) faliled.");
             }
         }
     }
 
-    HPLUS_env.logger.print_info("Adding c7 to the model.");
+    HPLUS_env.logger.print_info("(debug) Adding c7 to the model.");
 
     for (auto i : !istate) for (auto j : cumulative_graph[i] & !istate) {
-        ind_c5_c6_c7[0] = veg_edges_start + i * nvarstrips + j;
+        ind_c5_c6_c7[0] = get_veg_idx(i, j);
         val_c5_c6_c7[0] = 1;
-        ind_c5_c6_c7[1] = veg_edges_start + j * nvarstrips + i;
+        ind_c5_c6_c7[1] = get_veg_idx(j, i);
         val_c5_c6_c7[1] = 1;
         my::assert(!CPXaddrows(env, lp, 0, 1, 2, &rhs_1, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr), "CPXaddrows (c7) faliled.");
     }
 
-    HPLUS_env.logger.print_info("Adding c8 to the model.");
+    HPLUS_env.logger.print_info("(debug) Adding c8 to the model.");
+    HPLUS_env.logger.print_info("(debug) %d.", triples_list.size());
 
     for (unsigned int h = 0; h < triples_list.size(); h++) {
         const int i = std::get<0>(triples_list[h]), j = std::get<1>(triples_list[h]), k = std::get<2>(triples_list[h]);
         if (istate[i] || istate[j] || istate[k]) continue;
-        ind_c8[0] = veg_edges_start + i * nvarstrips + j;
+        ind_c8[0] = get_veg_idx(i, j);
         val_c8[0] = 1;
-        ind_c8[1] = veg_edges_start + j * nvarstrips + k;
+        ind_c8[1] = get_veg_idx(j, k);
         val_c8[1] = 1;
-        ind_c8[2] = veg_edges_start + i * nvarstrips + k;
+        ind_c8[2] = get_veg_idx(i, k);
         val_c8[2] = -1;
         my::assert(!CPXaddrows(env, lp, 0, 1, 3, &rhs_1, &sense_l, &begin, ind_c8, val_c8, nullptr, nullptr), "CPXaddrows (c8) faliled.");
     }

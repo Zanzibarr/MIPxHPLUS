@@ -248,8 +248,8 @@ void HPLUS_instance::extract_imai_enhancements(my::BitField& eliminated_variable
 
     this -> relevance_analysis(fact_landmarks, fadd, relevant_variables, relevant_actions);
 
-    eliminated_variables |= (!relevant_variables & !fact_landmarks);
-    eliminated_actions |= !relevant_actions;
+    eliminated_variables |= (!relevant_variables - fact_landmarks);
+    eliminated_actions |= (!relevant_actions - act_landmarks);
 
     this -> immediate_action_application(act_landmarks, eliminated_variables, fixed_variables, eliminated_actions, fixed_actions, eliminated_first_archievers, fixed_first_archievers, fixed_var_timestamps, fixed_act_timestamp);
 
@@ -265,11 +265,11 @@ void HPLUS_instance::extract_imai_enhancements(my::BitField& eliminated_variable
     int count = 0;
     for (auto p : eliminated_variables) count++;
     for (auto p : fixed_variables) count++;
-    HPLUS_env.logger.print_info("Eliminated %d/%d variables.", count, this -> nvarstrips_);
+    HPLUS_env.logger.print_info("(debug) Eliminated %d/%d variables.", count, this -> nvarstrips_);
     count = 0;
     for (auto p : eliminated_actions) count++;
     for (auto p : fixed_actions) count++;
-    HPLUS_env.logger.print_info("Eliminated %d/%d actions.", count, this -> n_act_);
+    HPLUS_env.logger.print_info("(debug) Eliminated %d/%d actions.", count, this -> n_act_);
     count = 0;
     int count2 = 0;
     for (unsigned int a = 0; a < this -> n_act_; a++) {
@@ -277,10 +277,10 @@ void HPLUS_instance::extract_imai_enhancements(my::BitField& eliminated_variable
         for (auto i : fixed_first_archievers[a]) count++;
         count2 += 2 * this -> nvarstrips_;
     }
-    HPLUS_env.logger.print_info("Eliminated %d/%d first archievers.", count, count2);
+    HPLUS_env.logger.print_info("(debug) Eliminated %d/%d first archievers.", count, count2);
     count = 0;
     for (unsigned int i = 0; i < this -> n_act_; i++) for (auto j : inverse_actions[i]) count++;
-    HPLUS_env.logger.print_info("Found %d pairs of inverse actions.", count/2);
+    HPLUS_env.logger.print_info("(debug) Found %d pairs of inverse actions.", count/2);
     #endif
 
     #if HPLUS_INTCHECK
