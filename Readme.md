@@ -38,18 +38,18 @@ make <target_option>
 
 ### CMake flags
 
-- **-DVERBOSE=**\<verbose_option> : set the verbose option
+- **-DVERBOSE=**\<verbose_option> : set the verbose option (default 1)
   - = **0** : no output
-  - < **5** : just solution (default 1)
+  - < **5** : just solution
   - \>= **5** : view time statistics
   - \>= **10** : basic steps progress
   - \>= **100** : full verbose
-- **-DWARN=**\<warning_option> : set the warning option
+- **-DWARN=**\<warning_option> : set the warning option (default 0)
   - **0** : all warnings suppressed
-  - **1** : warnings will be showed (default)
-- **-DINTCHECK=**\<integrity_check_option> : set the integrity checks option
+  - **1** : warnings will be showed
+- **-DINTCHECK=**\<integrity_check_option> : set the integrity checks option (default 0)
   - **0** : no integrity checks
-  - **1** : integrity checks enabled (default, might slow down the execution)
+  - **1** : integrity checks enabled (might slow down the execution)
 - **-DCPLEX_DIR=**\<path_to_cplex_lib>: (abs path), specify a custom path to the CPLEX library (see the CMakeLists.txt to see which is the default one)
 - **-DCPLEX_INCLUDE=**\<path_to_cplex_headers>: (abs path), specify a custom path to the CPLEX headers (see the CMakeLists.txt to see which is the default one)
 

@@ -27,7 +27,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
         }
     }
 
-    auto find_min = [nvarstrips](std::vector<my::BitField> graph) {     // TODO: Make faster
+    auto find_min = [nvarstrips](std::vector<my::BitField> graph) {                 // TODO: Too slow
 
         int min = INT_MAX, min_idx = -1;
         for (unsigned int i = 0; i < nvarstrips; i++) {
@@ -244,7 +244,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
 
     HPLUS_env.logger.print_info("(debug) Adding c3 to the model.");
 
-    for (auto p : !istate) {
+    for (auto p : !istate) {                                                    // TODO: Too slow
         for (auto q : !istate) {
             nnz = 0;
             ind[nnz] = get_var_idx(q);
@@ -305,7 +305,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
     HPLUS_env.logger.print_info("(debug) Adding c8 to the model.");
     HPLUS_env.logger.print_info("(debug) %d.", triples_list.size());
 
-    for (unsigned int h = 0; h < triples_list.size(); h++) {
+    for (unsigned int h = 0; h < triples_list.size(); h++) {                    // TODO: Too slow
         const int i = std::get<0>(triples_list[h]), j = std::get<1>(triples_list[h]), k = std::get<2>(triples_list[h]);
         if (istate[i] || istate[j] || istate[k]) continue;
         ind_c8[0] = get_veg_idx(i, j);
@@ -336,24 +336,36 @@ void HPLUS_store_rankooh_sol(const CPXENVptr& env, const CPXLPptr& lp, HPLUS_ins
     delete[] plan; plan = nullptr;
 
     const auto& actions = inst.get_actions();
+    std::vector<unsigned int> solution;
+    my::BitField sorted(cpx_result.size());
+    my::BitField current_state = inst.get_istate();
 
-    // TODO: Order solution before passing it to the instance
+    while (sorted != my::BitField(cpx_result.size(), true)) {
+        #if HPLUS_INTCHECK
+        bool intcheck = false;
+        #endif
+        for (auto i : !sorted) {
+            if (current_state.contains(actions[cpx_result[i]].get_pre())) {
+                sorted.set(i);
+                current_state |= actions[cpx_result[i]].get_eff();
+                solution.push_back(cpx_result[i]);
+                #if HPLUS_INTCHECK
+                intcheck = true;
+                #endif
+            }
+        }
+        #if HPLUS_INTCHECK
+        my::assert(intcheck, "Something went wrong while reconstructing the solution from Rankooh model.");
+        #endif
+    }
 
-    // TODO: Uncomment this
     // store solution
-    // inst.update_best_solution(solution,
-    //     std::accumulate(solution.begin(), solution.end(), 0,
-    //         [&actions](const unsigned int acc, const unsigned int index) {
-    //             return acc + actions[index].get_cost();
-    //         }
-    //     )
-    // );
-
-    // TODO: Remove this
-    HPLUS_env.logger.print_info("Updated best solution - Cost:   %d.", std::accumulate(cpx_result.begin(), cpx_result.end(), 0,
+    inst.update_best_solution(solution,
+        std::accumulate(solution.begin(), solution.end(), 0,
             [&actions](const unsigned int acc, const unsigned int index) {
                 return acc + actions[index].get_cost();
             }
-        ));
+        )
+    );
 
 }

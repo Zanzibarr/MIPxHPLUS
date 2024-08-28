@@ -146,7 +146,7 @@ void HPLUS_instance::dominated_actions_extraction(const std::vector<my::BitField
     dominated_actions =  my::BitField(this -> n_act_);
     auto remaining_actions = !eliminated_actions;
 
-    for (auto act_i : remaining_actions) if (!fixed_actions[act_i]) {                              // FIXME: O(nact^2)
+    for (auto act_i : remaining_actions) if (!fixed_actions[act_i]) {               // TODO: Too slow
 
         remaining_actions.unset(act_i);
         auto f_lm_a = this -> initial_state_;
@@ -211,7 +211,7 @@ void HPLUS_instance::inverse_actions_extraction(const my::BitField& eliminated_a
 
     HPLUS_env.logger.print_info("Extracting inverse actions.");
 
-    for (auto act_i : !eliminated_actions) {         // FIXME: O(nact^2)
+    for (auto act_i : !eliminated_actions) {                                        // TODO: Too slow
         const auto& pre = this -> actions_[act_i].get_pre();
         const auto& eff = this -> actions_[act_i].get_eff();
         for (unsigned int act_j = act_i + 1; act_j < this -> n_act_; act_j++) if (!eliminated_actions[act_j]) {
@@ -381,8 +381,7 @@ void HPLUS_instance::update_best_solution(const std::vector<unsigned int>& solut
     my::BitField dbcheck = my::BitField(this -> n_act_);
     unsigned int costcheck = 0;
     my::assert(solution.size() <= this -> n_act_, "Solution has more actions that there actually exists.");    // check that there aren't more actions that there exists
-    my::BitField feas_checker(this -> nvarstrips_);
-    for (auto p : this -> initial_state_) feas_checker.set(p);
+    my::BitField feas_checker(this -> initial_state_);
     for (auto act_i : solution) {
         my::assert(act_i < this -> n_act_, "Solution contains unexisting action.");     // check that the solution only contains existing actions
         my::assert(!dbcheck[act_i], "Solution contains duplicate action.");            // check that there are no duplicates
@@ -391,6 +390,7 @@ void HPLUS_instance::update_best_solution(const std::vector<unsigned int>& solut
         feas_checker |= this -> actions_[act_i].get_eff();
         costcheck += this -> actions_[act_i].get_cost();
     }
+    my::assert(feas_checker.contains(this -> goal_state_), "The solution doesn't lead to the final state.");    // check if the solution leads to the goal state
     my::assert(costcheck == cost, "Declared cost is different from calculated one.");        // check if the cost is the declared one
     #endif
 
@@ -413,7 +413,7 @@ void HPLUS_instance::get_best_solution(std::vector<unsigned int>& solution, unsi
 
 void HPLUS_instance::print_best_sol() const {
 
-    HPLUS_env.logger.print("Cost of the solution: %d.", this -> best_cost_);
+    HPLUS_env.logger.print("%d", this -> best_cost_);
     for(auto act_i : this -> best_solution_) HPLUS_env.logger.print("(%s)", this -> actions_[act_i].get_name().c_str());
 
 }
@@ -530,7 +530,7 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
     std::getline(*ifs, line);   // n_act
     my::assert(my::isint(line, 0), "Corrupted file.");
     this -> n_act_ = stoi(line);
-    my::assert(this -> n_act_ <= 1000, "Testing small instances only.");                // TODO: Remove this
+    // my::assert(this -> n_act_ <= 1000, "Testing small instances only.");                // TODO: Remove this
     this -> actions_ = std::vector<HPLUS_action>(this -> n_act_);
     for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++) {
         // process each action
