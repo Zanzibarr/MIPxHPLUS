@@ -17,10 +17,6 @@
 #include <algorithm>
 #include <numeric>
 #include <queue>
-// #include <iterator>
-// #include <functional>
-// #include <unistd.h>
-// #include <cplex.h>
 
 template<typename T1, typename T2, typename T3>
 using triple = std::tuple<T1, T2, T3>;
@@ -120,37 +116,18 @@ namespace my {
 
             // Iterator class for iterating over bits set to 1
             class Iterator {
-
                 public:
-
-                    Iterator(const BitField *bitField, unsigned int index) : bf_(bitField), index_(index) { if (index_ < bf_->size() && !(*bf_)[index_]) ++(*this); }
-
-                    Iterator& operator++() {
-                        do {
-                            ++index_;
-                        } while (index_ < bf_ -> size() && !(*bf_)[index_]);
-                        return *this;
-                    }
-
-                    Iterator operator++(int) {
-                        Iterator tmp = *this;
-                        ++(*this);
-                        return tmp;
-                    }
-
-                    unsigned int operator*() const { return index_; }
-
-                    bool operator!=(const Iterator &other) const { return index_ != other.index_; }
-
+                    Iterator(const BitField *bitField, unsigned int index);
+                    Iterator& operator++();
+                    unsigned int operator*() const;
+                    bool operator!=(const Iterator &other) const;
                 private:
-
                     const BitField* bf_;
                     unsigned int index_;
-
             };
 
-            Iterator begin() const { return Iterator(this, 0); }
-            Iterator end() const { return Iterator(this, size_); }
+            Iterator begin() const;
+            Iterator end() const;
 
         private:
             std::vector<char> field_;

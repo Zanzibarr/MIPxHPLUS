@@ -41,7 +41,25 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     char** names = new char*[nact];
     for (unsigned int i = 0; i < nact; i++) names[i] = new char[20];
 
-    // actions
+    auto rsz_cpx_arrays = [&objs, &lbs, &ubs, &types, &names](int old_size, int new_size) {
+
+        for (unsigned int i = 0; i < old_size; i++) delete[] names[i];
+        delete[] names; names = nullptr;
+        delete[] types; types = nullptr;
+        delete[] ubs; ubs = nullptr;
+        delete[] lbs; lbs = nullptr;
+        delete[] objs; objs = nullptr;
+
+        objs = new double[new_size];
+        lbs = new double[new_size];
+        ubs = new double[new_size];
+        types = new char[new_size];
+        names = new char*[new_size];
+        for (unsigned int i = 0; i < new_size; i++) names[i] = new char[20];
+
+    };
+
+    // -------- actions ------- //
     unsigned int act_start = curr_col;
     for (unsigned int act_i = 0; act_i < nact; act_i++) {
         objs[act_i] = actions[act_i].get_cost();
@@ -54,7 +72,7 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
 
     my::assert(!CPXnewcols(env, lp, nact, objs, lbs, ubs, types, names), "CPXnewcols (actions) failed.");
 
-    // action timestamps
+    // --- action timestamps -- //
     unsigned int tact_start = curr_col;
     for (unsigned int act_i = 0; act_i < nact; act_i++) {
         objs[act_i] = 0;
@@ -67,21 +85,9 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
 
     my::assert(!CPXnewcols(env, lp, nact, objs, lbs, ubs, types, names), "CPXnewcols (action timestamps) failed.");
 
-    for (unsigned int i = 0; i < nact; i++) delete[] names[i];
-    delete[] names; names = nullptr;
-    delete[] types; types = nullptr;
-    delete[] ubs; ubs = nullptr;
-    delete[] lbs; lbs = nullptr;
-    delete[] objs; objs = nullptr;
+    rsz_cpx_arrays(nact, nvarstrips);
 
-    objs = new double[nvarstrips];
-    lbs = new double[nvarstrips];
-    ubs = new double[nvarstrips];
-    types = new char[nvarstrips];
-    names = new char*[nvarstrips];
-    for (unsigned int i = 0; i < nvarstrips; i++) names[i] = new char[20];
-
-    // variables
+    // ------- variables ------ //
     unsigned int var_start = curr_col;
     for (unsigned int i = 0, count = 0; i < nvar; i++) for (unsigned int j = 0; j < variables[i].get_range(); j++, count++) {
         objs[count] = 0;
@@ -94,7 +100,7 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
 
     my::assert(!CPXnewcols(env, lp, nvarstrips, objs, lbs, ubs, types, names), "CPXnewcols (variables) failed.");
 
-    // variable timestamps
+    // -- variable timestamps - //
     unsigned int tvar_start = curr_col;
     for (unsigned int i = 0, count = 0; i < nvar; i++) for (unsigned int j = 0; j < variables[i].get_range(); j++, count++) {
         objs[count] = 0;
@@ -107,26 +113,14 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
 
     my::assert(!CPXnewcols(env, lp, nvarstrips, objs, lbs, ubs, types, names), "CPXnewcols (variable timestamps) failed.");
 
-    for (unsigned int i = 0; i < nvarstrips; i++) delete[] names[i];
-    delete[] names; names = nullptr;
-    delete[] types; types = nullptr;
-    delete[] ubs; ubs = nullptr;
-    delete[] lbs; lbs = nullptr;
-    delete[] objs; objs = nullptr;
+    rsz_cpx_arrays(nvarstrips, nact*nvarstrips);
 
-    objs = new double[nact * nvarstrips];
-    lbs = new double[nact * nvarstrips];
-    ubs = new double[nact * nvarstrips];
-    types = new char[nact * nvarstrips];
-    names = new char*[nact * nvarstrips];
-    for (unsigned int i = 0; i < nact * nvarstrips; i++) names[i] = new char[20];
-
-    // first archievers
+    // --- first archievers --- //
     unsigned int fa_start = curr_col;
     std::vector<unsigned int> fa_individual_start(nact);
     for (unsigned int act_i = 0, nfa = 0; act_i < nact; act_i++) {
         fa_individual_start[act_i] = nfa;
-        const my::BitField& eff = actions[act_i].get_eff();
+        const auto& eff = actions[act_i].get_eff();
         for (unsigned int i = 0, k = 0; i < nvar; k += variables[i].get_range(), i++) {
             for (unsigned int j = 0; j < variables[i].get_range(); j++) {
                 objs[nfa] = 0;
@@ -184,8 +178,8 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     }
 
     for (unsigned int i = 0; i < nact; i++) {
-        const my::BitField& pre = actions[i].get_pre();
-        const my::BitField& eff = actions[i].get_eff();
+        const auto& pre = actions[i].get_pre();
+        const auto& eff = actions[i].get_eff();
         for (unsigned int j = 0; j < nvarstrips; j++) {
             if (pre[j]) {
                 // constraint 1: x_a + sum_{inv(a, p)}(z_a'vj) <= y_vj, vj in pre(a)
@@ -259,8 +253,8 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
 void HPLUS_store_imai_sol(const CPXENVptr& env, const CPXLPptr& lp, HPLUS_instance& inst) {
 
     // get cplex result (interested only in the sequence of actions [0/nact-1] used and its ordering [nact/2nact-1])
-    unsigned int nact = inst.get_nact();
-    auto* plan = new double[2 * nact];
+    auto nact = inst.get_nact();
+    double* plan = new double[2 * nact];
     my::assert(!CPXgetx(env, lp, plan, 0, 2 * nact - 1), "CPXgetx failed.");
 
     // convert to std collections for easier parsing

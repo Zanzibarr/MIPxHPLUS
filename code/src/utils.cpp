@@ -1,8 +1,5 @@
 #include "../include/utils.hpp"
 
-HPLUS_Environment HPLUS_env;
-HPLUS_Statistics HPLUS_stats;
-
 // ##################################################################### //
 // ############################## BITFIELD ############################# //
 // ##################################################################### //
@@ -171,6 +168,32 @@ my::BitField::operator std::string() const {
     return ret;
 
 }
+
+my::BitField::Iterator::Iterator(const BitField *bitField, unsigned int index) {
+
+    bf_ = bitField;
+    index_ = index;
+    if (index_ < bf_->size() && !(*bf_)[index_]) ++(*this);
+
+}
+
+my::BitField::Iterator& my::BitField::Iterator::operator++()  {
+
+    do {
+        ++index_;
+    } while (index_ < bf_ -> size() && !(*bf_)[index_]);
+
+    return *this;
+
+}
+
+unsigned int my::BitField::Iterator::operator*() const { return index_; }
+
+bool my::BitField::Iterator::operator!=(const Iterator &other) const { return index_ != other.index_; }
+
+my::BitField::Iterator my::BitField::begin() const { return Iterator(this, 0); }
+
+my::BitField::Iterator my::BitField::end() const { return Iterator(this, size_); }
 
 // ##################################################################### //
 // ############################### LOGGER ############################## //
@@ -414,31 +437,6 @@ void my::Logger::raise_error(const char* str, ...) const {
 }
 
 // ##################################################################### //
-// ############################## GLOBALS ############################## //
-// ##################################################################### //
-
-bool HPLUS_Environment::found() const { return this -> status < my::status::INFEAS; }
-
-void HPLUS_Environment::start_timer() { this -> timer = std::chrono::steady_clock::now(); }
-double HPLUS_Environment::get_time() const { return ((double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - this -> timer).count()) / 1000; }
-
-void HPLUS_Statistics::print() const {
-
-    #if HPLUS_VERBOSE < 5
-    return;
-    #endif
-
-    HPLUS_env.logger.print("\n\n------------------------------------------");
-    HPLUS_env.logger.print("-------------   Statistics   -------------");
-    HPLUS_env.logger.print("------------------------------------------\n");
-    HPLUS_env.logger.print(" >>  Parsing time         %10.3fs  <<", this->parsing_time);
-    HPLUS_env.logger.print(" >>  Build time           %10.3fs  <<", this->build_time);
-    HPLUS_env.logger.print(" >>  Exec time            %10.3fs  <<", this->exec_time);
-    HPLUS_env.logger.print("\n\n");
-
-}
-
-// ##################################################################### //
 // ############################ MY NAMESPACE ########################### //
 // ##################################################################### //
 
@@ -471,3 +469,32 @@ bool my::isint(const std::string& str, const int from, const int to) {
 }
 
 void my::todo() { HPLUS_env.logger.raise_error("UNIMPLEMENTED."); }
+
+
+// ##################################################################### //
+// ############################## GLOBALS ############################## //
+// ##################################################################### //
+
+HPLUS_Environment HPLUS_env;
+HPLUS_Statistics HPLUS_stats;
+
+bool HPLUS_Environment::found() const { return this -> status < my::status::INFEAS; }
+
+void HPLUS_Environment::start_timer() { this -> timer = std::chrono::steady_clock::now(); }
+double HPLUS_Environment::get_time() const { return ((double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - this -> timer).count()) / 1000; }
+
+void HPLUS_Statistics::print() const {
+
+    #if HPLUS_VERBOSE < 5
+    return;
+    #endif
+
+    HPLUS_env.logger.print("\n\n------------------------------------------");
+    HPLUS_env.logger.print("-------------   Statistics   -------------");
+    HPLUS_env.logger.print("------------------------------------------\n");
+    HPLUS_env.logger.print(" >>  Parsing time         %10.3fs  <<", this->parsing_time);
+    HPLUS_env.logger.print(" >>  Build time           %10.3fs  <<", this->build_time);
+    HPLUS_env.logger.print(" >>  Exec time            %10.3fs  <<", this->exec_time);
+    HPLUS_env.logger.print("\n\n");
+
+}

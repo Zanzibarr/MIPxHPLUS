@@ -91,6 +91,24 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
     char** names = new char*[nact];
     for (unsigned int i = 0; i < nact; i++) names[i] = new char[20];
 
+    auto rsz_cpx_arrays = [&objs, &lbs, &ubs, &types, &names](int old_size, int new_size) {
+
+        for (unsigned int i = 0; i < old_size; i++) delete[] names[i];
+        delete[] names; names = nullptr;
+        delete[] types; types = nullptr;
+        delete[] ubs; ubs = nullptr;
+        delete[] lbs; lbs = nullptr;
+        delete[] objs; objs = nullptr;
+
+        objs = new double[new_size];
+        lbs = new double[new_size];
+        ubs = new double[new_size];
+        types = new char[new_size];
+        names = new char*[new_size];
+        for (unsigned int i = 0; i < new_size; i++) names[i] = new char[20];
+
+    };
+
     // actions
     unsigned int act_start = curr_col;
     for (unsigned int act_i = 0; act_i < nact; act_i++) {
@@ -104,21 +122,9 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
 
     my::assert(!CPXnewcols(env, lp, nact, objs, lbs, ubs, types, names), "CPXnewcols (actions) failed.");
 
-    for (unsigned int i = 0; i < nact; i++) delete[] names[i];
-    delete[] names; names = nullptr;
-    delete[] types; types = nullptr;
-    delete[] ubs; ubs = nullptr;
-    delete[] lbs; lbs = nullptr;
-    delete[] objs; objs = nullptr;
+    rsz_cpx_arrays(nact, nvarstrips);
 
     HPLUS_env.logger.print_info("(debug) Adding variables to the model.");
-
-    objs = new double[nvarstrips];
-    lbs = new double[nvarstrips];
-    ubs = new double[nvarstrips];
-    types = new char[nvarstrips];
-    names = new char*[nvarstrips];
-    for (unsigned int i = 0; i < nvarstrips; i++) names[i] = new char[20];
 
     // variables
     unsigned int var_start = curr_col;
@@ -133,21 +139,9 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
 
     my::assert(!CPXnewcols(env, lp, nvarstrips, objs, lbs, ubs, types, names), "CPXnewcols (variables) failed.");
 
-    for (unsigned int i = 0; i < nvarstrips; i++) delete[] names[i];
-    delete[] names; names = nullptr;
-    delete[] types; types = nullptr;
-    delete[] ubs; ubs = nullptr;
-    delete[] lbs; lbs = nullptr;
-    delete[] objs; objs = nullptr;
+    rsz_cpx_arrays(nvarstrips, nact * nvarstrips);
 
     HPLUS_env.logger.print_info("(debug) Adding first adders to the model.");
-
-    objs = new double[nact * nvarstrips];
-    lbs = new double[nact * nvarstrips];
-    ubs = new double[nact * nvarstrips];
-    types = new char[nact * nvarstrips];
-    names = new char*[nact * nvarstrips];
-    for (unsigned int i = 0; i < nact * nvarstrips; i++) names[i] = new char[20];
 
     // first archievers
     unsigned int fa_start = curr_col;
@@ -170,21 +164,9 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
 
     my::assert(!CPXnewcols(env, lp, nact * nvarstrips, objs, lbs, ubs, types, names), "CPXnewcols (first archievers) failed.");
 
-    for (unsigned int i = 0; i < nact * nvarstrips; i++) delete[] names[i];
-    delete[] names; names = nullptr;
-    delete[] types; types = nullptr;
-    delete[] ubs; ubs = nullptr;
-    delete[] lbs; lbs = nullptr;
-    delete[] objs; objs = nullptr;
+    rsz_cpx_arrays(nact * nvarstrips, nvarstrips * nvarstrips);
 
     HPLUS_env.logger.print_info("(debug) Adding vertex elimination variables to the model.");
-
-    objs = new double[nvarstrips * nvarstrips];
-    lbs = new double[nvarstrips * nvarstrips];
-    ubs = new double[nvarstrips * nvarstrips];
-    types = new char[nvarstrips * nvarstrips];
-    names = new char*[nvarstrips * nvarstrips];
-    for (unsigned int i = 0; i < nvarstrips * nvarstrips; i++) names[i] = new char[20];
 
     // vertex elimination graph edges
     unsigned int veg_edges_start = curr_col;
@@ -327,7 +309,7 @@ void HPLUS_store_rankooh_sol(const CPXENVptr& env, const CPXLPptr& lp, HPLUS_ins
 
     // get cplex result (interested only in the sequence of actions [0/nact-1] used and its ordering [nact/2nact-1])
     unsigned int nact = inst.get_nact();
-    auto* plan = new double[nact];
+    double* plan = new double[nact];
     my::assert(!CPXgetx(env, lp, plan, 0, nact-1), "CPXgetx failed.");
 
     // convert to std collections for easier parsing

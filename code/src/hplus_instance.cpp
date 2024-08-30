@@ -18,7 +18,7 @@ void HPLUS_instance::landmarks_extraction(std::vector<my::BitField>& landmarks_s
         else landmarks_set[p].set(this -> nvarstrips_);
     }
 
-    auto s_set = this -> initial_state_;
+    my::BitField s_set = this -> initial_state_;
 
     std::deque<int> actions_queue;
     for (unsigned int i = 0; i < this -> n_act_; i++)
@@ -29,14 +29,14 @@ void HPLUS_instance::landmarks_extraction(std::vector<my::BitField>& landmarks_s
         const HPLUS_action a = this -> actions_[actions_queue.front()];
         actions_queue.pop_front();
 
-        const auto& pre_a = a.get_pre();
-        const auto& add_a = a.get_eff();
+        const my::BitField& pre_a = a.get_pre();
+        const my::BitField& add_a = a.get_eff();
 
         for (auto p : add_a) {
 
             s_set.set(p);
 
-            auto x = my::BitField(this -> nvarstrips_ + 1);
+            my::BitField x = my::BitField(this -> nvarstrips_ + 1);
             for (auto p : add_a) x.set(p);
 
             for (auto pp : pre_a) {
@@ -120,7 +120,7 @@ void HPLUS_instance::relevance_analysis(const my::BitField& fact_landmarks, cons
         }
     }
 
-    auto cand_actions = !relevant_actions;
+    my::BitField cand_actions = !relevant_actions;
 
     bool new_act = true;
     while (new_act) {
@@ -144,12 +144,12 @@ void HPLUS_instance::dominated_actions_extraction(const std::vector<my::BitField
     HPLUS_env.logger.print_info("Extracting dominated actions.");
 
     dominated_actions =  my::BitField(this -> n_act_);
-    auto remaining_actions = !eliminated_actions;
+    my::BitField remaining_actions = !eliminated_actions;
 
     for (auto act_i : remaining_actions) if (!fixed_actions[act_i]) {               // TODO: Too slow
 
         remaining_actions.unset(act_i);
-        auto f_lm_a = this -> initial_state_;
+        my::BitField f_lm_a = this -> initial_state_;
         for (auto p : this -> actions_[act_i].get_pre()) for (unsigned int i = 0; i < this -> nvarstrips_; i++) if (landmarks_set[p][i] || landmarks_set[p][this -> nvarstrips_]) f_lm_a.set(i);
 
         for (auto act_j : remaining_actions) {
@@ -169,8 +169,8 @@ void HPLUS_instance::immediate_action_application(const my::BitField& act_landma
 
     HPLUS_env.logger.print_info("Immediate action application.");
 
-    auto current_state = this -> initial_state_;
-    auto actions_left = !eliminated_actions;
+    my::BitField current_state = this -> initial_state_;
+    my::BitField actions_left = !eliminated_actions;
 
     int counter = 0;
     bool found_next_action = true;
@@ -180,8 +180,8 @@ void HPLUS_instance::immediate_action_application(const my::BitField& act_landma
 
         for (auto act_i : actions_left) {
 
-            const auto& pre = this -> actions_[act_i].get_pre();
-            auto add_eff = this -> actions_[act_i].get_eff() & !eliminated_variables;
+            const my::BitField& pre = this -> actions_[act_i].get_pre();
+            const my::BitField add_eff = this -> actions_[act_i].get_eff() & !eliminated_variables;
 
             if (current_state.contains(pre) && (act_landmarks[act_i] || this -> actions_[act_i].get_cost() == 0)) {
 
@@ -212,8 +212,8 @@ void HPLUS_instance::inverse_actions_extraction(const my::BitField& eliminated_a
     HPLUS_env.logger.print_info("Extracting inverse actions.");
 
     for (auto act_i : !eliminated_actions) {                                        // TODO: Too slow
-        const auto& pre = this -> actions_[act_i].get_pre();
-        const auto& eff = this -> actions_[act_i].get_eff();
+        const my::BitField& pre = this -> actions_[act_i].get_pre();
+        const my::BitField& eff = this -> actions_[act_i].get_eff();
         for (unsigned int act_j = act_i + 1; act_j < this -> n_act_; act_j++) if (!eliminated_actions[act_j]) {
             if (pre.contains(this -> actions_[act_j].get_eff()) && this -> actions_[act_j].get_pre().contains(eff)) {
                 if (!fixed_actions[act_i]) inverse_actions[act_i].set(act_j);
