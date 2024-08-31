@@ -7,6 +7,7 @@
 my::BitField::BitField(unsigned int size, bool full_flag) {
     this -> size_ = size;
     this -> field_ = std::vector<char>((size+7)/8, full_flag ? (char)~0u : 0);
+    if (full_flag && this -> size_ % 8 != 0) this->field_[this -> field_.size() - 1] &= (1u << this -> size_ % 8) - 1;
 }
 
 my::BitField::BitField(const BitField& other_bitfield) {
@@ -110,6 +111,7 @@ my::BitField my::BitField::operator!() const {
 
     my::BitField new_bitfield(this -> size_);
     for (unsigned int i = 0; i < this -> field_.size(); i++) new_bitfield.field_[i] = ~this -> field_[i];
+    if (this -> size_ % 8 != 0) new_bitfield.field_[this -> field_.size() - 1] &= (1u << this -> size_ % 8) - 1;
     return new_bitfield;
 
 }
@@ -127,16 +129,7 @@ bool my::BitField::operator==(const BitField& other_bitfield) const {
 
 }
 
-bool my::BitField::operator!=(const BitField& other_bitfield) const {
-
-    #if HPLUS_INTCHECK
-    my::assert(this -> size_ == other_bitfield.size_, "BitField:!= failed.");
-    #endif
-    unsigned int i;
-    for (i = 0; i < this -> field_.size() && this -> field_[i] == other_bitfield.field_[i]; i++);
-    return i != this -> field_.size();
-
-}
+bool my::BitField::operator!=(const BitField& other_bitfield) const { return !((*this)==other_bitfield); }
 
 bool my::BitField::intersects(const BitField& other_bitfield) const {
 
@@ -468,7 +461,7 @@ bool my::isint(const std::string& str, const int from, const int to) {
 
 }
 
-void my::todo() { HPLUS_env.logger.raise_error("UNIMPLEMENTED."); }
+void my::todo() { lraise_error("UNIMPLEMENTED."); }
 
 
 // ##################################################################### //
@@ -489,12 +482,12 @@ void HPLUS_Statistics::print() const {
     return;
     #endif
 
-    HPLUS_env.logger.print("\n\n------------------------------------------");
-    HPLUS_env.logger.print("-------------   Statistics   -------------");
-    HPLUS_env.logger.print("------------------------------------------\n");
+    lprint("\n\n------------------------------------------");
+    lprint("-------------   Statistics   -------------");
+    lprint("------------------------------------------\n");
     HPLUS_env.logger.print(" >>  Parsing time         %10.3fs  <<", this->parsing_time);
     HPLUS_env.logger.print(" >>  Build time           %10.3fs  <<", this->build_time);
     HPLUS_env.logger.print(" >>  Exec time            %10.3fs  <<", this->exec_time);
-    HPLUS_env.logger.print("\n\n");
+    lprint("\n\n");
 
 }

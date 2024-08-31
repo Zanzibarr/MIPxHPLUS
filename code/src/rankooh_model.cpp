@@ -11,7 +11,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
 
     // ~~~~~~~~~~ VERTEX ELIMINATION ~~~~~~~~~ //
 
-    HPLUS_env.logger.print_info("Vertex elimination from Rankooh's paper.");
+    lprint_info("Vertex elimination from Rankooh's paper.");
 
     std::vector<my::BitField> graph(nvarstrips, my::BitField(nvarstrips));
     std::vector<my::BitField> cumulative_graph(nvarstrips, my::BitField(nvarstrips));
@@ -80,7 +80,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
 
     // ~~~~~~~~ Adding CPLEX variables ~~~~~~~ //
 
-    HPLUS_env.logger.print_info("(debug) Adding actions to the model.");
+    lprint_info("(debug) Adding actions to the model.");
 
     unsigned int curr_col = 0;
 
@@ -124,7 +124,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
 
     rsz_cpx_arrays(nact, nvarstrips);
 
-    HPLUS_env.logger.print_info("(debug) Adding variables to the model.");
+    lprint_info("(debug) Adding variables to the model.");
 
     // variables
     unsigned int var_start = curr_col;
@@ -141,7 +141,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
 
     rsz_cpx_arrays(nvarstrips, nact * nvarstrips);
 
-    HPLUS_env.logger.print_info("(debug) Adding first adders to the model.");
+    lprint_info("(debug) Adding first adders to the model.");
 
     // first archievers
     unsigned int fa_start = curr_col;
@@ -166,7 +166,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
 
     rsz_cpx_arrays(nact * nvarstrips, nvarstrips * nvarstrips);
 
-    HPLUS_env.logger.print_info("(debug) Adding vertex elimination variables to the model.");
+    lprint_info("(debug) Adding vertex elimination variables to the model.");
 
     // vertex elimination graph edges
     unsigned int veg_edges_start = curr_col;
@@ -205,7 +205,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
     const double rhs_0 = 0, rhs_1 = 1;
     const int begin = 0;
 
-    HPLUS_env.logger.print_info("(debug) Adding c2 to the model.");
+    lprint_info("(debug) Adding c2 to the model.");
 
     for (auto p : !istate) {
 
@@ -224,7 +224,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
 
     }
 
-    HPLUS_env.logger.print_info("(debug) Adding c3 to the model.");
+    lprint_info("(debug) Adding c3 to the model.");
 
     for (auto p : !istate) {                                                    // TODO: Too slow
         for (auto q : !istate) {
@@ -241,7 +241,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
         }
     }
 
-    HPLUS_env.logger.print_info("(debug) Adding c5 to the model.");
+    lprint_info("(debug) Adding c5 to the model.");
 
     delete[] val; val = nullptr;
     delete[] ind; ind = nullptr;
@@ -259,7 +259,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
         }
     }
 
-    HPLUS_env.logger.print_info("(debug) Adding c6 to the model.");
+    lprint_info("(debug) Adding c6 to the model.");
 
     for (unsigned int act_i = 0; act_i < nact; act_i++) {
         const auto& eff = actions[act_i].get_eff() - istate;
@@ -274,7 +274,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
         }
     }
 
-    HPLUS_env.logger.print_info("(debug) Adding c7 to the model.");
+    lprint_info("(debug) Adding c7 to the model.");
 
     for (auto i : !istate) for (auto j : cumulative_graph[i] & !istate) {
         ind_c5_c6_c7[0] = get_veg_idx(i, j);
@@ -284,7 +284,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
         my::assert(!CPXaddrows(env, lp, 0, 1, 2, &rhs_1, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr), "CPXaddrows (c7) faliled.");
     }
 
-    HPLUS_env.logger.print_info("(debug) Adding c8 to the model.");
+    lprint_info("(debug) Adding c8 to the model.");
     HPLUS_env.logger.print_info("(debug) %d.", triples_list.size());
 
     for (unsigned int h = 0; h < triples_list.size(); h++) {                    // TODO: Too slow
@@ -301,13 +301,12 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
 
     my::assert(!CPXwriteprob(env, lp, (HPLUS_CPLEX_OUT_DIR"/lp/"+HPLUS_env.run_name+".lp").c_str(), "LP"), "CPXwriteprob failed.");
 
-    HPLUS_env.logger.print_info("Created CPLEX lp for rankooh.");
+    lprint_info("Created CPLEX lp for rankooh.");
 
 }
 
 void HPLUS_store_rankooh_sol(const CPXENVptr& env, const CPXLPptr& lp, HPLUS_instance& inst) {
 
-    // get cplex result (interested only in the sequence of actions [0/nact-1] used and its ordering [nact/2nact-1])
     unsigned int nact = inst.get_nact();
     double* plan = new double[nact];
     my::assert(!CPXgetx(env, lp, plan, 0, nact-1), "CPXgetx failed.");
@@ -322,7 +321,12 @@ void HPLUS_store_rankooh_sol(const CPXENVptr& env, const CPXLPptr& lp, HPLUS_ins
     my::BitField sorted(cpx_result.size());
     my::BitField current_state = inst.get_istate();
 
-    while (sorted != my::BitField(cpx_result.size(), true)) {
+    // int cost = 0;
+    // for (auto act_i : cpx_result) cost += actions[act_i].get_cost();
+    // HPLUS_env.logger.print_info("%d.", cost);
+    
+    // while (sorted != my::BitField(cpx_result.size(), true)) {
+    while (!current_state.contains(inst.get_gstate())) {
         #if HPLUS_INTCHECK
         bool intcheck = false;
         #endif
@@ -334,6 +338,7 @@ void HPLUS_store_rankooh_sol(const CPXENVptr& env, const CPXLPptr& lp, HPLUS_ins
                 #if HPLUS_INTCHECK
                 intcheck = true;
                 #endif
+                break;
             }
         }
         #if HPLUS_INTCHECK

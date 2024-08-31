@@ -1,7 +1,10 @@
 <!-- trunk-ignore-all(prettier) -->
 # HPLUS THESIS
+![C++](https://img.shields.io/badge/C%2B%2B-00599C?style=for-the-badge&logo=c%2B%2B&logoColor=white)
 
-Using a MIP solver (CPLEX) to solve the delete free relaxation of a planning task.
+Using a MIP solver (CPLEX) to solve the delete free relaxation of a planning task.  
+
+This software requires as input the SAS file produced by the [Fast Downward translator](https://www.fast-downward.org/).
 
 ## Index
 

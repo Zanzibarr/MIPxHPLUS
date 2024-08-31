@@ -53,7 +53,7 @@ void HPLUS_parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp) {
             HPLUS_env.status = my::status::USR_STOP_NF;
             break;
         case CPXMIP_OPTIMAL_TOL:        // found optimal within the tollerance
-            HPLUS_env.logger.print_warn("Found optimal within the tolerance.");
+            lprint_warn("Found optimal within the tolerance.");
             HPLUS_env.status = my::status::OPT;
             break;
         case CPXMIP_OPTIMAL:            // found optimal
@@ -77,8 +77,8 @@ void HPLUS_run(HPLUS_instance& inst) {
 
     if (HPLUS_env.alg != HPLUS_CLI_IMAI && HPLUS_env.alg != HPLUS_CLI_RANKOOH) HPLUS_env.logger.raise_error("The algorithm specified (%s) is not on the list of possible algorithms... Please read the README.md for instructions.", HPLUS_env.alg.c_str());
 
-    if (HPLUS_env.alg == HPLUS_CLI_IMAI) HPLUS_env.logger.print_info("Running imai algorithm.");
-    else if (HPLUS_env.alg == HPLUS_CLI_RANKOOH) HPLUS_env.logger.print_info("Running rankooh algorithm.");
+    if (HPLUS_env.alg == HPLUS_CLI_IMAI) lprint_info("Running imai algorithm.");
+    else if (HPLUS_env.alg == HPLUS_CLI_RANKOOH) lprint_info("Running rankooh algorithm.");
 
     CPXENVptr env = nullptr;
     CPXLPptr lp = nullptr;
@@ -108,22 +108,22 @@ void HPLUS_run(HPLUS_instance& inst) {
 
     switch(HPLUS_env.status) {
         case my::status::INFEAS:
-            HPLUS_env.logger.print("The problem is infeasible.");
+            lprint("The problem is infeasible.");
             return;
         case my::status::NOTFOUND:
-            HPLUS_env.logger.print("No solution found.");
+            lprint("No solution found.");
             return;
         case my::status::TIMEL_NF:
-            HPLUS_env.logger.print("No solution found due to time limit.");
+            lprint("No solution found due to time limit.");
             return;
         case my::status::USR_STOP_NF:
-            HPLUS_env.logger.print("No solution found due to the user terminating the execution.");
+            lprint("No solution found due to the user terminating the execution.");
             return;
         case my::status::TIMEL_FEAS:
-            HPLUS_env.logger.print("The solution is not optimal due to time limit.");
+            lprint("The solution is not optimal due to time limit.");
             break;
         case my::status::USR_STOP_FEAS:
-            HPLUS_env.logger.print("The solution is not optimal due to the user terminating the execution.");
+            lprint("The solution is not optimal due to the user terminating the execution.");
             break;
         default:
             break;

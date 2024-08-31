@@ -6,7 +6,7 @@
 
 void HPLUS_instance::landmarks_extraction(std::vector<my::BitField>& landmarks_set, my::BitField& fact_landmarks, my::BitField& act_landmarks) const {
 
-    HPLUS_env.logger.print_info("Extracting landmarks.");
+    lprint_info("Extracting landmarks.");
 
     landmarks_set = std::vector<my::BitField>(this -> nvarstrips_, my::BitField(this -> nvarstrips_ + 1));
     fact_landmarks = my::BitField(this -> nvarstrips_);
@@ -91,7 +91,7 @@ void HPLUS_instance::landmarks_extraction(std::vector<my::BitField>& landmarks_s
 
 void HPLUS_instance::first_adders_extraction(const std::vector<my::BitField>& landmarks_set, std::vector<my::BitField>& fadd) const {
 
-    HPLUS_env.logger.print_info("Extracting first adders.");
+    lprint_info("Extracting first adders.");
 
     fadd = std::vector<my::BitField>(this -> n_act_, my::BitField(this -> nvarstrips_));
 
@@ -108,7 +108,7 @@ void HPLUS_instance::first_adders_extraction(const std::vector<my::BitField>& la
 
 void HPLUS_instance::relevance_analysis(const my::BitField& fact_landmarks, const std::vector<my::BitField>& fadd, my::BitField& relevant_variables, my::BitField& relevant_actions) const {
 
-    HPLUS_env.logger.print_info("Relevance analysis.");
+    lprint_info("Relevance analysis.");
 
     relevant_variables = my::BitField(this -> nvarstrips_);
     relevant_actions = my::BitField(this -> n_act_);
@@ -141,7 +141,7 @@ void HPLUS_instance::relevance_analysis(const my::BitField& fact_landmarks, cons
 
 void HPLUS_instance::dominated_actions_extraction(const std::vector<my::BitField>& landmarks_set, const std::vector<my::BitField>& fadd, const my::BitField& eliminated_actions, const my::BitField& fixed_actions, my::BitField& dominated_actions) const {
 
-    HPLUS_env.logger.print_info("Extracting dominated actions.");
+    lprint_info("Extracting dominated actions.");
 
     dominated_actions =  my::BitField(this -> n_act_);
     my::BitField remaining_actions = !eliminated_actions;
@@ -167,7 +167,7 @@ void HPLUS_instance::dominated_actions_extraction(const std::vector<my::BitField
 
 void HPLUS_instance::immediate_action_application(const my::BitField& act_landmarks, const my::BitField& eliminated_variables, my::BitField& fixed_variables, const my::BitField& eliminated_actions, my::BitField& fixed_actions, std::vector<my::BitField>& eliminated_first_archievers, std::vector<my::BitField>& fixed_first_archievers, std::vector<int>& fixed_var_timestamps, std::vector<int>& fixed_act_timestamps) const {
 
-    HPLUS_env.logger.print_info("Immediate action application.");
+    lprint_info("Immediate action application.");
 
     my::BitField current_state = this -> initial_state_;
     my::BitField actions_left = !eliminated_actions;
@@ -209,7 +209,7 @@ void HPLUS_instance::immediate_action_application(const my::BitField& act_landma
 
 void HPLUS_instance::inverse_actions_extraction(const my::BitField& eliminated_actions, const my::BitField& fixed_actions, std::vector<my::BitField>& inverse_actions) const {
 
-    HPLUS_env.logger.print_info("Extracting inverse actions.");
+    lprint_info("Extracting inverse actions.");
 
     for (auto act_i : !eliminated_actions) {                                        // TODO: Too slow
         const my::BitField& pre = this -> actions_[act_i].get_pre();
@@ -226,7 +226,7 @@ void HPLUS_instance::inverse_actions_extraction(const my::BitField& eliminated_a
 
 void HPLUS_instance::extract_imai_enhancements(my::BitField& eliminated_variables, my::BitField& fixed_variables, my::BitField& eliminated_actions, my::BitField& fixed_actions, std::vector<my::BitField>& inverse_actions, std::vector<my::BitField>& eliminated_first_archievers, std::vector<my::BitField>& fixed_first_archievers, std::vector<int>& fixed_var_timestamps, std::vector<int>& fixed_act_timestamp) const {
 
-    HPLUS_env.logger.print_info("Model enhancement from Imai's paper.");
+    lprint_info("Model enhancement from Imai's paper.");
 
     std::vector<my::BitField> landmarks_set;
     my::BitField fact_landmarks;
@@ -353,7 +353,7 @@ HPLUS_instance::HPLUS_instance(const std::string& file_path) {
     this -> best_nact_ = 0;
     this -> best_cost_ = UINT_MAX;
 
-    HPLUS_env.logger.print_info("Created HPLUS_instance.");
+    lprint_info("Created HPLUS_instance.");
 
 }
 
@@ -422,7 +422,7 @@ unsigned int HPLUS_instance::get_best_cost() const { return this -> best_cost_; 
 
 void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
 
-    HPLUS_env.logger.print_info("Parsing SAS file.");
+    lprint_info("Parsing SAS file.");
 
     double start_time = HPLUS_env.get_time();
     std::string line;
@@ -446,7 +446,7 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
     my::assert(line == "end_metric", "Corrupted file.");
 
     // * variables section
-    HPLUS_env.logger.print_warn("Ignoring axiom layers.");
+    lprint_warn("Ignoring axiom layers.");
     std::getline(*ifs, line);   // n_var
     my::assert(my::isint(line, 0), "Corrupted file.");
     this -> n_var_ = std::stoi(line);
@@ -475,7 +475,7 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
     }
     
     // * mutex section (ignored)
-    HPLUS_env.logger.print_warn("Ignoring mutex section.");
+    lprint_warn("Ignoring mutex section.");
     std::getline(*ifs, line);   // number of mutex groups
     my::assert(my::isint(line, 0), "Corrupted file.");
     unsigned int nmgroups = stoi(line);
@@ -526,11 +526,11 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
     my::assert(line == "end_goal", "Corrupted file.");
 
     // * operator (actions) section
-    HPLUS_env.logger.print_warn("Ignoring effect conditions.");
+    lprint_warn("Ignoring effect conditions.");
     std::getline(*ifs, line);   // n_act
     my::assert(my::isint(line, 0), "Corrupted file.");
     this -> n_act_ = stoi(line);
-    // my::assert(this -> n_act_ <= 1000, "Testing small instances only.");                // TODO: Remove this
+    my::assert(this -> n_act_ <= 1000, "Testing small instances only.");                // TODO: Remove this
     this -> actions_ = std::vector<HPLUS_action>(this -> n_act_);
     for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++) {
         // process each action
@@ -587,7 +587,7 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
         this -> actions_[act_i] = HPLUS_action(act_pre, act_eff, cost, name);
     }
 
-    HPLUS_env.logger.print_warn("Ignoring axiom section.");
+    lprint_warn("Ignoring axiom section.");
 
     HPLUS_stats.parsing_time = HPLUS_env.get_time() - start_time;
     

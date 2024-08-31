@@ -62,7 +62,7 @@ using triple = std::tuple<T1, T2, T3>;
 // ##################################################################### //
 
 #ifndef HPLUS_VERBOSE
-#define HPLUS_VERBOSE 1     // overwritten by cmake
+#define HPLUS_VERBOSE 10     // overwritten by cmake
 #endif
 #ifndef HPLUS_WARN
 #define HPLUS_WARN 1        // overwritten by cmake
@@ -279,5 +279,10 @@ extern struct HPLUS_Statistics {
     void print() const;
 
 } HPLUS_stats;
+
+#define lprint(message) HPLUS_env.logger.print(message)
+#define lprint_info(message) HPLUS_env.logger.print_info(message)
+#define lprint_warn(message) HPLUS_env.logger.print_warn(message)
+#define lraise_error(message) HPLUS_env.logger.raise_error(message)
 
 #endif

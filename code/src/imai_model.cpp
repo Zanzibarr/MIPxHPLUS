@@ -243,7 +243,7 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
 
     my::assert(!CPXwriteprob(env, lp, (HPLUS_CPLEX_OUT_DIR"/lp/"+HPLUS_env.run_name+".lp").c_str(), "LP"), "CPXwriteprob failed.");
 
-    HPLUS_env.logger.print_info("Created CPLEX lp for imai.");
+    lprint_info("Created CPLEX lp for imai.");
 
 }
 

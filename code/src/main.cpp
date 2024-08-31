@@ -5,8 +5,8 @@
 void signal_callback_handler(const int signum) {
 
     HPLUS_env.logger.print("\n%s", LINE);
-    HPLUS_env.logger.print(" >>  Caught ctrl+C signal, exiting...  <<");
-    HPLUS_env.logger.print(LINE);
+    lprint(" >>  Caught ctrl+C signal, exiting...  <<");
+    lprint(LINE);
 
     HPLUS_env.cpx_terminate = 1;                        // signals cplex to stop
 
@@ -26,7 +26,7 @@ void HPLUS_show_info(const HPLUS_instance& inst) {
     return;
     #endif
 
-    HPLUS_env.logger.print(LINE);
+    lprint(LINE);
 
     std::time_t time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     HPLUS_env.logger.print("%s%s", std::ctime(&time), LINE);
@@ -34,7 +34,7 @@ void HPLUS_show_info(const HPLUS_instance& inst) {
     if (HPLUS_env.log && !HPLUS_env.log_name.empty()) HPLUS_env.logger.print("Log name: %s.", HPLUS_env.log_name.c_str());
     if (!HPLUS_env.run_name.empty()) HPLUS_env.logger.print("Run name: %s.", HPLUS_env.run_name.c_str());
 
-    HPLUS_env.logger.print(LINE);
+    lprint(LINE);
 
     #if HPLUS_VERBOSE >= 100
     HPLUS_env.logger.print("Fast Downward translator version: %d.", inst.get_version());
@@ -51,31 +51,31 @@ void HPLUS_show_info(const HPLUS_instance& inst) {
         for (unsigned int j = 0; j < variables[i].get_range(); j++)
             HPLUS_env.logger.print("name(var_%d[%d]) = '%s'.", i, j, val_names[j].c_str());
     }
-    HPLUS_env.logger.print("Total number of variable states: %d", inst.get_nvarstrips());
-    HPLUS_env.logger.print("Initial state: %s.", inst.get_istate().view().c_str());
-    HPLUS_env.logger.print("Goal state: %s.", inst.get_gstate().view().c_str());
+    HPLUS_env.logger.print("Total number of variable states: %d", inst.get_nvar_strips());
+    HPLUS_env.logger.print("Initial state: %s.", std::string(inst.get_istate()).c_str());
+    HPLUS_env.logger.print("Goal state: %s.", std::string(inst.get_gstate()).c_str());
     #endif
     HPLUS_env.logger.print("# actions: %d.", inst.get_nact());
     #if HPLUS_VERBOSE >= 100
     const std::vector<HPLUS_action>& actions = inst.get_actions();
     for (unsigned int act_i = 0; act_i < inst.get_nact(); act_i++) {
-        HPLUS_env.logger.print("pre(act_%d) = '%s'.", act_i, actions[act_i].get_pre().view().c_str());
-        HPLUS_env.logger.print("eff(act_%d) = '%s'.", act_i, actions[act_i].get_eff().view().c_str());
+        HPLUS_env.logger.print("pre(act_%d) = '%s'.", act_i, std::string(actions[act_i].get_pre()).c_str());
+        HPLUS_env.logger.print("eff(act_%d) = '%s'.", act_i, std::string(actions[act_i].get_eff()).c_str());
         HPLUS_env.logger.print("name(act_%d) = '%s'.", act_i, actions[act_i].get_name().c_str());
         HPLUS_env.logger.print("cost(act_%d) = '%d'.", act_i, actions[act_i].get_cost());
     }
     #endif
 
-    HPLUS_env.logger.print(LINE);
+    lprint(LINE);
 
     #if HPLUS_INTCHECK
-    HPLUS_env.logger.print("Integrity checks enabled.");
-    HPLUS_env.logger.print(LINE);
+    lprint("Integrity checks enabled.");
+    lprint(LINE);
     #endif
 
     HPLUS_env.logger.print("Algorithm: %s.", HPLUS_env.alg.c_str());
     HPLUS_env.logger.print("Time limit: %ds.", HPLUS_env.time_limit);
-    HPLUS_env.logger.print(LINE);
+    lprint(LINE);
 
 }
 
@@ -109,7 +109,7 @@ void HPLUS_parse_cli(const int argc, const char** argv) {
     }
 
     for (const auto & unknown_arg : unknown_args) HPLUS_env.logger.print_warn("Unknown command-line option '%s'.", unknown_arg.c_str());
-    if (!unknown_args.empty()) HPLUS_env.logger.raise_error("Exiting due to unknown cli arguments.");
+    if (!unknown_args.empty()) lraise_error("Exiting due to unknown cli arguments.");
 
     my::assert(!HPLUS_env.infile.empty(), "No input file specified.");
     my::assert(!HPLUS_env.alg.empty(), "No algorithm specified.");
