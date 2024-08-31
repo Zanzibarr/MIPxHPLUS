@@ -7,7 +7,7 @@
 my::BitField::BitField(unsigned int size, bool full_flag) {
     this -> size_ = size;
     this -> field_ = std::vector<char>((size+7)/8, full_flag ? (char)~0u : 0);
-    if (full_flag && this -> size_ % 8 != 0) this->field_[this -> field_.size() - 1] &= (1u << this -> size_ % 8) - 1;
+    if (full_flag && this -> size_ % 8 != 0) this->field_[this -> field_.size() - 1] &= (1u << this -> size_ % 8) - 1;          // mask for the bits outside the size
 }
 
 my::BitField::BitField(const BitField& other_bitfield) {
@@ -111,7 +111,7 @@ my::BitField my::BitField::operator!() const {
 
     my::BitField new_bitfield(this -> size_);
     for (unsigned int i = 0; i < this -> field_.size(); i++) new_bitfield.field_[i] = ~this -> field_[i];
-    if (this -> size_ % 8 != 0) new_bitfield.field_[this -> field_.size() - 1] &= (1u << this -> size_ % 8) - 1;
+    if (this -> size_ % 8 != 0) new_bitfield.field_[this -> field_.size() - 1] &= (1u << this -> size_ % 8) - 1;        // mask for the bits outside the size
     return new_bitfield;
 
 }

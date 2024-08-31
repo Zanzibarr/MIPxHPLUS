@@ -380,18 +380,18 @@ void HPLUS_instance::update_best_solution(const std::vector<unsigned int>& solut
     #if HPLUS_INTCHECK
     my::BitField dbcheck = my::BitField(this -> n_act_);
     unsigned int costcheck = 0;
-    my::assert(solution.size() <= this -> n_act_, "Solution has more actions that there actually exists.");    // check that there aren't more actions that there exists
+    my::assert(solution.size() <= this -> n_act_, "Solution has more actions that there actually exists.");             // check that there aren't more actions that there exists
     my::BitField feas_checker(this -> initial_state_);
     for (auto act_i : solution) {
-        my::assert(act_i < this -> n_act_, "Solution contains unexisting action.");     // check that the solution only contains existing actions
-        my::assert(!dbcheck[act_i], "Solution contains duplicate action.");            // check that there are no duplicates
+        my::assert(act_i < this -> n_act_, "Solution contains unexisting action.");                                     // check that the solution only contains existing actions
+        my::assert(!dbcheck[act_i], "Solution contains duplicate action.");                                             // check that there are no duplicates
         dbcheck.set(act_i);
         my::assert(feas_checker.contains(this -> actions_[act_i].get_pre()), "Preconditions are not respected.");       // check if the preconditions are respected at each step
         feas_checker |= this -> actions_[act_i].get_eff();
         costcheck += this -> actions_[act_i].get_cost();
     }
-    my::assert(feas_checker.contains(this -> goal_state_), "The solution doesn't lead to the final state.");    // check if the solution leads to the goal state
-    my::assert(costcheck == cost, "Declared cost is different from calculated one.");        // check if the cost is the declared one
+    my::assert(feas_checker.contains(this -> goal_state_), "The solution doesn't lead to the final state.");            // check if the solution leads to the goal state
+    my::assert(costcheck == cost, "Declared cost is different from calculated one.");                                   // check if the cost is the declared one
     #endif
 
     if (cost >= this -> best_cost_) return;

@@ -342,7 +342,7 @@ void HPLUS_store_rankooh_sol(const CPXENVptr& env, const CPXLPptr& lp, HPLUS_ins
             }
         }
         #if HPLUS_INTCHECK
-        my::assert(intcheck, "Something went wrong while reconstructing the solution from Rankooh model.");
+        my::assert(intcheck, "Solution found doesn't respect preconditions.");
         #endif
     }
 
