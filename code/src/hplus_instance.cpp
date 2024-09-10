@@ -146,7 +146,7 @@ void HPLUS_instance::dominated_actions_extraction(const std::vector<my::BitField
     dominated_actions =  my::BitField(this -> n_act_);
     my::BitField remaining_actions = !eliminated_actions;
 
-    for (auto act_i : remaining_actions) if (!fixed_actions[act_i]) {               // TODO: Too slow
+    for (auto act_i : remaining_actions) if (!fixed_actions[act_i]) {               // TODO: Find better algorithm
 
         remaining_actions.unset(act_i);
         my::BitField f_lm_a = this -> initial_state_;
@@ -211,7 +211,7 @@ void HPLUS_instance::inverse_actions_extraction(const my::BitField& eliminated_a
 
     lprint_info("Extracting inverse actions.");
 
-    for (auto act_i : !eliminated_actions) {                                        // TODO: Too slow
+    for (auto act_i : !eliminated_actions) {                                        // TODO: Find better algorithm
         const my::BitField& pre = this -> actions_[act_i].get_pre();
         const my::BitField& eff = this -> actions_[act_i].get_eff();
         for (unsigned int act_j = act_i + 1; act_j < this -> n_act_; act_j++) if (!eliminated_actions[act_j]) {

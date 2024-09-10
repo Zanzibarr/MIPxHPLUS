@@ -27,7 +27,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
         }
     }
 
-    auto find_min = [nvarstrips](std::vector<my::BitField> graph) {                 // TODO: Too slow
+    auto find_min = [nvarstrips](std::vector<my::BitField> graph) {                 // TODO: Find better algorithm
 
         int min = INT_MAX, min_idx = -1;
         for (unsigned int i = 0; i < nvarstrips; i++) {
@@ -47,7 +47,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
     };
 
     // G_i (minimum degree heuristics)
-    for (unsigned int i = 0; i < nvarstrips; i++) {
+    for (unsigned int i = 0; i < nvarstrips; i++) {                                 // TODO: Find better algorithm
         int idx = find_min(graph);
         if (idx == -1) break;
         for (unsigned int p = 0; p < nvarstrips; p++) if (graph[p][idx]) {
@@ -226,7 +226,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
 
     lprint_info("(debug) Adding c3 to the model.");
 
-    for (auto p : !istate) {                                                    // TODO: Too slow
+    for (auto p : !istate) {                                                    // TODO: Find better algorithm
         for (auto q : !istate) {
             nnz = 0;
             ind[nnz] = get_var_idx(q);
@@ -287,7 +287,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
     lprint_info("(debug) Adding c8 to the model.");
     HPLUS_env.logger.print_info("(debug) %d.", triples_list.size());
 
-    for (unsigned int h = 0; h < triples_list.size(); h++) {                    // TODO: Too slow
+    for (unsigned int h = 0; h < triples_list.size(); h++) {
         const int i = std::get<0>(triples_list[h]), j = std::get<1>(triples_list[h]), k = std::get<2>(triples_list[h]);
         if (istate[i] || istate[j] || istate[k]) continue;
         ind_c8[0] = get_veg_idx(i, j);
@@ -309,7 +309,7 @@ void HPLUS_store_rankooh_sol(const CPXENVptr& env, const CPXLPptr& lp, HPLUS_ins
 
     unsigned int nact = inst.get_nact();
     double* plan = new double[nact];
-    my::assert(!CPXgetx(env, lp, plan, 0, nact-1), "CPXgetx failed.");
+    my::assert(!CPXgetx(env, lp, plan, 0, nact-1), "CPXgetx failed.");                  // TODO: Post processing
 
     // convert to std collections for easier parsing
     std::vector<unsigned int> cpx_result;
