@@ -52,7 +52,6 @@ void HPLUS_show_info(const HPLUS_instance& inst) {
             HPLUS_env.logger.print("name(var_%d[%d]) = '%s'.", i, j, val_names[j].c_str());
     }
     HPLUS_env.logger.print("Total number of variable states: %d", inst.get_nvar_strips());
-    HPLUS_env.logger.print("Initial state: %s.", std::string(inst.get_istate()).c_str());
     HPLUS_env.logger.print("Goal state: %s.", std::string(inst.get_gstate()).c_str());
     #endif
     HPLUS_env.logger.print("# actions: %d.", inst.get_nact());

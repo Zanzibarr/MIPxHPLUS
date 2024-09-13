@@ -10,7 +10,6 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     const auto nvarstrips = inst.get_nvar_strips();
     const auto& actions = inst.get_actions();
     const auto& variables = inst.get_variables();
-    const auto& istate = inst.get_istate();
 
     // ~~~~~~~~~~~~ Enhanced model ~~~~~~~~~~~ //
     // (section 4 of Imai's paper)
@@ -155,7 +154,7 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
         ind_c3[i] = new int[nact + 1];
         val_c3[i] = new double[nact + 1];
         nnz_c3[i] = 0;
-        rhs_c3[i] = istate[i];
+        rhs_c3[i] = 0;
         ind_c3[i][nnz_c3[i]] = get_var_idx(i);
         val_c3[i][nnz_c3[i]] = 1;
         nnz_c3[i]++;

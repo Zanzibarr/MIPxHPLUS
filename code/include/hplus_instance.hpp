@@ -62,12 +62,12 @@ class HPLUS_action  {
         explicit HPLUS_action(my::BitField& pre_bf, my::BitField& eff_bf, unsigned int cost, const std::string& name);
 
         /**
-         * @return The BitField representing the precondition state for this action
+         * @return The BitField representing the precondition state for this action (note that the initial state variables have been removed)
          */
         const my::BitField& get_pre() const;
 
         /**
-         * @return The BitField representing the effects on the state this action has
+         * @return The BitField representing the effects on the state this action has (note that the initial state variables have been removed)
          */
         const my::BitField& get_eff() const;
 
@@ -153,14 +153,7 @@ class HPLUS_instance {
         const std::vector<HPLUS_action>& get_actions() const;
 
         /**
-         * @return The initial state as a BitField
-         * ->
-         * [1000 0100 0001] -> Assuming a size of 3 and a range of 4 for each variable, value(v0) = 0, value(v1) = 1, value(v2) = 3
-         */
-        const my::BitField& get_istate() const;
-
-        /**
-         * @return The goal state as a BitField
+         * @return The goal state as a BitField (note that the initial state variables have been removed)
          * ->
          * [1000 0100 0001] -> Assuming a size of 3 and a range of 4 for each variable, value(v0) = 0, value(v1) = 1, value(v2) = 3
          */

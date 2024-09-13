@@ -7,7 +7,6 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
     const auto nvarstrips = inst.get_nvar_strips();
     const auto& actions = inst.get_actions();
     const auto& variables = inst.get_variables();
-    const auto& istate = inst.get_istate();
 
     // ~~~~~~~~~~ VERTEX ELIMINATION ~~~~~~~~~ //
 
@@ -105,7 +104,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
             degree_counter[p] -= 1;
 
             // update triangles list
-            for (auto q : graph[idx]) if (!istate[p] && !istate[q] && !istate[idx]) triangles_list.push_back(Triangle(p, idx, q));
+            for (auto q : graph[idx]) triangles_list.push_back(Triangle(p, idx, q));
 
         }
 
@@ -134,9 +133,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
 
     inst.extract_imai_enhancements(eliminated_variables, fixed_variables, eliminated_actions, fixed_actions, inverse_actions, eliminated_first_archievers, fixed_first_archievers, fixed_var_timestamps, fixed_act_timestamps);
 
-    eliminated_variables |= istate;
     fixed_variables |= inst.get_gstate();
-    fixed_variables -= istate;
 
     // ~~~~~~~~ Adding CPLEX variables ~~~~~~~ //
 
@@ -242,17 +239,11 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
     const double rhs_0 = 0, rhs_1 = 1;
     const int begin = 0;
 
-    auto not_istate_sparse = (!istate).sparse();
-
+    // precompute list of actions that have a specific variable as effect (some sort of hashing)
     std::vector<std::vector<unsigned int>> act_with_eff(nvarstrips);
+    for (unsigned int p = 0; p < nvarstrips; p++) for (unsigned int act_i = 0; act_i < nact; act_i++) if (actions[act_i].get_eff()[p]) act_with_eff[p].push_back(act_i);
 
-    for (auto p : not_istate_sparse) {
-        for (unsigned int act_i = 0; act_i < nact; act_i++) {
-            if (actions[act_i].get_eff()[p]) act_with_eff[p].push_back(act_i);
-        }
-    }
-
-    for (auto p : not_istate_sparse) {
+    for (unsigned int p = 0; p < nvarstrips; p++) {
 
         nnz = 0;
         ind[nnz] = get_var_idx(p);
@@ -267,8 +258,8 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
 
     }
 
-    for (auto p : not_istate_sparse) {
-        for (auto q : not_istate_sparse) {
+    for (unsigned int p = 0; p < nvarstrips; p++) {
+        for (unsigned int q = 0; q < nvarstrips; q++) {
             nnz = 0;
             ind[nnz] = get_var_idx(q);
             val[nnz++] = -1;
@@ -289,7 +280,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
     double val_c5_c6_c7[2], val_c8[3];
 
     for (unsigned int act_i = 0; act_i < nact; act_i++) {
-        for (auto p : actions[act_i].get_eff() - istate) {
+        for (auto p : actions[act_i].get_eff()) {
             ind_c5_c6_c7[0] = get_act_idx(act_i);
             val_c5_c6_c7[0] = -1;
             ind_c5_c6_c7[1] = get_fa_idx(act_i, p);
@@ -299,8 +290,8 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
     }
 
     for (unsigned int act_i = 0; act_i < nact; act_i++) {
-        const auto& eff = actions[act_i].get_eff() - istate;
-        for (auto i : actions[act_i].get_pre() - istate) {
+        const auto& eff = actions[act_i].get_eff();
+        for (auto i : actions[act_i].get_pre()) {
             for (auto j : eff) {
                 ind_c5_c6_c7[0] = get_veg_idx(i, j);
                 val_c5_c6_c7[0] = -1;
@@ -311,7 +302,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
         }
     }
 
-    for (auto i : not_istate_sparse) for (auto j : cumulative_graph[i]) if (!istate[j]) {
+    for (unsigned int i = 0; i < nvarstrips; i++) for (auto j : cumulative_graph[i]) {
         ind_c5_c6_c7[0] = get_veg_idx(i, j);
         val_c5_c6_c7[0] = 1;
         ind_c5_c6_c7[1] = get_veg_idx(j, i);
@@ -350,7 +341,7 @@ void HPLUS_store_rankooh_sol(const CPXENVptr& env, const CPXLPptr& lp, HPLUS_ins
     const auto& actions = inst.get_actions();
     std::vector<unsigned int> solution;
     my::BitField sorted(cpx_result.size());
-    my::BitField current_state = inst.get_istate();
+    my::BitField current_state(inst.get_nvar_strips());
 
     // int cost = 0;
     // for (auto act_i : cpx_result) cost += actions[act_i].get_cost();
