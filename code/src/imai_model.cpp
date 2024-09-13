@@ -38,13 +38,9 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     double* lbs = new double[nact];
     double* ubs = new double[nact];
     char* types = new char[nact];
-    char** names = new char*[nact];
-    for (unsigned int i = 0; i < nact; i++) names[i] = new char[20];
 
-    auto rsz_cpx_arrays = [&objs, &lbs, &ubs, &types, &names](int old_size, int new_size) {
+    auto rsz_cpx_arrays = [&objs, &lbs, &ubs, &types](int old_size, int new_size) {
 
-        for (unsigned int i = 0; i < old_size; i++) delete[] names[i];
-        delete[] names; names = nullptr;
         delete[] types; types = nullptr;
         delete[] ubs; ubs = nullptr;
         delete[] lbs; lbs = nullptr;
@@ -54,8 +50,6 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
         lbs = new double[new_size];
         ubs = new double[new_size];
         types = new char[new_size];
-        names = new char*[new_size];
-        for (unsigned int i = 0; i < new_size; i++) names[i] = new char[20];
 
     };
 
@@ -66,11 +60,10 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
         lbs[act_i] = fixed_actions[act_i] ? 1 : 0;
         ubs[act_i] = eliminated_actions[act_i] ? 0 : 1;
         types[act_i] = 'B';
-        snprintf(names[act_i], 20, "act(%d)", act_i);
     }
     curr_col += nact;
 
-    my::assert(!CPXnewcols(env, lp, nact, objs, lbs, ubs, types, names), "CPXnewcols (actions) failed.");
+    my::assert(!CPXnewcols(env, lp, nact, objs, lbs, ubs, types, nullptr), "CPXnewcols (actions) failed.");
 
     // --- action timestamps -- //
     unsigned int tact_start = curr_col;
@@ -79,39 +72,36 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
         lbs[act_i] = fixed_act_timestamps[act_i] >= 0 ? fixed_act_timestamps[act_i] : 0;
         ubs[act_i] = fixed_act_timestamps[act_i] >= 0 ? fixed_act_timestamps[act_i] : nact-1;
         types[act_i] = 'I';
-        snprintf(names[act_i], 20, "tact(%d)", act_i);
     }
     curr_col += nact;
 
-    my::assert(!CPXnewcols(env, lp, nact, objs, lbs, ubs, types, names), "CPXnewcols (action timestamps) failed.");
+    my::assert(!CPXnewcols(env, lp, nact, objs, lbs, ubs, types, nullptr), "CPXnewcols (action timestamps) failed.");
 
     rsz_cpx_arrays(nact, nvarstrips);
 
     // ------- variables ------ //
     unsigned int var_start = curr_col;
-    for (unsigned int i = 0, count = 0; i < nvar; i++) for (unsigned int j = 0; j < variables[i].get_range(); j++, count++) {
-        objs[count] = 0;
-        lbs[count] = fixed_variables[count] ? 1 : 0;
-        ubs[count] = eliminated_variables[count] ? 0 : 1;
-        types[count] = 'B';
-        snprintf(names[count], 20, "var(%d_%d)", i, j);
+    for (unsigned int i = 0; i < nvarstrips; i++) {
+        objs[i] = 0;
+        lbs[i] = fixed_variables[i] ? 1 : 0;
+        ubs[i] = eliminated_variables[i] ? 0 : 1;
+        types[i] = 'B';
     }
     curr_col += nvarstrips;
 
-    my::assert(!CPXnewcols(env, lp, nvarstrips, objs, lbs, ubs, types, names), "CPXnewcols (variables) failed.");
+    my::assert(!CPXnewcols(env, lp, nvarstrips, objs, lbs, ubs, types, nullptr), "CPXnewcols (variables) failed.");
 
     // -- variable timestamps - //
     unsigned int tvar_start = curr_col;
-    for (unsigned int i = 0, count = 0; i < nvar; i++) for (unsigned int j = 0; j < variables[i].get_range(); j++, count++) {
-        objs[count] = 0;
-        lbs[count] = fixed_var_timestamps[count] >= 0 ? fixed_var_timestamps[count] : 0;
-        ubs[count] = fixed_var_timestamps[count] >= 0 ? fixed_var_timestamps[count] : nact;
-        types[count] = 'I';
-        snprintf(names[count], 20, "tvar(%d_%d)", i, j);
+    for (unsigned int i = 0; i < nvarstrips; i++) {
+        objs[i] = 0;
+        lbs[i] = fixed_var_timestamps[i] >= 0 ? fixed_var_timestamps[i] : 0;
+        ubs[i] = fixed_var_timestamps[i] >= 0 ? fixed_var_timestamps[i] : nact;
+        types[i] = 'I';
     }
     curr_col += nvarstrips;
 
-    my::assert(!CPXnewcols(env, lp, nvarstrips, objs, lbs, ubs, types, names), "CPXnewcols (variable timestamps) failed.");
+    my::assert(!CPXnewcols(env, lp, nvarstrips, objs, lbs, ubs, types, nullptr), "CPXnewcols (variable timestamps) failed.");
 
     rsz_cpx_arrays(nvarstrips, nact*nvarstrips);
 
@@ -120,24 +110,18 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     std::vector<unsigned int> fa_individual_start(nact);
     for (unsigned int act_i = 0, nfa = 0; act_i < nact; act_i++) {
         fa_individual_start[act_i] = nfa;
-        const auto& eff = actions[act_i].get_eff();
-        for (unsigned int i = 0, k = 0; i < nvar; k += variables[i].get_range(), i++) {
-            for (unsigned int j = 0; j < variables[i].get_range(); j++) {
-                objs[nfa] = 0;
-                lbs[nfa] = fixed_first_archievers[act_i][k+j] ? 1 : 0;
-                ubs[nfa] = (!eff[k+j] || eliminated_first_archievers[act_i][k+j]) ? 0 : 1;          // I create a first archiever variable for each pair action-variable, but I already fix at 0 the pairs that are not action - effect (easier to find the variables later -- cplex simplifies the model on his own)
-                types[nfa] = 'B';
-                snprintf(names[nfa], 20, "fa(%d_%d_%d)", act_i, i, j);
-                nfa++;
-            }
+        const my::BitField& eff = actions[act_i].get_eff();
+        for (unsigned int i = 0; i < nvarstrips; i++) {
+            objs[nfa] = 0;
+            lbs[nfa] = fixed_first_archievers[act_i][i] ? 1 : 0;
+            ubs[nfa] = (!eff[i] || eliminated_first_archievers[act_i][i]) ? 0 : 1;
+            types[nfa++] = 'B';
         }
     }
     curr_col += nact * nvarstrips;
 
-    my::assert(!CPXnewcols(env, lp, nact * nvarstrips, objs, lbs, ubs, types, names), "CPXnewcols (first archievers) failed.");
+    my::assert(!CPXnewcols(env, lp, nact * nvarstrips, objs, lbs, ubs, types, nullptr), "CPXnewcols (first archievers) failed.");
 
-    for (unsigned int i = 0; i < nact * nvarstrips; i++) delete[] names[i];
-    delete[] names; names = nullptr;
     delete[] types; types = nullptr;
     delete[] ubs; ubs = nullptr;
     delete[] lbs; lbs = nullptr;
@@ -241,7 +225,7 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     delete[] val_c1; val_c1 = nullptr;
     delete[] ind_c1; ind_c1 = nullptr;
 
-    my::assert(!CPXwriteprob(env, lp, (HPLUS_CPLEX_OUT_DIR"/lp/"+HPLUS_env.run_name+".lp").c_str(), "LP"), "CPXwriteprob failed.");
+    // my::assert(!CPXwriteprob(env, lp, (HPLUS_CPLEX_OUT_DIR"/lp/"+HPLUS_env.run_name+".lp").c_str(), "LP"), "CPXwriteprob failed.");
 
     lprint_info("Created CPLEX lp for imai.");
 

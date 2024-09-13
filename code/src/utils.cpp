@@ -153,6 +153,14 @@ bool my::BitField::contains(const BitField& other_bitfield) const {
 
 }
 
+std::vector<unsigned int> my::BitField::sparse() const {
+
+    std::vector<unsigned int> ret;
+    for (auto p : *this) ret.push_back(p);
+    return ret;
+
+}
+
 my::BitField::operator std::string() const {
 
     std::string ret = "[";

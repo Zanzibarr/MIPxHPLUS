@@ -10,6 +10,9 @@
 #include <string>
 #include <cstring>
 #include <vector>
+#include <list>
+#include <set>
+#include <queue>
 #include <chrono>
 #include <climits>
 #include <cstdarg>
@@ -17,9 +20,6 @@
 #include <algorithm>
 #include <numeric>
 #include <queue>
-
-template<typename T1, typename T2, typename T3>
-using triple = std::tuple<T1, T2, T3>;
 
 // ##################################################################### //
 // ######################### PATHS AND FOLDERS ######################### //
@@ -99,18 +99,20 @@ namespace my {
 
             unsigned int size() const;
 
-            BitField operator&(const BitField& other_bitfield) const;        // set intersection
+            BitField operator&(const BitField& other_bitfield) const;       // set intersection
             BitField& operator&=(const BitField& other_bitfield);
-            BitField operator|(const BitField& other_bitfield) const;        // set union
+            BitField operator|(const BitField& other_bitfield) const;       // set union
             BitField& operator|=(const BitField& other_bitfield);
-            BitField operator-(const BitField& other_bitfield) const;        // set difference
+            BitField operator-(const BitField& other_bitfield) const;       // set difference
             BitField& operator-=(const BitField& other_bitfield);
-            BitField operator!() const;                                      // set complement
+            BitField operator!() const;                                     // set complement
 
-            bool operator==(const BitField& other_bitfield) const;           // wether this equals other_bitfield
-            bool operator!=(const BitField& other_bitfield) const;           // wether this is not equal to other_bitfield
-            bool intersects(const BitField& other_bitfield) const;           // wether this intersects other_bitfield
-            bool contains(const BitField& other_bitfield) const;             // wether this contains other_bitfield
+            bool operator==(const BitField& other_bitfield) const;          // wether this equals other_bitfield
+            bool operator!=(const BitField& other_bitfield) const;          // wether this is not equal to other_bitfield
+            bool intersects(const BitField& other_bitfield) const;          // wether this intersects other_bitfield
+            bool contains(const BitField& other_bitfield) const;            // wether this contains other_bitfield
+
+            std::vector<unsigned int> sparse() const;                       // get sparse version of this bitfield
 
             operator std::string() const;
 
@@ -212,6 +214,23 @@ namespace my {
      * Asserts that a string is a number (if specified also checks the range (both inclusive))
      */
     bool isint(const std::string& str, const int from = INT_MIN, const int to = INT_MAX);
+
+    /**
+     * Removes an element (first occurrence) by value from a std::vector
+     */
+    template <typename T>
+    void vec_remove(std::vector<T>& vector, T value) { vector.erase(std::remove(vector.begin(), vector.end(), value), vector.end()); }
+
+    /**
+     * Removes an element (first occurrence) by value from a std::list
+     */
+    template <typename T>
+    void list_remove(std::list<T>& list, T value) {
+
+        auto it = std::find(list.begin(), list.end(), value);
+        if (it != list.end()) list.erase(it);
+
+    }
 
     /**
      * Interrupts the execution with a todo message
