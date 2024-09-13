@@ -51,6 +51,8 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
         types = new char[new_size];
 
     };
+    
+    // lprint_info("ACTIONS");
 
     // -------- actions ------- //
     unsigned int act_start = curr_col;
@@ -77,6 +79,8 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     my::assert(!CPXnewcols(env, lp, nact, objs, lbs, ubs, types, nullptr), "CPXnewcols (action timestamps) failed.");
 
     rsz_cpx_arrays(nact, nvarstrips);
+    
+    // lprint_info("VARIABLES");
 
     // ------- variables ------ //
     unsigned int var_start = curr_col;
@@ -103,6 +107,8 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     my::assert(!CPXnewcols(env, lp, nvarstrips, objs, lbs, ubs, types, nullptr), "CPXnewcols (variable timestamps) failed.");
 
     rsz_cpx_arrays(nvarstrips, nact*nvarstrips);
+    
+    // lprint_info("FIRST ARCHIEVERS");
 
     // --- first archievers --- //
     unsigned int fa_start = curr_col;
@@ -159,7 +165,10 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
         val_c3[i][nnz_c3[i]] = 1;
         nnz_c3[i]++;
     }
+    
+    // lprint_info("CONSTRAINTS");
 
+    // FIXME
     for (unsigned int i = 0; i < nact; i++) {
         const auto& pre = actions[i].get_pre();
         const auto& eff = actions[i].get_eff();

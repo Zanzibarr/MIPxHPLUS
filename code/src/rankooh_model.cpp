@@ -77,7 +77,6 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
 
         std::set<unsigned int> new_nodes;
 
-        // TODO
         for (unsigned int p = 0; p < nvarstrips; p++) if (graph[p].find(idx) != graph[p].end()) {
 
             new_nodes.insert(p);
@@ -158,6 +157,8 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
 
     };
 
+    // lprint_info("ACTIONS");
+
     // -------- actions ------- //
     unsigned int act_start = curr_col;
     for (unsigned int act_i = 0; act_i < nact; act_i++) {
@@ -171,6 +172,8 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
     my::assert(!CPXnewcols(env, lp, nact, objs, lbs, ubs, types, nullptr), "CPXnewcols (actions) failed.");
 
     rsz_cpx_arrays(nact, nvarstrips);
+    
+    // lprint_info("VARIABLES");
 
     // ------- variables ------ //
     unsigned int var_start = curr_col;
@@ -185,6 +188,8 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
     my::assert(!CPXnewcols(env, lp, nvarstrips, objs, lbs, ubs, types, nullptr), "CPXnewcols (variables) failed.");
 
     rsz_cpx_arrays(nvarstrips, nact * nvarstrips);
+    
+    // lprint_info("FIRST ARCHIEVERS");
 
     // --- first archievers --- //
     unsigned int fa_start = curr_col;
@@ -204,6 +209,8 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
     my::assert(!CPXnewcols(env, lp, nact * nvarstrips, objs, lbs, ubs, types, nullptr), "CPXnewcols (first archievers) failed.");
 
     rsz_cpx_arrays(nact * nvarstrips, nvarstrips * nvarstrips);
+    
+    // lprint_info("VERTEX ELIMINATION EDGES");
 
     // vertex elimination graph edges
     unsigned int veg_edges_start = curr_col;
@@ -238,11 +245,16 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
     const char sense_e = 'E', sense_l = 'L';
     const double rhs_0 = 0, rhs_1 = 1;
     const int begin = 0;
+    
+    // lprint_info("Constraints");
 
     // precompute list of actions that have a specific variable as effect (some sort of hashing)
     std::vector<std::vector<unsigned int>> act_with_eff(nvarstrips);
     for (unsigned int p = 0; p < nvarstrips; p++) for (unsigned int act_i = 0; act_i < nact; act_i++) if (actions[act_i].get_eff()[p]) act_with_eff[p].push_back(act_i);
 
+    // lprint_info("C2");
+
+    // FIXME
     for (unsigned int p = 0; p < nvarstrips; p++) {
 
         nnz = 0;
@@ -257,7 +269,10 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
         my::assert(!CPXaddrows(env, lp, 0, 1, nnz, &rhs_0, &sense_e, &begin, ind, val, nullptr, nullptr), "CPXaddwors (c2) failed.");
 
     }
+    
+    // lprint_info("C3");
 
+    // FIXME
     for (unsigned int p = 0; p < nvarstrips; p++) {
         for (unsigned int q = 0; q < nvarstrips; q++) {
             nnz = 0;
@@ -278,6 +293,8 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
 
     int ind_c5_c6_c7[2], ind_c8[3];
     double val_c5_c6_c7[2], val_c8[3];
+    
+    // lprint_info("C5");
 
     for (unsigned int act_i = 0; act_i < nact; act_i++) {
         for (auto p : actions[act_i].get_eff()) {
@@ -288,9 +305,12 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
             my::assert(!CPXaddrows(env, lp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr), "CPXaddrows (c5) faliled.");
         }
     }
+    
+    // lprint_info("C6");
 
+    // FIXME
     for (unsigned int act_i = 0; act_i < nact; act_i++) {
-        const auto& eff = actions[act_i].get_eff();
+        const auto& eff = actions[act_i].get_eff().sparse();
         for (auto i : actions[act_i].get_pre()) {
             for (auto j : eff) {
                 ind_c5_c6_c7[0] = get_veg_idx(i, j);
@@ -301,6 +321,8 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
             }
         }
     }
+    
+    // lprint_info("C7");
 
     for (unsigned int i = 0; i < nvarstrips; i++) for (auto j : cumulative_graph[i]) {
         ind_c5_c6_c7[0] = get_veg_idx(i, j);
@@ -309,6 +331,8 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
         val_c5_c6_c7[1] = 1;
         my::assert(!CPXaddrows(env, lp, 0, 1, 2, &rhs_1, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr), "CPXaddrows (c7) faliled.");
     }
+    
+    // lprint_info("C8");
 
     for (unsigned int h = 0; h < triangles_list.size(); h++) {
         const int i = triangles_list[h].first, j = triangles_list[h].second, k = triangles_list[h].third;
@@ -331,7 +355,9 @@ void HPLUS_store_rankooh_sol(const CPXENVptr& env, const CPXLPptr& lp, HPLUS_ins
 
     unsigned int nact = inst.get_nact();
     double* plan = new double[nact];
-    my::assert(!CPXgetx(env, lp, plan, 0, nact-1), "CPXgetx failed.");                  // TODO: Post processing
+    my::assert(!CPXgetx(env, lp, plan, 0, nact-1), "CPXgetx failed.");
+    
+    // TODO: Post processing
 
     // convert to std collections for easier parsing
     std::vector<unsigned int> cpx_result;

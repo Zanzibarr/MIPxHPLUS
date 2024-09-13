@@ -110,6 +110,7 @@ void HPLUS_instance::first_adders_extraction(const std::vector<my::BitField>& la
 
 }
 
+// FIXME
 void HPLUS_instance::relevance_analysis(const my::BitField& fact_landmarks, const std::vector<my::BitField>& fadd, my::BitField& relevant_variables, my::BitField& relevant_actions) const {
 
     lprint_info("Relevance analysis.");
@@ -143,7 +144,7 @@ void HPLUS_instance::relevance_analysis(const my::BitField& fact_landmarks, cons
 
 }
 
-// FIXME: O(n^2) but since it's sorted it's much faster
+// FIXME
 void HPLUS_instance::dominated_actions_extraction(const std::vector<my::BitField>& landmarks_set, const std::vector<my::BitField>& fadd, const my::BitField& eliminated_actions, const my::BitField& fixed_actions, my::BitField& dominated_actions) const {
     lprint_info("Extracting dominated actions.");
 
@@ -172,7 +173,7 @@ void HPLUS_instance::dominated_actions_extraction(const std::vector<my::BitField
     
     for (auto dominant_act : sorted_actions) if (!dominated_actions[dominant_act]) {
 
-        for (auto dominated_act : remaining_actions) if (!fixed_actions[dominant_act] && dominant_act != dominated_act) {                       // TODO: Hashing to iterate only over candidate actions
+        for (auto dominated_act : remaining_actions) if (!fixed_actions[dominant_act] && dominant_act != dominated_act) {
 
             if (actions[dominant_act].get_cost() > actions[dominated_act].get_cost()) break;
             if (!fadd[dominant_act].contains(fadd[dominated_act]) || !f_lm_a[dominated_act].contains(actions[dominant_act].get_pre())) continue;
