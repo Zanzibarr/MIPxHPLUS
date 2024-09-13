@@ -9,6 +9,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
     const auto& variables = inst.get_variables();
 
     // ~~~~~~~~~~ VERTEX ELIMINATION ~~~~~~~~~ //
+    // FIXME
 
     lprint_info("Vertex elimination from Rankooh's paper.");
 
