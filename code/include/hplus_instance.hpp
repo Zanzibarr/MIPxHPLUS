@@ -67,9 +67,19 @@ class HPLUS_action  {
         const my::BitField& get_pre() const;
 
         /**
-         * @return The BitField representing the effects on the state this action has (note that the initial state variables have been removed)
+         * @return The precomputed sparse list of precondition of this action (note that the initial state variables have been removed) 
+         */
+        const std::vector<unsigned int>& get_pre_sparse() const;
+
+        /**
+         * @return The BitField representing the add effects on the state this action has (note that the initial state variables have been removed)
          */
         const my::BitField& get_eff() const;
+
+        /**
+         * @return The precomputed sparse list of add effects of this action (note that the initial state variables have been removed) 
+         */
+        const std::vector<unsigned int>& get_eff_sparse() const;
 
         /**
          * @return The cost of this action
@@ -91,11 +101,21 @@ class HPLUS_action  {
         my::BitField pre_;
 
         /**
+         * Precomputed list of preconditions
+         */
+        std::vector<unsigned int> sparse_pre_;
+
+        /**
          * Value each variable has after the action has been taken
          * ->
          * [1000 0100 0001] -> Assuming a size of 3 and a range of 4 for each variable, value(v0) will be 0, value(v1) will be 1, value(v2) will be 3
          */
         my::BitField eff_;
+
+        /**
+         * Precomputed list of add effects
+         */
+        std::vector<unsigned int> sparse_eff_;
 
         unsigned int cost_;
         std::string name_;
@@ -256,10 +276,10 @@ class HPLUS_instance {
          * @param fixed_variables (edited) List of variables that have been (so far) fixed
          * @param eliminated_actions List of actions that have been (so far) eliminated
          * @param fixed_actions (edited) List of actions that have been (so far) fixed
-         * @param eliminated_first_archievers List of first archievers that have been (so far) eliminated
+         * @param eliminated_first_archievers (edited) List of first archievers that have been (so far) eliminated
          * @param fixed_first_archievers (edited) List of first archievers that have been (so far) fixed
-         * @param fixed_var_timestamps (edited) List of timestamp for variables to be fixed
-         * @param fixed_act_timestamps (edited) List of timestamp for actions to be fixed
+         * @param fixed_var_timestamps (edited) List of timestamp for variables to be fixed (nullptr if not interested in this)
+         * @param fixed_act_timestamps (edited) List of timestamp for actions to be fixed (nullptr if not interested in this)
          */
         void immediate_action_application(
             const my::BitField& act_landmarks,
@@ -269,8 +289,8 @@ class HPLUS_instance {
             my::BitField& fixed_actions,
             std::vector<my::BitField>& eliminated_first_archievers,
             std::vector<my::BitField>& fixed_first_archievers,
-            std::vector<int>& fixed_var_timestamps,
-            std::vector<int>& fixed_act_timestamps
+            std::vector<int>* fixed_var_timestamps,
+            std::vector<int>* fixed_act_timestamps
         ) const;
 
         /**
@@ -284,7 +304,7 @@ class HPLUS_instance {
         void inverse_actions_extraction(
             const my::BitField& eliminated_actions,
             const my::BitField& fixed_actions,
-            std::vector<my::BitField>& inverse_actions
+            std::map<unsigned int, std::vector<unsigned int>>& inverse_actions
         ) const;
 
         /**
@@ -295,22 +315,22 @@ class HPLUS_instance {
          * @param fixed_variables (output) List of variables that can be fixed (set to 1)
          * @param eliminated_actions (output) List of actions that can be eliminated (set to 0)
          * @param fixed_actions (output) List of actions that can be fixed (set to 1)
-         * @param inverse_actions (output) List of inverse actions for each action (if an action is used, it's inverse isn't in the optimal plan)
+         * @param inverse_actions (output) List of inverse actions for each action (if an action is used, it's inverse isn't in the optimal plan) (nullptr if not interested in this)
          * @param eliminated_first_archievers (output) List of first archievers that can be eliminated (set to 0)
          * @param fixed_first_archievers (output) List of first archievers that can be fixed (set to 1)
-         * @param fixed_var_timestamps (output) List of timestamps for variables that can be fixed (for models that use timestamps)
-         * @param fixed_act_timestamps (output) List of timestamps for actions that can be fixed (for models that use timestamps)
+         * @param fixed_var_timestamps (output) List of timestamps for variables that can be fixed (for models that use timestamps) (nullptr if not interested in this)
+         * @param fixed_act_timestamps (output) List of timestamps for actions that can be fixed (for models that use timestamps) (nullptr if not interested in this)
          */
         void extract_imai_enhancements(
             my::BitField& eliminated_variables,
             my::BitField& fixed_variables,
             my::BitField& eliminated_actions,
             my::BitField& fixed_actions,
-            std::vector<my::BitField>& inverse_actions,
+            std::map<unsigned int, std::vector<unsigned int>>* inverse_actions,
             std::vector<my::BitField>& eliminated_first_archievers,
             std::vector<my::BitField>& fixed_first_archievers,
-            std::vector<int>& fixed_var_timestamps,
-            std::vector<int>& fixed_act_timestamp
+            std::vector<int>* fixed_var_timestamps,
+            std::vector<int>* fixed_act_timestamp
         ) const;
 
     private:

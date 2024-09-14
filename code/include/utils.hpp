@@ -12,6 +12,7 @@
 #include <vector>
 #include <list>
 #include <set>
+#include <map>
 #include <queue>
 #include <chrono>
 #include <climits>
@@ -216,26 +217,14 @@ namespace my {
     bool isint(const std::string& str, const int from = INT_MIN, const int to = INT_MAX);
 
     /**
-     * Removes an element (first occurrence) by value from a std::vector
-     */
-    template <typename T>
-    void vec_remove(std::vector<T>& vector, T value) { vector.erase(std::remove(vector.begin(), vector.end(), value), vector.end()); }
-
-    /**
-     * Removes an element (first occurrence) by value from a std::list
-     */
-    template <typename T>
-    void list_remove(std::list<T>& list, T value) {
-
-        auto it = std::find(list.begin(), list.end(), value);
-        if (it != list.end()) list.erase(it);
-
-    }
-
-    /**
      * Interrupts the execution with a todo message
      */
     void todo();
+
+    /**
+     * Interrupts the execution waiting for input (0 for continue, != 0 for exit)
+     */
+    void pause(const std::string message);
 
 }
 

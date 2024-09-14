@@ -22,9 +22,9 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     std::vector<my::BitField> fixed_first_archievers(nact, my::BitField(nvarstrips));
     std::vector<int> fixed_var_timestamps(nvarstrips, -1);
     std::vector<int> fixed_act_timestamps(nact, -1);
-    std::vector<my::BitField> inverse_actions(nact, my::BitField(nact));
+    std::map<unsigned int, std::vector<unsigned int>> inverse_actions;
 
-    inst.extract_imai_enhancements(eliminated_variables, fixed_variables, eliminated_actions, fixed_actions, inverse_actions, eliminated_first_archievers, fixed_first_archievers, fixed_var_timestamps, fixed_act_timestamps);
+    inst.extract_imai_enhancements(eliminated_variables, fixed_variables, eliminated_actions, fixed_actions, &inverse_actions, eliminated_first_archievers, fixed_first_archievers, &fixed_var_timestamps, &fixed_act_timestamps);
 
     fixed_variables |= inst.get_gstate();
 
@@ -38,7 +38,7 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     double* ubs = new double[nact];
     char* types = new char[nact];
 
-    auto rsz_cpx_arrays = [&objs, &lbs, &ubs, &types](int old_size, int new_size) {
+    auto rsz_cpx_arrays = [&objs, &lbs, &ubs, &types](int new_size) {
 
         delete[] types; types = nullptr;
         delete[] ubs; ubs = nullptr;
@@ -78,7 +78,7 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
 
     my::assert(!CPXnewcols(env, lp, nact, objs, lbs, ubs, types, nullptr), "CPXnewcols (action timestamps) failed.");
 
-    rsz_cpx_arrays(nact, nvarstrips);
+    rsz_cpx_arrays(nvarstrips);
     
     // lprint_info("VARIABLES");
 
@@ -106,26 +106,23 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
 
     my::assert(!CPXnewcols(env, lp, nvarstrips, objs, lbs, ubs, types, nullptr), "CPXnewcols (variable timestamps) failed.");
 
-    rsz_cpx_arrays(nvarstrips, nact*nvarstrips);
-    
     // lprint_info("FIRST ARCHIEVERS");
 
     // --- first archievers --- //
     unsigned int fa_start = curr_col;
     std::vector<unsigned int> fa_individual_start(nact);
-    for (unsigned int act_i = 0, nfa = 0; act_i < nact; act_i++) {
-        fa_individual_start[act_i] = nfa;
-        const my::BitField& eff = actions[act_i].get_eff();
+    for (unsigned int act_i = 0; act_i < nact; act_i++) {
+        fa_individual_start[act_i] = act_i * nvarstrips;
+        const auto& eff = actions[act_i].get_eff();
         for (unsigned int i = 0; i < nvarstrips; i++) {
-            objs[nfa] = 0;
-            lbs[nfa] = fixed_first_archievers[act_i][i] ? 1 : 0;
-            ubs[nfa] = (!eff[i] || eliminated_first_archievers[act_i][i]) ? 0 : 1;
-            types[nfa++] = 'B';
+            objs[i] = 0;
+            lbs[i] = fixed_first_archievers[act_i][i] ? 1 : 0;
+            ubs[i] = (!eff[i] || eliminated_first_archievers[act_i][i]) ? 0 : 1;
+            types[i] = 'B';
         }
+        curr_col += nvarstrips;
+        my::assert(!CPXnewcols(env, lp, nvarstrips, objs, lbs, ubs, types, nullptr), "CPXnewcols (first archievers) failed.");
     }
-    curr_col += nact * nvarstrips;
-
-    my::assert(!CPXnewcols(env, lp, nact * nvarstrips, objs, lbs, ubs, types, nullptr), "CPXnewcols (first archievers) failed.");
 
     delete[] types; types = nullptr;
     delete[] ubs; ubs = nullptr;
@@ -166,61 +163,52 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
         nnz_c3[i]++;
     }
     
-    // lprint_info("CONSTRAINTS");
+    lprint_info("CONSTRAINTS");
 
-    // FIXME
     for (unsigned int i = 0; i < nact; i++) {
-        const auto& pre = actions[i].get_pre();
-        const auto& eff = actions[i].get_eff();
-        for (unsigned int j = 0; j < nvarstrips; j++) {
-            if (pre[j]) {
-                // constraint 1: x_a + sum_{inv(a, p)}(z_a'vj) <= y_vj, vj in pre(a)
-                ind_c1[0] = get_act_idx(i);
-                val_c1[0] = 1;
-                ind_c1[1] = get_var_idx(j);
-                val_c1[1] = -1;
-                int nnz0 = 2;
-                // (section 4.6 of Imai's paper)
-                for (auto inv_act : inverse_actions[i]) {
-                    const auto& inv_eff = actions[inv_act].get_eff();
-                    if (inv_eff[j]) {
-                        int var_cnt = 0;
-                        for (auto p : inv_eff) {
-                            if (p == j) break;
-                            var_cnt++;
-                        }
-                        ind_c1[nnz0] = get_fa_idx(inv_act, j);
-                        val_c1[nnz0++] = 1;
-                    }
+        const auto& pre = actions[i].get_pre_sparse();
+        const auto& eff = actions[i].get_eff_sparse();
+        for (auto j : pre) {
+            // constraint 1: x_a + sum_{inv(a, p)}(z_a'vj) <= y_vj, vj in pre(a)
+            ind_c1[0] = get_act_idx(i);
+            val_c1[0] = 1;
+            ind_c1[1] = get_var_idx(j);
+            val_c1[1] = -1;
+            int nnz0 = 2;
+            // (section 4.6 of Imai's paper)
+            if (inverse_actions.find(i) != inverse_actions.end()) {
+                for (auto inv_act : inverse_actions[i]) if (actions[inv_act].get_eff()[j]) {
+                    ind_c1[nnz0] = get_fa_idx(inv_act, j);
+                    val_c1[nnz0++] = 1;
                 }
-                my::assert(!CPXaddrows(env, lp, 0, 1, nnz0, &rhs_c1_2_4, &sensel, &begin, ind_c1, val_c1, nullptr, nullptr), "CPXaddrows (c1) failed.");
-                // constraint 4: t_vj <= t_a, vj in pre(a)
-                ind_c2_4[0] = get_tvar_idx(j);
-                val_c2_4[0] = 1;
-                ind_c2_4[1] = get_tact_idx(i);
-                val_c2_4[1] = -1;
-                my::assert(!CPXaddrows(env, lp, 0, 1, nnz_c2_4, &rhs_c1_2_4, &sensel, &begin, ind_c2_4, val_c2_4, nullptr, nullptr), "CPXaddrows (c4) failed.");
             }
-            if (eff[j]) {
-                // constraint 2: z_avj <= x_a, vj in eff(a)
-                ind_c2_4[0] = get_fa_idx(i, j);
-                val_c2_4[0] = 1;
-                ind_c2_4[1] = get_act_idx(i);
-                val_c2_4[1] = -1;
-                my::assert(!CPXaddrows(env, lp, 0, 1, nnz_c2_4, &rhs_c1_2_4, &sensel, &begin, ind_c2_4, val_c2_4, nullptr, nullptr), "CPXaddrows (c2) failed.");
-                // constraint 5: t_a + 1 <= t_vj + (|A|+1)(1-z_avj), vj in eff(a)
-                ind_c5[0] = get_tact_idx(i);
-                val_c5[0] = 1;
-                ind_c5[1] = get_tvar_idx(j);
-                val_c5[1] = -1;
-                ind_c5[2] = get_fa_idx(i, j);
-                val_c5[2] = nact + 1;
-                my::assert(!CPXaddrows(env, lp, 0, 1, nnz_c5, &rhs_c5, &sensel, &begin, ind_c5, val_c5, nullptr, nullptr), "CPXaddrows (c5) failed.");
-                // constraint 3: I(v_j) + sum(z_avj) = y_vj
-                ind_c3[j][nnz_c3[j]] = get_fa_idx(i, j);
-                val_c3[j][nnz_c3[j]] = -1;
-                nnz_c3[j]++;
-            }
+            my::assert(!CPXaddrows(env, lp, 0, 1, nnz0, &rhs_c1_2_4, &sensel, &begin, ind_c1, val_c1, nullptr, nullptr), "CPXaddrows (c1) failed.");
+            // constraint 4: t_vj <= t_a, vj in pre(a)
+            ind_c2_4[0] = get_tvar_idx(j);
+            val_c2_4[0] = 1;
+            ind_c2_4[1] = get_tact_idx(i);
+            val_c2_4[1] = -1;
+            my::assert(!CPXaddrows(env, lp, 0, 1, nnz_c2_4, &rhs_c1_2_4, &sensel, &begin, ind_c2_4, val_c2_4, nullptr, nullptr), "CPXaddrows (c4) failed.");
+        }
+        for (auto j : eff) {
+            // constraint 2: z_avj <= x_a, vj in eff(a)
+            ind_c2_4[0] = get_fa_idx(i, j);
+            val_c2_4[0] = 1;
+            ind_c2_4[1] = get_act_idx(i);
+            val_c2_4[1] = -1;
+            my::assert(!CPXaddrows(env, lp, 0, 1, nnz_c2_4, &rhs_c1_2_4, &sensel, &begin, ind_c2_4, val_c2_4, nullptr, nullptr), "CPXaddrows (c2) failed.");
+            // constraint 5: t_a + 1 <= t_vj + (|A|+1)(1-z_avj), vj in eff(a)
+            ind_c5[0] = get_tact_idx(i);
+            val_c5[0] = 1;
+            ind_c5[1] = get_tvar_idx(j);
+            val_c5[1] = -1;
+            ind_c5[2] = get_fa_idx(i, j);
+            val_c5[2] = nact + 1;
+            my::assert(!CPXaddrows(env, lp, 0, 1, nnz_c5, &rhs_c5, &sensel, &begin, ind_c5, val_c5, nullptr, nullptr), "CPXaddrows (c5) failed.");
+            // constraint 3: I(v_j) + sum(z_avj) = y_vj
+            ind_c3[j][nnz_c3[j]] = get_fa_idx(i, j);
+            val_c3[j][nnz_c3[j]] = -1;
+            nnz_c3[j]++;
         }
     }
 

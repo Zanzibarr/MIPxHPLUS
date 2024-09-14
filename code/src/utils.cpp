@@ -471,6 +471,15 @@ bool my::isint(const std::string& str, const int from, const int to) {
 
 void my::todo() { lraise_error("UNIMPLEMENTED."); }
 
+void my::pause(const std::string message) {
+
+    unsigned int test = 0;
+    std::cout << message << ": ";
+    std::cin >> test;
+    if (test > 0) exit(1);
+    
+}
+
 
 // ##################################################################### //
 // ############################## GLOBALS ############################## //

@@ -19,13 +19,17 @@ void HPLUS_instance::landmarks_extraction(std::vector<my::BitField>& landmarks_s
     std::deque<int> actions_queue;
     for (unsigned int i = 0; i < this -> n_act_; i++) if(s_set.contains(this -> actions_[i].get_pre())) actions_queue.push_back(i);
 
+    // list of actions that have as precondition variable p
+    std::vector<std::vector<unsigned int>> act_with_pre(this -> nvarstrips_);
+    for (unsigned int p = 0; p < this -> nvarstrips_; p++) for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++) if (this -> actions_[act_i].get_pre()[p]) act_with_pre[p].push_back(act_i);
+
     while(!actions_queue.empty()) {
 
         const HPLUS_action a = this -> actions_[actions_queue.front()];
         actions_queue.pop_front();
 
-        const auto& pre_a = a.get_pre().sparse();
-        const auto& add_a = a.get_eff().sparse();
+        const auto& pre_a = a.get_pre_sparse();
+        const auto& add_a = a.get_eff_sparse();
 
         for (auto p : add_a) {
 
@@ -58,7 +62,7 @@ void HPLUS_instance::landmarks_extraction(std::vector<my::BitField>& landmarks_s
                 if (landmarks_set[p][this -> nvarstrips_] || x != landmarks_set[p]) {
 
                     landmarks_set[p] = x;
-                    for (unsigned int aa = 0; aa < this -> n_act_; aa++) if (this -> actions_[aa].get_pre()[p])
+                    for (auto aa : act_with_pre[p])
                         if (s_set.contains(this -> actions_[aa].get_pre()) && std::find(actions_queue.begin(), actions_queue.end(), aa) == actions_queue.end())
                             actions_queue.push_back(aa);
 
@@ -70,9 +74,9 @@ void HPLUS_instance::landmarks_extraction(std::vector<my::BitField>& landmarks_s
 
     }
 
-    // list of actions that have as effect variable i
+    // list of actions that have as effect variable p
     std::vector<std::vector<unsigned int>> act_with_eff(this -> nvarstrips_);
-    for (auto j : !fact_landmarks) for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++) if (this -> actions_[act_i].get_eff()[j]) act_with_eff[j].push_back(act_i);
+    for (auto p : !fact_landmarks) for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++) if (this -> actions_[act_i].get_eff()[p]) act_with_eff[p].push_back(act_i);
 
     for (auto p : this -> goal_state_) {
         for (auto j : !fact_landmarks) {
@@ -97,20 +101,21 @@ void HPLUS_instance::first_adders_extraction(const std::vector<my::BitField>& la
 
     fadd = std::vector<my::BitField>(this -> n_act_, my::BitField(this -> nvarstrips_));
 
+    // list of fact landmarks for each variable
     std::vector<std::vector<unsigned int>> var_flm(this -> nvarstrips_);
     for (unsigned int p = 0; p < this -> nvarstrips_; p++) for (unsigned int i = 0; i < this -> nvarstrips_; i++) if (landmarks_set[p][i] || landmarks_set[p][this -> nvarstrips_]) var_flm[p].push_back(i);
 
     for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++) {
+        const auto& pre = this -> actions_[act_i].get_pre_sparse();
         // f_lm_a is the set of fact landmarks of action act_i
         my::BitField f_lm_a(this -> nvarstrips_);
-        for (auto p : this -> actions_[act_i].get_pre()) for (auto i : var_flm[p]) f_lm_a.set(i);
+        for (auto p : pre) for (auto i : var_flm[p]) f_lm_a.set(i);
         // fadd[a] := { p in add(a) s.t. p is not a fact landmark for a }
         fadd[act_i] |= (this -> actions_[act_i].get_eff() & !f_lm_a);
     }
 
 }
 
-// FIXME
 void HPLUS_instance::relevance_analysis(const my::BitField& fact_landmarks, const std::vector<my::BitField>& fadd, my::BitField& relevant_variables, my::BitField& relevant_actions) const {
 
     lprint_info("Relevance analysis.");
@@ -130,22 +135,25 @@ void HPLUS_instance::relevance_analysis(const my::BitField& fact_landmarks, cons
     bool new_act = true;
     while (new_act) {
         new_act = false;
+        std::vector<unsigned int> removed_act;
         for (auto act_i : cand_actions) {
             if (this -> actions_[act_i].get_eff().intersects(relevant_variables)) {
                 relevant_actions.set(act_i);
                 relevant_variables |= this -> actions_[act_i].get_pre();
-                my::vec_remove(cand_actions, act_i);
+                removed_act.push_back(act_i);
                 new_act = true;
-                break;
             }
         }
+        auto it = std::set_difference(cand_actions.begin(), cand_actions.end(), removed_act.begin(), removed_act.end(), cand_actions.begin());
+        cand_actions.resize(it - cand_actions.begin());
     }
     relevant_variables |= this -> goal_state_;
 
 }
 
-// FIXME
+// FIXME: This is O(m^2) and takes the most part of build time (100+s for large instances)
 void HPLUS_instance::dominated_actions_extraction(const std::vector<my::BitField>& landmarks_set, const std::vector<my::BitField>& fadd, const my::BitField& eliminated_actions, const my::BitField& fixed_actions, my::BitField& dominated_actions) const {
+    
     lprint_info("Extracting dominated actions.");
 
     dominated_actions =  my::BitField(this -> n_act_);
@@ -168,8 +176,10 @@ void HPLUS_instance::dominated_actions_extraction(const std::vector<my::BitField
     std::vector<std::vector<unsigned int>> var_flm(this -> nvarstrips_);
     for (unsigned int p = 0; p < this -> nvarstrips_; p++) for (unsigned int i = 0; i < this -> nvarstrips_; i++) if (landmarks_set[p][i] || landmarks_set[p][this -> nvarstrips_]) var_flm[p].push_back(i);
 
-    for (unsigned int act_i = 0; act_i < n_act_; act_i++)
-        for (auto p : this -> actions_[act_i].get_pre()) for (auto i : var_flm[p]) f_lm_a[act_i].set(i);
+    for (unsigned int act_i = 0; act_i < n_act_; act_i++) {
+        const auto& pre = this -> actions_[act_i].get_pre_sparse();
+        for (auto p : pre) for (auto i : var_flm[p]) f_lm_a[act_i].set(i);
+    }
     
     for (auto dominant_act : sorted_actions) if (!dominated_actions[dominant_act]) {
 
@@ -186,12 +196,12 @@ void HPLUS_instance::dominated_actions_extraction(const std::vector<my::BitField
 
 }
 
-void HPLUS_instance::immediate_action_application(const my::BitField& act_landmarks, const my::BitField& eliminated_variables, my::BitField& fixed_variables, const my::BitField& eliminated_actions, my::BitField& fixed_actions, std::vector<my::BitField>& eliminated_first_archievers, std::vector<my::BitField>& fixed_first_archievers, std::vector<int>& fixed_var_timestamps, std::vector<int>& fixed_act_timestamps) const {
+void HPLUS_instance::immediate_action_application(const my::BitField& act_landmarks, const my::BitField& eliminated_variables, my::BitField& fixed_variables, const my::BitField& eliminated_actions, my::BitField& fixed_actions, std::vector<my::BitField>& eliminated_first_archievers, std::vector<my::BitField>& fixed_first_archievers, std::vector<int>* fixed_var_timestamps, std::vector<int>* fixed_act_timestamps) const {
 
     lprint_info("Immediate action application.");
 
     my::BitField current_state(this -> nvarstrips_);
-    my::BitField actions_left = !eliminated_actions;
+    auto actions_left = !eliminated_actions;
 
     int counter = 0;
     bool found_next_action = true;
@@ -201,22 +211,23 @@ void HPLUS_instance::immediate_action_application(const my::BitField& act_landma
 
         for (auto act_i : actions_left) {
 
-            const my::BitField& pre = this -> actions_[act_i].get_pre();
-            const my::BitField add_eff = this -> actions_[act_i].get_eff() & !eliminated_variables;
+            const auto& pre = this -> actions_[act_i].get_pre();
+            const auto& eff = this -> actions_[act_i].get_pre();
+            const auto& eff_sparse = this -> actions_[act_i].get_pre_sparse();
 
             if (current_state.contains(pre) && (act_landmarks[act_i] || this -> actions_[act_i].get_cost() == 0)) {
 
                 actions_left.unset(act_i);
                 fixed_actions.set(act_i);
-                fixed_act_timestamps[act_i] = counter;
+                if (fixed_act_timestamps != nullptr) (*fixed_act_timestamps)[act_i] = counter;
                 fixed_variables |= pre;
-                for (auto p : add_eff) if (!current_state[p]) {
+                for (auto p : eff_sparse) if (!current_state[p] && !eliminated_variables[p]) {
                     fixed_variables.set(p);
-                    fixed_var_timestamps[p] = counter+1;
+                    if (fixed_act_timestamps != nullptr) (*fixed_var_timestamps)[p] = counter+1;
                     fixed_first_archievers[act_i].set(p);
                     for (auto act_j : actions_left) eliminated_first_archievers[act_j].set(p);
                 }
-                current_state |= add_eff;
+                current_state |= eff;
                 counter++;
                 found_next_action = true;
 
@@ -228,26 +239,33 @@ void HPLUS_instance::immediate_action_application(const my::BitField& act_landma
 
 }
 
-void HPLUS_instance::inverse_actions_extraction(const my::BitField& eliminated_actions, const my::BitField& fixed_actions, std::vector<my::BitField>& inverse_actions) const {
+// TODO: This is O(m^2)... maybe find a better algorithm
+void HPLUS_instance::inverse_actions_extraction(const my::BitField& eliminated_actions, const my::BitField& fixed_actions, std::map<unsigned int, std::vector<unsigned int>>& inverse_actions) const {
 
     lprint_info("Extracting inverse actions.");
 
     auto remaining_actions = (!eliminated_actions).sparse();
 
     for (unsigned int i = 0; i < remaining_actions.size(); i++) {
-        const my::BitField& pre = this -> actions_[remaining_actions[i]].get_pre();
-        const my::BitField& eff = this -> actions_[remaining_actions[i]].get_eff();
+        const auto& pre = this -> actions_[remaining_actions[i]].get_pre();
+        const auto& eff = this -> actions_[remaining_actions[i]].get_eff();
         for (unsigned int j = i+1; j < remaining_actions.size(); j++) {
             if (pre.contains(this -> actions_[remaining_actions[j]].get_eff()) && this -> actions_[remaining_actions[j]].get_pre().contains(eff)) {
-                if (!fixed_actions[remaining_actions[i]]) inverse_actions[remaining_actions[i]].set(remaining_actions[j]);
-                if (!fixed_actions[remaining_actions[j]]) inverse_actions[remaining_actions[j]].set(remaining_actions[i]);
+                if (!fixed_actions[remaining_actions[i]]) {
+                    inverse_actions.try_emplace(remaining_actions[i], std::vector<unsigned int>());
+                    inverse_actions[remaining_actions[i]].push_back(remaining_actions[j]);
+                }
+                if (!fixed_actions[remaining_actions[j]]) {
+                    inverse_actions.try_emplace(remaining_actions[j], std::vector<unsigned int>());
+                    inverse_actions[remaining_actions[j]].push_back(remaining_actions[i]);
+                }
             }
         }
     }
 
 }
 
-void HPLUS_instance::extract_imai_enhancements(my::BitField& eliminated_variables, my::BitField& fixed_variables, my::BitField& eliminated_actions, my::BitField& fixed_actions, std::vector<my::BitField>& inverse_actions, std::vector<my::BitField>& eliminated_first_archievers, std::vector<my::BitField>& fixed_first_archievers, std::vector<int>& fixed_var_timestamps, std::vector<int>& fixed_act_timestamp) const {
+void HPLUS_instance::extract_imai_enhancements(my::BitField& eliminated_variables, my::BitField& fixed_variables, my::BitField& eliminated_actions, my::BitField& fixed_actions, std::map<unsigned int, std::vector<unsigned int>>* inverse_actions, std::vector<my::BitField>& eliminated_first_archievers, std::vector<my::BitField>& fixed_first_archievers, std::vector<int>* fixed_var_timestamps, std::vector<int>* fixed_act_timestamp) const {
 
     lprint_info("Model enhancement from Imai's paper.");
 
@@ -279,29 +297,24 @@ void HPLUS_instance::extract_imai_enhancements(my::BitField& eliminated_variable
 
     eliminated_actions |= dominated_actions;
 
-    this -> inverse_actions_extraction(eliminated_actions, fixed_actions, inverse_actions);
+    if (inverse_actions != nullptr) this -> inverse_actions_extraction(eliminated_actions, fixed_actions, *inverse_actions);
 
-    // #if HPLUS_VERBOSE >= 10
-    // int count = 0;
-    // for (auto p : eliminated_variables) count++;
-    // for (auto p : fixed_variables) count++;
-    // HPLUS_env.logger.print_info("(debug) Eliminated %d/%d variables.", count, this -> nvarstrips_);
+    #if HPLUS_VERBOSE >= 10
+    int count = 0;
+    for (auto p : eliminated_variables) count++;
+    for (auto p : fixed_variables) count++;
+    HPLUS_env.logger.print_info("(debug) Eliminated %d/%d variables.", count, this -> nvarstrips_);
+    count = 0;
+    for (auto p : eliminated_actions) count++;
+    for (auto p : fixed_actions) count++;
+    HPLUS_env.logger.print_info("(debug) Eliminated %d/%d actions.", count, this -> n_act_);
+    count = 0;
+    for (unsigned int a = 0; a < this -> n_act_; a++) for (auto i : eliminated_first_archievers[a] | fixed_first_archievers[a] | !this -> actions_[a].get_eff()) count++;
+    HPLUS_env.logger.print_info("(debug) Eliminated %d/%d first archievers.", count, this -> nvarstrips_ * this -> n_act_);
     // count = 0;
-    // for (auto p : eliminated_actions) count++;
-    // for (auto p : fixed_actions) count++;
-    // HPLUS_env.logger.print_info("(debug) Eliminated %d/%d actions.", count, this -> n_act_);
-    // count = 0;
-    // int count2 = 0;
-    // for (unsigned int a = 0; a < this -> n_act_; a++) {
-    //     for (auto i : eliminated_first_archievers[a]) count++;
-    //     for (auto i : fixed_first_archievers[a]) count++;
-    //     count2 += 2 * this -> nvarstrips_;
-    // }
-    // HPLUS_env.logger.print_info("(debug) Eliminated %d/%d first archievers.", count, count2);
-    // count = 0;
-    // for (unsigned int i = 0; i < this -> n_act_; i++) for (auto j : inverse_actions[i]) count++;
+    // for (unsigned int i = 0; i < this -> n_act_; i++) if (inverse_actions->find(i) != inverse_actions->end()) count += (*inverse_actions).size(); //for (auto j : (*inverse_actions)[i]) count++;
     // HPLUS_env.logger.print_info("(debug) Found %d pairs of inverse actions.", count/2);
-    // #endif
+    #endif
 
     #if HPLUS_INTCHECK
     my::assert(!eliminated_variables.intersects(fixed_variables), "Eliminated variables set intersects the fixed variables set.");
@@ -341,6 +354,10 @@ HPLUS_action::HPLUS_action(my::BitField& pre_bf, my::BitField& eff_bf, const uns
 
     this -> pre_ = my::BitField(pre_bf);
     this -> eff_ = my::BitField(eff_bf);
+    for (unsigned int i = 0; i < this -> pre_.size(); i++) {
+        if (this -> pre_[i]) this -> sparse_pre_.push_back(i);
+        if (this -> eff_[i]) this -> sparse_eff_.push_back(i);
+    }
     this -> cost_ = cost;
     this -> name_ = name;
 
@@ -348,7 +365,11 @@ HPLUS_action::HPLUS_action(my::BitField& pre_bf, my::BitField& eff_bf, const uns
 
 const my::BitField& HPLUS_action::get_pre() const { return this -> pre_; }
 
+const std::vector<unsigned int>& HPLUS_action::get_pre_sparse() const { return this -> sparse_pre_; }
+
 const my::BitField& HPLUS_action::get_eff() const { return this -> eff_; }
+
+const std::vector<unsigned int>& HPLUS_action::get_eff_sparse() const { return this -> sparse_eff_; }
 
 const std::string& HPLUS_action::get_name() const { return this -> name_; }
 
