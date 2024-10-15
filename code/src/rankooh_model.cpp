@@ -9,8 +9,6 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
     const auto& variables = inst.get_variables();
 
     // ~~~~~~~~~~ VERTEX ELIMINATION ~~~~~~~~~ //
-    // FIXME: Correctness (This is slightly different from the min degree heuristic and it makes the model run slower)
-
     lprint_info("Vertex elimination from Rankooh's paper.");
 
     struct Node {
@@ -37,7 +35,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
         const auto& pre = actions[act_i].get_pre_sparse();
         const auto& eff = actions[act_i].get_eff_sparse();
         for (auto p : pre) {
-            for (auto q : eff) {
+            for (auto q : eff) if (p != q) {
                 int pre_size = graph[p].size();
                 graph[p].insert(q);
                 if (pre_size != graph[p].size()) {                                                      // if the edge is new update the degree
@@ -52,14 +50,24 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
     for (unsigned int node_i = 0; node_i < nvarstrips; node_i++) if (degree_counter[node_i] > 0) nodes_queue.emplace(node_i, degree_counter[node_i]);
 
     // finding minimum degree node
-    auto find_min = [](std::priority_queue<Node, std::vector<Node>, CompareNode>& nodes_queue, const std::vector<unsigned int> degree_counter) {
+    auto find_min = [&nvarstrips](std::priority_queue<Node, std::vector<Node>, CompareNode>& nodes_queue, const std::vector<unsigned int> degree_counter) {
 
         int idx = -1;
+
+        // int min = INFINITY;
+        // for (unsigned int x = 0; x < nvarstrips; x++) {
+        //     if (degree_counter[x] > 0 && degree_counter[x] < min) {
+        //         idx = x;
+        //         min = degree_counter[x];
+        //     }
+        // }
+
         while (!nodes_queue.empty() && idx < 0) {
             Node tmp = nodes_queue.top();
             nodes_queue.pop();
             if (degree_counter[tmp.id] == tmp.deg) idx = tmp.id;
         }
+
         return idx;
 
     };
@@ -77,14 +85,12 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
 
         std::set<unsigned int> new_nodes;
 
+        //TODO: Check p != q needed?
+
         for (unsigned int p = 0; p < nvarstrips; p++) if (graph[p].find(idx) != graph[p].end()) {
 
-            new_nodes.insert(p);
+            for (auto q : graph[idx]) if (p != q) {
 
-            for (auto q : graph[idx]) {
-    
-                new_nodes.insert(q);
-                
                 // add edge p - q
                 int pre_size = graph[p].size();
                 graph[p].insert(q);
@@ -101,21 +107,40 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
             // remove the edge p - idx
             graph[p].erase(idx);
             degree_counter[p] -= 1;
+            new_nodes.insert(p);
 
             // update triangles list
-            for (auto q : graph[idx]) triangles_list.emplace_back(p, idx, q);
+            for (auto q : graph[idx]) if (p != q) triangles_list.emplace_back(p, idx, q);
 
         }
 
         // remove the edge idx - q
-        for (auto q : graph[idx]) degree_counter[q] -= 1;
+        for (auto q : graph[idx]) {
+            degree_counter[q] -= 1;
+            new_nodes.insert(q);
+        }
         graph[idx].clear();
         degree_counter[idx] = 0;
         
         // Update the priority queue
         for (auto node : new_nodes) if (degree_counter[node] > 0) nodes_queue.emplace(node, degree_counter[node]);
 
+        #if HPLUS_INTCHECK
+        for (unsigned int tmp_i = 0; tmp_i < nvarstrips; tmp_i++) {
+            int i_cnt = 0;
+            i_cnt += graph[tmp_i].size();
+            for (unsigned int tmp_j = 0; tmp_j < nvarstrips; tmp_j++) {
+                for (auto tmp_k : graph[tmp_j]) {
+                    if (tmp_k == tmp_i) i_cnt += 1;
+                }
+            }
+            my::assert(i_cnt == degree_counter[tmp_i], "Wrong degree counter.");
+        }
+        #endif
+
     }
+
+    HPLUS_env.logger.print_info("N of triangles: %d.", triangles_list.size());
 
     // ~~~~~~~~~~~~ Enhanced model ~~~~~~~~~~~ //
     // (section 4 of Imai's paper)

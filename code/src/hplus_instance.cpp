@@ -151,7 +151,6 @@ void HPLUS_instance::relevance_analysis(const my::BitField& fact_landmarks, cons
 
 }
 
-// FIXME: This is O(m^2) and takes the most part of build time (100+s for large instances)
 void HPLUS_instance::dominated_actions_extraction(const std::vector<my::BitField>& landmarks_set, const std::vector<my::BitField>& fadd, const my::BitField& eliminated_actions, const my::BitField& fixed_actions, my::BitField& dominated_actions) const {
     
     lprint_info("Extracting dominated actions.");
@@ -186,7 +185,7 @@ void HPLUS_instance::dominated_actions_extraction(const std::vector<my::BitField
         for (auto dominated_act : remaining_actions) if (!fixed_actions[dominant_act] && dominant_act != dominated_act) {
 
             if (actions[dominant_act].get_cost() > actions[dominated_act].get_cost()) break;
-            if (!fadd[dominant_act].contains(fadd[dominated_act]) || !f_lm_a[dominated_act].contains(actions[dominant_act].get_pre())) continue;
+            if (!fadd[dominant_act].contains(fadd[dominated_act]) || !f_lm_a[dominated_act].contains(actions[dominant_act].get_pre())) continue;    //TODO: Maybe hashing function on this to speed up?
 
             dominated_actions.set(dominated_act);
 
@@ -239,7 +238,6 @@ void HPLUS_instance::immediate_action_application(const my::BitField& act_landma
 
 }
 
-// TODO: This is O(m^2)... maybe find a better algorithm
 void HPLUS_instance::inverse_actions_extraction(const my::BitField& eliminated_actions, const my::BitField& fixed_actions, std::map<unsigned int, std::vector<unsigned int>>& inverse_actions) const {
 
     lprint_info("Extracting inverse actions.");
@@ -250,7 +248,7 @@ void HPLUS_instance::inverse_actions_extraction(const my::BitField& eliminated_a
         const auto& pre = this -> actions_[remaining_actions[i]].get_pre();
         const auto& eff = this -> actions_[remaining_actions[i]].get_eff();
         for (unsigned int j = i+1; j < remaining_actions.size(); j++) {
-            if (pre.contains(this -> actions_[remaining_actions[j]].get_eff()) && this -> actions_[remaining_actions[j]].get_pre().contains(eff)) {
+            if (pre.contains(this -> actions_[remaining_actions[j]].get_eff()) && this -> actions_[remaining_actions[j]].get_pre().contains(eff)) { //TODO: Maybe hashing function on this to speed up?
                 if (!fixed_actions[remaining_actions[i]]) {
                     inverse_actions.try_emplace(remaining_actions[i], std::vector<unsigned int>());
                     inverse_actions[remaining_actions[i]].push_back(remaining_actions[j]);
