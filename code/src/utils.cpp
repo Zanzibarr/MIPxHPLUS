@@ -3,59 +3,6 @@
 namespace my {
 
     // ##################################################################### //
-    // ####################### SUBSET SEARCH BIN TREE ###################### //
-    // ##################################################################### //
-
-    SSBT::SSBT() { root = new treenode(); }
-
-    void SSBT::add(unsigned int value, const BitField& set) {
-        treenode* leaf = this -> root;
-        for (unsigned int i = 0; i < set.size(); i++) {
-            if (set[i]) {
-                if (leaf -> r == nullptr) leaf -> r = new treenode();
-                leaf = leaf -> r;
-            } else {
-                if (leaf -> l == nullptr) leaf -> l = new treenode();
-                leaf = leaf -> l;
-            }
-        }
-        (leaf -> v).push_back(value);
-    }
-
-    std::vector<unsigned int> SSBT::find_subsets(const BitField& set) {
-        std::deque<treenode*> open_nodes;
-        open_nodes.push_back(this -> root);
-        for (unsigned int i = 0; i < set.size() && !open_nodes.empty(); i++) {
-            unsigned int tmp = open_nodes.size();
-            for (unsigned int _ = 0; _ < tmp; _++) {
-                treenode* node = open_nodes.front();
-                open_nodes.pop_front();
-                if (set[i]) {
-                    if (node -> l != nullptr) open_nodes.push_back(node -> l);
-                    if (node -> r != nullptr) open_nodes.push_back(node -> r);
-                } else {
-                    if (node -> l != nullptr) open_nodes.push_back(node -> l);
-                }
-            }
-        }
-        std::vector<unsigned int> result;
-        for (auto node : open_nodes) result.insert(result.end(), node -> v.begin(), node -> v.end());
-        return result;
-    }
-
-    SSBT::~SSBT() {
-        std::deque<treenode*> remaining_nodes;
-        remaining_nodes.push_back(this -> root);
-        while (!remaining_nodes.empty()) {
-            treenode* node = remaining_nodes.front();
-            remaining_nodes.pop_front();
-            if (node -> l != nullptr) remaining_nodes.push_back(node -> l);
-            if (node -> r != nullptr) remaining_nodes.push_back(node -> r);
-            delete node;
-        }
-    }
-
-    // ##################################################################### //
     // ############################## BITFIELD ############################# //
     // ##################################################################### //
 
@@ -250,6 +197,59 @@ namespace my {
     BitField::Iterator BitField::begin() const { return Iterator(this, 0); }
 
     BitField::Iterator BitField::end() const { return Iterator(this, size_); }
+
+    // ##################################################################### //
+    // ####################### SUBSET SEARCH BIN TREE ###################### //
+    // ##################################################################### //
+
+    SSBT::SSBT() { root = new treenode(); }
+
+    void SSBT::add(unsigned int value, const BitField& set) {
+        treenode* leaf = this -> root;
+        for (unsigned int i = 0; i < set.size(); i++) {
+            if (set[i]) {
+                if (leaf -> r == nullptr) leaf -> r = new treenode();
+                leaf = leaf -> r;
+            } else {
+                if (leaf -> l == nullptr) leaf -> l = new treenode();
+                leaf = leaf -> l;
+            }
+        }
+        (leaf -> v).push_back(value);
+    }
+
+    std::vector<unsigned int> SSBT::find_subsets(const BitField& set) {
+        std::deque<treenode*> open_nodes;
+        open_nodes.push_back(this -> root);
+        for (unsigned int i = 0; i < set.size() && !open_nodes.empty(); i++) {
+            unsigned int tmp = open_nodes.size();
+            for (unsigned int _ = 0; _ < tmp; _++) {
+                treenode* node = open_nodes.front();
+                open_nodes.pop_front();
+                if (set[i]) {
+                    if (node -> l != nullptr) open_nodes.push_back(node -> l);
+                    if (node -> r != nullptr) open_nodes.push_back(node -> r);
+                } else {
+                    if (node -> l != nullptr) open_nodes.push_back(node -> l);
+                }
+            }
+        }
+        std::vector<unsigned int> result;
+        for (auto node : open_nodes) result.insert(result.end(), node -> v.begin(), node -> v.end());
+        return result;
+    }
+
+    SSBT::~SSBT() {
+        std::deque<treenode*> remaining_nodes;
+        remaining_nodes.push_back(this -> root);
+        while (!remaining_nodes.empty()) {
+            treenode* node = remaining_nodes.front();
+            remaining_nodes.pop_front();
+            if (node -> l != nullptr) remaining_nodes.push_back(node -> l);
+            if (node -> r != nullptr) remaining_nodes.push_back(node -> r);
+            delete node;
+        }
+    }
 
     // ##################################################################### //
     // ############################### LOGGER ############################## //

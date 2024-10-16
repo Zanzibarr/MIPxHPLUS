@@ -169,13 +169,13 @@ void HPLUS_instance::dominated_actions_extraction(const std::vector<my::BitField
     }
 
     // find efficently all actions that satisfy point 1) of Proposition 4 of in Imai's Paper
-    my::SSBT fadd_subset_finder = my::SSBT();
-    for (auto act_i : !eliminated_actions) fadd_subset_finder.add(act_i, fadd[act_i]);
+    my::SSBT subset_finder = my::SSBT();
+    for (auto act_i : !eliminated_actions) subset_finder.add(act_i, fadd[act_i]);
 
-    for (auto dominant_act : !eliminated_actions) {
-        for (auto dominated_act : fadd_subset_finder.find_subsets(fadd[dominant_act])) if (!fixed_actions[dominated_act] && dominant_act != dominated_act) {
-
-            if (actions[dominant_act].get_cost() > actions[dominated_act].get_cost() || !f_lm_a[dominated_act].contains(actions[dominant_act].get_pre())) continue;
+    for (auto dominant_act : !eliminated_actions) if (!dominated_actions[dominant_act]) {
+        for (auto dominated_act : subset_finder.find_subsets(fadd[dominant_act])) {
+            
+            if (fixed_actions[dominated_act] || dominant_act == dominated_act || actions[dominant_act].get_cost() > actions[dominated_act].get_cost() || !f_lm_a[dominated_act].contains(actions[dominant_act].get_pre())) continue;
 
             dominated_actions.set(dominated_act);
 
