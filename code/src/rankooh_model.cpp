@@ -85,8 +85,6 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
 
         std::set<unsigned int> new_nodes;
 
-        //TODO: Check p != q needed?
-
         for (unsigned int p = 0; p < nvarstrips; p++) if (graph[p].find(idx) != graph[p].end()) {
 
             for (auto q : graph[idx]) if (p != q) {
@@ -140,8 +138,6 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
 
     }
 
-    HPLUS_env.logger.print_info("N of triangles: %d.", triangles_list.size());
-
     // ~~~~~~~~~~~~ Enhanced model ~~~~~~~~~~~ //
     // (section 4 of Imai's paper)
 
@@ -192,18 +188,6 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
     my::assert(!CPXnewcols(env, lp, nact, objs, lbs, ubs, types, nullptr), "CPXnewcols (actions) failed.");
 
     rsz_cpx_arrays(nvarstrips);
-    
-    // ------- variables ------ //
-    unsigned int var_start = curr_col;
-    for (unsigned int i = 0; i < nvarstrips; i++) {
-        objs[i] = 0;
-        lbs[i] = fixed_variables[i] ? 1 : 0;
-        ubs[i] = eliminated_variables[i] ? 0 : 1;
-        types[i] = 'B';
-    }
-    curr_col += nvarstrips;
-
-    my::assert(!CPXnewcols(env, lp, nvarstrips, objs, lbs, ubs, types, nullptr), "CPXnewcols (variables) failed.");
 
     // --- first archievers --- //
     unsigned int fa_start = curr_col;
@@ -220,6 +204,18 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
         curr_col += nvarstrips;
         my::assert(!CPXnewcols(env, lp, nvarstrips, objs, lbs, ubs, types, nullptr), "CPXnewcols (first archievers) failed.");
     }
+
+    // ------- variables ------ //
+    unsigned int var_start = curr_col;
+    for (unsigned int i = 0; i < nvarstrips; i++) {
+        objs[i] = 0;
+        lbs[i] = fixed_variables[i] ? 1 : 0;
+        ubs[i] = eliminated_variables[i] ? 0 : 1;
+        types[i] = 'B';
+    }
+    curr_col += nvarstrips;
+
+    my::assert(!CPXnewcols(env, lp, nvarstrips, objs, lbs, ubs, types, nullptr), "CPXnewcols (variables) failed.");
 
     // vertex elimination graph edges
     unsigned int veg_edges_start = curr_col;
@@ -359,11 +355,25 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
 
 void HPLUS_store_rankooh_sol(const CPXENVptr& env, const CPXLPptr& lp, HPLUS_instance& inst) {
 
-    unsigned int nact = inst.get_nact();
-    double* plan = new double[nact];
-    my::assert(!CPXgetx(env, lp, plan, 0, nact-1), "CPXgetx failed.");
+    const unsigned int nact = inst.get_nact();
+    const unsigned int nvarstrips = inst.get_nvar_strips();
+    double* plan = new double[nact + nact * nvarstrips];
+    my::assert(!CPXgetx(env, lp, plan, 0, nact + nact * nvarstrips - 1), "CPXgetx failed.");
     
-    // TODO: Post processing check
+    // fixing the solution to read the plan (some actions are set to 1 even if they are not a first archiever of anything)
+    for (unsigned int act_i = 0, f_i = nact; act_i < nact; act_i++, f_i += nvarstrips) {
+        bool set_zero = true;
+        for (unsigned int var_i = 0; var_i < nvarstrips; var_i++) {
+            if (plan[f_i + var_i] > 0.5) {
+                #if HPLUS_INTCHECK
+                my::assert(plan[act_i] > 0.5, "Action is set to 0 even if it's a first archiever.");
+                #endif
+                set_zero = false;
+                break;
+            }
+        }
+        if (set_zero) plan[act_i] = 0;
+    }
 
     // convert to std collections for easier parsing
     std::vector<unsigned int> cpx_result;
@@ -374,13 +384,8 @@ void HPLUS_store_rankooh_sol(const CPXENVptr& env, const CPXLPptr& lp, HPLUS_ins
     std::vector<unsigned int> solution;
     my::BitField sorted(cpx_result.size());
     my::BitField current_state(inst.get_nvar_strips());
-
-    // int cost = 0;
-    // for (auto act_i : cpx_result) cost += actions[act_i].get_cost();
-    // HPLUS_env.logger.print_info("%d.", cost);
     
-    // while (sorted != my::BitField(cpx_result.size(), true)) {
-    while (!current_state.contains(inst.get_gstate())) {
+    while (sorted != my::BitField(cpx_result.size(), true)) {
         #if HPLUS_INTCHECK
         bool intcheck = false;
         #endif

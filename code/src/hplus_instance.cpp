@@ -156,36 +156,26 @@ void HPLUS_instance::dominated_actions_extraction(const std::vector<my::BitField
     lprint_info("Extracting dominated actions.");
 
     dominated_actions =  my::BitField(this -> n_act_);
-    auto sorted_actions = (!eliminated_actions).sparse();
-
     const auto actions = this -> actions_;
-    std::sort(sorted_actions.begin(), sorted_actions.end(),
-        [&actions](const unsigned int &x, const unsigned int &y) {
-            return actions[x].get_cost() < actions[y].get_cost();
-        }
-    );
-
-    auto tmp = std::vector<unsigned int>(sorted_actions);
-    std::reverse(tmp.begin(), tmp.end());
-
-    auto remaining_actions = std::list(tmp.begin(), tmp.end());
 
     std::vector<my::BitField> f_lm_a = std::vector<my::BitField>(this -> n_act_, my::BitField(this -> nvarstrips_));
 
     std::vector<std::vector<unsigned int>> var_flm(this -> nvarstrips_);
     for (unsigned int p = 0; p < this -> nvarstrips_; p++) for (unsigned int i = 0; i < this -> nvarstrips_; i++) if (landmarks_set[p][i] || landmarks_set[p][this -> nvarstrips_]) var_flm[p].push_back(i);
 
-    for (unsigned int act_i = 0; act_i < n_act_; act_i++) {
+    for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++) {
         const auto& pre = this -> actions_[act_i].get_pre_sparse();
         for (auto p : pre) for (auto i : var_flm[p]) f_lm_a[act_i].set(i);
     }
-    
-    for (auto dominant_act : sorted_actions) if (!dominated_actions[dominant_act]) {
 
-        for (auto dominated_act : remaining_actions) if (!fixed_actions[dominant_act] && dominant_act != dominated_act) {
+    // find efficently all actions that satisfy point 1) of Proposition 4 of in Imai's Paper
+    my::SSBT fadd_subset_finder = my::SSBT();
+    for (auto act_i : !eliminated_actions) fadd_subset_finder.add(act_i, fadd[act_i]);
 
-            if (actions[dominant_act].get_cost() > actions[dominated_act].get_cost()) break;
-            if (!fadd[dominant_act].contains(fadd[dominated_act]) || !f_lm_a[dominated_act].contains(actions[dominant_act].get_pre())) continue;    //TODO: Maybe hashing function on this to speed up?
+    for (auto dominant_act : !eliminated_actions) {
+        for (auto dominated_act : fadd_subset_finder.find_subsets(fadd[dominant_act])) if (!fixed_actions[dominated_act] && dominant_act != dominated_act) {
+
+            if (actions[dominant_act].get_cost() > actions[dominated_act].get_cost() || !f_lm_a[dominated_act].contains(actions[dominant_act].get_pre())) continue;
 
             dominated_actions.set(dominated_act);
 
@@ -242,20 +232,24 @@ void HPLUS_instance::inverse_actions_extraction(const my::BitField& eliminated_a
 
     lprint_info("Extracting inverse actions.");
 
-    auto remaining_actions = (!eliminated_actions).sparse();
+    my::SSBT subset_finder = my::SSBT();
 
-    for (unsigned int i = 0; i < remaining_actions.size(); i++) {
-        const auto& pre = this -> actions_[remaining_actions[i]].get_pre();
-        const auto& eff = this -> actions_[remaining_actions[i]].get_eff();
-        for (unsigned int j = i+1; j < remaining_actions.size(); j++) {
-            if (pre.contains(this -> actions_[remaining_actions[j]].get_eff()) && this -> actions_[remaining_actions[j]].get_pre().contains(eff)) { //TODO: Maybe hashing function on this to speed up?
-                if (!fixed_actions[remaining_actions[i]]) {
-                    inverse_actions.try_emplace(remaining_actions[i], std::vector<unsigned int>());
-                    inverse_actions[remaining_actions[i]].push_back(remaining_actions[j]);
+    // find efficiently allactions that satisfy point 2) of the Definition 1 in section 4.6 of Imai's paper
+    auto remaining_actions = (!eliminated_actions).sparse();
+    for (auto act_i : remaining_actions) subset_finder.add(act_i, this -> actions_[act_i].get_eff());
+
+    for (auto act_i : !eliminated_actions) {
+        const auto& pre = this -> actions_[act_i].get_pre();
+        const auto& eff = this -> actions_[act_i].get_eff();
+        for (auto act_j : subset_finder.find_subsets(pre)) {
+            if (this -> actions_[act_j].get_pre().contains(eff)) {
+                if (!fixed_actions[act_i]) {
+                    inverse_actions.try_emplace(act_i, std::vector<unsigned int>());
+                    inverse_actions[act_i].push_back(act_j);
                 }
-                if (!fixed_actions[remaining_actions[j]]) {
-                    inverse_actions.try_emplace(remaining_actions[j], std::vector<unsigned int>());
-                    inverse_actions[remaining_actions[j]].push_back(remaining_actions[i]);
+                if (!fixed_actions[act_j]) {
+                    inverse_actions.try_emplace(act_j, std::vector<unsigned int>());
+                    inverse_actions[act_j].push_back(act_i);
                 }
             }
         }

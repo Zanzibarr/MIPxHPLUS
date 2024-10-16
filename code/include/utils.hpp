@@ -20,7 +20,6 @@
 #include <tuple>
 #include <algorithm>
 #include <numeric>
-#include <queue>
 
 // ##################################################################### //
 // ######################### PATHS AND FOLDERS ######################### //
@@ -135,6 +134,35 @@ namespace my {
         private:
             std::vector<char> field_;
             unsigned int size_;
+
+    };
+
+    // ##################################################################### //
+    // ####################### SUBSET SEARCH BIN TREE ###################### //
+    // ##################################################################### //
+
+    /**
+     * Binary Tree used to find all subsets of a given binary set, out of a given list of binary sets
+     */
+    class SSBT {
+
+        private:
+            struct treenode {
+                std::vector<unsigned int> v;
+                treenode* l;
+                treenode* r;
+                treenode() {
+                    this -> l = nullptr;
+                    this -> r = nullptr;
+                }
+            };
+            treenode* root;
+
+        public:
+            SSBT();
+            void add(unsigned int value, const my::BitField& set);  // add to the list of set to look into
+            std::vector<unsigned int> find_subsets(const my::BitField& set);    // find among all the set added to the tree, all those that are subsets of the specified one
+            ~SSBT();
 
     };
 
