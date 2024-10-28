@@ -154,6 +154,8 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
 
     // ~~~~~~~~ Adding CPLEX variables ~~~~~~~ //
 
+    lprint_info("Adding variables to CPLEX.");
+
     unsigned int curr_col = 0;
 
     double* objs = new double[nact];
@@ -230,13 +232,14 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
     }
     curr_col += nvarstrips * nvarstrips;
 
-
     delete[] types; types = nullptr;
     delete[] ubs; ubs = nullptr;
     delete[] lbs; lbs = nullptr;
     delete[] objs; objs = nullptr;
 
     // // ~~~~~~~ Adding CPLEX constraints ~~~~~~ //
+
+    lprint_info("Adding constraints to CPLEX.");
 
     // accessing cplex variables
     auto get_act_idx = [act_start](int idx) { return act_start + idx; };
@@ -257,7 +260,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
 
     // lprint_info("C2");
 
-    for (unsigned int p = 0; p < nvarstrips; p++) {
+    for (auto p : !eliminated_variables) {
 
         nnz = 0;
         ind[nnz] = get_var_idx(p);
@@ -275,7 +278,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
     // lprint_info("C3");
 
     for (unsigned int p = 0; p < nvarstrips; p++) {
-        for (unsigned int q = 0; q < nvarstrips; q++) {
+        for (auto q : !eliminated_variables) {
             nnz = 0;
             ind[nnz] = get_var_idx(q);
             val[nnz++] = -1;
@@ -297,7 +300,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
     
     // lprint_info("C5");
 
-    for (unsigned int act_i = 0; act_i < nact; act_i++) {
+    for (auto act_i : !eliminated_actions) {
         const auto& eff = actions[act_i].get_eff_sparse();
         for (auto p : eff) {
             ind_c5_c6_c7[0] = get_act_idx(act_i);
@@ -310,7 +313,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
     
     // lprint_info("C6");
 
-    for (unsigned int act_i = 0; act_i < nact; act_i++) {
+    for (auto act_i : !eliminated_actions) {
         const auto& pre = actions[act_i].get_pre_sparse();
         const auto& eff = actions[act_i].get_eff_sparse();
         for (auto i : pre) {

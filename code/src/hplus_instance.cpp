@@ -6,7 +6,9 @@
 
 void HPLUS_instance::landmarks_extraction(std::vector<my::BitField>& landmarks_set, my::BitField& fact_landmarks, my::BitField& act_landmarks) const {
 
-    lprint_info("Extracting landmarks.");
+    #if HPLUS_VERBOSE >= 20
+    lprint_info("(debug) Extracting landmarks.");
+    #endif
 
     landmarks_set = std::vector<my::BitField>(this -> nvarstrips_, my::BitField(this -> nvarstrips_ + 1));
     fact_landmarks = my::BitField(this -> nvarstrips_);
@@ -97,7 +99,9 @@ void HPLUS_instance::landmarks_extraction(std::vector<my::BitField>& landmarks_s
 
 void HPLUS_instance::first_adders_extraction(const std::vector<my::BitField>& landmarks_set, std::vector<my::BitField>& fadd) const {
 
-    lprint_info("Extracting first adders.");
+    #if HPLUS_VERBOSE >= 20
+    lprint_info("(debug) Extracting first adders.");
+    #endif
 
     fadd = std::vector<my::BitField>(this -> n_act_, my::BitField(this -> nvarstrips_));
 
@@ -118,7 +122,9 @@ void HPLUS_instance::first_adders_extraction(const std::vector<my::BitField>& la
 
 void HPLUS_instance::relevance_analysis(const my::BitField& fact_landmarks, const std::vector<my::BitField>& fadd, my::BitField& relevant_variables, my::BitField& relevant_actions) const {
 
-    lprint_info("Relevance analysis.");
+    #if HPLUS_VERBOSE >= 20
+    lprint_info("(debug) Relevance analysis.");
+    #endif
 
     relevant_variables = my::BitField(this -> nvarstrips_);
     relevant_actions = my::BitField(this -> n_act_);
@@ -153,7 +159,9 @@ void HPLUS_instance::relevance_analysis(const my::BitField& fact_landmarks, cons
 
 void HPLUS_instance::dominated_actions_extraction(const std::vector<my::BitField>& landmarks_set, const std::vector<my::BitField>& fadd, const my::BitField& eliminated_actions, const my::BitField& fixed_actions, my::BitField& dominated_actions) const {
     
-    lprint_info("Extracting dominated actions.");
+    #if HPLUS_VERBOSE >= 20
+    lprint_info("(debug) Extracting dominated actions.");
+    #endif
 
     dominated_actions =  my::BitField(this -> n_act_);
     const auto actions = this -> actions_;
@@ -187,7 +195,9 @@ void HPLUS_instance::dominated_actions_extraction(const std::vector<my::BitField
 
 void HPLUS_instance::immediate_action_application(const my::BitField& act_landmarks, const my::BitField& eliminated_variables, my::BitField& fixed_variables, const my::BitField& eliminated_actions, my::BitField& fixed_actions, std::vector<my::BitField>& eliminated_first_archievers, std::vector<my::BitField>& fixed_first_archievers, std::vector<int>* fixed_var_timestamps, std::vector<int>* fixed_act_timestamps) const {
 
-    lprint_info("Immediate action application.");
+    #if HPLUS_VERBOSE >= 20
+    lprint_info("(debug) Immediate action application.");
+    #endif
 
     my::BitField current_state(this -> nvarstrips_);
     auto actions_left = !eliminated_actions;
@@ -230,7 +240,9 @@ void HPLUS_instance::immediate_action_application(const my::BitField& act_landma
 
 void HPLUS_instance::inverse_actions_extraction(const my::BitField& eliminated_actions, const my::BitField& fixed_actions, std::map<unsigned int, std::vector<unsigned int>>& inverse_actions) const {
 
-    lprint_info("Extracting inverse actions.");
+    #if HPLUS_VERBOSE >= 20
+    lprint_info("(debug) Extracting inverse actions.");
+    #endif
 
     my::SSBT subset_finder = my::SSBT();
 
@@ -291,18 +303,33 @@ void HPLUS_instance::extract_imai_enhancements(my::BitField& eliminated_variable
 
     if (inverse_actions != nullptr) this -> inverse_actions_extraction(eliminated_actions, fixed_actions, *inverse_actions);
 
-    #if HPLUS_VERBOSE >= 10
+    // ~~~~~~~~~~~ MY OPTIMIZATION ~~~~~~~~~~~ //
+
+    // removing first archievers for eliminated variables
+    for (auto p : eliminated_variables) {
+        for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++) {
+            eliminated_first_archievers[act_i].set(p);
+        }
+    }
+    // removing first archievers for eliminated actions
+    for (auto a : eliminated_actions){
+        for (unsigned int p = 0; p < this -> nvarstrips_; p++) {
+            eliminated_first_archievers[a].set(p);
+        }
+    }
+
+    #if HPLUS_VERBOSE >= 20
     int count = 0;
     for (auto p : eliminated_variables) count++;
     for (auto p : fixed_variables) count++;
-    HPLUS_env.logger.print_info("(debug) Eliminated %d/%d variables.", count, this -> nvarstrips_);
+    HPLUS_env.logger.print_info("(debug) Optimize n. of variables:          %10d --> %10d.", this -> nvarstrips_, this -> nvarstrips_ - count);
     count = 0;
     for (auto p : eliminated_actions) count++;
     for (auto p : fixed_actions) count++;
-    HPLUS_env.logger.print_info("(debug) Eliminated %d/%d actions.", count, this -> n_act_);
+    HPLUS_env.logger.print_info("(debug) Optimize n. of actions:            %10d --> %10d.", this -> n_act_, this -> n_act_ - count);
     count = 0;
     for (unsigned int a = 0; a < this -> n_act_; a++) for (auto i : eliminated_first_archievers[a] | fixed_first_archievers[a] | !this -> actions_[a].get_eff()) count++;
-    HPLUS_env.logger.print_info("(debug) Eliminated %d/%d first archievers.", count, this -> nvarstrips_ * this -> n_act_);
+    HPLUS_env.logger.print_info("(debug) Optimize n. of first archievers:   %10d --> %10d.", this -> nvarstrips_ * this -> n_act_, this -> nvarstrips_ * this -> n_act_ - count);
     // count = 0;
     // for (unsigned int i = 0; i < this -> n_act_; i++) if (inverse_actions->find(i) != inverse_actions->end()) count += (*inverse_actions).size(); //for (auto j : (*inverse_actions)[i]) count++;
     // HPLUS_env.logger.print_info("(debug) Found %d pairs of inverse actions.", count/2);
