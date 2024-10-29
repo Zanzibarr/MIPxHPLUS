@@ -11,7 +11,9 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     const auto& actions = inst.get_actions();
     const auto& variables = inst.get_variables();
 
-    // ~~~~~~~~~~~~ Enhanced model ~~~~~~~~~~~ //
+    // ====================================================== //
+    // =================== ENHANCED MODEL =================== //
+    // ====================================================== //
     // (section 4 of Imai's paper)
 
     my::BitField eliminated_variables(nvarstrips);
@@ -28,7 +30,9 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
 
     fixed_variables |= inst.get_gstate();
 
-    // ~~~~~~~~ Adding CPLEX variables ~~~~~~~ //
+    // ====================================================== //
+    // =================== CPLEX VARIABLES ================== //
+    // ====================================================== //
     // (section 3 of Imai's paper)
 
     lprint_info("Adding variables to CPLEX.");
@@ -73,7 +77,7 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     for (unsigned int act_i = 0; act_i < nact; act_i++) {
         objs[act_i] = 0;
         lbs[act_i] = fixed_act_timestamps[act_i] >= 0 ? fixed_act_timestamps[act_i] : 0;
-        ubs[act_i] = fixed_act_timestamps[act_i] >= 0 ? fixed_act_timestamps[act_i] : nact-1;
+        ubs[act_i] = fixed_act_timestamps[act_i] >= 0 ? fixed_act_timestamps[act_i] : nact-1;       //[ ]: Tighter bound
         types[act_i] = 'I';
     }
     curr_col += nact;
@@ -101,7 +105,7 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     for (unsigned int i = 0; i < nvarstrips; i++) {
         objs[i] = 0;
         lbs[i] = fixed_var_timestamps[i] >= 0 ? fixed_var_timestamps[i] : 0;
-        ubs[i] = fixed_var_timestamps[i] >= 0 ? fixed_var_timestamps[i] : nact;
+        ubs[i] = fixed_var_timestamps[i] >= 0 ? fixed_var_timestamps[i] : nact;                     //[ ]: Tighter bound
         types[i] = 'I';
     }
     curr_col += nvarstrips;
@@ -131,7 +135,9 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
     delete[] lbs; lbs = nullptr;
     delete[] objs; objs = nullptr;
 
-    // ~~~~~~~ Adding CPLEX constraints ~~~~~~ //
+    // ====================================================== //
+    // ================== CPLEX CONSTRAINTS ================= //
+    // ====================================================== //
     // (section 3 of Imai's paper)
 
     // accessing cplex variables
@@ -209,7 +215,7 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
             ind_c5[1] = get_tvar_idx(j);
             val_c5[1] = -1;
             ind_c5[2] = get_fa_idx(i, j);
-            val_c5[2] = nact + 1;
+            val_c5[2] = nact + 1;                                                                   //[ ]: Tighter bound
             my::assert(!CPXaddrows(env, lp, 0, 1, nnz_c5, &rhs_c5, &sensel, &begin, ind_c5, val_c5, nullptr, nullptr), "CPXaddrows (c5) failed.");
             if (!eliminated_variables[j]) {
                 // constraint 3: I(v_j) + sum(z_avj) = y_vj

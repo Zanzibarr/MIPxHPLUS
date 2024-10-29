@@ -74,6 +74,16 @@ void HPLUS_run(HPLUS_instance& inst) {
 
     if (HPLUS_env.alg != HPLUS_CLI_IMAI && HPLUS_env.alg != HPLUS_CLI_RANKOOH) HPLUS_env.logger.raise_error("The algorithm specified (%s) is not on the list of possible algorithms... Please read the README.md for instructions.", HPLUS_env.alg.c_str());
 
+    // ====================================================== //
+    // ===================== WARM START ===================== //
+    // ====================================================== //
+
+    //[ ]: Heuristic for warm start
+
+    // ====================================================== //
+    // ===================== BUILD MODEL ==================== //
+    // ====================================================== //
+
     if (HPLUS_env.alg == HPLUS_CLI_IMAI) lprint_info("Running imai algorithm.");
     else if (HPLUS_env.alg == HPLUS_CLI_RANKOOH) lprint_info("Running rankooh algorithm.");
 
@@ -93,6 +103,10 @@ void HPLUS_run(HPLUS_instance& inst) {
     // time limit
     my::assert(!CPXsetdblparam(env, CPXPARAM_TimeLimit, (double)HPLUS_env.time_limit - HPLUS_env.get_time()), "CPXsetdblparam (CPXPARAM_TimeLimit) failed.");
 
+    // ====================================================== //
+    // ====================== RUN MODEL ===================== //
+    // ====================================================== //
+
     start_time = HPLUS_env.get_time();
 
     my::assert(!CPXmipopt(env, lp), "CPXmipopt failed.");
@@ -106,6 +120,10 @@ void HPLUS_run(HPLUS_instance& inst) {
     }
 
     HPLUS_cpx_close(env, lp);
+
+    // ====================================================== //
+    // =================== HANDLE RESULTS =================== //
+    // ====================================================== //
 
     switch(HPLUS_env.status) {
         case my::status::INFEAS:

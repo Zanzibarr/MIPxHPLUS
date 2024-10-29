@@ -8,7 +8,10 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
     const auto& actions = inst.get_actions();
     const auto& variables = inst.get_variables();
 
-    // ~~~~~~~~~~ VERTEX ELIMINATION ~~~~~~~~~ //
+    // ====================================================== //
+    // ================= VERTEX ELIMINATION ================= //
+    // ====================================================== //
+
     lprint_info("Vertex elimination from Rankooh's paper.");
 
     struct Node {
@@ -138,7 +141,9 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
 
     }
 
-    // ~~~~~~~~~~~~ Enhanced model ~~~~~~~~~~~ //
+    // ====================================================== //
+    // =================== ENHANCED MODEL =================== //
+    // ====================================================== //
     // (section 4 of Imai's paper)
 
     my::BitField eliminated_variables(nvarstrips);
@@ -152,7 +157,9 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
 
     fixed_variables |= inst.get_gstate();
 
-    // ~~~~~~~~ Adding CPLEX variables ~~~~~~~ //
+    // ====================================================== //
+    // =================== CPLEX VARIABLES ================== //
+    // ====================================================== //
 
     lprint_info("Adding variables to CPLEX.");
 
@@ -237,7 +244,9 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance&
     delete[] lbs; lbs = nullptr;
     delete[] objs; objs = nullptr;
 
-    // // ~~~~~~~ Adding CPLEX constraints ~~~~~~ //
+    // ====================================================== //
+    // ================== CPLEX CONSTRAINTS ================= //
+    // ====================================================== //
 
     lprint_info("Adding constraints to CPLEX.");
 
