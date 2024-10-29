@@ -19,9 +19,6 @@ void HPLUS_cpx_init(CPXENVptr& env, CPXLPptr& lp) {
     // tolerance
     my::assert(!CPXsetdblparam(env, CPXPARAM_MIP_Tolerances_MIPGap, 0), "CPXsetdblparam (CPXPARAM_MIP_Tolerances_MIPGap) failed.");
 
-    // time limit
-    my::assert(!CPXsetdblparam(env, CPXPARAM_TimeLimit, (double)HPLUS_env.time_limit), "CPXsetdblparam (CPXPARAM_TimeLimit) failed.");
-
     // terminate condition
     my::assert(!CPXsetterminate(env, &HPLUS_env.cpx_terminate), "CPXsetterminate failed.");
 
@@ -89,8 +86,12 @@ void HPLUS_run(HPLUS_instance& inst) {
 
     if (HPLUS_env.alg == HPLUS_CLI_IMAI) HPLUS_cpx_build_imai(env, lp, inst);
     else if (HPLUS_env.alg == HPLUS_CLI_RANKOOH) HPLUS_cpx_build_rankooh(env, lp, inst);
+    HPLUS_env.build_finished = 1;
 
     HPLUS_stats.build_time = HPLUS_env.get_time() - start_time;
+
+    // time limit
+    my::assert(!CPXsetdblparam(env, CPXPARAM_TimeLimit, (double)HPLUS_env.time_limit - HPLUS_env.get_time()), "CPXsetdblparam (CPXPARAM_TimeLimit) failed.");
 
     start_time = HPLUS_env.get_time();
 

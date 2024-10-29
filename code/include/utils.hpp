@@ -273,6 +273,8 @@ extern struct HPLUS_Environment {
     bool found() const;
 
     int cpx_terminate;
+    int tl_terminate;
+    int build_finished;
 
     // Logging
 

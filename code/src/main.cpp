@@ -1,22 +1,15 @@
 #include <csignal>
+#include <thread>
 #include <sys/stat.h>
 #include "../include/algorithms.hpp"
-
-void signal_callback_handler(const int signum) {
-
-    HPLUS_env.logger.print("\n%s", LINE);
-    lprint(" >>  Caught ctrl+C signal, exiting...  <<");
-    lprint(LINE);
-
-    HPLUS_env.cpx_terminate = 1;                        // signals cplex to stop
-
-}
 
 void HPLUS_start() {
 
     HPLUS_env.start_timer();
     HPLUS_env.status = my::status::NOTFOUND;
     HPLUS_env.cpx_terminate = 0;
+    HPLUS_env.tl_terminate = 0;
+    HPLUS_env.build_finished = 0;
 
 }
 
@@ -123,14 +116,61 @@ void HPLUS_end() {
 
 }
 
+void signal_callback_handler(const int signum) {
+
+    if (HPLUS_env.tl_terminate) {
+
+        HPLUS_env.logger.print("\n%s", LINE);
+        lprint(" >> Reached time limit, terminating... <<");
+        lprint(LINE);
+        if (!HPLUS_env.build_finished) {
+            lprint("Time limit reached while building the model.");
+            HPLUS_end();
+            exit(1);
+        }
+
+    } else {
+
+        if (!HPLUS_env.build_finished) {
+            HPLUS_env.logger.print("\n%s", LINE);
+            lprint(" >>          Forcing exit...           <<");
+            lprint(LINE);
+            exit(1);
+        } else {
+            HPLUS_env.logger.print("\n%s", LINE);
+            lprint(" >>  Caught ctrl+C signal, exiting...  <<");
+            lprint(LINE);
+            HPLUS_env.cpx_terminate = 1;
+        }
+
+    }
+
+}
+
+void time_limit_termination(std::chrono::seconds duration) {
+
+    while (HPLUS_env.status == my::status::NOTFOUND) {
+        if (HPLUS_env.get_time() >= std::chrono::duration<double>(duration).count()) {
+            HPLUS_env.tl_terminate = 1;
+            raise(SIGINT);
+            return;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+}
+
 int main(const int argc, const char** argv) {
 
     signal(SIGINT, signal_callback_handler);
     HPLUS_start();
     HPLUS_parse_cli(argc, argv);
+    std::chrono::seconds time_limit(HPLUS_env.time_limit);
+    std::thread timer_thread(time_limit_termination, time_limit);
     HPLUS_instance inst = HPLUS_instance(HPLUS_env.infile);
     HPLUS_show_info(inst);
     HPLUS_run(inst);
+    timer_thread.join();
     HPLUS_end();
 
     return 0;
