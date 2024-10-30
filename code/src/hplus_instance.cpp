@@ -301,7 +301,8 @@ void HPLUS_instance::extract_imai_enhancements(my::BitField& eliminated_variable
 
     eliminated_actions |= dominated_actions;
 
-    if (inverse_actions != nullptr) this -> inverse_actions_extraction(eliminated_actions, fixed_actions, *inverse_actions);
+    //[ ]: This might not be worth doing (and might be wrong)
+    // if (inverse_actions != nullptr) this -> inverse_actions_extraction(eliminated_actions, fixed_actions, *inverse_actions);
 
     // ~~~~~~~~~~~ MY OPTIMIZATION ~~~~~~~~~~~ //
 
@@ -317,6 +318,8 @@ void HPLUS_instance::extract_imai_enhancements(my::BitField& eliminated_variable
             eliminated_first_archievers[a].set(p);
         }
     }
+
+    //[ ]: Completely delete eliminated variables and actions from the instance to save space and time
 
     #if HPLUS_VERBOSE >= 20
     int count = 0;
@@ -598,7 +601,6 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
     std::getline(*ifs, line);   // n_act
     my::assert(my::isint(line, 0), "Corrupted file.");
     this -> n_act_ = stoi(line);
-    // my::assert(this -> n_act_ <= 1000, "Testing small instances only.");                // [ ]: Remove this
     this -> actions_ = std::vector<HPLUS_action>(this -> n_act_);
     for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++) {
         // process each action

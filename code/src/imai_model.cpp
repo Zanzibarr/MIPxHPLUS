@@ -177,22 +177,22 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
         const auto& pre = actions[i].get_pre_sparse();
         const auto& eff = actions[i].get_eff_sparse();
         for (auto j : pre) {
-            if (!eliminated_variables[j]) {
+            // if (!eliminated_variables[j]) {
                 // constraint 1: x_a + sum_{inv(a, p)}(z_a'vj) <= y_vj, vj in pre(a)
                 ind_c1[0] = get_act_idx(i);
                 val_c1[0] = 1;
                 ind_c1[1] = get_var_idx(j);
                 val_c1[1] = -1;
                 int nnz0 = 2;
-                // (section 4.6 of Imai's paper)
-                if (inverse_actions.find(i) != inverse_actions.end()) {
-                    for (auto inv_act : inverse_actions[i]) if (actions[inv_act].get_eff()[j]) {
-                        ind_c1[nnz0] = get_fa_idx(inv_act, j);
-                        val_c1[nnz0++] = 1;
-                    }
-                }
+                // (section 4.6 of Imai's paper)        //[ ]: This might not be worth doing
+                // if (inverse_actions.find(i) != inverse_actions.end()) {
+                //     for (auto inv_act : inverse_actions[i]) if (actions[inv_act].get_eff()[j]) {
+                //         ind_c1[nnz0] = get_fa_idx(inv_act, j);
+                //         val_c1[nnz0++] = 1;
+                //     }
+                // }
                 my::assert(!CPXaddrows(env, lp, 0, 1, nnz0, &rhs_c1_2_4, &sensel, &begin, ind_c1, val_c1, nullptr, nullptr), "CPXaddrows (c1) failed.");
-            }
+            // }
             // constraint 4: t_vj <= t_a, vj in pre(a)
             ind_c2_4[0] = get_tvar_idx(j);
             val_c2_4[0] = 1;
@@ -201,14 +201,14 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
             my::assert(!CPXaddrows(env, lp, 0, 1, nnz_c2_4, &rhs_c1_2_4, &sensel, &begin, ind_c2_4, val_c2_4, nullptr, nullptr), "CPXaddrows (c4) failed.");
         }
         for (auto j : eff) {
-            if (!eliminated_actions[i]) {
+            // if (!eliminated_actions[i]) {
                 // constraint 2: z_avj <= x_a, vj in eff(a)
                 ind_c2_4[0] = get_fa_idx(i, j);
                 val_c2_4[0] = 1;
                 ind_c2_4[1] = get_act_idx(i);
                 val_c2_4[1] = -1;
                 my::assert(!CPXaddrows(env, lp, 0, 1, nnz_c2_4, &rhs_c1_2_4, &sensel, &begin, ind_c2_4, val_c2_4, nullptr, nullptr), "CPXaddrows (c2) failed.");
-            }
+            // }
             // constraint 5: t_a + 1 <= t_vj + (|A|+1)(1-z_avj), vj in eff(a)
             ind_c5[0] = get_tact_idx(i);
             val_c5[0] = 1;
@@ -217,12 +217,12 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& in
             ind_c5[2] = get_fa_idx(i, j);
             val_c5[2] = nact + 1;                                                                   //[ ]: Tighter bound
             my::assert(!CPXaddrows(env, lp, 0, 1, nnz_c5, &rhs_c5, &sensel, &begin, ind_c5, val_c5, nullptr, nullptr), "CPXaddrows (c5) failed.");
-            if (!eliminated_variables[j]) {
+            // if (!eliminated_variables[j]) {
                 // constraint 3: I(v_j) + sum(z_avj) = y_vj
                 ind_c3[j][nnz_c3[j]] = get_fa_idx(i, j);
                 val_c3[j][nnz_c3[j]] = -1;
                 nnz_c3[j]++;
-            }
+            // }
         }
     }
 
@@ -272,7 +272,7 @@ void HPLUS_store_imai_sol(const CPXENVptr& env, const CPXLPptr& lp, HPLUS_instan
     );
 
     // store solution
-    const auto& actions = inst.get_actions();
+    const auto& actions = inst.get_actions();               //FIXME: Preconditions not respected in some instances
     inst.update_best_solution(solution,
         std::accumulate(solution.begin(), solution.end(), 0,
             [&actions](const unsigned int acc, const unsigned int index) {
