@@ -34,6 +34,7 @@ void HPLUS_show_info(const HPLUS_instance& inst) {
     #endif
     HPLUS_env.logger.print("Metric: %s.", (inst.unitary_cost() ? "unitary costs" : "integer costs"));
     HPLUS_env.logger.print("# variables: %d.", inst.get_nvar());
+    HPLUS_env.logger.print("# variables (binary expansion): %d.", inst.get_nvar_strips());
     #if HPLUS_VERBOSE >= 100
     const unsigned int nvar = inst.get_nvar();
     const std::vector<HPLUS_variable>& variables = inst.get_variables();

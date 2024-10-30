@@ -318,21 +318,21 @@ void HPLUS_instance::problem_semplification(const my::BitField& eliminated_varia
     std::vector<unsigned int> el_act_offset(this -> n_act_, 0);
     int removed_actions = 0;
     for (unsigned int i = 0; i < this -> n_act_; i++) {
-        if (eliminated_actions[i]) removed_actions++;
-        el_act_offset[i] = removed_actions;
+        if (eliminated_actions[i]) removed_actions++;                                                               // count how many actions has been eliminated so far
+        el_act_offset[i] = removed_actions;                                                                         // store that number and associate it to the current variable
     }
     int new_act_size = this -> n_act_ - removed_actions;
     this -> n_act_ = new_act_size;                                                                                                  // updating the number of actions
     auto rm_el_act = [&eliminated_actions, &el_act_offset, &new_act_size](const my::BitField& bf) {
         my::BitField new_bf(new_act_size);
-        for (auto act_i : bf) if (!eliminated_actions[act_i]) new_bf.set(act_i - el_act_offset[act_i]);
+        for (auto act_i : bf) if (!eliminated_actions[act_i]) new_bf.set(act_i - el_act_offset[act_i]);             // move the true variables according to the offsets calculated before
         return new_bf;
     };
     this -> fixed_actions = rm_el_act(this -> fixed_actions);                                                                       // removing the eliminated actions from the fixed actions set
 
     // removing eliminated actions from lists
     std::vector<unsigned int> rmact = eliminated_actions.sparse();
-    std::sort(rmact.rbegin(), rmact.rend());
+    std::sort(rmact.rbegin(), rmact.rend());                                                                        // reverse the list to remove elements from the last to the first
     for (auto idx : rmact) {
         this -> actions_.erase(this -> actions_.begin() + idx);                                                                     // removing the eliminated actions from the list of actions
         this -> fixed_first_archievers.erase(this -> fixed_first_archievers.begin() + idx);                                         // removing the eliminated actions from the fixed first archievers set
@@ -366,7 +366,6 @@ void HPLUS_instance::problem_semplification(const my::BitField& eliminated_varia
     // removing eliminated variables from lists
     std::vector<unsigned int> rmvar = eliminated_variables.sparse();
     std::sort(rmvar.rbegin(), rmvar.rend());
-
     if (fixed_var_timestamps != nullptr) for (auto idx : rmvar) fixed_var_timestamps -> erase(fixed_var_timestamps -> begin() + idx);   // removing the eliminated variables from the fixed timestamps list
 
 }

@@ -279,10 +279,18 @@ class HPLUS_instance {
         /**
          * Model enhancement form Imai's paper
          * (Section 4 of Imai's paper)
-         * CAREFUL: This method removes the useless actions and variables updating all corresponding lists or sets in the instance: please update your values after using this method.
+         *
+         * @param eliminated_variables set of eliminated variables to be removed
+         * @param eliminated_actions set of eliminated actions to be removed
          */
         void extract_imai_enhancements(my::BitField& eliminated_variables, my::BitField& eliminated_actions);
 
+        /**
+         * CAREFUL: This method removes the useless actions and variables updating all corresponding lists or sets in the instance: please update your values after using this method.
+         *
+         * @param eliminated_variables set of eliminated variables to be removed
+         * @param eliminated_actions set of eliminated actions to be removed
+         */
         void problem_semplification(const my::BitField& eliminated_variables, const my::BitField& eliminated_actions);
 
         // OPTIMIZATIONS
