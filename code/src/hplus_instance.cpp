@@ -218,11 +218,11 @@ void HPLUS_instance::immediate_action_application(const my::BitField& act_landma
 
                 actions_left.unset(act_i);
                 fixed_actions.set(act_i);
-                if (fixed_act_timestamps != nullptr) (*fixed_act_timestamps)[act_i] = counter;
+                if (this -> fixed_act_timestamps != nullptr) (*this -> fixed_act_timestamps)[act_i] = counter;
                 fixed_variables |= pre;
                 for (auto p : eff_sparse) if (!current_state[p] && !eliminated_variables[p]) {
                     fixed_variables.set(p);
-                    if (fixed_act_timestamps != nullptr) (*fixed_var_timestamps)[p] = counter+1;
+                    if (this -> fixed_act_timestamps != nullptr) (*fixed_var_timestamps)[p] = counter+1;
                     fixed_first_archievers[act_i].set(p);
                     for (auto act_j : actions_left) eliminated_first_archievers[act_j].set(p);
                 }
@@ -269,7 +269,7 @@ void HPLUS_instance::inverse_actions_extraction(const my::BitField& eliminated_a
 
 }
 
-void HPLUS_instance::extract_imai_enhancements(my::BitField& eliminated_variables, my::BitField& fixed_variables, my::BitField& eliminated_actions, my::BitField& fixed_actions, std::map<unsigned int, std::vector<unsigned int>>* inverse_actions, std::vector<my::BitField>& eliminated_first_archievers, std::vector<my::BitField>& fixed_first_archievers, std::vector<int>* fixed_var_timestamps, std::vector<int>* fixed_act_timestamp) const {
+void HPLUS_instance::extract_imai_enhancements(my::BitField& eliminated_variables, my::BitField& eliminated_actions) {
 
     lprint_info("Model enhancement from Imai's paper.");
 
@@ -283,91 +283,93 @@ void HPLUS_instance::extract_imai_enhancements(my::BitField& eliminated_variable
 
     this -> landmarks_extraction(landmarks_set, fact_landmarks, act_landmarks);
 
-    fixed_variables |= fact_landmarks;
-    fixed_actions |= act_landmarks;
+    this -> fixed_variables |= fact_landmarks;
+    this -> fixed_actions |= act_landmarks;
 
     this -> first_adders_extraction(landmarks_set, fadd);
 
-    for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++) eliminated_first_archievers[act_i] |= (this -> actions_[act_i].get_eff() & !fadd[act_i]);
+    for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++) this -> eliminated_first_archievers[act_i] |= (this -> actions_[act_i].get_eff() & !fadd[act_i]);
 
     this -> relevance_analysis(fact_landmarks, fadd, relevant_variables, relevant_actions);
 
-    eliminated_variables |= (!relevant_variables - fact_landmarks);
-    eliminated_actions |= !relevant_actions;
+    eliminated_variables = my::BitField(!relevant_variables - fact_landmarks);
+    eliminated_actions = my::BitField(!relevant_actions);
 
-    this -> immediate_action_application(act_landmarks, eliminated_variables, fixed_variables, eliminated_actions, fixed_actions, eliminated_first_archievers, fixed_first_archievers, fixed_var_timestamps, fixed_act_timestamp);
+    this -> immediate_action_application(act_landmarks, eliminated_variables, this -> fixed_variables, eliminated_actions, this -> fixed_actions, this -> eliminated_first_archievers, fixed_first_archievers, fixed_var_timestamps, this -> fixed_act_timestamps);
 
-    this -> dominated_actions_extraction(landmarks_set, fadd, eliminated_actions, fixed_actions, dominated_actions);
+    this -> dominated_actions_extraction(landmarks_set, fadd, eliminated_actions, this -> fixed_actions, dominated_actions);
 
     eliminated_actions |= dominated_actions;
 
     //[ ]: This might not be worth doing (and might be wrong)
-    // if (inverse_actions != nullptr) this -> inverse_actions_extraction(eliminated_actions, fixed_actions, *inverse_actions);
-
-    // ~~~~~~~~~~~ MY OPTIMIZATION ~~~~~~~~~~~ //
-
-    // removing first archievers for eliminated variables
-    for (auto p : eliminated_variables) {
-        for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++) {
-            eliminated_first_archievers[act_i].set(p);
-        }
-    }
-    // removing first archievers for eliminated actions
-    for (auto a : eliminated_actions){
-        for (unsigned int p = 0; p < this -> nvarstrips_; p++) {
-            eliminated_first_archievers[a].set(p);
-        }
-    }
-
-    //[ ]: Completely delete eliminated variables and actions from the instance to save space and time
-
-    #if HPLUS_VERBOSE >= 20
-    int count = 0;
-    for (auto p : eliminated_variables) count++;
-    for (auto p : fixed_variables) count++;
-    HPLUS_env.logger.print_info("(debug) Optimize n. of variables:          %10d --> %10d.", this -> nvarstrips_, this -> nvarstrips_ - count);
-    count = 0;
-    for (auto p : eliminated_actions) count++;
-    for (auto p : fixed_actions) count++;
-    HPLUS_env.logger.print_info("(debug) Optimize n. of actions:            %10d --> %10d.", this -> n_act_, this -> n_act_ - count);
-    count = 0;
-    for (unsigned int a = 0; a < this -> n_act_; a++) for (auto i : eliminated_first_archievers[a] | fixed_first_archievers[a] | !this -> actions_[a].get_eff()) count++;
-    HPLUS_env.logger.print_info("(debug) Optimize n. of first archievers:   %10d --> %10d.", this -> nvarstrips_ * this -> n_act_, this -> nvarstrips_ * this -> n_act_ - count);
-    // count = 0;
-    // for (unsigned int i = 0; i < this -> n_act_; i++) if (inverse_actions->find(i) != inverse_actions->end()) count += (*inverse_actions).size(); //for (auto j : (*inverse_actions)[i]) count++;
-    // HPLUS_env.logger.print_info("(debug) Found %d pairs of inverse actions.", count/2);
-    #endif
-
-    #if HPLUS_INTCHECK
-    my::assert(!eliminated_variables.intersects(fixed_variables), "Eliminated variables set intersects the fixed variables set.");
-    my::assert(!eliminated_actions.intersects(fixed_actions), "Eliminated actions set intersects the fixed actions set.");
-    for (unsigned int i = 0; i < this -> n_act_; i++) my::assert(!eliminated_first_archievers[i].intersects(fixed_first_archievers[i]), "Eliminated first archievers set intersects the fixed first archievers set.");
-    #endif
+    // if (inverse_actions != nullptr) this -> inverse_actions_extraction(eliminated_actions, this -> fixed_actions, *inverse_actions);
 
 }
 
-// ##################################################################### //
-// ########################### HPLUS_VARIABLE ########################## //
-// ##################################################################### //
+void HPLUS_instance::problem_semplification(const my::BitField& eliminated_variables, const my::BitField& eliminated_actions) {
 
-HPLUS_variable::HPLUS_variable(const unsigned int range, const std::string& name, const std::vector<std::string>& val_names) {
+    // ====================================================== //
+    // ======= REMOVE ELIMINATED ACTIONS AND VARIABLES ====== //
+    // ====================================================== //
 
-    #if HPLUS_INTCHECK
-    my::assert(val_names.size() == range, "HPLUS_variable:HPLUS_variable failed.");
-    #endif
+    lprint_info("Problem semplification.");
 
-    this -> range_ = range;
-    this -> name_ = std::string(name);
-    this -> val_names_ = std::vector<std::string>(val_names);
+    // removing eliminated actions from bitfields
+    std::vector<unsigned int> el_act_offset(this -> n_act_, 0);
+    int removed_actions = 0;
+    for (unsigned int i = 0; i < this -> n_act_; i++) {
+        if (eliminated_actions[i]) removed_actions++;
+        el_act_offset[i] = removed_actions;
+    }
+    int new_act_size = this -> n_act_ - removed_actions;
+    this -> n_act_ = new_act_size;                                                                                                  // updating the number of actions
+    auto rm_el_act = [&eliminated_actions, &el_act_offset, &new_act_size](const my::BitField& bf) {
+        my::BitField new_bf(new_act_size);
+        for (auto act_i : bf) if (!eliminated_actions[act_i]) new_bf.set(act_i - el_act_offset[act_i]);
+        return new_bf;
+    };
+    this -> fixed_actions = rm_el_act(this -> fixed_actions);                                                                       // removing the eliminated actions from the fixed actions set
+
+    // removing eliminated actions from lists
+    std::vector<unsigned int> rmact = eliminated_actions.sparse();
+    std::sort(rmact.rbegin(), rmact.rend());
+    for (auto idx : rmact) {
+        this -> actions_.erase(this -> actions_.begin() + idx);                                                                     // removing the eliminated actions from the list of actions
+        this -> fixed_first_archievers.erase(this -> fixed_first_archievers.begin() + idx);                                         // removing the eliminated actions from the fixed first archievers set
+        this -> eliminated_first_archievers.erase(this -> eliminated_first_archievers.begin() + idx);                               // removing the eliminated actions from the eliminated first archievers set
+        if (this -> fixed_act_timestamps != nullptr) this -> fixed_act_timestamps -> erase(this -> fixed_act_timestamps -> begin() + idx);     // removing the eliminated actions from the fixed timestamps list
+    }
+
+    // removing eliminated variables from bitfields
+    std::vector<unsigned int> el_var_offset(this -> nvarstrips_, 0);
+    int removed_variables = 0;
+    for (unsigned int i = 0; i < this -> nvarstrips_; i++) {
+        if (eliminated_variables[i]) removed_variables++;
+        el_var_offset[i] = removed_variables;
+    }
+    int new_var_size = this -> nvarstrips_ - removed_variables;
+    this -> nvarstrips_ = new_var_size;                                                                                             // updating the number of variables (strips)
+    auto rm_el_var = [&eliminated_variables, &el_var_offset, &new_var_size](const my::BitField& bf) {
+        my::BitField new_bf(new_var_size);
+        for (auto p : bf) if(!eliminated_variables[p]) new_bf.set(p - el_var_offset[p]);
+        return new_bf;
+    };
+    for (auto& a : this -> actions_) {
+        a.update_pre(rm_el_var(a.get_pre()));                                                                                       // removing the eliminated variables from the actions preconditions
+        a.update_eff(rm_el_var(a.get_eff()));                                                                                       // removing the eliminated variables from the actions effects
+    }
+    this -> goal_state_ = rm_el_var(this -> goal_state_);                                                                           // removing the eliminated variables from the goal state
+    this -> fixed_variables = rm_el_var(this -> fixed_variables);                                                                   // removing the eliminated variables from the fixed variables set
+    for (auto& bf_a : this -> eliminated_first_archievers) bf_a = rm_el_var(bf_a);                                                  // removing the eliminated variables from the eliminated first archievers set
+    for (auto& bf_a : this -> fixed_first_archievers) bf_a = rm_el_var(bf_a);                                                       // removing the eliminated variables from the fixed first archievers set
+
+    // removing eliminated variables from lists
+    std::vector<unsigned int> rmvar = eliminated_variables.sparse();
+    std::sort(rmvar.rbegin(), rmvar.rend());
+
+    if (fixed_var_timestamps != nullptr) for (auto idx : rmvar) fixed_var_timestamps -> erase(fixed_var_timestamps -> begin() + idx);   // removing the eliminated variables from the fixed timestamps list
 
 }
-
-unsigned int HPLUS_variable::get_range() const { return this -> range_; }
-
-const std::string& HPLUS_variable::get_name() const { return this -> name_; }
-
-const std::vector<std::string>& HPLUS_variable::get_val_names() const { return this -> val_names_; }
-
 // ##################################################################### //
 // ############################ HPLUS_ACTION ########################### //
 // ##################################################################### //
@@ -382,6 +384,22 @@ HPLUS_action::HPLUS_action(my::BitField& pre_bf, my::BitField& eff_bf, const uns
     }
     this -> cost_ = cost;
     this -> name_ = name;
+
+}
+
+void HPLUS_action::update_pre(const my::BitField& bf) {
+
+    this -> pre_ = bf;
+    this -> sparse_pre_.clear();
+    for (unsigned int i = 0; i < this -> pre_.size(); i++) if (this -> pre_[i]) this -> sparse_pre_.push_back(i);
+
+}
+
+void HPLUS_action::update_eff(const my::BitField& bf) {
+
+    this -> eff_ = bf;
+    this -> sparse_eff_.clear();
+    for (unsigned int i = 0; i < this -> eff_.size(); i++) if (this -> eff_[i]) this -> sparse_eff_.push_back(i);
 
 }
 
@@ -417,6 +435,13 @@ HPLUS_instance::HPLUS_instance(const std::string& file_path) {
     this -> best_nact_ = 0;
     this -> best_cost_ = UINT_MAX;
 
+    this -> fixed_variables = my::BitField(this -> nvarstrips_);
+    this -> fixed_actions = my::BitField(this -> n_act_);
+    this -> eliminated_first_archievers = std::vector<my::BitField>(this -> n_act_, my::BitField(this -> nvarstrips_));
+    this -> fixed_first_archievers = std::vector<my::BitField>(this -> n_act_, my::BitField(this -> nvarstrips_));
+    this -> fixed_var_timestamps = nullptr;
+    this -> fixed_act_timestamps = nullptr;
+
     lprint_info("Created HPLUS_instance.");
 
 }
@@ -430,8 +455,6 @@ unsigned int HPLUS_instance::get_nvar() const { return this -> n_var_; }
 unsigned int HPLUS_instance::get_nact() const { return this -> n_act_; }
 
 unsigned int HPLUS_instance::get_nvar_strips() const { return this -> nvarstrips_; }
-
-const std::vector<HPLUS_variable>& HPLUS_instance::get_variables() const { return this -> variables_; }
 
 const std::vector<HPLUS_action>& HPLUS_instance::get_actions() const { return this -> actions_; }
 
@@ -512,7 +535,7 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
     std::getline(*ifs, line);   // n_var
     my::assert(my::isint(line, 0), "Corrupted file.");
     this -> n_var_ = std::stoi(line);
-    this -> variables_ = std::vector<HPLUS_variable>(this -> n_var_);
+    std::vector<unsigned int> var_ranges(this -> n_var_);
     this -> nvarstrips_ = 0;
     for (unsigned int var_i = 0; var_i < this -> n_var_; var_i++) {
         // process each variable
@@ -531,7 +554,7 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
             std::getline(*ifs, line);   // name for variable value
             val_names[j] = line;
         }
-        this -> variables_[var_i] = HPLUS_variable(range, name, val_names);
+        var_ranges[var_i] = range;
         std::getline(*ifs, line);   // end_variable
         my::assert(line == "end_variable", "Corrupted file.");
     }
@@ -553,12 +576,12 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
     // * initial state section
     std::getline(*ifs, line);   // begin_state
     my::assert(line == "begin_state", "Corrupted file.");
-    this -> initial_state_ = my::BitField(this -> nvarstrips_);
-    for (unsigned int var_i = 0, c = 0; var_i < this -> n_var_; c += this -> variables_[var_i].get_range(), var_i++) {
+    my::BitField istate = my::BitField(this -> nvarstrips_);
+    for (unsigned int var_i = 0, c = 0; var_i < this -> n_var_; c += var_ranges[var_i], var_i++) {
         std::getline(*ifs, line);   // initial value of var_i
-        my::assert(my::isint(line, 0, this -> variables_[var_i].get_range() - 1), "Corrupted file.");
+        my::assert(my::isint(line, 0, var_ranges[var_i] - 1), "Corrupted file.");
         unsigned int val = stoi(line);
-        this -> initial_state_.set(c + val);
+        istate.set(c + val);
     }
     std::getline(*ifs, line);   // end_state
     my::assert(line == "end_state", "Corrupted file.");
@@ -567,7 +590,7 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
     std::vector<unsigned int> post_istate_removal_offset(this -> nvarstrips_);
     int counter = 0;
     for (unsigned int i = 0; i < this -> nvarstrips_; i++) {
-        if (this -> initial_state_[i]) counter++;
+        if (istate[i]) counter++;
         post_istate_removal_offset[i] = counter;
     }
     this -> nvarstrips_ -= this -> n_var_;
@@ -587,11 +610,11 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
         my::assert(tokens.size() == 2, "Corrupted file.");
         my::assert(my::isint(tokens[0], 0, this -> n_var_ - 1), "Corrupted file."); // variable index
         unsigned int var = stoi(tokens[0]);
-        my::assert(my::isint(tokens[1], 0, this -> variables_[var].get_range() - 1), "Corrupted file."); // variable goal
+        my::assert(my::isint(tokens[1], 0, var_ranges[var] - 1), "Corrupted file."); // variable goal
         unsigned int value = stoi(tokens[1]);
         unsigned int var_strips = value;
-        for (unsigned int j = 0; j < var; var_strips += this -> variables_[j].get_range(), j++) {}
-        if (!this -> initial_state_[var_strips]) this -> goal_state_.set(var_strips - post_istate_removal_offset[var_strips]);
+        for (unsigned int j = 0; j < var; var_strips +=var_ranges[j], j++) {}
+        if (!istate[var_strips]) this -> goal_state_.set(var_strips - post_istate_removal_offset[var_strips]);
     }
     std::getline(*ifs, line);   // end_goal
     my::assert(line == "end_goal", "Corrupted file.");
@@ -620,11 +643,11 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
             my::assert(tokens.size() == 2, "Corrupted file.");
             my::assert(my::isint(tokens[0], 0, this -> n_var_ - 1), "Corrupted file."); // variable index
             unsigned int var = stoi(tokens[0]);
-            my::assert(my::isint(tokens[1], 0, this -> variables_[var].get_range() - 1), "Corrupted file."); // variable value
+            my::assert(my::isint(tokens[1], 0,var_ranges[var] - 1), "Corrupted file."); // variable value
             unsigned int value = stoi(tokens[1]);
             unsigned int var_strips = value;
-            for (unsigned int i = 0; i < var; var_strips += this -> variables_[i].get_range(), i++) {}
-            if (!this -> initial_state_[var_strips]) act_pre.set(var_strips - post_istate_removal_offset[var_strips]);
+            for (unsigned int i = 0; i < var; var_strips += var_ranges[i], i++) {}
+            if (!istate[var_strips]) act_pre.set(var_strips - post_istate_removal_offset[var_strips]);
         }
         std::getline(*ifs, line);   // number of effects
         my::assert(my::isint(line, 0), "Corrupted file.");
@@ -639,14 +662,14 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
             my::assert(my::isint(tokens[0], 0, 0), "This program won't handle effect conditions."); // number of effect conditions (ignored and check to be 0)
             my::assert(my::isint(tokens[1], 0, this -> n_var_ - 1), "Corrupted file.");   // variable affected by the action
             unsigned int var = stoi(tokens[1]);
-            my::assert(my::isint(tokens[2], -1, this -> variables_[var].get_range() - 1), "Corrupted file.");    // precondition of the variable
+            my::assert(my::isint(tokens[2], -1, var_ranges[var] - 1), "Corrupted file.");    // precondition of the variable
             int pre_val = stoi(tokens[2]);
-            my::assert(my::isint(tokens[3], 0, this -> variables_[var].get_range() - 1), "Corrupted file."); // effect of the variable
+            my::assert(my::isint(tokens[3], 0, var_ranges[var] - 1), "Corrupted file."); // effect of the variable
             unsigned int eff_val = stoi(tokens[3]);
             unsigned int c = 0;
-            for (unsigned int i = 0; i < var; c += this -> variables_[i].get_range(), i++){}
-            if (pre_val >= 0 && !this -> initial_state_[c + pre_val]) act_pre.set(c + pre_val - post_istate_removal_offset[c + pre_val]);
-            if (!this -> initial_state_[c + eff_val]) act_eff.set(c + eff_val - post_istate_removal_offset[c + eff_val]);
+            for (unsigned int i = 0; i < var; c += var_ranges[i], i++){}
+            if (pre_val >= 0 && !istate[c + pre_val]) act_pre.set(c + pre_val - post_istate_removal_offset[c + pre_val]);
+            if (!istate[c + eff_val]) act_eff.set(c + eff_val - post_istate_removal_offset[c + eff_val]);
         }
         std::getline(*ifs, line);   // action cost
         my::assert(my::isint(line), "Corrupted file.");

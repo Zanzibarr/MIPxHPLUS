@@ -559,6 +559,8 @@ void HPLUS_Statistics::print() const {
     lprint("-------------   Statistics   -------------");
     lprint("------------------------------------------\n");
     HPLUS_env.logger.print(" >>  Parsing time         %10.3fs  <<", this->parsing_time);
+    HPLUS_env.logger.print(" >>  Optimization time    %10.3fs  <<", this->opt_time);
+    HPLUS_env.logger.print(" >>  Warm-start time      %10.3fs  <<", this->wstart_time);
     HPLUS_env.logger.print(" >>  Build time           %10.3fs  <<", this->build_time);
     HPLUS_env.logger.print(" >>  Exec time            %10.3fs  <<", this->exec_time);
     lprint("\n\n");

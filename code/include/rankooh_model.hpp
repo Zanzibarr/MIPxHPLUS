@@ -7,7 +7,7 @@
 /**
  * Build the model from Rankooh's paper
  */
-void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const HPLUS_instance& inst);
+void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst);
 
 /**
  * Store the solution found by Imai's model

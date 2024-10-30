@@ -75,14 +75,37 @@ void HPLUS_run(HPLUS_instance& inst) {
     if (HPLUS_env.alg != HPLUS_CLI_IMAI && HPLUS_env.alg != HPLUS_CLI_RANKOOH) HPLUS_env.logger.raise_error("The algorithm specified (%s) is not on the list of possible algorithms... Please read the README.md for instructions.", HPLUS_env.alg.c_str());
 
     // ====================================================== //
+    // ================ PROBLEM OPTIMIZATION ================ //
+    // ====================================================== //
+
+    double start_time = HPLUS_env.get_time();
+
+    my::BitField eliminated_variables;
+    my::BitField eliminated_actions;
+    if (HPLUS_env.alg == HPLUS_CLI_IMAI) {
+        inst.fixed_var_timestamps = new std::vector<int>(inst.get_nvar_strips(), -1);
+        inst.fixed_act_timestamps = new std::vector<int>(inst.get_nact(), -1);
+    }
+    inst.extract_imai_enhancements(eliminated_variables, eliminated_actions);
+    inst.problem_semplification(eliminated_variables, eliminated_actions);
+
+    HPLUS_stats.opt_time = HPLUS_env.get_time() - start_time;
+
+    // ====================================================== //
     // ===================== WARM START ===================== //
     // ====================================================== //
 
+    start_time = HPLUS_env.get_time();
+
     //[ ]: Heuristic for warm start
+
+    HPLUS_stats.wstart_time = HPLUS_env.get_time() - start_time;
 
     // ====================================================== //
     // ===================== BUILD MODEL ==================== //
     // ====================================================== //
+
+    start_time = HPLUS_env.get_time();
 
     if (HPLUS_env.alg == HPLUS_CLI_IMAI) lprint_info("Running imai algorithm.");
     else if (HPLUS_env.alg == HPLUS_CLI_RANKOOH) lprint_info("Running rankooh algorithm.");
@@ -90,29 +113,31 @@ void HPLUS_run(HPLUS_instance& inst) {
     CPXENVptr env = nullptr;
     CPXLPptr lp = nullptr;
 
-    double start_time = HPLUS_env.get_time();
-
     HPLUS_cpx_init(env, lp);
 
-    if (HPLUS_env.alg == HPLUS_CLI_IMAI) HPLUS_cpx_build_imai(env, lp, inst);
-    else if (HPLUS_env.alg == HPLUS_CLI_RANKOOH) HPLUS_cpx_build_rankooh(env, lp, inst);
+    inst.fixed_variables |= inst.get_gstate();
 
-    HPLUS_stats.build_time = HPLUS_env.get_time() - start_time;
+    if (HPLUS_env.alg == HPLUS_CLI_IMAI) {
+        HPLUS_cpx_build_imai(env, lp, inst);
+        delete inst.fixed_var_timestamps; inst.fixed_var_timestamps = nullptr;
+        delete inst.fixed_act_timestamps; inst.fixed_act_timestamps = nullptr;
+    } else if (HPLUS_env.alg == HPLUS_CLI_RANKOOH) HPLUS_cpx_build_rankooh(env, lp, inst);
 
     // time limit
     if ((double)HPLUS_env.time_limit > HPLUS_env.get_time()) my::assert(!CPXsetdblparam(env, CPXPARAM_TimeLimit, (double)HPLUS_env.time_limit - HPLUS_env.get_time()), "CPXsetdblparam (CPXPARAM_TimeLimit) failed.");
-    else while(true);
+    else while(true);               // handling edge case of time limit reaching (if we enter the else, at any time the timer thread should terminate the execution, wait for him)
+
+    HPLUS_stats.build_time = HPLUS_env.get_time() - start_time;
 
     // ====================================================== //
     // ====================== RUN MODEL ===================== //
     // ====================================================== //
 
-    HPLUS_env.build_finished = 1;
     start_time = HPLUS_env.get_time();
 
-    my::assert(!CPXmipopt(env, lp), "CPXmipopt failed.");
+    HPLUS_env.build_finished = 1;       // signal the timer thread that I've finished the build
 
-    HPLUS_stats.exec_time = HPLUS_env.get_time() - start_time;
+    my::assert(!CPXmipopt(env, lp), "CPXmipopt failed.");
 
     HPLUS_parse_cplex_status(env, lp);
     if (HPLUS_env.found()) {
@@ -121,6 +146,8 @@ void HPLUS_run(HPLUS_instance& inst) {
     }
 
     HPLUS_cpx_close(env, lp);
+
+    HPLUS_stats.exec_time = HPLUS_env.get_time() - start_time;
 
     // ====================================================== //
     // =================== HANDLE RESULTS =================== //

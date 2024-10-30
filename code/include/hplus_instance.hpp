@@ -4,46 +4,6 @@
 #include "utils.hpp"
 
 // ##################################################################### //
-// ########################### HPLUS_VARIABLE ########################## //
-// ##################################################################### //
-
-class HPLUS_variable {
-
-    public:
-        
-        explicit HPLUS_variable() = default;
-
-        /**
-         * @param range: The range of values [0, range - 1] this variable can be in
-         * @param name: The name of the variable
-         * @param val_names: A list of name for each value the variable can be in
-         */
-        explicit HPLUS_variable(unsigned int range, const std::string& name, const std::vector<std::string>& val_names);
-
-        /**
-         * @return The range of values this variable can be set to
-         */
-        unsigned int get_range() const;
-
-        /**
-         * @return The name of the variable (pointer to a single string)
-         */
-        const std::string& get_name() const;
-
-        /**
-         * @return The list of names for each value the variable can be set to (list of strings)
-         */
-        const std::vector<std::string>& get_val_names() const;
-
-    private:
-
-        unsigned int range_;
-        std::string name_;
-        std::vector<std::string> val_names_;
-
-};
-
-// ##################################################################### //
 // ############################ HPLUS_ACTION ########################### //
 // ##################################################################### //
 
@@ -62,6 +22,13 @@ class HPLUS_action  {
         explicit HPLUS_action(my::BitField& pre_bf, my::BitField& eff_bf, unsigned int cost, const std::string& name);
 
         /**
+         * Update the precondition of this action
+         *
+         * @param bf new precondition
+         */
+        void update_pre(const my::BitField& bf);
+
+        /**
          * @return The BitField representing the precondition state for this action (note that the initial state variables have been removed)
          */
         const my::BitField& get_pre() const;
@@ -70,6 +37,13 @@ class HPLUS_action  {
          * @return The precomputed sparse list of precondition of this action (note that the initial state variables have been removed) 
          */
         const std::vector<unsigned int>& get_pre_sparse() const;
+
+        /**
+         * Update the effect of this action
+         *
+         * @param bf new effect
+         */
+        void update_eff(const my::BitField& bf);
 
         /**
          * @return The BitField representing the add effects on the state this action has (note that the initial state variables have been removed)
@@ -161,11 +135,6 @@ class HPLUS_instance {
          * @return The size of the bitfields used in this domain
          */
         unsigned int get_nvar_strips() const;
-
-        /**
-         * @return The list of variables this domain has
-         */
-        const std::vector<HPLUS_variable>& get_variables() const;
 
         /**
          * @return The list of actions this domain has
@@ -310,28 +279,19 @@ class HPLUS_instance {
         /**
          * Model enhancement form Imai's paper
          * (Section 4 of Imai's paper)
-         *
-         * @param eliminated_variables (output) List of variables that can be eliminated (set to 0)
-         * @param fixed_variables (output) List of variables that can be fixed (set to 1)
-         * @param eliminated_actions (output) List of actions that can be eliminated (set to 0)
-         * @param fixed_actions (output) List of actions that can be fixed (set to 1)
-         * @param inverse_actions (output) List of inverse actions for each action (if an action is used, it's inverse isn't in the optimal plan) (nullptr if not interested in this)
-         * @param eliminated_first_archievers (output) List of first archievers that can be eliminated (set to 0)
-         * @param fixed_first_archievers (output) List of first archievers that can be fixed (set to 1)
-         * @param fixed_var_timestamps (output) List of timestamps for variables that can be fixed (for models that use timestamps) (nullptr if not interested in this)
-         * @param fixed_act_timestamps (output) List of timestamps for actions that can be fixed (for models that use timestamps) (nullptr if not interested in this)
+         * CAREFUL: This method removes the useless actions and variables updating all corresponding lists or sets in the instance: please update your values after using this method.
          */
-        void extract_imai_enhancements(
-            my::BitField& eliminated_variables,
-            my::BitField& fixed_variables,
-            my::BitField& eliminated_actions,
-            my::BitField& fixed_actions,
-            std::map<unsigned int, std::vector<unsigned int>>* inverse_actions,
-            std::vector<my::BitField>& eliminated_first_archievers,
-            std::vector<my::BitField>& fixed_first_archievers,
-            std::vector<int>* fixed_var_timestamps,
-            std::vector<int>* fixed_act_timestamp
-        ) const;
+        void extract_imai_enhancements(my::BitField& eliminated_variables, my::BitField& eliminated_actions);
+
+        void problem_semplification(const my::BitField& eliminated_variables, const my::BitField& eliminated_actions);
+
+        // OPTIMIZATIONS
+        my::BitField fixed_variables;
+        my::BitField fixed_actions;
+        std::vector<my::BitField> eliminated_first_archievers;
+        std::vector<my::BitField> fixed_first_archievers;
+        std::vector<int>* fixed_var_timestamps;
+        std::vector<int>* fixed_act_timestamps;
 
     private:
 
@@ -342,10 +302,8 @@ class HPLUS_instance {
         unsigned int n_act_;
         unsigned int nvarstrips_;
 
-        std::vector<HPLUS_variable> variables_;
         std::vector<HPLUS_action> actions_;
 
-        my::BitField initial_state_;
         my::BitField goal_state_;
 
         std::vector<unsigned int> best_solution_;

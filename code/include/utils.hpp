@@ -311,6 +311,8 @@ extern struct HPLUS_Environment {
 extern struct HPLUS_Statistics {
 
     double parsing_time;
+    double opt_time;
+    double wstart_time;
     double build_time;
     double exec_time;
 
