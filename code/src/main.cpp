@@ -126,7 +126,7 @@ void signal_callback_handler(const int signum) {
         if (!HPLUS_env.build_finished) {
             lprint("Time limit reached while building the model.");
             HPLUS_end();
-            exit(1);
+            exit(0);
         }
 
     } else {
@@ -135,7 +135,7 @@ void signal_callback_handler(const int signum) {
             HPLUS_env.logger.print("\n%s", LINE);
             lprint(" >>          Forcing exit...           <<");
             lprint(LINE);
-            exit(1);
+            exit(0);
         } else {
             HPLUS_env.logger.print("\n%s", LINE);
             lprint(" >>  Caught ctrl+C signal, exiting...  <<");
