@@ -46,6 +46,7 @@ make <target_option>
   - < **5** : just solution
   - \>= **5** : view time statistics
   - \>= **10** : basic steps progress
+  - \>= **20** : debugging output
   - \>= **100** : full verbose
 - **-DWARN=**\<warning_option> : set the warning option (default 0)
   - **0** : all warnings suppressed
