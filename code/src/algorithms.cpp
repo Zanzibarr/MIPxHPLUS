@@ -145,8 +145,9 @@ void HPLUS_run(HPLUS_instance& inst) {
 
     // time limit
     if ((double)HPLUS_env.time_limit > HPLUS_env.get_time()) my::assert(!CPXsetdblparam(env, CPXPARAM_TimeLimit, (double)HPLUS_env.time_limit - HPLUS_env.get_time()), "CPXsetdblparam (CPXPARAM_TimeLimit) failed.");
-    else while(true);               // handling edge case of time limit reaching (if we enter the else, at any time the timer thread should terminate the execution, wait for him)
+    else while(true);                   // handling edge case of time limit reached (if we enter the else, at any time the timer thread should terminate the execution, so we wait for him)
 
+    HPLUS_env.build_finished = 1;       // signal the timer thread that I've finished the build
     HPLUS_stats.build_time = HPLUS_env.get_time() - start_time;
 
     // ====================================================== //
@@ -154,8 +155,6 @@ void HPLUS_run(HPLUS_instance& inst) {
     // ====================================================== //
 
     start_time = HPLUS_env.get_time();
-
-    HPLUS_env.build_finished = 1;       // signal the timer thread that I've finished the build
 
     my::assert(!CPXmipopt(env, lp), "CPXmipopt failed.");
 

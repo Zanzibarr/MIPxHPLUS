@@ -65,7 +65,7 @@ void HPLUS_parse_cli(const int argc, const char** argv) {
     for (unsigned int i = 1; i < argc; i++) {
 
         if (!strcmp(argv[i], HPLUS_CLI_INPUT_FILE_FLAG)) {
-            HPLUS_env.infile = HPLUS_INST_DIR"/" + std::string(argv[++i]);
+            HPLUS_env.infile = std::string(argv[++i]);      // path relative to where the program is launched
             struct stat buffer{};
             my::assert(stat((HPLUS_env.infile).c_str(), &buffer) == 0,  "Failed to open input file.");
         }
