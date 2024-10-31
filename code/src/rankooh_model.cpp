@@ -3,7 +3,7 @@
 void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst) {
 
     auto nact = inst.get_nact();
-    auto nvarstrips = inst.get_nvar_strips();
+    auto nvar = inst.get_nvar();
     const auto& actions = inst.get_actions();
 
     // ====================================================== //
@@ -24,12 +24,12 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst)
         Triangle(unsigned int f, unsigned int s, unsigned int t) : first(f), second(s), third(t) {}
     };
 
-    std::vector<std::set<unsigned int>> graph(nvarstrips);                                              // sparse graph for construction
-    std::vector<my::BitField> cumulative_graph(nvarstrips, my::BitField(nvarstrips));                   // dense graph for fast access
+    std::vector<std::set<unsigned int>> graph(nvar);                                              // sparse graph for construction
+    std::vector<my::BitField> cumulative_graph(nvar, my::BitField(nvar));                   // dense graph for fast access
     std::vector<Triangle> triangles_list;                                                               // list of triangles
 
     std::priority_queue<Node, std::vector<Node>, CompareNode> nodes_queue;                              // node priority
-    std::vector<unsigned int> degree_counter(nvarstrips, 0);                                            // ordering
+    std::vector<unsigned int> degree_counter(nvar, 0);                                            // ordering
 
     // G_0
     for (unsigned int act_i = 0; act_i < nact; act_i++) {
@@ -48,10 +48,10 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst)
         }
     }
 
-    for (unsigned int node_i = 0; node_i < nvarstrips; node_i++) if (degree_counter[node_i] > 0) nodes_queue.emplace(node_i, degree_counter[node_i]);
+    for (unsigned int node_i = 0; node_i < nvar; node_i++) if (degree_counter[node_i] > 0) nodes_queue.emplace(node_i, degree_counter[node_i]);
 
     // finding minimum degree node
-    auto find_min = [&nvarstrips](std::priority_queue<Node, std::vector<Node>, CompareNode>& nodes_queue, const std::vector<unsigned int> degree_counter) {
+    auto find_min = [&nvar](std::priority_queue<Node, std::vector<Node>, CompareNode>& nodes_queue, const std::vector<unsigned int> degree_counter) {
 
         int idx = -1;
         while (!nodes_queue.empty() && idx < 0) {
@@ -64,7 +64,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst)
     };
 
     // G_i (minimum degree heuristics)
-    for (unsigned int i = 0; i < nvarstrips; i++) {
+    for (unsigned int i = 0; i < nvar; i++) {
 
         int idx = find_min(nodes_queue, degree_counter);
         if (idx == -1) break;
@@ -76,7 +76,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst)
 
         std::set<unsigned int> new_nodes;
 
-        for (unsigned int p = 0; p < nvarstrips; p++) if (graph[p].find(idx) != graph[p].end()) {
+        for (unsigned int p = 0; p < nvar; p++) if (graph[p].find(idx) != graph[p].end()) {
 
             for (auto q : graph[idx]) if (p != q) {
 
@@ -115,10 +115,10 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst)
         for (auto node : new_nodes) if (degree_counter[node] > 0) nodes_queue.emplace(node, degree_counter[node]);
 
         #if HPLUS_INTCHECK
-        for (unsigned int tmp_i = 0; tmp_i < nvarstrips; tmp_i++) {
+        for (unsigned int tmp_i = 0; tmp_i < nvar; tmp_i++) {
             int i_cnt = 0;
             i_cnt += graph[tmp_i].size();
-            for (unsigned int tmp_j = 0; tmp_j < nvarstrips; tmp_j++) {
+            for (unsigned int tmp_j = 0; tmp_j < nvar; tmp_j++) {
                 for (auto tmp_k : graph[tmp_j]) {
                     if (tmp_k == tmp_i) i_cnt += 1;
                 }
@@ -168,48 +168,48 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst)
 
     my::assert(!CPXnewcols(env, lp, nact, objs, lbs, ubs, types, nullptr), "CPXnewcols (actions) failed.");
 
-    rsz_cpx_arrays(nvarstrips);
+    rsz_cpx_arrays(nvar);
 
     // --- first archievers --- //
     unsigned int fa_start = curr_col;
     std::vector<unsigned int> fa_individual_start(nact);
     for (unsigned int act_i = 0; act_i < nact; act_i++) {
-        fa_individual_start[act_i] = act_i * nvarstrips;
+        fa_individual_start[act_i] = act_i * nvar;
         const auto& eff = actions[act_i].get_eff();
-        for (unsigned int i = 0; i < nvarstrips; i++) {
+        for (unsigned int i = 0; i < nvar; i++) {
             objs[i] = 0;
             lbs[i] = inst.fixed_first_archievers[act_i][i] ? 1 : 0;
             ubs[i] = (!eff[i] || inst.eliminated_first_archievers[act_i][i]) ? 0 : 1;
             types[i] = 'B';
         }
-        curr_col += nvarstrips;
-        my::assert(!CPXnewcols(env, lp, nvarstrips, objs, lbs, ubs, types, nullptr), "CPXnewcols (first archievers) failed.");
+        curr_col += nvar;
+        my::assert(!CPXnewcols(env, lp, nvar, objs, lbs, ubs, types, nullptr), "CPXnewcols (first archievers) failed.");
     }
 
     // ------- variables ------ //
     unsigned int var_start = curr_col;
-    for (unsigned int i = 0; i < nvarstrips; i++) {
+    for (unsigned int i = 0; i < nvar; i++) {
         objs[i] = 0;
         lbs[i] = inst.fixed_variables[i] ? 1 : 0;
         ubs[i] = 1;
         types[i] = 'B';
     }
-    curr_col += nvarstrips;
+    curr_col += nvar;
 
-    my::assert(!CPXnewcols(env, lp, nvarstrips, objs, lbs, ubs, types, nullptr), "CPXnewcols (variables) failed.");
+    my::assert(!CPXnewcols(env, lp, nvar, objs, lbs, ubs, types, nullptr), "CPXnewcols (variables) failed.");
 
     // vertex elimination graph edges
     unsigned int veg_edges_start = curr_col;
-    for (unsigned int i = 0; i < nvarstrips; i++) {
-        for (unsigned int j = 0; j < nvarstrips; j++) {
+    for (unsigned int i = 0; i < nvar; i++) {
+        for (unsigned int j = 0; j < nvar; j++) {
             objs[j] = 0;
             lbs[j] = 0;
             ubs[j] = cumulative_graph[i][j] ? 1 : 0;
             types[j] = 'B';
         }
-        my::assert(!CPXnewcols(env, lp, nvarstrips, objs, lbs, ubs, types, nullptr), "CPXnewcols (V.E. graph edges) failed.");
+        my::assert(!CPXnewcols(env, lp, nvar, objs, lbs, ubs, types, nullptr), "CPXnewcols (V.E. graph edges) failed.");
     }
-    curr_col += nvarstrips * nvarstrips;
+    curr_col += nvar * nvar;
 
     delete[] types; types = nullptr;
     delete[] ubs; ubs = nullptr;
@@ -226,7 +226,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst)
     auto get_act_idx = [act_start](int idx) { return act_start + idx; };
     auto get_var_idx = [var_start](int idx) { return var_start + idx; };
     auto get_fa_idx = [fa_start, fa_individual_start](int act_idx, int var_idx) { return fa_start + fa_individual_start[act_idx] + var_idx; };
-    auto get_veg_idx = [veg_edges_start, nvarstrips](int idx_i, int idx_j) { return veg_edges_start + idx_i * nvarstrips + idx_j; };
+    auto get_veg_idx = [veg_edges_start, nvar](int idx_i, int idx_j) { return veg_edges_start + idx_i * nvar + idx_j; };
 
     int* ind = new int[nact + 1];
     double* val = new double[nact + 1];
@@ -236,10 +236,10 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst)
     const int begin = 0;
     
     // precompute list of actions that have a specific variable as effect (some sort of hashing)
-    std::vector<std::vector<unsigned int>> act_with_eff(nvarstrips);
-    for (unsigned int p = 0; p < nvarstrips; p++) for (unsigned int act_i = 0; act_i < nact; act_i++) if (actions[act_i].get_eff()[p]) act_with_eff[p].push_back(act_i);
+    std::vector<std::vector<unsigned int>> act_with_eff(nvar);
+    for (unsigned int p = 0; p < nvar; p++) for (unsigned int act_i = 0; act_i < nact; act_i++) if (actions[act_i].get_eff()[p]) act_with_eff[p].push_back(act_i);
 
-    for (unsigned int p = 0; p < nvarstrips; p++) {
+    for (unsigned int p = 0; p < nvar; p++) {
 
         nnz = 0;
         ind[nnz] = get_var_idx(p);
@@ -254,8 +254,8 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst)
 
     }
     
-    for (unsigned int p = 0; p < nvarstrips; p++) {
-        for (unsigned int q = 0; q < nvarstrips; q++) {
+    for (unsigned int p = 0; p < nvar; p++) {
+        for (unsigned int q = 0; q < nvar; q++) {
             nnz = 0;
             ind[nnz] = get_var_idx(q);
             val[nnz++] = -1;
@@ -300,7 +300,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst)
         }
     }
     
-    for (unsigned int i = 0; i < nvarstrips; i++) for (auto j : cumulative_graph[i]) {
+    for (unsigned int i = 0; i < nvar; i++) for (auto j : cumulative_graph[i]) {
         ind_c5_c6_c7[0] = get_veg_idx(i, j);
         val_c5_c6_c7[0] = 1;
         ind_c5_c6_c7[1] = get_veg_idx(j, i);
@@ -328,14 +328,14 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst)
 void HPLUS_store_rankooh_sol(const CPXENVptr& env, const CPXLPptr& lp, HPLUS_instance& inst) {
 
     const unsigned int nact = inst.get_nact();
-    const unsigned int nvarstrips = inst.get_nvar_strips();
-    double* plan = new double[nact + nact * nvarstrips];
-    my::assert(!CPXgetx(env, lp, plan, 0, nact + nact * nvarstrips - 1), "CPXgetx failed.");
+    const unsigned int nvar = inst.get_nvar();
+    double* plan = new double[nact + nact * nvar];
+    my::assert(!CPXgetx(env, lp, plan, 0, nact + nact * nvar - 1), "CPXgetx failed.");
     
     // fixing the solution to read the plan (some actions are set to 1 even if they are not a first archiever of anything)
-    for (unsigned int act_i = 0, f_i = nact; act_i < nact; act_i++, f_i += nvarstrips) {
+    for (unsigned int act_i = 0, f_i = nact; act_i < nact; act_i++, f_i += nvar) {
         bool set_zero = true;
-        for (unsigned int var_i = 0; var_i < nvarstrips; var_i++) {
+        for (unsigned int var_i = 0; var_i < nvar; var_i++) {
             if (plan[f_i + var_i] > 0.5) {
                 #if HPLUS_INTCHECK
                 my::assert(plan[act_i] > 0.5, "Action is set to 0 even if it's a first archiever.");
@@ -355,7 +355,7 @@ void HPLUS_store_rankooh_sol(const CPXENVptr& env, const CPXLPptr& lp, HPLUS_ins
     const auto& actions = inst.get_actions();
     std::vector<unsigned int> solution;
     my::BitField sorted(cpx_result.size());
-    my::BitField current_state(inst.get_nvar_strips());
+    my::BitField current_state(inst.get_nvar());
     
     while (sorted != my::BitField(cpx_result.size(), true)) {
         #if HPLUS_INTCHECK

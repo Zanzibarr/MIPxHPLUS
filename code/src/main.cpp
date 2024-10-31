@@ -33,8 +33,7 @@ void HPLUS_show_info(const HPLUS_instance& inst) {
     HPLUS_env.logger.print("Fast Downward translator version: %d.", inst.get_version());
     #endif
     HPLUS_env.logger.print("Metric: %s.", (inst.unitary_cost() ? "unitary costs" : "integer costs"));
-    HPLUS_env.logger.print("# variables: %d.", inst.get_nvar());
-    HPLUS_env.logger.print("# variables (binary expansion): %d.", inst.get_nvar_strips());
+    HPLUS_env.logger.print("# variables (binary expansion): %d.", inst.get_nvar());
     #if HPLUS_VERBOSE >= 100
     HPLUS_env.logger.print("Goal state: %s.", std::string(inst.get_gstate()).c_str());
     #endif
@@ -129,10 +128,10 @@ void signal_callback_handler(const int signum) {
 
 }
 
-void time_limit_termination(std::chrono::seconds duration) {
+void time_limit_termination(double duration) {
 
     while (HPLUS_env.status == my::status::NOTFOUND) {
-        if (HPLUS_env.get_time() >= std::chrono::duration<double>(duration).count()) {
+        if (HPLUS_env.get_time() >= duration) {
             HPLUS_env.tl_terminate = 1;
             raise(SIGINT);
             return;
@@ -148,7 +147,7 @@ int main(const int argc, const char** argv) {
     HPLUS_start();
     HPLUS_parse_cli(argc, argv);
     std::chrono::seconds time_limit(HPLUS_env.time_limit);
-    std::thread timer_thread(time_limit_termination, time_limit);
+    std::thread timer_thread(time_limit_termination, HPLUS_env.time_limit);
     HPLUS_instance inst = HPLUS_instance(HPLUS_env.infile);
     HPLUS_show_info(inst);
     HPLUS_run(inst);

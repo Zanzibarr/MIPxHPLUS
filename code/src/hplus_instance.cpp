@@ -10,20 +10,20 @@ void HPLUS_instance::landmarks_extraction(std::vector<my::BitField>& landmarks_s
     lprint_info("(debug) Extracting landmarks.");
     #endif
 
-    landmarks_set = std::vector<my::BitField>(this -> nvarstrips_, my::BitField(this -> nvarstrips_ + 1));
-    fact_landmarks = my::BitField(this -> nvarstrips_);
+    landmarks_set = std::vector<my::BitField>(this -> n_var_, my::BitField(this -> n_var_ + 1));
+    fact_landmarks = my::BitField(this -> n_var_);
     act_landmarks = my::BitField(this -> n_act_);
 
-    for (unsigned int p = 0; p < this -> nvarstrips_; p++) landmarks_set[p].set(this -> nvarstrips_);
+    for (unsigned int p = 0; p < this -> n_var_; p++) landmarks_set[p].set(this -> n_var_);
 
-    my::BitField s_set(this -> nvarstrips_);
+    my::BitField s_set(this -> n_var_);
 
     std::deque<int> actions_queue;
     for (unsigned int i = 0; i < this -> n_act_; i++) if(s_set.contains(this -> actions_[i].get_pre())) actions_queue.push_back(i);
 
     // list of actions that have as precondition variable p
-    std::vector<std::vector<unsigned int>> act_with_pre(this -> nvarstrips_);
-    for (unsigned int p = 0; p < this -> nvarstrips_; p++) for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++) if (this -> actions_[act_i].get_pre()[p]) act_with_pre[p].push_back(act_i);
+    std::vector<std::vector<unsigned int>> act_with_pre(this -> n_var_);
+    for (unsigned int p = 0; p < this -> n_var_; p++) for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++) if (this -> actions_[act_i].get_pre()[p]) act_with_pre[p].push_back(act_i);
 
     while(!actions_queue.empty()) {
 
@@ -37,14 +37,14 @@ void HPLUS_instance::landmarks_extraction(std::vector<my::BitField>& landmarks_s
 
             s_set.set(p);
 
-            my::BitField x = my::BitField(this -> nvarstrips_ + 1);
+            my::BitField x = my::BitField(this -> n_var_ + 1);
             for (auto p : add_a) x.set(p);
 
             for (auto pp : pre_a) {
                 // if variable p' has the "full" flag then the unification
                 // generates a "full" bitfield -> no need to unificate, just set the flag
-                if (landmarks_set[pp][this -> nvarstrips_]) {
-                    x.set(this -> nvarstrips_);
+                if (landmarks_set[pp][this -> n_var_]) {
+                    x.set(this -> n_var_);
                     // if x is now full we can exit, since all further unions won't change x
                     break;
                 } else x |= landmarks_set[pp];
@@ -52,16 +52,16 @@ void HPLUS_instance::landmarks_extraction(std::vector<my::BitField>& landmarks_s
 
             // we then check if L[p] != X, and if they are the same we skip,
             // if X = P, then (X intersection L[P]) = L[P], hence we can already skip
-            if (!x[this -> nvarstrips_]) {
+            if (!x[this -> n_var_]) {
 
                 // if the set for variable p is the full set of variables,
                 // the intersection generates back x -> we can skip the intersection
-                if (!landmarks_set[p][this -> nvarstrips_]) x &= landmarks_set[p];
+                if (!landmarks_set[p][this -> n_var_]) x &= landmarks_set[p];
 
                 // we already know that x is not the full set now, so if
                 // the set for variable p is the full set, we know that x is not
                 // equal to the set for variable p -> we can skip the check
-                if (landmarks_set[p][this -> nvarstrips_] || x != landmarks_set[p]) {
+                if (landmarks_set[p][this -> n_var_] || x != landmarks_set[p]) {
 
                     landmarks_set[p] = x;
                     for (auto aa : act_with_pre[p])
@@ -77,12 +77,12 @@ void HPLUS_instance::landmarks_extraction(std::vector<my::BitField>& landmarks_s
     }
 
     // list of actions that have as effect variable p
-    std::vector<std::vector<unsigned int>> act_with_eff(this -> nvarstrips_);
+    std::vector<std::vector<unsigned int>> act_with_eff(this -> n_var_);
     for (auto p : !fact_landmarks) for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++) if (this -> actions_[act_i].get_eff()[p]) act_with_eff[p].push_back(act_i);
 
     for (auto p : this -> goal_state_) {
         for (auto j : !fact_landmarks) {
-            if (landmarks_set[p][j] || landmarks_set[p][this -> nvarstrips_]) {
+            if (landmarks_set[p][j] || landmarks_set[p][this -> n_var_]) {
                 fact_landmarks.set(j);
                 unsigned int count = 0, cand_act;
                 for (auto act_i : act_with_eff[j]) {
@@ -103,16 +103,16 @@ void HPLUS_instance::first_adders_extraction(const std::vector<my::BitField>& la
     lprint_info("(debug) Extracting first adders.");
     #endif
 
-    fadd = std::vector<my::BitField>(this -> n_act_, my::BitField(this -> nvarstrips_));
+    fadd = std::vector<my::BitField>(this -> n_act_, my::BitField(this -> n_var_));
 
     // list of fact landmarks for each variable
-    std::vector<std::vector<unsigned int>> var_flm(this -> nvarstrips_);
-    for (unsigned int p = 0; p < this -> nvarstrips_; p++) for (unsigned int i = 0; i < this -> nvarstrips_; i++) if (landmarks_set[p][i] || landmarks_set[p][this -> nvarstrips_]) var_flm[p].push_back(i);
+    std::vector<std::vector<unsigned int>> var_flm(this -> n_var_);
+    for (unsigned int p = 0; p < this -> n_var_; p++) for (unsigned int i = 0; i < this -> n_var_; i++) if (landmarks_set[p][i] || landmarks_set[p][this -> n_var_]) var_flm[p].push_back(i);
 
     for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++) {
         const auto& pre = this -> actions_[act_i].get_pre_sparse();
         // f_lm_a is the set of fact landmarks of action act_i
-        my::BitField f_lm_a(this -> nvarstrips_);
+        my::BitField f_lm_a(this -> n_var_);
         for (auto p : pre) for (auto i : var_flm[p]) f_lm_a.set(i);
         // fadd[a] := { p in add(a) s.t. p is not a fact landmark for a }
         fadd[act_i] |= (this -> actions_[act_i].get_eff() & !f_lm_a);
@@ -126,7 +126,7 @@ void HPLUS_instance::relevance_analysis(const my::BitField& fact_landmarks, cons
     lprint_info("(debug) Relevance analysis.");
     #endif
 
-    relevant_variables = my::BitField(this -> nvarstrips_);
+    relevant_variables = my::BitField(this -> n_var_);
     relevant_actions = my::BitField(this -> n_act_);
 
     for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++) {
@@ -166,10 +166,10 @@ void HPLUS_instance::dominated_actions_extraction(const std::vector<my::BitField
     dominated_actions =  my::BitField(this -> n_act_);
     const auto actions = this -> actions_;
 
-    std::vector<my::BitField> f_lm_a = std::vector<my::BitField>(this -> n_act_, my::BitField(this -> nvarstrips_));
+    std::vector<my::BitField> f_lm_a = std::vector<my::BitField>(this -> n_act_, my::BitField(this -> n_var_));
 
-    std::vector<std::vector<unsigned int>> var_flm(this -> nvarstrips_);
-    for (unsigned int p = 0; p < this -> nvarstrips_; p++) for (unsigned int i = 0; i < this -> nvarstrips_; i++) if (landmarks_set[p][i] || landmarks_set[p][this -> nvarstrips_]) var_flm[p].push_back(i);
+    std::vector<std::vector<unsigned int>> var_flm(this -> n_var_);
+    for (unsigned int p = 0; p < this -> n_var_; p++) for (unsigned int i = 0; i < this -> n_var_; i++) if (landmarks_set[p][i] || landmarks_set[p][this -> n_var_]) var_flm[p].push_back(i);
 
     for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++) {
         const auto& pre = this -> actions_[act_i].get_pre_sparse();
@@ -199,7 +199,7 @@ void HPLUS_instance::immediate_action_application(const my::BitField& act_landma
     lprint_info("(debug) Immediate action application.");
     #endif
 
-    my::BitField current_state(this -> nvarstrips_);
+    my::BitField current_state(this -> n_var_);
     auto actions_left = !eliminated_actions;
 
     int counter = 0;
@@ -341,14 +341,14 @@ void HPLUS_instance::problem_semplification(const my::BitField& eliminated_varia
     }
 
     // removing eliminated variables from bitfields
-    std::vector<unsigned int> el_var_offset(this -> nvarstrips_, 0);
+    std::vector<unsigned int> el_var_offset(this -> n_var_, 0);
     int removed_variables = 0;
-    for (unsigned int i = 0; i < this -> nvarstrips_; i++) {
+    for (unsigned int i = 0; i < this -> n_var_; i++) {
         if (eliminated_variables[i]) removed_variables++;
         el_var_offset[i] = removed_variables;
     }
-    int new_var_size = this -> nvarstrips_ - removed_variables;
-    this -> nvarstrips_ = new_var_size;                                                                                             // updating the number of variables (strips)
+    int new_var_size = this -> n_var_ - removed_variables;
+    this -> n_var_ = new_var_size;                                                                                             // updating the number of variables (strips)
     auto rm_el_var = [&eliminated_variables, &el_var_offset, &new_var_size](const my::BitField& bf) {
         my::BitField new_bf(new_var_size);
         for (auto p : bf) if(!eliminated_variables[p]) new_bf.set(p - el_var_offset[p]);
@@ -422,9 +422,8 @@ HPLUS_instance::HPLUS_instance(const std::string& file_path) {
 
     this -> version_ = 0;
     this -> use_costs_ = false;
-    this -> n_var_ = 0;
     this -> n_act_ = 0;
-    this -> nvarstrips_ = 0;
+    this -> n_var_ = 0;
 
     std::ifstream file(file_path.c_str(), std::ifstream::in);
     my::assert(file.good(), "Opening instance file failed.");
@@ -434,10 +433,10 @@ HPLUS_instance::HPLUS_instance(const std::string& file_path) {
     this -> best_nact_ = 0;
     this -> best_cost_ = UINT_MAX;
 
-    this -> fixed_variables = my::BitField(this -> nvarstrips_);
+    this -> fixed_variables = my::BitField(this -> n_var_);
     this -> fixed_actions = my::BitField(this -> n_act_);
-    this -> eliminated_first_archievers = std::vector<my::BitField>(this -> n_act_, my::BitField(this -> nvarstrips_));
-    this -> fixed_first_archievers = std::vector<my::BitField>(this -> n_act_, my::BitField(this -> nvarstrips_));
+    this -> eliminated_first_archievers = std::vector<my::BitField>(this -> n_act_, my::BitField(this -> n_var_));
+    this -> fixed_first_archievers = std::vector<my::BitField>(this -> n_act_, my::BitField(this -> n_var_));
     this -> fixed_var_timestamps = nullptr;
     this -> fixed_act_timestamps = nullptr;
 
@@ -449,11 +448,9 @@ int HPLUS_instance::get_version() const { return this -> version_; }
 
 bool HPLUS_instance::unitary_cost() const { return !this -> use_costs_; }
 
-unsigned int HPLUS_instance::get_nvar() const { return this -> n_var_; }
-
 unsigned int HPLUS_instance::get_nact() const { return this -> n_act_; }
 
-unsigned int HPLUS_instance::get_nvar_strips() const { return this -> nvarstrips_; }
+unsigned int HPLUS_instance::get_nvar() const { return this -> n_var_; }
 
 const std::vector<HPLUS_action>& HPLUS_instance::get_actions() const { return this -> actions_; }
 
@@ -465,7 +462,7 @@ void HPLUS_instance::update_best_solution(const std::vector<unsigned int>& solut
     my::BitField dbcheck = my::BitField(this -> n_act_);
     unsigned int costcheck = 0;
     my::assert(solution.size() <= this -> n_act_, "Solution has more actions that there actually exists.");             // check that there aren't more actions that there exists
-    my::BitField feas_checker(this -> nvarstrips_);
+    my::BitField feas_checker(this -> n_var_);
     for (auto act_i : solution) {
         my::assert(act_i < this -> n_act_, "Solution contains unexisting action.");                                     // check that the solution only contains existing actions
         my::assert(!dbcheck[act_i], "Solution contains duplicate action.");                                             // check that there are no duplicates
@@ -531,12 +528,12 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
 
     // * variables section
     lprint_warn("Ignoring axiom layers.");
-    std::getline(*ifs, line);   // n_var
+    std::getline(*ifs, line);   // nvar
     my::assert(my::isint(line, 0), "Corrupted file.");
-    this -> n_var_ = std::stoi(line);
-    std::vector<unsigned int> var_ranges(this -> n_var_);
-    this -> nvarstrips_ = 0;
-    for (unsigned int var_i = 0; var_i < this -> n_var_; var_i++) {
+    unsigned int nvar = std::stoi(line);
+    std::vector<unsigned int> var_ranges(nvar);
+    this -> n_var_ = 0;
+    for (unsigned int var_i = 0; var_i < nvar; var_i++) {
         // process each variable
         std::getline(*ifs, line);   // begin_variable
         my::assert(line == "begin_variable", "Corrupted file.");
@@ -547,7 +544,7 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
         std::getline(*ifs, line);   // range of variable
         my::assert(my::isint(line, 0), "Corrupted file.");
         unsigned int range = stoi(line);
-        this -> nvarstrips_ += range;
+        this -> n_var_ += range;
         std::vector<std::string> val_names(range);
         for (unsigned int j = 0; j < range; j++) {
             std::getline(*ifs, line);   // name for variable value
@@ -575,8 +572,8 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
     // * initial state section
     std::getline(*ifs, line);   // begin_state
     my::assert(line == "begin_state", "Corrupted file.");
-    my::BitField istate = my::BitField(this -> nvarstrips_);
-    for (unsigned int var_i = 0, c = 0; var_i < this -> n_var_; c += var_ranges[var_i], var_i++) {
+    my::BitField istate = my::BitField(this -> n_var_);
+    for (unsigned int var_i = 0, c = 0; var_i < nvar; c += var_ranges[var_i], var_i++) {
         std::getline(*ifs, line);   // initial value of var_i
         my::assert(my::isint(line, 0, var_ranges[var_i] - 1), "Corrupted file.");
         unsigned int val = stoi(line);
@@ -586,20 +583,20 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
     my::assert(line == "end_state", "Corrupted file.");
 
     // removing initial state variables
-    std::vector<unsigned int> post_istate_removal_offset(this -> nvarstrips_);
+    std::vector<unsigned int> post_istate_removal_offset(this -> n_var_);
     int counter = 0;
-    for (unsigned int i = 0; i < this -> nvarstrips_; i++) {
+    for (unsigned int i = 0; i < this -> n_var_; i++) {
         if (istate[i]) counter++;
         post_istate_removal_offset[i] = counter;
     }
-    this -> nvarstrips_ -= this -> n_var_;
+    this -> n_var_ -= nvar;
 
     // * goal state section
     std::getline(*ifs, line);   // begin_goal
     my::assert(line == "begin_goal", "Corrupted file.");
-    this -> goal_state_ = my::BitField(this -> nvarstrips_);
+    this -> goal_state_ = my::BitField(this -> n_var_);
     std::getline(*ifs, line);   // number of goals
-    my::assert(my::isint(line, 0, this -> n_var_), "Corrupted file.");
+    my::assert(my::isint(line, 0, nvar), "Corrupted file.");
     unsigned int ngoals = stoi(line);
     for (unsigned int i = 0; i < ngoals; i++) {
         // parsing each goal
@@ -607,7 +604,7 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
         std::getline(*ifs, line);   // pair 'variable goal'
         tokens = my::split_string(line, ' ');
         my::assert(tokens.size() == 2, "Corrupted file.");
-        my::assert(my::isint(tokens[0], 0, this -> n_var_ - 1), "Corrupted file."); // variable index
+        my::assert(my::isint(tokens[0], 0, nvar - 1), "Corrupted file."); // variable index
         unsigned int var = stoi(tokens[0]);
         my::assert(my::isint(tokens[1], 0, var_ranges[var] - 1), "Corrupted file."); // variable goal
         unsigned int value = stoi(tokens[1]);
@@ -630,9 +627,9 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
         my::assert(line == "begin_operator", "Corrupted file.");
         std::getline(*ifs, line);   // symbolic action name
         std::string name = line;
-        my::BitField act_pre(this -> nvarstrips_);
+        my::BitField act_pre(this -> n_var_);
         std::getline(*ifs, line);   // number of prevail conditions
-        my::assert(my::isint(line, 0, this -> n_var_), "Corrupted file.");
+        my::assert(my::isint(line, 0, nvar), "Corrupted file.");
         unsigned int n_pre = stoi(line);
         for (unsigned int pre_i = 0; pre_i < n_pre; pre_i++) {
             // parsing each prevail condition
@@ -640,7 +637,7 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
             std::getline(*ifs, line);   // pair 'variable value'
             tokens = my::split_string(line, ' ');
             my::assert(tokens.size() == 2, "Corrupted file.");
-            my::assert(my::isint(tokens[0], 0, this -> n_var_ - 1), "Corrupted file."); // variable index
+            my::assert(my::isint(tokens[0], 0, nvar - 1), "Corrupted file."); // variable index
             unsigned int var = stoi(tokens[0]);
             my::assert(my::isint(tokens[1], 0,var_ranges[var] - 1), "Corrupted file."); // variable value
             unsigned int value = stoi(tokens[1]);
@@ -651,7 +648,7 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
         std::getline(*ifs, line);   // number of effects
         my::assert(my::isint(line, 0), "Corrupted file.");
         unsigned int n_eff = stoi(line);
-        my::BitField act_eff(this -> nvarstrips_);
+        my::BitField act_eff(this -> n_var_);
         for (unsigned int eff_i = 0; eff_i < n_eff; eff_i++) {
             // parsing each effect
             std::getline(*ifs, line);   // effect line
@@ -659,7 +656,7 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
             tokens = my::split_string(line, ' ');
             my::assert(tokens.size() == 4, "This program won't handle effect conditions."); // not expecting effect conditions
             my::assert(my::isint(tokens[0], 0, 0), "This program won't handle effect conditions."); // number of effect conditions (ignored and check to be 0)
-            my::assert(my::isint(tokens[1], 0, this -> n_var_ - 1), "Corrupted file.");   // variable affected by the action
+            my::assert(my::isint(tokens[1], 0, nvar - 1), "Corrupted file.");   // variable affected by the action
             unsigned int var = stoi(tokens[1]);
             my::assert(my::isint(tokens[2], -1, var_ranges[var] - 1), "Corrupted file.");    // precondition of the variable
             int pre_val = stoi(tokens[2]);

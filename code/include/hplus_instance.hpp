@@ -122,19 +122,14 @@ class HPLUS_instance {
         bool unitary_cost() const;
 
         /**
-         * @return The number of variables this problem has
-         */
-        unsigned int get_nvar() const;
-
-        /**
          * @return The number of actions this domain has
          */
         unsigned int get_nact() const;
 
         /**
-         * @return The size of the bitfields used in this domain
+         * @return The number of variables (after binary expansion) this domain has
          */
-        unsigned int get_nvar_strips() const;
+        unsigned int get_nvar() const;
 
         /**
          * @return The list of actions this domain has
@@ -306,9 +301,8 @@ class HPLUS_instance {
         int version_;
         bool use_costs_;
 
-        unsigned int n_var_;
         unsigned int n_act_;
-        unsigned int nvarstrips_;
+        unsigned int n_var_;
 
         std::vector<HPLUS_action> actions_;
 

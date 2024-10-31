@@ -6,7 +6,7 @@
 void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst) {
 
     auto nact = inst.get_nact();
-    auto nvarstrips = inst.get_nvar_strips();
+    auto nvar = inst.get_nvar();
     const auto& actions = inst.get_actions();
 
     // ====================================================== //
@@ -61,46 +61,46 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst) {
 
     my::assert(!CPXnewcols(env, lp, nact, objs, lbs, ubs, types, nullptr), "CPXnewcols (action timestamps) failed.");
 
-    rsz_cpx_arrays(nvarstrips);
+    rsz_cpx_arrays(nvar);
     
     // ------- variables ------ //
     unsigned int var_start = curr_col;
-    for (unsigned int i = 0; i < nvarstrips; i++) {
+    for (unsigned int i = 0; i < nvar; i++) {
         objs[i] = 0;
         lbs[i] = inst.fixed_variables[i] ? 1 : 0;
         ubs[i] = 1;
         types[i] = 'B';
     }
-    curr_col += nvarstrips;
+    curr_col += nvar;
 
-    my::assert(!CPXnewcols(env, lp, nvarstrips, objs, lbs, ubs, types, nullptr), "CPXnewcols (variables) failed.");
+    my::assert(!CPXnewcols(env, lp, nvar, objs, lbs, ubs, types, nullptr), "CPXnewcols (variables) failed.");
 
     // -- variable timestamps - //
     unsigned int tvar_start = curr_col;
-    for (unsigned int i = 0; i < nvarstrips; i++) {
+    for (unsigned int i = 0; i < nvar; i++) {
         objs[i] = 0;
         lbs[i] = (*inst.fixed_var_timestamps)[i] >= 0 ? (*inst.fixed_var_timestamps)[i] : 0;
         ubs[i] = (*inst.fixed_var_timestamps)[i] >= 0 ? (*inst.fixed_var_timestamps)[i] : nact;                     //[ ]: Tighter bound
         types[i] = 'I';
     }
-    curr_col += nvarstrips;
+    curr_col += nvar;
 
-    my::assert(!CPXnewcols(env, lp, nvarstrips, objs, lbs, ubs, types, nullptr), "CPXnewcols (variable timestamps) failed.");
+    my::assert(!CPXnewcols(env, lp, nvar, objs, lbs, ubs, types, nullptr), "CPXnewcols (variable timestamps) failed.");
 
     // --- first archievers --- //
     unsigned int fa_start = curr_col;
     std::vector<unsigned int> fa_individual_start(nact);
     for (unsigned int act_i = 0; act_i < nact; act_i++) {
-        fa_individual_start[act_i] = act_i * nvarstrips;
+        fa_individual_start[act_i] = act_i * nvar;
         const auto& eff = actions[act_i].get_eff();
-        for (unsigned int i = 0; i < nvarstrips; i++) {
+        for (unsigned int i = 0; i < nvar; i++) {
             objs[i] = 0;
             lbs[i] = inst.fixed_first_archievers[act_i][i] ? 1 : 0;
             ubs[i] = (!eff[i] || inst.eliminated_first_archievers[act_i][i]) ? 0 : 1;
             types[i] = 'B';
         }
-        curr_col += nvarstrips;
-        my::assert(!CPXnewcols(env, lp, nvarstrips, objs, lbs, ubs, types, nullptr), "CPXnewcols (first archievers) failed.");
+        curr_col += nvar;
+        my::assert(!CPXnewcols(env, lp, nvar, objs, lbs, ubs, types, nullptr), "CPXnewcols (first archievers) failed.");
     }
 
     delete[] types; types = nullptr;
@@ -129,12 +129,12 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst) {
     const double rhs_c1_2_4 = 0, rhs_c5 = nact;
     const int begin = 0;
 
-    std::vector<int*> ind_c3(nvarstrips);
-    std::vector<double*> val_c3(nvarstrips);
-    std::vector<int> nnz_c3(nvarstrips);
-    std::vector<double> rhs_c3(nvarstrips);
+    std::vector<int*> ind_c3(nvar);
+    std::vector<double*> val_c3(nvar);
+    std::vector<int> nnz_c3(nvar);
+    std::vector<double> rhs_c3(nvar);
 
-    for (unsigned int i = 0; i < nvarstrips; i++) {
+    for (unsigned int i = 0; i < nvar; i++) {
         ind_c3[i] = new int[nact + 1];
         val_c3[i] = new double[nact + 1];
         nnz_c3[i] = 0;
@@ -193,9 +193,9 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst) {
         }
     }
 
-    for (unsigned int i = 0; i < nvarstrips; i++) my::assert(!CPXaddrows(env, lp, 0, 1, nnz_c3[i], &rhs_c3[i], &sensee, &begin, ind_c3[i], val_c3[i], nullptr, nullptr), "CPXaddrows (c3) failed.");
+    for (unsigned int i = 0; i < nvar; i++) my::assert(!CPXaddrows(env, lp, 0, 1, nnz_c3[i], &rhs_c3[i], &sensee, &begin, ind_c3[i], val_c3[i], nullptr, nullptr), "CPXaddrows (c3) failed.");
 
-    for (unsigned int i = 0; i < nvarstrips; i++) {
+    for (unsigned int i = 0; i < nvar; i++) {
         delete[] ind_c3[i]; ind_c3[i] = nullptr;
         delete[] val_c3[i]; val_c3[i] = nullptr;
     }

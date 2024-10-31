@@ -83,7 +83,7 @@ void HPLUS_run(HPLUS_instance& inst) {
     my::BitField eliminated_variables;
     my::BitField eliminated_actions;
     if (HPLUS_env.alg == HPLUS_CLI_IMAI) {
-        inst.fixed_var_timestamps = new std::vector<int>(inst.get_nvar_strips(), -1);
+        inst.fixed_var_timestamps = new std::vector<int>(inst.get_nvar(), -1);
         inst.fixed_act_timestamps = new std::vector<int>(inst.get_nact(), -1);
     }
 
@@ -91,7 +91,7 @@ void HPLUS_run(HPLUS_instance& inst) {
 
     #if HPLUS_VERBOSE >= 20
     int nact_pre = inst.get_nact();
-    int nvarstr_pre = inst.get_nvar_strips();
+    int nvar_pre = inst.get_nvar();
     #endif
 
     inst.problem_semplification(eliminated_variables, eliminated_actions);
@@ -99,14 +99,14 @@ void HPLUS_run(HPLUS_instance& inst) {
     #if HPLUS_VERBOSE >= 20
     int count = 0;
     for (auto x : inst.fixed_variables) count++;
-    HPLUS_env.logger.print_info("Optimized number of variables:         %10d --> %10d.", nvarstr_pre, inst.get_nvar_strips() - count);
+    HPLUS_env.logger.print_info("Optimized number of variables:         %10d --> %10d.", nvar_pre, inst.get_nvar() - count);
     count = 0;
     for (auto x : inst.fixed_actions) count++;
     HPLUS_env.logger.print_info("Optimized number of actions:           %10d --> %10d.", nact_pre, inst.get_nact() - count);
     count = 0;
     for (auto x : inst.eliminated_first_archievers) count++;
     for (auto x : inst.fixed_first_archievers) count++;
-    HPLUS_env.logger.print_info("Optimized number of first archievers:  %10d --> %10d.", nvarstr_pre * nact_pre, inst.get_nact() * inst.get_nvar_strips() - count);
+    HPLUS_env.logger.print_info("Optimized number of first archievers:  %10d --> %10d.", nvar_pre * nact_pre, inst.get_nact() * inst.get_nvar() - count);
     #endif
 
     HPLUS_stats.opt_time = HPLUS_env.get_time() - start_time;
