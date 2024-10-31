@@ -246,7 +246,7 @@ void HPLUS_instance::inverse_actions_extraction(const my::BitField& eliminated_a
 
     my::SSBT subset_finder = my::SSBT();
 
-    // find efficiently allactions that satisfy point 2) of the Definition 1 in section 4.6 of Imai's paper
+    // find efficiently all actions that satisfy point 2) of the Definition 1 in section 4.6 of Imai's paper
     auto remaining_actions = (!eliminated_actions).sparse();
     for (auto act_i : remaining_actions) subset_finder.add(act_i, this -> actions_[act_i].get_eff());
 

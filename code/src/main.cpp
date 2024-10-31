@@ -36,28 +36,9 @@ void HPLUS_show_info(const HPLUS_instance& inst) {
     HPLUS_env.logger.print("# variables: %d.", inst.get_nvar());
     HPLUS_env.logger.print("# variables (binary expansion): %d.", inst.get_nvar_strips());
     #if HPLUS_VERBOSE >= 100
-    const unsigned int nvar = inst.get_nvar();
-    const std::vector<HPLUS_variable>& variables = inst.get_variables();
-    for (unsigned int i = 0; i < nvar; i++) HPLUS_env.logger.print("name(var_%d) = '%s'.", i, variables[i].get_name().c_str());
-    for (unsigned int i = 0; i < nvar; i++) HPLUS_env.logger.print("range(var_%d) = '%d'.", i, variables[i].get_range());
-    for (unsigned int i = 0; i < nvar; i++){
-        const std::vector<std::string>& val_names = variables[i].get_val_names();
-        for (unsigned int j = 0; j < variables[i].get_range(); j++)
-            HPLUS_env.logger.print("name(var_%d[%d]) = '%s'.", i, j, val_names[j].c_str());
-    }
-    HPLUS_env.logger.print("Total number of variable states: %d", inst.get_nvar_strips());
     HPLUS_env.logger.print("Goal state: %s.", std::string(inst.get_gstate()).c_str());
     #endif
     HPLUS_env.logger.print("# actions: %d.", inst.get_nact());
-    #if HPLUS_VERBOSE >= 100
-    const std::vector<HPLUS_action>& actions = inst.get_actions();
-    for (unsigned int act_i = 0; act_i < inst.get_nact(); act_i++) {
-        HPLUS_env.logger.print("pre(act_%d) = '%s'.", act_i, std::string(actions[act_i].get_pre()).c_str());
-        HPLUS_env.logger.print("eff(act_%d) = '%s'.", act_i, std::string(actions[act_i].get_eff()).c_str());
-        HPLUS_env.logger.print("name(act_%d) = '%s'.", act_i, actions[act_i].get_name().c_str());
-        HPLUS_env.logger.print("cost(act_%d) = '%d'.", act_i, actions[act_i].get_cost());
-    }
-    #endif
 
     lprint(LINE);
 
