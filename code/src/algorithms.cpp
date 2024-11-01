@@ -80,33 +80,19 @@ void HPLUS_run(HPLUS_instance& inst) {
 
     double start_time = HPLUS_env.get_time();
 
-    my::BitField eliminated_variables;
-    my::BitField eliminated_actions;
-    if (HPLUS_env.alg == HPLUS_CLI_IMAI) {
-        inst.fixed_var_timestamps = new std::vector<int>(inst.get_nvar(), -1);
-        inst.fixed_act_timestamps = new std::vector<int>(inst.get_nact(), -1);
-    }
-
-    inst.extract_imai_enhancements(eliminated_variables, eliminated_actions);
-
-    #if HPLUS_VERBOSE >= 20
-    int nact_pre = inst.get_nact();
-    int nvar_pre = inst.get_nvar();
-    #endif
-
-    inst.problem_semplification(eliminated_variables, eliminated_actions);
+    inst.imai_model_enhancements();
 
     #if HPLUS_VERBOSE >= 20
     int count = 0;
-    for (auto x : inst.fixed_variables) count++;
-    HPLUS_env.logger.print_info("Optimized number of variables:         %10d --> %10d.", nvar_pre, inst.get_nvar() - count);
+    for (auto _ : inst.model_opt_fixed_var) count++;
+    HPLUS_env.logger.print_info("Optimized number of variables:         %10d --> %10d.", inst.get_nvar(), inst.get_nvar_opt() - count);
     count = 0;
-    for (auto x : inst.fixed_actions) count++;
-    HPLUS_env.logger.print_info("Optimized number of actions:           %10d --> %10d.", nact_pre, inst.get_nact() - count);
+    for (auto _ : inst.model_opt_fixed_act) count++;
+    HPLUS_env.logger.print_info("Optimized number of actions:           %10d --> %10d.", inst.get_nact(), inst.get_nact_opt() - count);
     count = 0;
-    for (auto x : inst.eliminated_first_archievers) count++;
-    for (auto x : inst.fixed_first_archievers) count++;
-    HPLUS_env.logger.print_info("Optimized number of first archievers:  %10d --> %10d.", nvar_pre * nact_pre, inst.get_nact() * inst.get_nvar() - count);
+    for (auto _ : inst.model_opt_eliminated_fa) count++;
+    for (auto _ : inst.model_opt_fixed_fa) count++;
+    HPLUS_env.logger.print_info("Optimized number of first archievers:  %10d --> %10d.", inst.get_nvar() * inst.get_nact(), inst.get_nact_opt() * inst.get_nvar_opt() - count);
     #endif
 
     HPLUS_stats.opt_time = HPLUS_env.get_time() - start_time;
@@ -135,13 +121,8 @@ void HPLUS_run(HPLUS_instance& inst) {
 
     HPLUS_cpx_init(env, lp);
 
-    inst.fixed_variables |= inst.get_gstate();
-
-    if (HPLUS_env.alg == HPLUS_CLI_IMAI) {
-        HPLUS_cpx_build_imai(env, lp, inst);
-        delete inst.fixed_var_timestamps; inst.fixed_var_timestamps = nullptr;
-        delete inst.fixed_act_timestamps; inst.fixed_act_timestamps = nullptr;
-    } else if (HPLUS_env.alg == HPLUS_CLI_RANKOOH) HPLUS_cpx_build_rankooh(env, lp, inst);
+    if (HPLUS_env.alg == HPLUS_CLI_IMAI) HPLUS_cpx_build_imai(env, lp, inst);
+    else if (HPLUS_env.alg == HPLUS_CLI_RANKOOH) HPLUS_cpx_build_rankooh(env, lp, inst);
 
     // time limit
     if ((double)HPLUS_env.time_limit > HPLUS_env.get_time()) my::assert(!CPXsetdblparam(env, CPXPARAM_TimeLimit, (double)HPLUS_env.time_limit - HPLUS_env.get_time()), "CPXsetdblparam (CPXPARAM_TimeLimit) failed.");
