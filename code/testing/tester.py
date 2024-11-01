@@ -9,11 +9,6 @@ from pathlib import Path
 alg = sys.argv[1]
 timelimit = sys.argv[2]
 instances_folder = sys.argv[3]
-cpx_dir = sys.argv[4]
-cpx_inc = sys.argv[5]
-verbose = sys.argv[6]
-warn = sys.argv[7]
-intcheck = sys.argv[8]
 
 current_dir = Path(__file__).parent
 home_dir = current_dir.parent.parent
