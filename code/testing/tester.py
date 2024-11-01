@@ -118,8 +118,8 @@ if __name__ == "__main__":
     
     try:
         
-        # clear_output_directories()
-        # run_batch()
+        clear_output_directories()
+        run_batch()
         label_logs()
         
         bot.send_message_by_text("Done.")
