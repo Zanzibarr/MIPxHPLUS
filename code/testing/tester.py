@@ -1,10 +1,10 @@
+from pathlib import Path
 import subprocess
-import notify
+import notify       # remember to add notify's path as environment variable before running the tester
 import shutil
 import shlex
 import sys
 import os
-from pathlib import Path
 
 alg = sys.argv[1]
 timelimit = sys.argv[2]
@@ -55,34 +55,25 @@ def clear_dir(directory):
         elif item.is_dir():
             shutil.rmtree(item)
  
-def run_batch():
+def run():
     
-    try:
+    os.chdir(build_dir)
+    
+    instances = os.listdir(instances_folder)
 
-        instances = os.listdir(instances_folder)
-        os.chdir(build_dir)
-
-        bot.create_progress_bar(len(instances))
+    bot.create_progress_bar(len(instances), f"Testing {alg} on {len(instances)} (timelimit: {timelimit} s):")
+    
+    for file in instances:
         
-        for file in instances:
-            
-            file_path = os.path.join(instances_folder, file)
-            
-            cmd = f"./main -a {alg} -l -ln {file}.log -rn {file} -t {timelimit} -i \"{file_path}\""
-
-            try:
-                subprocess.run(cmd, shell=True, check=True, capture_output=True, text=True)
-                
-            except subprocess.CalledProcessError as e:
-                continue
-            
-            bot.update_progress_bar()
-            
-        bot.conclude_progress_bar()
-
-    except subprocess.CalledProcessError as e:
-
-        bot.send_message_by_text(e.stderr)
+        file_path = os.path.join(instances_folder, file)
+        
+        cmd = f"./main -a {alg} -l -ln {file}.log -rn {file} -t {timelimit} -i \"{file_path}\""
+        
+        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        
+        bot.update_progress_bar()
+        
+    bot.conclude_progress_bar()
         
 def move_file(frompath, topath):
     
@@ -113,16 +104,76 @@ def label_logs():
             move_file(filepath, opt_logs_dir)
         else:
             move_file(filepath, errors_logs_dir)
+
+#TODO: Compare results with other results to check if the optimal solutions are indeed optimal
+def check_results():
     
+    return f"""
+!! RESULTS HAVEN'T BEEN COMPARED WITH OTHER SOFTWARE YET !!
+"""
+
+def read_logs():
+    
+    heuristic = 0
+    optimal = 0
+    time_limit = 0
+    build_tl = 0
+    infeasible = 0
+    errors = 0
+    other = 0
+    total = 0
+    
+    heuristic += len(os.listdir(good_logs_dir))
+    optimal += len(os.listdir(opt_logs_dir))
+    infeasible += len(os.listdir(infease_logs_dir))
+
+    time_limit += len(os.listdir(timelimit_logs_dir))
+    build_tl += len(os.listdir(b_timelimit_logs_dir))
+
+    errors += len(os.listdir(errors_logs_dir))
+
+    other += len(os.listdir(other_logs_dir))
+    
+    good = heuristic + optimal + infeasible
+    bad = time_limit + build_tl
+    total = good + bad + errors
+    
+    message = f"""
+TOTAL INSTANCES: {total}
+FOUND A SOLUTION: {good}/{total} ({round(good*100/total, 2)}%)
+ -> FOUND THE OPTIMAL: {optimal}/{good} ({round(optimal*100/good, 2)}%)
+ -> FOUND FEASIBLE: {heuristic}/{good} ({round(heuristic*100/good, 2)}%)
+ -> PROVEN INFEASIBLE: {infeasible}/{good} ({round(infeasible*100/total, 2)}%)
+NO SOLUTION FOUND: {bad}/{total} ({round(bad*100/total, 2)}%)
+ -> MODEL TOO SLOW: {time_limit}/{bad} ({round(time_limit*100/bad, 2)}%)
+ -> BUILD TOO SLOW: {build_tl}/{bad} ({round(build_tl*100/bad, 2)}%)
+ERRORS: {errors}/{total} ({round(errors*100/total, 2)}%)
+OTHER LOGS: {other}
+"""
+
+    return message
+
+#TODO: Get time statistics
+def time_stats():
+    
+    return f"""
+TIME STATISTICS TODO
+"""
+
 if __name__ == "__main__":
     
     try:
         
         clear_output_directories()
-        run_batch()
+        run()
         label_logs()
         
-        bot.send_message_by_text("Done.")
+        data = ""
+        data += check_results()
+        data += read_logs()
+        data += time_stats()
+        
+        bot.send_message_by_text(data)
 
     except Exception as e:
         
