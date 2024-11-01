@@ -30,8 +30,8 @@
 #endif
 #define HPLUS_CODE_DIR HPLUS_HOME_DIR"/code"
 #define HPLUS_INST_DIR HPLUS_CODE_DIR"/instances"
-#define HPLUS_LOG_DIR HPLUS_CODE_DIR"/logs"
-#define HPLUS_CPLEX_OUT_DIR HPLUS_CODE_DIR"/cpxout"
+#define HPLUS_LOG_DIR HPLUS_HOME_DIR"/logs/AAA_output_logs"
+#define HPLUS_CPLEX_OUT_DIR HPLUS_HOME_DIR"/logs/cpxout"
 
 // ##################################################################### //
 // ############################## DEFAULTS ############################# //
