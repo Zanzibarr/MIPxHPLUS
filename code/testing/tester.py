@@ -69,7 +69,7 @@ def run():
         
         cmd = f"./main -a {alg} -l -ln {file}.log -rn {file} -t {timelimit} -i \"{file_path}\""
         
-        subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run(cmd, shell=True, capture_output=True, text=True)            
         
         bot.update_progress_bar()
         
