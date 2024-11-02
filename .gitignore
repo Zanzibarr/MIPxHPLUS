@@ -1,9 +1,10 @@
 # organization
-local/
 .DS_Store
 .vscode
 .idea
 .trunk
+local/
+logs/
 
 # latex
 thesis/*.aux
@@ -20,9 +21,4 @@ thesis/*.toc
 thesis/*.xmpi
 
 # code
-code/*logs*
 code/build*
-code/src/test.cpp
-code/src/test*
-code/cpxout
-logs/
