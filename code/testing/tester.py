@@ -4,16 +4,14 @@ import random
 import notify
 import shutil
 import shlex
+import time
 import sys
 import os
 
 alg = sys.argv[1]
-timelimit = sys.argv[2]
-instances_folder = sys.argv[3]
 
 current_dir = Path(__file__).parent
 home_dir = current_dir.parent.parent
-build_dir = f"{home_dir}/code/build"
 logs_dir = f"{home_dir}/logs"
 output_logs_dir = f"{logs_dir}/AAA_output_logs"
 
@@ -25,7 +23,6 @@ infease_logs_dir = f"{logs_dir}/AAE_infeas_logs"
 errors_logs_dir = f"{logs_dir}/AAF_errors_logs"
 other_logs_dir = f"{logs_dir}/AAF_other_logs"
 
-os.makedirs(build_dir, exist_ok=True)
 os.makedirs(logs_dir, exist_ok=True)
 os.makedirs(output_logs_dir, exist_ok=True)
 os.makedirs(opt_logs_dir, exist_ok=True)
@@ -60,23 +57,11 @@ def clear_dir(directory):
  
 def run():
     
-    instances = random.sample(os.listdir(instances_folder), 100)
+    for batch in os.listdir(f"{current_dir}/{alg}_jobs"):
+        for job in os.listdir(f"{current_dir}/{alg}_jobs/{batch}"):
+            subprocess.run(f"sbatch --wckey=rop --requeue {current_dir}/{alg}_jobs/{batch}/{job}")
 
-    bot.create_progress_bar(len(instances), f"Testing {alg} on {len(instances)} instances (timelimit: {timelimit} s):")
-    
-    for file in instances:
-        
-        file_path = os.path.join(instances_folder, file)
-        
-        cmd = f"{build_dir}/main -a {alg} -l -ln {file}.log -rn {file} -t {timelimit} -i \"{file_path}\""
-        
-        print(cmd)
-        output = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-        print(output.stderr)
-
-        bot.update_progress_bar()
-        
-    bot.conclude_progress_bar()
+        time.sleep(300)
         
 def move_file(frompath, topath):
     
@@ -168,17 +153,17 @@ if __name__ == "__main__":
     
     try:
         
-        clear_output_directories()
+        # clear_output_directories()
         run()
-        label_logs()
+        # label_logs()
 
-        print("Reading logs")
-        data = ""
-        data += check_results()
-        data += read_logs()
-        data += time_stats()
+        # print("Reading logs")
+        # data = ""
+        # data += check_results()
+        # data += read_logs()
+        # data += time_stats()
         
-        bot.send_message_by_text(data)
+        # bot.send_message_by_text(data)
 
     except Exception as e:
         

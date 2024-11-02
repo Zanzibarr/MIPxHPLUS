@@ -23,3 +23,5 @@ thesis/*.pdf
 
 # code
 code/build*
+code/testing/imai_jobs
+code/testing/rankooh_jobs

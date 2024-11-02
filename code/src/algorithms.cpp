@@ -19,6 +19,11 @@ void HPLUS_cpx_init(CPXENVptr& env, CPXLPptr& lp) {
     // tolerance
     my::assert(!CPXsetdblparam(env, CPXPARAM_MIP_Tolerances_MIPGap, 0), "CPXsetdblparam (CPXPARAM_MIP_Tolerances_MIPGap) failed.");
 
+    // memory/size limits
+    my::assert(!CPXsetintparam(env, CPXPARAM_MIP_Limits_TreeMemory, 12000), "CPXsetintparam (CPXPARAM_MIP_Limits_TreeMemory) failed.");
+    my::assert(!CPXsetintparam(env, CPXPARAM_WorkMem, 4096), "CPXsetintparam (CPXPARAM_WorkMem) failed.");
+    my::assert(!CPXsetintparam(env, CPXPARAM_MIP_Strategy_File, 3), "CPXsetintparam (CPXPARAM_MIP_Strategy_File) failed.");
+
     // terminate condition
     my::assert(!CPXsetterminate(env, &HPLUS_env.cpx_terminate), "CPXsetterminate failed.");
 
