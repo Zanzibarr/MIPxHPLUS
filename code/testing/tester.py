@@ -39,7 +39,8 @@ os.makedirs(other_logs_dir, exist_ok=True)
 bot = notify.bot()
 
 def clear_output_directories():
-    
+
+    print("Cleaning output directories") 
     clear_dir(Path(output_logs_dir))
     clear_dir(Path(opt_logs_dir))
     clear_dir(Path(good_logs_dir))
@@ -71,8 +72,10 @@ def run():
         
         cmd = f"./main -a {alg} -l -ln {file}.log -rn {file} -t {timelimit} -i \"{file_path}\""
         
-        subprocess.run(cmd, shell=True, capture_output=True, text=True)
-        
+        print(cmd)
+        output = subprocess.run(cmd, shell=True, capture_output=True, text=True)
+        print(output.stderr)
+
         bot.update_progress_bar()
         
     bot.conclude_progress_bar()
@@ -82,7 +85,8 @@ def move_file(frompath, topath):
     subprocess.run(shlex.split(f"mv {frompath} {topath}/"))
         
 def label_logs():
-    
+
+    print("Labeling logs")
     for file in os.listdir(output_logs_dir):
         
         filepath = os.path.join(output_logs_dir, file)
@@ -169,7 +173,8 @@ if __name__ == "__main__":
         clear_output_directories()
         run()
         label_logs()
-        
+
+        print("Reading logs")
         data = ""
         data += check_results()
         data += read_logs()
