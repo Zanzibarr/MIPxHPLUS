@@ -324,7 +324,7 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst)
         val_c5_c6_c7[1] = 1;
         my::assert(!CPXaddrows(env, lp, 0, 1, 2, &rhs_1, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr), "CPXaddrows (c7) faliled.");
     }
-    
+
     for (unsigned int h = 0; h < triangles_list.size(); h++) {
         const int i = triangles_list[h].first, j = triangles_list[h].second, k = triangles_list[h].third;
         ind_c8[0] = get_veg_idx(i, j);
