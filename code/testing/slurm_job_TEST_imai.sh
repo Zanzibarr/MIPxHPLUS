@@ -3,7 +3,7 @@
 #SBATCH --partition=arrow
 #SBATCH --ntasks=1
 #SBATCH --mem=14GB
-#SBATCH --time=01:00:00
+#SBATCH --time=00:10:00
 # warm up processors
 sudo cpupower frequency-set -g performance
 sleep 0.1
@@ -13,9 +13,8 @@ ulimit -v 16777216
 
 #####################
 
-cd "$(dirname "$0")"
 export PYTHONPATH="$HOME/.notify2/python_module:$PYTHONPATH"
-/usr/bin/python3 tester.py imai 5 /nfsd/rop/instances/PlanningSAS
+/usr/bin/python3 $HOME/thesis_hplus/code/testing/tester.py imai 5 /nfsd/rop/instances/PlanningSAS
 
 #####################
 
