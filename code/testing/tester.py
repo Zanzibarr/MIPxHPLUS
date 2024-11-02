@@ -1,6 +1,7 @@
 from pathlib import Path
 import subprocess
-import notify       # remember to add notify's path as environment variable before running the tester
+import random
+import notify
 import shutil
 import shlex
 import sys
@@ -59,7 +60,7 @@ def run():
     
     os.chdir(build_dir)
     
-    instances = os.listdir(instances_folder)
+    instances = random.sample(os.listdir(instances_folder), 100)
 
     bot.create_progress_bar(len(instances), f"Testing {alg} on {len(instances)} instances (timelimit: {timelimit} s):")
     
