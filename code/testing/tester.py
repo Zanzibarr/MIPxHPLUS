@@ -70,7 +70,7 @@ def run():
         
         file_path = os.path.join(instances_folder, file)
         
-        cmd = f"./main -a {alg} -l -ln {file}.log -rn {file} -t {timelimit} -i \"{file_path}\""
+        cmd = f"{build_dir}/main -a {alg} -l -ln {file}.log -rn {file} -t {timelimit} -i \"{file_path}\""
         
         print(cmd)
         output = subprocess.run(cmd, shell=True, capture_output=True, text=True)
