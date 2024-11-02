@@ -14,7 +14,7 @@ ulimit -v 16777216
 
 cd "$(dirname "$0")"
 export PYTHONPATH="$HOME/.notify2/python_module:$PYTHONPATH"
-/usr/bin/python3 tester.py imai 5 /path/to/instances
+/usr/bin/python3 tester.py imai 5 /nfsd/rop/instances/PlanningSAS
 
 #####################
 
