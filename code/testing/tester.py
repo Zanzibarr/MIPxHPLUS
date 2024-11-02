@@ -47,6 +47,7 @@ def clear_output_directories():
     clear_dir(Path(b_timelimit_logs_dir))
     clear_dir(Path(infease_logs_dir))
     clear_dir(Path(errors_logs_dir))
+    clear_dir(Path(other_logs_dir))
     
 def clear_dir(directory):
     
