@@ -1,6 +1,6 @@
 #!/bin/bash
 #SBATCH --job-name=hplusImaiZanMatTEST
-#SBATCH --partition=queue
+#SBATCH --partition=arrow
 #SBATCH --ntasks=1
 #SBATCH --mem=14GB
 # warm up processors
