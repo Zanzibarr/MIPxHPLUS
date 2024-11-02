@@ -60,8 +60,6 @@ def clear_dir(directory):
  
 def run():
     
-    os.chdir(build_dir)
-    
     instances = random.sample(os.listdir(instances_folder), 100)
 
     bot.create_progress_bar(len(instances), f"Testing {alg} on {len(instances)} instances (timelimit: {timelimit} s):")
