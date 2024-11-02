@@ -143,7 +143,7 @@ TOTAL INSTANCES:        {total}
 FOUND A SOLUTION:       {good}/{total} ({round(good*100/total, 2)}%)
  -> FOUND THE OPTIMAL:  {optimal}/{good} ({round(optimal*100/good, 2)}%)
  -> FOUND FEASIBLE:     {heuristic}/{good} ({round(heuristic*100/good, 2)}%)
- -> PROVEN INFEASIBLE:  {infeasible}/{good} ({round(infeasible*100/total, 2)}%)
+ -> PROVEN INFEASIBLE:  {infeasible}/{good} ({round(infeasible*100/good, 2)}%)
 NO SOLUTION FOUND:      {bad}/{total} ({round(bad*100/total, 2)}%)
  -> MODEL TOO SLOW:     {time_limit}/{bad} ({round(time_limit*100/bad, 2)}%)
  -> BUILD TOO SLOW:     {build_tl}/{bad} ({round(build_tl*100/bad, 2)}%)
