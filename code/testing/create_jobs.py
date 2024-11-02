@@ -9,8 +9,10 @@ build_dir = f"{home_dir}/code/build"
 time_limit = sys.argv[1]
 instances_folder = sys.argv[2]
 
+batch_size = 1000
+
 instances_list = os.listdir(instances_folder)
-n_batches = int(np.ceil(len(instances_list)/500))
+n_batches = int(np.ceil(len(instances_list)/batch_size))
 
 os.mkdir(f"{current_dir}/imai_jobs")
 os.mkdir(f"{current_dir}/rankooh_jobs")
@@ -20,9 +22,9 @@ for i in range(n_batches):
     os.mkdir(f"{current_dir}/imai_jobs/batch_{i}")
     os.mkdir(f"{current_dir}/rankooh_jobs/batch_{i}")
 
-    batch_start = i * 500
+    batch_start = i * batch_size
 
-    for j in range(min(500, len(instances_list) - i * 500)):
+    for j in range(min(batch_size, len(instances_list) - i * batch_size)):
 
         idx = batch_start + j
         inst = instances_list[idx]
@@ -30,7 +32,7 @@ for i in range(n_batches):
 
         job_imai = f"{current_dir}/imai_jobs/batch_{i}/{inst.replace('.sas', '_imai_job.sh')}"
         job_content_imai = f"""#!/bin/bash
-#SBATCH --job-name={inst.replace('.sas', '_imai')}
+#SBATCH --job-name={inst.replace('.sas', '_imai_matzan')}
 #SBATCH --partition=arrow
 #SBATCH --ntasks=1
 #SBATCH --mem=14GB
@@ -56,7 +58,7 @@ sudo cpupower frequency-set -g powersave"""
         
         job_rankooh = f"{current_dir}/rankooh_jobs/batch_{i}/{inst.replace('.sas', '_rankooh_job.sh')}"
         job_content_rankooh = f"""#!/bin/bash
-#SBATCH --job-name={inst.replace('.sas', '_rankooh')}
+#SBATCH --job-name={inst.replace('.sas', '_rankooh_matzan')}
 #SBATCH --partition=arrow
 #SBATCH --ntasks=1
 #SBATCH --mem=14GB

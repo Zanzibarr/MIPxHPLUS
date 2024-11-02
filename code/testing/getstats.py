@@ -54,14 +54,6 @@ def clear_dir(directory):
             item.unlink()
         elif item.is_dir():
             shutil.rmtree(item)
- 
-def run():
-    
-    for batch in os.listdir(f"{current_dir}/{alg}_jobs"):
-        for job in os.listdir(f"{current_dir}/{alg}_jobs/{batch}"):
-            subprocess.run(f"sbatch --wckey=rop --requeue {current_dir}/{alg}_jobs/{batch}/{job}")
-
-        time.sleep(300)
         
 def move_file(frompath, topath):
     
@@ -153,17 +145,15 @@ if __name__ == "__main__":
     
     try:
         
-        # clear_output_directories()
-        run()
-        # label_logs()
+        label_logs()
 
-        # print("Reading logs")
-        # data = ""
-        # data += check_results()
-        # data += read_logs()
-        # data += time_stats()
+        print("Reading logs")
+        data = ""
+        data += check_results()
+        data += read_logs()
+        data += time_stats()
         
-        # bot.send_message_by_text(data)
+        bot.send_message_by_text(data)
 
     except Exception as e:
         
