@@ -47,7 +47,7 @@ def run():
     
     for batch in os.listdir(alg_jobs_dir):
 
-        while(number_pending_jobs() > 500 or queue_jobs_size() > 5000):
+        while(number_pending_jobs_user() > 500 or number_pending_jobs() > 5000):
             time.sleep(10)
         
         for job in os.listdir(f"{alg_jobs_dir}/{batch}"):
