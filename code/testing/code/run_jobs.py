@@ -31,17 +31,15 @@ def clear_dir(directory):
         elif item.is_dir():
             shutil.rmtree(item)
 
-def number_pending_jobs() -> int:
-
-    process = subprocess.Popen(shlex.split("squeue -u $USER | wc -l"), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    output, _ = process.communicate()
-    return int(output)
-
-def queue_jobs_size() -> int:
-
-    process = subprocess.Popen(shlex.split("squeue | wc -l"), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    output, _ = process.communicate()
-    return int(output)
+def number_pending_jobs_user():
+    command = "squeue --state=PENDING -u $USER | tail -n +2 | wc -l"
+    result = subprocess.run(command, shell=True, stdout=subprocess.PIPE)
+    return int(result.stdout.strip())
+ 
+def number_pending_jobs():
+    command = "squeue --state=PENDING | tail -n +2 | wc -l"
+    result = subprocess.run(command, shell=True, stdout=subprocess.PIPE)
+    return int(result.stdout.strip())
  
 def run():
 
@@ -56,6 +54,6 @@ def run():
             subprocess.run(shlex.split(f"sbatch --wckey=rop --requeue {alg_jobs_dir}/{batch}/{job}"))
 
 if __name__ == "__main__":
-        
+    
     clear_logs_dir()
     run()
