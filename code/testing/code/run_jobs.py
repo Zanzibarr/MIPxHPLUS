@@ -29,18 +29,26 @@ def clear_dir(directory):
             item.unlink()
         elif item.is_dir():
             shutil.rmtree(item)
+
+def number_pending_jobs() -> int:
+
+    output = subprocess.run("squeue -u $USER", capture_output=True)
+    return int(len(output.stdout.splitlines())) - 1
  
 def run():
 
     alg_jobs_dir = f"{utils.jobs_folder}/{alg}_jobs"
     
     for batch in os.listdir(alg_jobs_dir):
+
+        while(number_pending_jobs() > 500):
+            time.sleep(60)
+        
         for job in os.listdir(f"{alg_jobs_dir}/{batch}"):
             subprocess.run(f"sbatch --wckey=rop --requeue {alg_jobs_dir}/{batch}/{job}")
 
-        time.sleep(300)
-
 if __name__ == "__main__":
         
-    clear_logs_dir()
-    run()
+    # clear_logs_dir()
+    # run()
+    print(number_pending_jobs())
