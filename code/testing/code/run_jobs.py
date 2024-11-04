@@ -49,6 +49,8 @@ def run():
 
         while(number_pending_jobs_user() > 500 or number_pending_jobs() > 5000):
             time.sleep(10)
+
+        print(f"pending jobs: {number_pending_jobs_user()}")
         
         for job in os.listdir(f"{alg_jobs_dir}/{batch}"):
             subprocess.run(shlex.split(f"sbatch --wckey=rop --requeue {alg_jobs_dir}/{batch}/{job}"))
