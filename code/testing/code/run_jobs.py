@@ -53,7 +53,7 @@ def run():
             time.sleep(10)
         
         for job in os.listdir(f"{alg_jobs_dir}/{batch}"):
-            subprocess.run(f"sbatch --wckey=rop --requeue {alg_jobs_dir}/{batch}/{job}")
+            subprocess.run(shlex.split(f"sbatch --wckey=rop --requeue {alg_jobs_dir}/{batch}/{job}"))
 
 if __name__ == "__main__":
         
