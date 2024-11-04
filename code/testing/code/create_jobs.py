@@ -3,7 +3,6 @@ sys.dont_write_bytecode = True
 import utils
 import os
 import random
-import numpy as np
 from pathlib import Path
 
 if len(sys.argv) < 3:
@@ -17,7 +16,7 @@ batch_size = 1000
 
 instances_list = os.listdir(instances_folder)
 random.shuffle(instances_list)
-n_batches = int(np.ceil(len(instances_list)/batch_size))
+n_batches = (len(instances_list)//batch_size) + 1
 
 algs = ["imai", "rankooh"]
 
