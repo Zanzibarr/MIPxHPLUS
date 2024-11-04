@@ -44,13 +44,12 @@ def run():
     for batch in os.listdir(alg_jobs_dir):
 
         while(number_pending_jobs() > 500):
-            time.sleep(60)
+            time.sleep(10)
         
         for job in os.listdir(f"{alg_jobs_dir}/{batch}"):
             subprocess.run(f"sbatch --wckey=rop --requeue {alg_jobs_dir}/{batch}/{job}")
 
 if __name__ == "__main__":
         
-    # clear_logs_dir()
-    # run()
-    print(number_pending_jobs())
+    clear_logs_dir()
+    run()
