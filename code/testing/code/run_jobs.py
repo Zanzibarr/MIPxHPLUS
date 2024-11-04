@@ -35,7 +35,7 @@ def number_pending_jobs() -> int:
 
     process = subprocess.Popen(shlex.split("squeue -u $USER"), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, _ = process.communicate()
-    return int(len(output.decode('utf-8').stdout.splitlines())) - 1
+    return int(len(output.decode('utf-8').splitlines())) - 1
  
 def run():
 
