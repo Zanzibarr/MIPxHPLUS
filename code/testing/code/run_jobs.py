@@ -3,6 +3,7 @@ sys.dont_write_bytecode = True
 import utils
 import subprocess, time, shutil, os
 from pathlib import Path
+import shlex
 
 if len(sys.argv) < 2:
     print("Missing algorithm.")
@@ -32,7 +33,7 @@ def clear_dir(directory):
 
 def number_pending_jobs() -> int:
 
-    output = subprocess.run("squeue -u $USER", capture_output=True)
+    output = subprocess.run(shlex.split("squeue -u $USER"), capture_output=True, shell=True, text=True)
     return int(len(output.stdout.splitlines())) - 1
  
 def run():
