@@ -33,7 +33,7 @@ def clear_dir(directory):
 
 def number_pending_jobs() -> int:
 
-    output = subprocess.run(shlex.split("squeue -u $USER"), capture_output=True, shell=True, text=True)
+    output = subprocess.run(shlex.split("squeue -u $USER"), shell=True, capture_output=True, text=True)
     return int(len(output.stdout.splitlines())) - 1
  
 def run():
