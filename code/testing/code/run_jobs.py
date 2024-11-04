@@ -36,6 +36,12 @@ def number_pending_jobs() -> int:
     process = subprocess.Popen(shlex.split("squeue -u $USER"), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, _ = process.communicate()
     return int(len(output.decode('utf-8').splitlines())) - 1
+
+def queue_jobs_size() -> int:
+
+    process = subprocess.Popen(shlex.split("squeue"), stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output, _ = process.communicate()
+    return int(len(output.decode('utf-8').splitlines())) - 1
  
 def run():
 
@@ -43,7 +49,7 @@ def run():
     
     for batch in os.listdir(alg_jobs_dir):
 
-        while(number_pending_jobs() > 500):
+        while(number_pending_jobs() > 500 or queue_jobs_size() > 5000):
             time.sleep(10)
         
         for job in os.listdir(f"{alg_jobs_dir}/{batch}"):
