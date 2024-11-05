@@ -2,7 +2,7 @@ import sys
 sys.dont_write_bytecode = True
 import utils
 import subprocess
-import notify
+#import notify
 import shlex
 import os
 
@@ -16,7 +16,7 @@ os.makedirs(utils.infease_logs_dir, exist_ok=True)
 os.makedirs(utils.errors_logs_dir, exist_ok=True)
 os.makedirs(utils.other_logs_dir, exist_ok=True)
 
-bot = notify.bot()
+#bot = notify.bot()
         
 def move_file(frompath, topath):
     
@@ -105,17 +105,18 @@ TIME STATISTICS TODO
 
 if __name__ == "__main__":
     
-    try:
+#    try:
         
-        label_logs()
+    label_logs()
 
-        data = ""
-        data += check_results()
-        data += read_logs()
-        data += time_stats()
-        
-        bot.send_message_by_text(data)
+    data = ""
+    data += check_results()
+    data += read_logs()
+    data += time_stats()
 
-    except Exception as e:
+    print(data)
+#        bot.send_message_by_text(data)
+
+#    except Exception as e:
         
-        bot.send_exception(str(e))
+#        bot.send_exception(str(e))

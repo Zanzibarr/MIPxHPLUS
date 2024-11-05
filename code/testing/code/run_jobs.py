@@ -5,11 +5,12 @@ import subprocess, time, shutil, os
 from pathlib import Path
 import shlex
 
-if len(sys.argv) < 2:
-    print("Missing algorithm.")
+if len(sys.argv) < 3:
+    print("Missing algorithm and batch index.")
     exit(1)
 
 alg = sys.argv[1]
+batch_idx = sys.argv[2]
 
 def clear_logs_dir():
 
@@ -44,18 +45,14 @@ def number_pending_jobs():
 def run():
 
     alg_jobs_dir = f"{utils.jobs_folder}/{alg}_jobs"
-    
-    for batch in os.listdir(alg_jobs_dir):
 
-        while(number_pending_jobs_user() > 500 or number_pending_jobs() > 5000):
-            time.sleep(10)
+    print(f"{alg_jobs_dir}/{batch_idx}")
+    input()
 
-        print(f"pending jobs: {number_pending_jobs_user()}")
-        
-        for job in os.listdir(f"{alg_jobs_dir}/{batch}"):
-            subprocess.run(shlex.split(f"sbatch --wckey=rop --requeue {alg_jobs_dir}/{batch}/{job}"))
+    for job in os.listdir(f"{alg_jobs_dir}/{batch_idx}"):
+        subprocess.run(shlex.split(f"sbatch --wckey=rop --requeue {alg_jobs_dir}/{batch_idx}/{job}"))
 
 if __name__ == "__main__":
     
-    clear_logs_dir()
+    #clear_logs_dir()
     run()
