@@ -2,12 +2,9 @@ import sys
 sys.dont_write_bytecode = True
 import utils
 import subprocess
-#import notify
 import shlex
 import os
 
-os.makedirs(utils.logs_dir, exist_ok=True)
-os.makedirs(utils.output_logs_dir, exist_ok=True)
 os.makedirs(utils.opt_logs_dir, exist_ok=True)
 os.makedirs(utils.good_logs_dir, exist_ok=True)
 os.makedirs(utils.timelimit_logs_dir, exist_ok=True)
@@ -16,8 +13,6 @@ os.makedirs(utils.infease_logs_dir, exist_ok=True)
 os.makedirs(utils.errors_logs_dir, exist_ok=True)
 os.makedirs(utils.other_logs_dir, exist_ok=True)
 
-#bot = notify.bot()
-        
 def move_file(frompath, topath):
     
     subprocess.run(shlex.split(f"mv {frompath} {topath}/"))
@@ -105,8 +100,6 @@ TIME STATISTICS TODO
 
 if __name__ == "__main__":
     
-#    try:
-        
     label_logs()
 
     data = ""
@@ -115,8 +108,3 @@ if __name__ == "__main__":
     data += time_stats()
 
     print(data)
-#        bot.send_message_by_text(data)
-
-#    except Exception as e:
-        
-#        bot.send_exception(str(e))
