@@ -221,30 +221,30 @@ def time_stats():
             print(f"WTF..., {file}")        
     
     return f"""
-OPT SOLUTION FOUND:
+OPTIMAL SOLUTION FOUND:
  -> Average parsing time: {round(sum(optimal_parsing_times) / len(optimal_parsing_times), 4)}
- -> Average optimization time: {round(sum(optimal_optimization_times) / len(optimal_optimization_times), 4)}
+ -> Average model optimization time: {round(sum(optimal_optimization_times) / len(optimal_optimization_times), 4)}
  -> Average warm-start time: {round(sum(optimal_wst_times) / len(optimal_wst_times), 4)}
  -> Average build time: {round(sum(optimal_build_times) / len(optimal_build_times), 4)}
- -> Average cplex time: {round(sum(optimal_execution_times) / len(optimal_execution_times), 4)}
+ -> Average CPLEX execution time: {round(sum(optimal_execution_times) / len(optimal_execution_times), 4)}
  -> Average total time: {round(sum(optimal_total_times) / len(optimal_total_times), 4)}
 A SOLUTION FOUND:
  -> Average parsing time: {round(sum(found_parsing_times) / len(found_parsing_times), 4)}
- -> Average optimization time: {round(sum(found_optimization_times) / len(found_optimization_times), 4)}
+ -> Average model optimization time: {round(sum(found_optimization_times) / len(found_optimization_times), 4)}
  -> Average warm-start time: {round(sum(found_wst_times) / len(found_wst_times), 4)}
  -> Average build time: {round(sum(found_build_times) / len(found_build_times), 4)}
- -> Average cplex time: {round(sum(found_execution_times) / len(found_execution_times), 4)}
+ -> Average CPLEX execution time: {round(sum(found_execution_times) / len(found_execution_times), 4)}
  -> Average total time: {round(sum(found_total_times) / len(found_total_times), 4)}
 MODEL TOO SLOW:
  -> Average parsing time: {round(sum(timel_parsing_times) / len(timel_parsing_times), 4)}
- -> Average optimization time: {round(sum(timel_optimization_times) / len(timel_optimization_times), 4)}
+ -> Average model optimization time: {round(sum(timel_optimization_times) / len(timel_optimization_times), 4)}
  -> Average warm-start time: {round(sum(timel_wst_times) / len(timel_wst_times), 4)}
  -> Average build time: {round(sum(timel_build_times) / len(timel_build_times), 4)}
 BUILD TOO SLOW:
- -> Stopped at parsing: {count_btl_parsing} / {total} ({round(count_btl_parsing * 100 / total, 2)})
- -> Stopped at optimization: {count_btl_optimization} / {total} ({round(count_btl_optimization * 100 / total, 2)})
- -> Stopped at warm-start: {count_btl_warm_start} / {total} ({round(count_btl_warm_start * 100 / total, 2)})
- -> Stopped at build: {count_btl_build} / {total} ({round(count_btl_build * 100 / total, 2)})
+ -> Stopped during parsing: {count_btl_parsing} / {total} ({round(count_btl_parsing * 100 / total, 2)}%)
+ -> Stopped during model optimization: {count_btl_optimization} / {total} ({round(count_btl_optimization * 100 / total, 2)}%)
+ -> Stopped during warm-start: {count_btl_warm_start} / {total} ({round(count_btl_warm_start * 100 / total, 2)}%)
+ -> Stopped during build: {count_btl_build} / {total} ({round(count_btl_build * 100 / total, 2)}%)
 """
 
 if __name__ == "__main__":
