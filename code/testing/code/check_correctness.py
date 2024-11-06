@@ -27,10 +27,10 @@ for file in os.listdir(utils.opt_logs_dir):
     cost_range = [float(x) for x in content_baseline[0].split(" ")]
     time = float(content_baseline[1])
 
-    if cost < cost_range[0] or cost > cost_range[1]: print(f"ERROR: {instance_name}")
+    if cost < cost_range[0] or cost > cost_range[1]:
+        print(f"ERROR: {instance_name}")
+        exit(1)
 
     times.append([time, total_time])
-
-input()
 
 [print(x) for x in times]
