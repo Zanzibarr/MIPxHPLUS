@@ -68,7 +68,7 @@ make <target_option>
 
 #### Code execution
 
-- **-i** <input_file> : (rel path) specify the input file (relative to the code/instances folder)
+- **-i** <input_file> : (abs path) specify the input file
 - **-a** <algorithm_name> : specify the algorithm to use
   - **imai** : to use the model from the [Imai15 paper](references/Imai15.pdf)
   - **rankooh** : to use the model from the [Rankooh22 paper](references/Rankooh22.pdf)
@@ -77,5 +77,5 @@ make <target_option>
 #### Logging
 
 - **-l** : (optional) tells the program to log output to file (as well as stdout)
-- **-ln** <log_name> : (string/"string with spaces") (optional) specify the name of the log file (will be located inside the code/logs folder); if not specified and the *-l* flag is used, a default log file will be used
+- **-ln** <log_name> : (string/"string with spaces") (optional) specify the name of the log file (will be located inside the logs/AAA_output_logs folder); if not specified and the *-l* flag is used, a default log file will be used
 - **-rn** <run_name> : (string/"string with spaces") (optional) set a run name that will show in the log file (used also to create log/lp files for cplex)
