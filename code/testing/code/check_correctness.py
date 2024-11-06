@@ -19,6 +19,8 @@ for file in os.listdir(utils.opt_logs_dir):
     
     instance_name = file.replace("_imai.log", "").replace("_rankooh.log", "")
 
+    if not os.path.exists(f"{utils.home_dir}/fast_downward_baseline/{instance_name}"): continue
+
     with open(f"{utils.home_dir}/fast_downward_baseline/{instance_name}", "r") as f:
         content_baseline = f.read().splitlines()
     
