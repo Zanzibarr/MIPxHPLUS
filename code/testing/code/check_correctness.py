@@ -17,7 +17,7 @@ for file in os.listdir(utils.opt_logs_dir):
     cost = int(content.partition("Solution cost:")[2].partition("\n")[0].strip())
     total_time = parsing_time + opt_time + wst_time + build_time + exec_time
     
-    instance_name = file.removesuffix("_imai.log").removesuffix("_rankooh.log")
+    instance_name = file.replace("_imai.log", "").replace("_rankooh.log", "")
 
     with open(f"{utils.home_dir}/fast_downward_baseline/{instance_name}", "r") as f:
         content_baseline = f.read().splitlines()
