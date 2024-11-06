@@ -15,9 +15,9 @@ b_timelimit_logs_dir = f"{logs_dir}/AAD_b_timelimit_logs"
 infease_logs_dir = f"{logs_dir}/AAE_infeas_logs"
 errors_logs_dir = f"{logs_dir}/AAF_errors_logs"
 other_logs_dir = f"{logs_dir}/AAF_other_logs"
-    
+
 def clear_dir(directory):
-    
+
     for item in directory.iterdir():
         if item.is_file() or item.is_symlink():
             item.unlink()

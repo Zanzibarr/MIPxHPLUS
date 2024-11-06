@@ -14,18 +14,18 @@ os.makedirs(utils.errors_logs_dir, exist_ok=True)
 os.makedirs(utils.other_logs_dir, exist_ok=True)
 
 def move_file(frompath, topath):
-    
+
     subprocess.run(shlex.split(f"mv {frompath} {topath}/"))
-        
+
 def label_logs():
 
     for file in os.listdir(utils.output_logs_dir):
-        
+
         filepath = os.path.join(utils.output_logs_dir, file)
-        
+
         with open(filepath, "r") as f:
             content = f.read()
-        
+
         if "Testing small instances only." in content or "Axiom layer is" in content:
             move_file(filepath, utils.other_logs_dir)
         elif "[ ERROR ]" in content:
@@ -48,35 +48,34 @@ def check_results():
     errors = 0
     total = 0
 
-    for folder in [utils.opt_logs_dir, utils.good_logs_dir]:
-        for file in os.listdir(folder):
-            with open(f"{folder}/{file}", "r") as f:
-                content = f.read()
-    
-            cost = int(content.partition("Solution cost:")[2].partition("\n")[0].strip())
+    for file in os.listdir(utils.opt_logs_dir):
+        with open(f"{utils.opt_logs_dir}/{file}", "r") as f:
+            content = f.read()
 
-            instance_name = file.replace("_imai.log", "").replace("_rankooh.log", "")
+        cost = int(content.partition("Solution cost:")[2].partition("\n")[0].strip())
 
-            if not os.path.exists(f"{utils.home_dir}/local/fast_downward_baseline/{instance_name}"): continue
+        instance_name = file.replace("_imai.log", "").replace("_rankooh.log", "")
 
-            total += 1
+        if not os.path.exists(f"{utils.home_dir}/local/fast_downward_baseline/{instance_name}"): continue
 
-            with open(f"{utils.home_dir}/local/fast_downward_baseline/{instance_name}", "r") as f:
-                content_baseline = f.read().splitlines()
-            
-            cost_range = [float(x) for x in content_baseline[0].split(" ")]
+        total += 1
 
-            if cost < cost_range[0] or cost > cost_range[1]:
-                print(f"ERROR: {instance_name}.")
-                errors += 1
-    
+        with open(f"{utils.home_dir}/local/fast_downward_baseline/{instance_name}", "r") as f:
+            content_baseline = f.read().splitlines()
+
+        cost_range = [float(x) for x in content_baseline[0].split(" ")]
+
+        if cost < cost_range[0] or cost > cost_range[1]:
+            print(f"ERROR: {instance_name}.")
+            errors += 1
+
     return f"""
 RESULTS COMPARED WITH FAST DOWNWARD RANKOOH IMPLEMENTATION:
 ERRORS: {errors} / {total} ({round(errors*100/total, 2)}%)
 """
 
 def read_logs():
-    
+
     heuristic = 0
     optimal = 0
     time_limit = 0
@@ -85,7 +84,7 @@ def read_logs():
     errors = 0
     other = 0
     total = 0
-    
+
     heuristic += len(os.listdir(utils.good_logs_dir))
     optimal += len(os.listdir(utils.opt_logs_dir))
     infeasible += len(os.listdir(utils.infease_logs_dir))
@@ -96,11 +95,11 @@ def read_logs():
     errors += len(os.listdir(utils.errors_logs_dir))
 
     other += len(os.listdir(utils.other_logs_dir))
-    
+
     good = heuristic + optimal + infeasible
     bad = time_limit + build_tl
     total = good + bad + errors
-    
+
     message = f"""
 TOTAL INSTANCES: {total}
 FOUND A SOLUTION: {good}/{total} ({round(good*100/total, 2)}%)
@@ -129,7 +128,7 @@ def time_stats():
     for file in os.listdir(utils.good_logs_dir):
         with open(f"{utils.good_logs_dir}/{file}", "r") as f:
             content = f.read()
-        
+
         parsing_time = float(content.partition(">>  Parsing time")[2].partition("s")[0].strip())
         opt_time = float(content.partition(">>  Optimization time")[2].partition("s")[0].strip())
         wst_time = float(content.partition(">>  Warm-start time")[2].partition("s")[0].strip())
@@ -141,7 +140,7 @@ def time_stats():
         found_wst_times.append(wst_time)
         found_build_times.append(build_time)
         found_execution_times.append(exec_time)
-        
+
         found_total_times.append(parsing_time + opt_time + wst_time + build_time + exec_time)
 
     optimal_parsing_times = []
@@ -155,7 +154,7 @@ def time_stats():
     for file in os.listdir(utils.opt_logs_dir):
         with open(f"{utils.opt_logs_dir}/{file}", "r") as f:
             content = f.read()
-        
+
         parsing_time = float(content.partition(">>  Parsing time")[2].partition("s")[0].strip())
         opt_time = float(content.partition(">>  Optimization time")[2].partition("s")[0].strip())
         wst_time = float(content.partition(">>  Warm-start time")[2].partition("s")[0].strip())
@@ -167,7 +166,7 @@ def time_stats():
         optimal_wst_times.append(wst_time)
         optimal_build_times.append(build_time)
         optimal_execution_times.append(exec_time)
-        
+
         optimal_total_times.append(parsing_time + opt_time + wst_time + build_time + exec_time)
 
     timel_parsing_times = []
@@ -178,7 +177,7 @@ def time_stats():
     for file in os.listdir(utils.timelimit_logs_dir):
         with open(f"{utils.timelimit_logs_dir}/{file}", "r") as f:
             content = f.read()
-        
+
         parsing_time = float(content.partition(">>  Parsing time")[2].partition("s")[0].strip())
         opt_time = float(content.partition(">>  Optimization time")[2].partition("s")[0].strip())
         wst_time = float(content.partition(">>  Warm-start time")[2].partition("s")[0].strip())
@@ -199,7 +198,7 @@ def time_stats():
     for file in os.listdir(utils.b_timelimit_logs_dir):
         with open(f"{utils.b_timelimit_logs_dir}/{file}", "r") as f:
             content = f.read()
-        
+
         parsing_time = float(content.partition(">>  Parsing time")[2].partition("s")[0].strip())
         opt_time = float(content.partition(">>  Optimization time")[2].partition("s")[0].strip())
         wst_time = float(content.partition(">>  Warm-start time")[2].partition("s")[0].strip())
@@ -218,37 +217,44 @@ def time_stats():
             #else:
             #    count_btl_build += 1
         else:
-            print(f"WTF..., {file}")        
-    
-    return f"""
-OPTIMAL SOLUTION FOUND:
- -> Average parsing time: {round(sum(optimal_parsing_times) / len(optimal_parsing_times), 4)}
- -> Average model optimization time: {round(sum(optimal_optimization_times) / len(optimal_optimization_times), 4)}
- -> Average warm-start time: {round(sum(optimal_wst_times) / len(optimal_wst_times), 4)}
- -> Average build time: {round(sum(optimal_build_times) / len(optimal_build_times), 4)}
- -> Average CPLEX execution time: {round(sum(optimal_execution_times) / len(optimal_execution_times), 4)}
- -> Average total time: {round(sum(optimal_total_times) / len(optimal_total_times), 4)}
-A SOLUTION FOUND:
- -> Average parsing time: {round(sum(found_parsing_times) / len(found_parsing_times), 4)}
- -> Average model optimization time: {round(sum(found_optimization_times) / len(found_optimization_times), 4)}
- -> Average warm-start time: {round(sum(found_wst_times) / len(found_wst_times), 4)}
- -> Average build time: {round(sum(found_build_times) / len(found_build_times), 4)}
- -> Average CPLEX execution time: {round(sum(found_execution_times) / len(found_execution_times), 4)}
- -> Average total time: {round(sum(found_total_times) / len(found_total_times), 4)}
-MODEL TOO SLOW:
- -> Average parsing time: {round(sum(timel_parsing_times) / len(timel_parsing_times), 4)}
- -> Average model optimization time: {round(sum(timel_optimization_times) / len(timel_optimization_times), 4)}
- -> Average warm-start time: {round(sum(timel_wst_times) / len(timel_wst_times), 4)}
- -> Average build time: {round(sum(timel_build_times) / len(timel_build_times), 4)}
-BUILD TOO SLOW:
+            print(f"WTF..., {file}")
+
+    msg = ""
+
+    if len(optimal_parsing_times) > 0: msg += f"""
+OPT SOLUTION FOUND:
+ -> Average parsing time: {round(sum(optimal_parsing_times) / len(optimal_parsing_times), 4)}s
+ -> Average model optimization time: {round(sum(optimal_optimization_times) / len(optimal_optimization_times), 4)}s
+ -> Average warm-start time: {round(sum(optimal_wst_times) / len(optimal_wst_times), 4)}s
+ -> Average model building time: {round(sum(optimal_build_times) / len(optimal_build_times), 4)}s
+ -> Average CPLEX execution time: {round(sum(optimal_execution_times) / len(optimal_execution_times), 4)}s
+ -> Average total time: {round(sum(optimal_total_times) / len(optimal_total_times), 4)}s
+"""
+    if len(found_parsing_times) > 0: msg += f"""A SOLUTION FOUND:
+ -> Average parsing time: {round(sum(found_parsing_times) / len(found_parsing_times), 4)}s
+ -> Average model optimization time: {round(sum(found_optimization_times) / len(found_optimization_times), 4)}s
+ -> Average warm-start time: {round(sum(found_wst_times) / len(found_wst_times), 4)}s
+ -> Average model building time: {round(sum(found_build_times) / len(found_build_times), 4)}s
+ -> Average CPLEX execution time: {round(sum(found_execution_times) / len(found_execution_times), 4)}s
+ -> Average total time: {round(sum(found_total_times) / len(found_total_times), 4)}s
+"""
+    if len(timel_parsing_times) > 0: msg += f"""MODEL TOO SLOW:
+ -> Average parsing time: {round(sum(timel_parsing_times) / len(timel_parsing_times), 4)}s
+ -> Average model optimization time: {round(sum(timel_optimization_times) / len(timel_optimization_times), 4)}s
+ -> Average warm-start time: {round(sum(timel_wst_times) / len(timel_wst_times), 4)}s
+ -> Average model building time: {round(sum(timel_build_times) / len(timel_build_times), 4)}s
+"""
+    if total > 0: msg += f"""BUILD TOO SLOW:
  -> Stopped during parsing: {count_btl_parsing} / {total} ({round(count_btl_parsing * 100 / total, 2)}%)
  -> Stopped during model optimization: {count_btl_optimization} / {total} ({round(count_btl_optimization * 100 / total, 2)}%)
  -> Stopped during warm-start: {count_btl_warm_start} / {total} ({round(count_btl_warm_start * 100 / total, 2)}%)
- -> Stopped during build: {count_btl_build} / {total} ({round(count_btl_build * 100 / total, 2)}%)
+ -> Stopped during model building: {count_btl_build} / {total} ({round(count_btl_build * 100 / total, 2)}%)
 """
 
+    return msg
+
 if __name__ == "__main__":
-    
+
     label_logs()
 
     data = ""
