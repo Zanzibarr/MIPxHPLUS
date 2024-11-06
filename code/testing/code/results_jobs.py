@@ -43,11 +43,36 @@ def label_logs():
         else:
             move_file(filepath, utils.errors_logs_dir)
 
-#TODO: Compare results with other software to check if the optimal solutions are indeed optimal
 def check_results():
+
+    errors = 0
+    total = 0
+
+    for folder in [utils.opt_logs_dir, utils.good_logs_dir]:
+        for file in os.listdir(folder):
+            with open(f"{folder}/{file}", "r") as f:
+                content = f.read()
+    
+            cost = int(content.partition("Solution cost:")[2].partition("\n")[0].strip())
+
+            instance_name = file.replace("_imai.log", "").replace("_rankooh.log", "")
+
+            if not os.path.exists(f"{utils.home_dir}/local/fast_downward_baseline/{instance_name}"): continue
+
+            total += 1
+
+            with open(f"{utils.home_dir}/local/fast_downward_baseline/{instance_name}", "r") as f:
+                content_baseline = f.read().splitlines()
+            
+            cost_range = [float(x) for x in content_baseline[0].split(" ")]
+
+            if cost < cost_range[0] or cost > cost_range[1]:
+                print(f"ERROR: {instance_name}.")
+                errors += 1
     
     return f"""
-!! RESULTS HAVEN'T BEEN COMPARED WITH OTHER SOFTWARE YET !!
+RESULTS COMPARED WITH FAST DOWNWARD RANKOOH IMPLEMENTATION:
+ERRORS: {errors} / {total} ({round(errors*100/total, 2)}%)
 """
 
 def read_logs():
