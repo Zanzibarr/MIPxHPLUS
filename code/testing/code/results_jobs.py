@@ -6,6 +6,7 @@ import utils
 import subprocess
 import shlex
 import os
+from pathlib import Path
 
 os.makedirs(utils.opt_logs_dir, exist_ok=True)
 os.makedirs(utils.good_logs_dir, exist_ok=True)
@@ -56,8 +57,8 @@ def check_results():
 
         cost = int(content.partition("Solution cost:")[2].partition("\n")[0].strip())
 
-        instance_name = file.replace("_imai.log", "").replace("_rankooh.log", "")
-
+        instance_path = content.partition("Input file: ")[2].partition(".\n")[0]
+        instance_name = Path(instance_path).name.replace(".sas", "")
         if not os.path.exists(f"{utils.home_dir}/local/fast_downward_baseline/{instance_name}"): continue
 
         total += 1
