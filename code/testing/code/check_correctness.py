@@ -5,7 +5,7 @@ import utils, os
 times = []
 
 for file in os.listdir(utils.opt_logs_dir):
-    with open(f"{utils.good_logs_dir}/{file}", "r") as f:
+    with open(f"{utils.opt_logs_dir}/{file}", "r") as f:
         content = f.read()
     
     parsing_time = float(content.partition(">>  Parsing time")[2].partition("s")[0].strip())
