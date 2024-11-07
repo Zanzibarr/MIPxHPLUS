@@ -40,17 +40,17 @@ make <target_option>
 
 ### CMake flags
 
-- **-DVERBOSE=**\<verbose_option> : set the verbose option (default 1)
+- **-DVERBOSE=**\<verbose_option> : set the verbose option (default: 1)
   - = **0** : no output
   - < **5** : just solution
   - \>= **5** : view time statistics
   - \>= **10** : basic steps progress
   - \>= **20** : debugging output
   - \>= **100** : full verbose
-- **-DWARN=**\<warning_option> : set the warning option (default 0)
+- **-DWARN=**\<warning_option> : set the warning option (default: 0)
   - **0** : all warnings suppressed
   - **1** : warnings will be showed
-- **-DINTCHECK=**\<integrity_check_option> : set the integrity checks option (default 0)
+- **-DINTCHECK=**\<integrity_check_option> : set the integrity checks option (default: 0)
   - **0** : no integrity checks
   - **1** : integrity checks enabled (might slow down the execution)
 - **-DCPLEX_DIR=**\<path_to_cplex_lib>: (abs path), specify a custom path to the CPLEX library (see the CMakeLists.txt to see which is the default one)
@@ -69,10 +69,19 @@ make <target_option>
 #### Code execution
 
 - **-i** <input_file> : (abs path) specify the input file
-- **-a** <algorithm_name> : specify the algorithm to use
+- **-a** <algorithm_name> : (string) specify the algorithm to use
   - **imai** : to use the model from the [Imai15 paper](references/Imai15.pdf)
   - **rankooh** : to use the model from the [Rankooh22 paper](references/Rankooh22.pdf)
-- **-t** <time_limit> : (int) specify the time limit (in seconds)
+- **-opt-enhance** <0/1>: (bool) (optional) specify wether to use or not model enhancements algorithms (the ones showed on the [Imai15 paper](references/Imai15.pdf)) (default: 1)
+  - **0** : to disable this option
+  - **1** : to enable this option
+- **-opt-imai-var-bound** <0/1>: (bool) (optional) specify wether to use or not tighter bounds on the timestamp variables (to use with the imai algorithm) (default: 1)
+  - **0** : to disable this option
+  - **1** : to enable this option
+- **-opt-warmstart** <0/1>: (bool) (optional) specify wether to use or not an heuristic solution as warm start (default: 1)
+  - **0** : to disable this option
+  - **1** : to enable this option
+- **-t** \<int> : (int) (optional) specify the time limit (in seconds) (default: 60)
 
 #### Logging
 

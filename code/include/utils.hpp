@@ -46,16 +46,20 @@
 // ############################ PARSING CLI ############################ //
 // ##################################################################### //
 
-#define HPLUS_CLI_INPUT_FILE_FLAG "-i"          // flag for parsing input file
-#define HPLUS_CLI_LOG_FLAG "-l"                 // flag for using a log file
-#define HPLUS_CLI_LOG_NAME_FLAG "-ln"           // flag for parsing the log name
-#define HPLUS_CLI_RUN_NAME_FLAG "-rn"           // flag for parsing the run name
-#define HPLUS_CLI_ALG_FLAG "-a"                 // flag for parsing the algorithm to use
+#define HPLUS_CLI_INPUT_FILE_FLAG "-i"                  // flag for parsing input file
+#define HPLUS_CLI_LOG_FLAG "-l"                         // flag for using a log file
+#define HPLUS_CLI_LOG_NAME_FLAG "-ln"                   // flag for parsing the log name
+#define HPLUS_CLI_RUN_NAME_FLAG "-rn"                   // flag for parsing the run name
+#define HPLUS_CLI_ALG_FLAG "-a"                         // flag for parsing the algorithm to use
 
-#define HPLUS_CLI_IMAI "imai"                   // using the algorithm from the Imai15 paper
-#define HPLUS_CLI_RANKOOH "rankooh"             // using the algorithm from the Rankooh22 paper
+#define HPLUS_CLI_IMAI "imai"                           // using the algorithm from the Imai15 paper
+#define HPLUS_CLI_RANKOOH "rankooh"                     // using the algorithm from the Rankooh22 paper
 
-#define HPLUS_CLI_TIMELIMIT_FLAG "-t"           // flag for parsing the time limit
+#define HPLUS_CLI_OPT_ENHANCEMENTS "-opt-enhance"       // optimize the model with the enhancements from Imai's paper
+#define HPLUS_CLI_OPT_TIME_BOUND "-opt-imai-var-bound"  // optimize the model with a tighter bound on the variables timestamps
+#define HPLUS_CLI_OPT_WARM_START "-opt-warmstart"       // help the model with a warm start
+
+#define HPLUS_CLI_TIMELIMIT_FLAG "-t"                   // flag for parsing the time limit
 
 // ##################################################################### //
 // ####################### PRINTING AND DEBUGGING ###################### //
@@ -274,7 +278,7 @@ extern struct HPLUS_Environment {
 
     int cpx_terminate;
     int tl_terminate;
-    int build_finished;
+    bool build_finished;
 
     // Logging
 
@@ -289,6 +293,9 @@ extern struct HPLUS_Environment {
     // Algorithm tools
 
     std::string alg;
+    bool imai_enhancements;
+    bool imai_var_bound;
+    bool warm_start;
     unsigned int time_limit;
 
     // Time control

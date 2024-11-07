@@ -9,7 +9,10 @@ void HPLUS_start() {
     HPLUS_env.status = my::status::NOTFOUND;
     HPLUS_env.cpx_terminate = 0;
     HPLUS_env.tl_terminate = 0;
-    HPLUS_env.build_finished = 0;
+    HPLUS_env.build_finished = false;
+    HPLUS_env.imai_enhancements = true;
+    HPLUS_env.imai_var_bound = true;
+    HPLUS_env.warm_start = true;
 
 }
 
@@ -47,6 +50,9 @@ void HPLUS_show_info(const HPLUS_instance& inst) {
     #endif
 
     HPLUS_env.logger.print("Algorithm: %s.", HPLUS_env.alg.c_str());
+    HPLUS_env.logger.print("Model enhancements: %s.", HPLUS_env.imai_enhancements ? "enabled" : "disabled");
+    if (HPLUS_env.alg == HPLUS_CLI_IMAI) HPLUS_env.logger.print("Tighter bounds on variable timestamps: %s.", HPLUS_env.imai_var_bound ? "enabled" : "disabled");
+    HPLUS_env.logger.print("Warm start: %s.", HPLUS_env.warm_start ? "enabled" : "disabled");
     HPLUS_env.logger.print("Time limit: %ds.", HPLUS_env.time_limit);
     lprint(LINE);
 
@@ -64,18 +70,34 @@ void HPLUS_parse_cli(const int argc, const char** argv) {
 
     for (unsigned int i = 1; i < argc; i++) {
 
-        if (!strcmp(argv[i], HPLUS_CLI_INPUT_FILE_FLAG)) {
+        if (std::string(argv[i]) == HPLUS_CLI_INPUT_FILE_FLAG) {
             HPLUS_env.infile = std::string(argv[++i]);      // path relative to where the program is launched
             struct stat buffer{};
             my::assert(stat((HPLUS_env.infile).c_str(), &buffer) == 0,  "Failed to open input file.");
         }
+
         // -------- LOGGING ------- //
-        else if (!strcmp(argv[i], HPLUS_CLI_LOG_FLAG)) HPLUS_env.log = true;
-        else if (!strcmp(argv[i], HPLUS_CLI_LOG_NAME_FLAG)) HPLUS_env.log_name = HPLUS_LOG_DIR"/" + std::string(argv[++i]);
-        else if (!strcmp(argv[i], HPLUS_CLI_RUN_NAME_FLAG)) HPLUS_env.run_name = argv[++i];
+        
+        else if (std::string(argv[i]) == HPLUS_CLI_LOG_FLAG) HPLUS_env.log = true;
+        else if (std::string(argv[i]) == HPLUS_CLI_LOG_NAME_FLAG) HPLUS_env.log_name = HPLUS_LOG_DIR"/" + std::string(argv[++i]);
+        else if (std::string(argv[i]) == HPLUS_CLI_RUN_NAME_FLAG) HPLUS_env.run_name = argv[++i];
+
         // ------- EXECUTION ------ //
-        else if (!strcmp(argv[i], HPLUS_CLI_TIMELIMIT_FLAG)) { my::assert(my::isint(argv[i+1]), "The time limit must be an integer."); HPLUS_env.time_limit = atoi(argv[++i]); }
-        else if (!strcmp(argv[i], HPLUS_CLI_ALG_FLAG)) HPLUS_env.alg = argv[++i];
+
+        else if (std::string(argv[i]) == HPLUS_CLI_TIMELIMIT_FLAG) { my::assert(my::isint(argv[i+1]), "The time limit must be an integer."); HPLUS_env.time_limit = atoi(argv[++i]); }
+        else if (std::string(argv[i]) == HPLUS_CLI_ALG_FLAG) HPLUS_env.alg = argv[++i];
+        else if (std::string(argv[i]) == HPLUS_CLI_OPT_ENHANCEMENTS) {
+            my::assert(std::string(argv[i+1])=="0" || std::string(argv[i+1])=="1", "The enhancement option has to be a 0 or a 1.");
+            HPLUS_env.imai_enhancements = std::string(argv[++i]) == "1";
+        }
+        else if (std::string(argv[i]) == HPLUS_CLI_OPT_TIME_BOUND) {
+            my::assert(std::string(argv[i+1])=="0" || std::string(argv[i+1])=="1", "The timestamps bound option has to be a 0 or a 1.");
+            HPLUS_env.imai_var_bound = std::string(argv[++i]) == "1";
+        }
+        else if (std::string(argv[i]) == HPLUS_CLI_OPT_WARM_START) {
+            my::assert(std::string(argv[i+1])=="0" || std::string(argv[i+1])=="1", "The warm start option has to be a 0 or a 1.");
+            HPLUS_env.warm_start = std::string(argv[++i]) == "1";
+        }
 
         else unknown_args.push_back(argv[i]);
 

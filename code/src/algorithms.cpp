@@ -85,7 +85,7 @@ void HPLUS_run(HPLUS_instance& inst) {
 
     double start_time = HPLUS_env.get_time();
 
-    inst.imai_model_enhancements();
+    if (HPLUS_env.imai_enhancements) inst.imai_model_enhancements();
 
     #if HPLUS_VERBOSE >= 20
     int count = 0;
@@ -109,6 +109,7 @@ void HPLUS_run(HPLUS_instance& inst) {
     start_time = HPLUS_env.get_time();
 
     //[ ]: Heuristic for warm start
+    if (HPLUS_env.warm_start) {}
 
     HPLUS_stats.wstart_time = HPLUS_env.get_time() - start_time;
 
@@ -134,7 +135,10 @@ void HPLUS_run(HPLUS_instance& inst) {
     if ((double)HPLUS_env.time_limit > HPLUS_env.get_time()) my::assert(!CPXsetdblparam(env, CPXPARAM_TimeLimit, (double)HPLUS_env.time_limit - HPLUS_env.get_time()), "CPXsetdblparam (CPXPARAM_TimeLimit) failed.");
     else while(true);                   // handling edge case of time limit reached (if we enter the else, at any time the timer thread should terminate the execution, so we wait for him)
 
-    HPLUS_env.build_finished = 1;       // signal the timer thread that I've finished the build
+    //[ ]: Adding the warm start
+    if (HPLUS_env.warm_start) {}
+
+    HPLUS_env.build_finished = true;       // signal the timer thread that I've finished the build
     HPLUS_stats.build_time = HPLUS_env.get_time() - start_time;
 
     // ====================================================== //
