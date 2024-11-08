@@ -529,7 +529,7 @@ namespace my {
     void pause(const std::string message) {
 
         unsigned int test = 0;
-        std::cout << message << ": ";
+        std::cout << message << "(1 to exit, 0 to continue): ";
         std::cin >> test;
         if (test > 0) exit(1);
 
@@ -544,8 +544,6 @@ namespace my {
 HPLUS_Environment HPLUS_env;
 HPLUS_Statistics HPLUS_stats;
 
-bool HPLUS_Environment::found() const { return this -> status < my::status::INFEAS; }
-
 void HPLUS_Environment::start_timer() { this -> timer = std::chrono::steady_clock::now(); }
 double HPLUS_Environment::get_time() const { return ((double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - this -> timer).count()) / 1000; }
 
@@ -555,14 +553,15 @@ void HPLUS_Statistics::print() const {
     return;
     #endif
 
-    lprint("\n\n------------------------------------------");
-    lprint("-------------   Statistics   -------------");
-    lprint("------------------------------------------\n");
-    HPLUS_env.logger.print(" >>  Parsing time         %10.3fs  <<", this->parsing_time);
-    HPLUS_env.logger.print(" >>  Optimization time    %10.3fs  <<", this->opt_time);
-    HPLUS_env.logger.print(" >>  Warm-start time      %10.3fs  <<", this->wstart_time);
-    HPLUS_env.logger.print(" >>  Build time           %10.3fs  <<", this->build_time);
-    HPLUS_env.logger.print(" >>  Exec time            %10.3fs  <<", this->exec_time);
+    lprint("\n\n--------------------------------------------------");
+    lprint("-----------------   Statistics   -----------------");
+    lprint("--------------------------------------------------\n");
+    HPLUS_env.logger.print(" >>  Parsing time                  %10.3fs  <<", this->parsing_time);
+    HPLUS_env.logger.print(" >>  Model optimization time       %10.3fs  <<", this->opt_time);
+    HPLUS_env.logger.print(" >>  Warm-start time               %10.3fs  <<", this->wstart_time);
+    HPLUS_env.logger.print(" >>  Model building time           %10.3fs  <<", this->build_time);
+    HPLUS_env.logger.print(" >>  CPLEX execution time          %10.3fs  <<", this->exec_time);
+    HPLUS_env.logger.print(" >>  Total time                    %10.3fs  <<", this->total_time);
     lprint("\n\n");
 
 }

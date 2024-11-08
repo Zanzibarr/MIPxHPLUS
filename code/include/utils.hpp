@@ -57,6 +57,8 @@
 
 #define HPLUS_CLI_OPT_ENHANCEMENTS "-opt-enhance"       // optimize the model with the enhancements from Imai's paper
 #define HPLUS_CLI_OPT_TIME_BOUND "-opt-imai-var-bound"  // optimize the model with a tighter bound on the variables timestamps
+#define HPLUS_CLI_OPT_HEUR1 "-opt-heur-1"               // using an initial heuristic
+#define HPLUS_CLI_OPT_HEUR2 "-opt-heur-2"               // using an optimized heuristic
 #define HPLUS_CLI_OPT_WARM_START "-opt-warmstart"       // help the model with a warm start
 
 #define HPLUS_CLI_TIMELIMIT_FLAG "-t"                   // flag for parsing the time limit
@@ -225,12 +227,9 @@ namespace my {
 
     enum status {
         OPT = 0,
-        TIMEL_FEAS = 1,
-        USR_STOP_FEAS = 2,
-        INFEAS = 100,
-        TIMEL_NF = 101,
-        USR_STOP_NF = 102,
-        NOTFOUND = 103
+        FEAS = 1,
+        INFEAS = 2,
+        NOTFOUND = 404
     };
 
     /**
@@ -271,14 +270,8 @@ extern struct HPLUS_Environment {
 
     my::status status;
 
-    /**
-     * @return true/false based on wether a solution has been found (looks at the status)
-    */
-    bool found() const;
-
     int cpx_terminate;
-    int tl_terminate;
-    bool build_finished;
+    bool cplex_running;
 
     // Logging
 
@@ -293,8 +286,10 @@ extern struct HPLUS_Environment {
     // Algorithm tools
 
     std::string alg;
-    bool imai_enhancements;
+    bool model_enhancements;
     bool imai_var_bound;
+    bool heur_1;
+    bool heur_2;
     bool warm_start;
     unsigned int time_limit;
 
@@ -322,6 +317,7 @@ extern struct HPLUS_Statistics {
     double wstart_time;
     double build_time;
     double exec_time;
+    double total_time;
 
     void print() const;
 

@@ -4,6 +4,6 @@
 #include "imai_model.hpp"
 #include "rankooh_model.hpp"
 
-void HPLUS_run(HPLUS_instance& inst);
+void HPLUS_run();
 
 #endif

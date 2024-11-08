@@ -36,37 +36,37 @@ void HPLUS_cpx_close(CPXENVptr& env, CPXLPptr& lp) {
 
 }
 
-void HPLUS_parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp) {
+bool HPLUS_parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp) {
 
     switch ( int cpxstatus = CPXgetstat(env, lp) ) {
         case CPXMIP_TIME_LIM_FEAS:      // exceeded time limit, found intermediate solution
-            HPLUS_env.status = my::status::TIMEL_FEAS;
-            break;
+            HPLUS_env.status = my::status::FEAS;
+            return true;
         case CPXMIP_TIME_LIM_INFEAS:    // exceeded time limit, no intermediate solution found
-            HPLUS_env.status = my::status::TIMEL_NF;
-            break;
+            if (!HPLUS_env.warm_start) HPLUS_env.status = my::status::NOTFOUND;
+            return false;
         case CPXMIP_INFEASIBLE:         // proven to be unfeasible
             HPLUS_env.status = my::status::INFEAS;
-            break;
+            return false;
         case CPXMIP_ABORT_FEAS:         // terminated by user, found solution
-            HPLUS_env.status = my::status::USR_STOP_FEAS;
-            break;
+            HPLUS_env.status = my::status::FEAS;
+            return true;
         case CPXMIP_ABORT_INFEAS:       // terminated by user, not found solution
-            HPLUS_env.status = my::status::USR_STOP_NF;
-            break;
+            if (!HPLUS_env.warm_start) HPLUS_env.status = my::status::NOTFOUND;
+            return false;
         case CPXMIP_OPTIMAL_TOL:        // found optimal within the tollerance
             lprint_warn("Found optimal within the tolerance.");
             HPLUS_env.status = my::status::OPT;
-            break;
+            return true;
         case CPXMIP_OPTIMAL:            // found optimal
             HPLUS_env.status = my::status::OPT;
-            break;
+            return true;
         case 0:
             HPLUS_env.status = my::status::NOTFOUND;
-            break;
+            return false;
         default:                        // unhandled status
             HPLUS_env.logger.raise_error("Error in tsp_cplex: unhandled cplex status: %d.", cpxstatus);
-            break;
+            return false;
     }
 
 }
@@ -75,49 +75,29 @@ void HPLUS_parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp) {
 // ############################# EXECUTION ############################# //
 // ##################################################################### //
 
-void HPLUS_run(HPLUS_instance& inst) {
+void HPLUS_run() {
 
-    if (HPLUS_env.alg != HPLUS_CLI_IMAI && HPLUS_env.alg != HPLUS_CLI_RANKOOH) HPLUS_env.logger.raise_error("The algorithm specified (%s) is not on the list of possible algorithms... Please read the README.md for instructions.", HPLUS_env.alg.c_str());
+    if (
+        HPLUS_env.alg != HPLUS_CLI_IMAI &&
+        HPLUS_env.alg != HPLUS_CLI_RANKOOH
+    ) HPLUS_env.logger.raise_error("The algorithm specified (%s) is not on the list of possible algorithms... Please read the README.md for instructions.", HPLUS_env.alg.c_str());
 
-    // ====================================================== //
-    // ================ PROBLEM OPTIMIZATION ================ //
-    // ====================================================== //
+    // ~~~~~~~~~~~~~ HEURISTIC 1 ~~~~~~~~~~~~~ //
 
+    if (HPLUS_env.heur_1) HPLUS_inst.initial_heuristic();
+
+    // ~~~~~~~~~~ MODEL OPTIMIZATION ~~~~~~~~~ //
+
+    if (HPLUS_env.model_enhancements) HPLUS_inst.model_optimization();
+
+    // ~~~~~~~~~~~~~ HEURISTIC 2 ~~~~~~~~~~~~~ //
+
+    if (HPLUS_env.heur_2) HPLUS_inst.optimized_heuristic();
+
+    // ~~~~~~~~~~~~ MODEL BUILDING ~~~~~~~~~~~ //
+
+    HPLUS_stats.build_time = HPLUS_env.time_limit - HPLUS_env.get_time();
     double start_time = HPLUS_env.get_time();
-
-    if (HPLUS_env.imai_enhancements) inst.imai_model_enhancements();
-
-    #if HPLUS_VERBOSE >= 20
-    int count = 0;
-    for (auto _ : inst.model_opt_fixed_var) count++;
-    HPLUS_env.logger.print_info("Optimized number of variables:         %10d --> %10d.", inst.get_nvar(), inst.get_nvar_opt() - count);
-    count = 0;
-    for (auto _ : inst.model_opt_fixed_act) count++;
-    HPLUS_env.logger.print_info("Optimized number of actions:           %10d --> %10d.", inst.get_nact(), inst.get_nact_opt() - count);
-    count = 0;
-    for (auto _ : inst.model_opt_eliminated_fa) count++;
-    for (auto _ : inst.model_opt_fixed_fa) count++;
-    HPLUS_env.logger.print_info("Optimized number of first archievers:  %10d --> %10d.", inst.get_nvar() * inst.get_nact(), inst.get_nact_opt() * inst.get_nvar_opt() - count);
-    #endif
-
-    HPLUS_stats.opt_time = HPLUS_env.get_time() - start_time;
-
-    // ====================================================== //
-    // ===================== WARM START ===================== //
-    // ====================================================== //
-
-    start_time = HPLUS_env.get_time();
-
-    //[ ]: Heuristic for warm start
-    if (HPLUS_env.warm_start) {}
-
-    HPLUS_stats.wstart_time = HPLUS_env.get_time() - start_time;
-
-    // ====================================================== //
-    // ===================== BUILD MODEL ==================== //
-    // ====================================================== //
-
-    start_time = HPLUS_env.get_time();
 
     if (HPLUS_env.alg == HPLUS_CLI_IMAI) lprint_info("Running imai algorithm.");
     else if (HPLUS_env.alg == HPLUS_CLI_RANKOOH) lprint_info("Running rankooh algorithm.");
@@ -128,64 +108,35 @@ void HPLUS_run(HPLUS_instance& inst) {
     HPLUS_cpx_init(env, lp);
 
     //[ ]: Slow (idk...)
-    if (HPLUS_env.alg == HPLUS_CLI_IMAI) HPLUS_cpx_build_imai(env, lp, inst);
-    else if (HPLUS_env.alg == HPLUS_CLI_RANKOOH) HPLUS_cpx_build_rankooh(env, lp, inst);
+    if (HPLUS_env.alg == HPLUS_CLI_IMAI) HPLUS_cpx_build_imai(env, lp, HPLUS_inst);
+    else if (HPLUS_env.alg == HPLUS_CLI_RANKOOH) HPLUS_cpx_build_rankooh(env, lp, HPLUS_inst);
 
     // time limit
     if ((double)HPLUS_env.time_limit > HPLUS_env.get_time()) my::assert(!CPXsetdblparam(env, CPXPARAM_TimeLimit, (double)HPLUS_env.time_limit - HPLUS_env.get_time()), "CPXsetdblparam (CPXPARAM_TimeLimit) failed.");
     else while(true);                   // handling edge case of time limit reached (if we enter the else, at any time the timer thread should terminate the execution, so we wait for him)
 
     //[ ]: Adding the warm start
-    if (HPLUS_env.warm_start) {}
+    if (HPLUS_env.warm_start) {
 
-    HPLUS_env.build_finished = true;       // signal the timer thread that I've finished the build
+    }
+
     HPLUS_stats.build_time = HPLUS_env.get_time() - start_time;
 
-    // ====================================================== //
-    // ====================== RUN MODEL ===================== //
-    // ====================================================== //
+    // ~~~~~~~~~~~ MODEL EXECUTION ~~~~~~~~~~~ //
 
+    HPLUS_stats.exec_time = HPLUS_env.time_limit - HPLUS_env.get_time();
     start_time = HPLUS_env.get_time();
 
+    HPLUS_env.cplex_running = true;
     my::assert(!CPXmipopt(env, lp), "CPXmipopt failed.");
 
-    HPLUS_parse_cplex_status(env, lp);
-    if (HPLUS_env.found()) {
-        if (HPLUS_env.alg == HPLUS_CLI_IMAI) HPLUS_store_imai_sol(env, lp, inst);
-        else if (HPLUS_env.alg == HPLUS_CLI_RANKOOH) HPLUS_store_rankooh_sol(env, lp, inst);
+    if (HPLUS_parse_cplex_status(env, lp)) {        // If CPLEX has found a solution
+        if (HPLUS_env.alg == HPLUS_CLI_IMAI) HPLUS_store_imai_sol(env, lp, HPLUS_inst);
+        else if (HPLUS_env.alg == HPLUS_CLI_RANKOOH) HPLUS_store_rankooh_sol(env, lp, HPLUS_inst);
     }
 
     HPLUS_cpx_close(env, lp);
 
     HPLUS_stats.exec_time = HPLUS_env.get_time() - start_time;
-
-    // ====================================================== //
-    // =================== HANDLE RESULTS =================== //
-    // ====================================================== //
-
-    switch(HPLUS_env.status) {
-        case my::status::INFEAS:
-            lprint("The problem is infeasible.");
-            return;
-        case my::status::NOTFOUND:
-            lprint("No solution found.");
-            return;
-        case my::status::TIMEL_NF:
-            lprint("No solution found due to time limit.");
-            return;
-        case my::status::USR_STOP_NF:
-            lprint("No solution found due to the user terminating the execution.");
-            return;
-        case my::status::TIMEL_FEAS:
-            lprint("The solution is not optimal due to time limit.");
-            break;
-        case my::status::USR_STOP_FEAS:
-            lprint("The solution is not optimal due to the user terminating the execution.");
-            break;
-        default:
-            break;
-    }
-
-    inst.print_best_sol();
 
 }

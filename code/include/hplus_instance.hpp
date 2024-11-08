@@ -2,6 +2,7 @@
 #define HPLUS_INST_H
 
 #include "utils.hpp"
+#include <thread>
 
 // ##################################################################### //
 // ############################ HPLUS_ACTION ########################### //
@@ -86,9 +87,11 @@ class HPLUS_action  {
 // ########################### HPLUS_INSTANCE ########################## //
 // ##################################################################### //
 
-class HPLUS_instance {
+extern class HPLUS_instance {
 
     public:
+
+        explicit HPLUS_instance() = default;
 
         /**
          * Create an HPLUS_instance from a file produced by the fast downward translator
@@ -141,27 +144,22 @@ class HPLUS_instance {
          * @param solution: Vector where to save the solution into (cleared and resized)
          * @param cost: Integer where to save the cost into
          */
-        void get_best_solution(std::vector<unsigned int>& solution, unsigned int& cost) const;
+        void get_best_solution(std::vector<unsigned int>& solution, unsigned int& cost);
 
         /**
          * Prints the best solution found so far
         */
-        void print_best_sol() const;
-
-        /**
-         * @return The cost of the best solution found so far
-         */
-        unsigned int get_best_cost() const;
-
-        /**
-         * Model enhancement form Imai's paper
-         * (Section 4 of Imai's paper)
-         */
-        void imai_model_enhancements();
+        void print_best_sol();
 
         // ====================================================== //
         // ==================== OPTIMIZATIONS =================== //
         // ====================================================== //
+
+        void initial_heuristic();
+
+        void model_optimization();
+
+        void optimized_heuristic();
 
         // set of fixed variables for model optimization
         my::BitField model_opt_fixed_var;
@@ -278,6 +276,12 @@ class HPLUS_instance {
         //     std::map<unsigned int, std::vector<unsigned int>>& inverse_actions
         // ) const;
 
+        /**
+         * Model enhancement form Imai's paper
+         * (Section 4 of Imai's paper)
+         */
+        void imai_model_enhancements();
+
         // set of eliminated variables for model optimization
         my::BitField model_opt_eliminated_var;
         // set of eliminated actions for model optimization
@@ -291,8 +295,10 @@ class HPLUS_instance {
 
         // UTILS
 
+        pthread_mutex_t solution_read_write;
+
         void parse_inst_file_(std::ifstream* file);
 
-};
+} HPLUS_inst;
 
 #endif

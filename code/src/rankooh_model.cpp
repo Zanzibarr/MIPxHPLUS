@@ -240,11 +240,10 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst)
     lprint_info("Adding constraints to CPLEX.");
 
     // accessing cplex variables
-    int new_nvar = nvar_opt;
     auto get_act_idx = [act_start, &actidx_to_cpxidx](int idx) { return act_start + actidx_to_cpxidx[idx]; };
     auto get_var_idx = [var_start, &varidx_to_cpxidx](int idx) { return var_start + varidx_to_cpxidx[idx]; };
-    auto get_fa_idx = [fa_start, fa_individual_start, &varidx_to_cpxidx, &actidx_to_cpxidx](int act_idx, int var_idx) { return fa_start + fa_individual_start[actidx_to_cpxidx[act_idx]] + varidx_to_cpxidx[var_idx]; };
-    auto get_veg_idx = [veg_edges_start, new_nvar, &varidx_to_cpxidx](int idx_i, int idx_j) { return veg_edges_start + varidx_to_cpxidx[idx_i] * new_nvar + varidx_to_cpxidx[idx_j]; };
+    auto get_fa_idx = [fa_start, &fa_individual_start, &varidx_to_cpxidx, &actidx_to_cpxidx](int act_idx, int var_idx) { return fa_start + fa_individual_start[actidx_to_cpxidx[act_idx]] + varidx_to_cpxidx[var_idx]; };
+    auto get_veg_idx = [veg_edges_start, nvar_opt, &varidx_to_cpxidx](int idx_i, int idx_j) { return veg_edges_start + varidx_to_cpxidx[idx_i] * nvar_opt + varidx_to_cpxidx[idx_j]; };
 
     int* ind = new int[nact_opt + 1];
     double* val = new double[nact_opt + 1];
