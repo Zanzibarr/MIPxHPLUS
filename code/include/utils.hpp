@@ -314,7 +314,7 @@ extern struct HPLUS_Statistics {
 
     double parsing_time;
     double opt_time;
-    double wstart_time;
+    double heuristic_time;
     double build_time;
     double exec_time;
     double total_time;

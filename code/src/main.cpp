@@ -19,7 +19,7 @@ void HPLUS_start() {
 
     HPLUS_stats.parsing_time = 0;
     HPLUS_stats.opt_time = 0;
-    HPLUS_stats.wstart_time = 0;
+    HPLUS_stats.heuristic_time = 0;
     HPLUS_stats.build_time = 0;
     HPLUS_stats.exec_time = 0;
 

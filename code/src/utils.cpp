@@ -558,7 +558,7 @@ void HPLUS_Statistics::print() const {
     lprint("--------------------------------------------------\n");
     HPLUS_env.logger.print(" >>  Parsing time                  %10.3fs  <<", this->parsing_time);
     HPLUS_env.logger.print(" >>  Model optimization time       %10.3fs  <<", this->opt_time);
-    HPLUS_env.logger.print(" >>  Warm-start time               %10.3fs  <<", this->wstart_time);
+    HPLUS_env.logger.print(" >>  Heuristic time                %10.3fs  <<", this->heuristic_time);
     HPLUS_env.logger.print(" >>  Model building time           %10.3fs  <<", this->build_time);
     HPLUS_env.logger.print(" >>  CPLEX execution time          %10.3fs  <<", this->exec_time);
     HPLUS_env.logger.print(" >>  Total time                    %10.3fs  <<", this->total_time);

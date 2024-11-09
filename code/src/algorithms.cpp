@@ -85,6 +85,7 @@ void HPLUS_run() {
     // ~~~~~~~~~~~~~ HEURISTIC 1 ~~~~~~~~~~~~~ //
 
     if (HPLUS_env.heur_1) HPLUS_inst.initial_heuristic();
+    if (HPLUS_env.status == my::status::INFEAS) return;
 
     // ~~~~~~~~~~ MODEL OPTIMIZATION ~~~~~~~~~ //
 
@@ -115,8 +116,29 @@ void HPLUS_run() {
     if ((double)HPLUS_env.time_limit > HPLUS_env.get_time()) my::assert(!CPXsetdblparam(env, CPXPARAM_TimeLimit, (double)HPLUS_env.time_limit - HPLUS_env.get_time()), "CPXsetdblparam (CPXPARAM_TimeLimit) failed.");
     else while(true);                   // handling edge case of time limit reached (if we enter the else, at any time the timer thread should terminate the execution, so we wait for him)
 
-    //[ ]: Adding the warm start
-    if (HPLUS_env.warm_start) {
+    if (HPLUS_env.warm_start) {     // Post warm starto to CPLEX
+
+        #if HPLUS_INTCHECK
+        my::assert(HPLUS_env.status != my::status::INFEAS && HPLUS_env.status != my::status::NOTFOUND, "Warm start failed.");
+        #endif
+        std::vector<unsigned int> warm_start;
+        unsigned int cost = -1;
+        HPLUS_inst.get_best_solution(warm_start, cost);
+        #if HPLUS_INTCHECK
+        my::assert(cost != -1, "HPLUS_inst.get_best_solution failed.");
+        #endif
+        int* cpx_sol_ind = new int[HPLUS_inst.get_nact_opt()];
+        double* cpx_sol_val = new double[HPLUS_inst.get_nact_opt()];
+        int izero = 0;
+        int effortlevel = CPX_MIPSTART_REPAIR;
+        unsigned int tmp_cnt = 0;
+        for (auto act_i : warm_start) {
+            cpx_sol_ind[tmp_cnt] = HPLUS_inst.actidx_to_cpxidx(act_i);
+            cpx_sol_val[tmp_cnt++] = 1;
+        }
+        my::assert(!CPXaddmipstarts(env, lp, 1, warm_start.size(), &izero, cpx_sol_ind, cpx_sol_val, &effortlevel, nullptr), "CPXaddmipstarts failed.");
+        delete[] cpx_sol_ind; cpx_sol_ind = nullptr;
+        delete[] cpx_sol_val; cpx_sol_val = nullptr;
 
     }
 

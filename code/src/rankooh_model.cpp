@@ -143,9 +143,6 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst)
     lprint_info("Adding variables to CPLEX.");
 
     unsigned int curr_col = 0;
-    std::vector<int> varidx_to_cpxidx(nvar, -1);
-    std::vector<int> actidx_to_cpxidx(nact, -1);
-
     double* objs = new double[nact_opt];
     double* lbs = new double[nact_opt];
     double* ubs = new double[nact_opt];
@@ -169,7 +166,6 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst)
     unsigned int act_start = curr_col;
     int count = 0;
     for (auto act_i : remaining_act_sparse) {
-        actidx_to_cpxidx[act_i] = count;
         objs[count] = actions[act_i].get_cost();
         lbs[count] = inst.model_opt_fixed_act[act_i] ? 1 : 0;
         ubs[count] = 1;
@@ -204,7 +200,6 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst)
     const auto& gstate = inst.get_gstate();
     count = 0;
     for (auto var_i : remaining_var_sparse) {
-        varidx_to_cpxidx[var_i] = count;
         objs[count] = 0;
         lbs[count] = (inst.model_opt_fixed_var[var_i] || gstate[var_i]) ? 1 : 0;
         ubs[count] = 1;
@@ -240,10 +235,10 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst)
     lprint_info("Adding constraints to CPLEX.");
 
     // accessing cplex variables
-    auto get_act_idx = [act_start, &actidx_to_cpxidx](int idx) { return act_start + actidx_to_cpxidx[idx]; };
-    auto get_var_idx = [var_start, &varidx_to_cpxidx](int idx) { return var_start + varidx_to_cpxidx[idx]; };
-    auto get_fa_idx = [fa_start, &fa_individual_start, &varidx_to_cpxidx, &actidx_to_cpxidx](int act_idx, int var_idx) { return fa_start + fa_individual_start[actidx_to_cpxidx[act_idx]] + varidx_to_cpxidx[var_idx]; };
-    auto get_veg_idx = [veg_edges_start, nvar_opt, &varidx_to_cpxidx](int idx_i, int idx_j) { return veg_edges_start + varidx_to_cpxidx[idx_i] * nvar_opt + varidx_to_cpxidx[idx_j]; };
+    auto get_act_idx = [act_start](int idx) { return act_start + HPLUS_inst.actidx_to_cpxidx(idx); };
+    auto get_var_idx = [var_start](int idx) { return var_start + HPLUS_inst.varidx_to_cpxidx(idx); };
+    auto get_fa_idx = [fa_start, &fa_individual_start](int act_idx, int var_idx) { return fa_start + fa_individual_start[HPLUS_inst.actidx_to_cpxidx(act_idx)] + HPLUS_inst.varidx_to_cpxidx(var_idx); };
+    auto get_veg_idx = [veg_edges_start, nvar_opt](int idx_i, int idx_j) { return veg_edges_start + HPLUS_inst.varidx_to_cpxidx(idx_i) * nvar_opt + HPLUS_inst.varidx_to_cpxidx(idx_j); };
 
     int* ind = new int[nact_opt + 1];
     double* val = new double[nact_opt + 1];

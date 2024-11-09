@@ -201,6 +201,9 @@ extern class HPLUS_instance {
          */
         unsigned int cpxidx_to_actidx(unsigned int cpxidx) const;
 
+        int actidx_to_cpxidx(unsigned int actidx) const;
+        int varidx_to_cpxidx(unsigned int varidx) const;
+
     private:
 
         int version_;
@@ -283,19 +286,21 @@ extern class HPLUS_instance {
         void imai_model_enhancements();
 
         // set of eliminated variables for model optimization
-        my::BitField model_opt_eliminated_var;
+        my::BitField model_opt_eliminated_var_;
         // set of eliminated actions for model optimization
-        my::BitField model_opt_eliminated_act;
+        my::BitField model_opt_eliminated_act_;
         // optimized number of variables
-        unsigned int model_opt_nvar;
+        unsigned int model_opt_nvar_;
         // optimized number of actions
-        unsigned int model_opt_nact;
-        // conversion instance -> opt_model for actions
-        std::vector<unsigned int> model_opt_cpxidx_to_actidx;
+        unsigned int model_opt_nact_;
+
+        std::vector<int> model_opt_varidx_to_cpxidx_;
+        std::vector<int> model_opt_actidx_to_cpxidx_;
+        std::vector<unsigned int> model_opt_cpxidx_to_actidx_;
 
         // UTILS
 
-        pthread_mutex_t solution_read_write;
+        pthread_mutex_t solution_read_write_;
 
         void parse_inst_file_(std::ifstream* file);
 

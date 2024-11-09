@@ -21,19 +21,23 @@ HPLUS_instance::HPLUS_instance(const std::string& file_path) {
     this -> best_nact_ = 0;
     this -> best_cost_ = UINT_MAX;
 
-    this -> model_opt_eliminated_var = my::BitField(this -> n_var_);
+    this -> model_opt_eliminated_var_ = my::BitField(this -> n_var_);
     this -> model_opt_fixed_var = my::BitField(this -> n_var_);
-    this -> model_opt_eliminated_act = my::BitField(this -> n_act_);
+    this -> model_opt_eliminated_act_ = my::BitField(this -> n_act_);
     this -> model_opt_fixed_act = my::BitField(this -> n_act_);
     this -> model_opt_eliminated_fa = std::vector<my::BitField>(this -> n_act_, my::BitField(this -> n_var_));
     this -> model_opt_fixed_fa = std::vector<my::BitField>(this -> n_act_, my::BitField(this -> n_var_));
     this -> model_opt_timestamps_var = std::vector<int>(this -> n_var_, -1);
     this -> model_opt_timestamps_act = std::vector<int>(this -> n_act_, -1);
 
-    this -> model_opt_cpxidx_to_actidx = std::vector<unsigned int>(this -> n_act_);
-    for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++) this -> model_opt_cpxidx_to_actidx[act_i] = act_i;
+    this -> model_opt_cpxidx_to_actidx_ = std::vector<unsigned int>(this -> n_act_);
+    for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++) this -> model_opt_cpxidx_to_actidx_[act_i] = act_i;
+    this -> model_opt_actidx_to_cpxidx_ = std::vector<int>(this -> n_act_);
+    for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++) this -> model_opt_actidx_to_cpxidx_[act_i] = act_i;
+    this -> model_opt_varidx_to_cpxidx_ = std::vector<int>(this -> n_var_);
+    for (unsigned int var_i = 0; var_i < this -> n_var_; var_i++) this -> model_opt_varidx_to_cpxidx_[var_i] = var_i;
 
-    pthread_mutex_init(&(this -> solution_read_write), nullptr);
+    pthread_mutex_init(&(this -> solution_read_write_), nullptr);
 
     lprint_info("Created HPLUS_instance.");
 
@@ -70,7 +74,7 @@ void HPLUS_instance::update_best_solution(const std::vector<unsigned int>& solut
     my::assert(costcheck == cost, "Declared cost is different from calculated one.");                                   // check if the cost is the declared one
     #endif
 
-    pthread_mutex_lock(&(this -> solution_read_write));
+    pthread_mutex_lock(&(this -> solution_read_write_));
 
     if (cost >= this -> best_cost_) return;
 
@@ -80,41 +84,72 @@ void HPLUS_instance::update_best_solution(const std::vector<unsigned int>& solut
 
     HPLUS_env.logger.print_info("Updated best solution - Cost: %4d.", this -> best_cost_);
 
-    pthread_mutex_unlock(&(this -> solution_read_write));
+    pthread_mutex_unlock(&(this -> solution_read_write_));
 
 }
 
 void HPLUS_instance::get_best_solution(std::vector<unsigned int>& solution, unsigned int& cost) {
 
-    pthread_mutex_lock(&(this -> solution_read_write));
+    pthread_mutex_lock(&(this -> solution_read_write_));
 
     solution = std::vector<unsigned int>(this -> best_solution_);
     cost = this -> best_cost_;
 
-    pthread_mutex_unlock(&(this -> solution_read_write));
+    pthread_mutex_unlock(&(this -> solution_read_write_));
 
 }
 
 void HPLUS_instance::print_best_sol() {
 
-    pthread_mutex_lock(&(this -> solution_read_write));
+    pthread_mutex_lock(&(this -> solution_read_write_));
     
     HPLUS_env.logger.print("Solution cost: %d", this -> best_cost_);
     for(auto act_i : this -> best_solution_) HPLUS_env.logger.print("(%s)", this -> actions_[act_i].get_name().c_str());
 
-    pthread_mutex_unlock(&(this -> solution_read_write));
+    pthread_mutex_unlock(&(this -> solution_read_write_));
 
 }
 
+//[ ]: Find better/faster heuristics
 void HPLUS_instance::initial_heuristic() {
 
-    HPLUS_stats.wstart_time = HPLUS_env.time_limit - HPLUS_env.get_time();
+    lprint_info("Calculating initial heuristic.");
+
+    HPLUS_stats.heuristic_time = HPLUS_env.time_limit - HPLUS_env.get_time();
     double start_time = HPLUS_env.get_time();
 
-    //[ ]: TODO
-    // HPLUS_env.status = my::status::FEAS;
+    my::BitField current_state(this -> n_var_);
+    my::BitField remaining_actions(this -> n_act_, true);
+    std::vector<unsigned int> heur_solution;
+    unsigned int heur_cost = 0;
+    while (!current_state.contains(this -> goal_state_)) {
+        unsigned int best_act_i = -1;
+        double best_cost_per_eff = INFINITY;
+        for (auto act_i : remaining_actions) {
+            if (current_state.contains(this -> actions_[act_i].get_pre())) {
+                int n_eff = 0;
+                for (auto _ : this -> actions_[act_i].get_eff()) n_eff++;
+                if ((double) this -> actions_[act_i].get_cost() / n_eff < best_cost_per_eff) {
+                    best_cost_per_eff = (double) this -> actions_[act_i].get_cost() / n_eff;
+                    best_act_i = act_i;
+                }
+            }
+        }
+        if (best_act_i == -1) {             // proven infeasible
+            HPLUS_env.status = my::status::INFEAS;
+            HPLUS_stats.heuristic_time = HPLUS_env.get_time() - start_time;
+            return;
+        }
+        current_state |= this -> actions_[best_act_i].get_eff();
+        heur_solution.push_back(best_act_i);
+        heur_cost += this -> actions_[best_act_i].get_cost();
+        remaining_actions.unset(best_act_i);
+    }
+    HPLUS_env.status = my::status::FEAS;
 
-    HPLUS_stats.wstart_time = HPLUS_env.get_time() - start_time;
+    this -> update_best_solution(heur_solution, heur_cost);
+
+    HPLUS_stats.heuristic_time = HPLUS_env.get_time() - start_time;
     
 }
 
@@ -125,31 +160,85 @@ void HPLUS_instance::model_optimization() {
 
     HPLUS_inst.imai_model_enhancements();
 
-    HPLUS_stats.opt_time = HPLUS_env.get_time();
+    int count = 0;
+    for (auto act_i : !this -> model_opt_eliminated_act_) HPLUS_inst.model_opt_actidx_to_cpxidx_[act_i] = count++;
+    count = 0;
+    for (auto var_i : !this -> model_opt_eliminated_var_) HPLUS_inst.model_opt_varidx_to_cpxidx_[var_i] = count++;
+
+    HPLUS_stats.opt_time = HPLUS_env.get_time() - start_time;
     
 }
 
+//[ ]: Find better/faster heuristics
 void HPLUS_instance::optimized_heuristic() {
 
-    double backup_swtart_time = HPLUS_stats.wstart_time;
-    HPLUS_stats.wstart_time += HPLUS_env.time_limit - HPLUS_env.get_time();
+    double backup_swtart_time = HPLUS_stats.heuristic_time;
+    HPLUS_stats.heuristic_time += HPLUS_env.time_limit - HPLUS_env.get_time();
     double start_time = HPLUS_env.get_time();
 
-    //[ ]: TODO
+    my::BitField current_state(this -> n_var_);
+    my::BitField priority_rem_actions = this -> model_opt_fixed_act;
+    int count_tmp = 0;
+    for (auto _ : priority_rem_actions) count_tmp++;
+    my::BitField remaining_actions = !this -> model_opt_eliminated_act_ & !priority_rem_actions;
+    std::vector<unsigned int> heur_solution;
+    unsigned int heur_cost = 0;
+    while (!current_state.contains(this -> goal_state_)) {
+        unsigned int best_act_i = -1;
+        for (auto act_i : priority_rem_actions) {
+            if (current_state.contains(this -> actions_[act_i].get_pre())) {
+                count_tmp--;
+                current_state |= this -> actions_[act_i].get_eff();
+                heur_solution.push_back(act_i);
+                heur_cost += this -> actions_[act_i].get_cost();
+                priority_rem_actions.unset(act_i);
+                best_act_i = act_i;
+            }
+        }
+        if (best_act_i == -1) {
+            double best_cost_per_eff = INFINITY;
+            for (auto act_i : remaining_actions) {
+                if (current_state.contains(this -> actions_[act_i].get_pre())) {
+                    int n_eff = 0;
+                    for (auto _ : this -> actions_[act_i].get_eff()) n_eff++;
+                    if ((double) this -> actions_[act_i].get_cost() / n_eff < best_cost_per_eff) {
+                        best_cost_per_eff = (double) this -> actions_[act_i].get_cost() / n_eff;
+                        best_act_i = act_i;
+                    }
+                }
+            }
+            #if HPLUS_INTCHECK
+            my::assert(best_act_i != -1, "Error in optimized heuristic.");
+            #endif
+            current_state |= this -> actions_[best_act_i].get_eff();
+            heur_solution.push_back(best_act_i);
+            heur_cost += this -> actions_[best_act_i].get_cost();
+            remaining_actions.unset(best_act_i);
+        }
+    }
+    
+    #if HPLUS_INTCHECK
+    my::assert(count_tmp == 0, "Error in optimized heuristic (2).");
+    #endif
+    this -> update_best_solution(heur_solution, heur_cost);
 
-    HPLUS_stats.wstart_time = backup_swtart_time + HPLUS_env.get_time() - start_time;
+    HPLUS_stats.heuristic_time = backup_swtart_time + HPLUS_env.get_time() - start_time;
 
 }
 
-unsigned int HPLUS_instance::get_nvar_opt() const { return this -> model_opt_nvar; }
+unsigned int HPLUS_instance::get_nvar_opt() const { return this -> model_opt_nvar_; }
 
-unsigned int HPLUS_instance::get_nact_opt() const { return this -> model_opt_nact; }
+unsigned int HPLUS_instance::get_nact_opt() const { return this -> model_opt_nact_; }
 
-const my::BitField& HPLUS_instance::get_model_opt_eliminated_var() const { return this -> model_opt_eliminated_var; }
+const my::BitField& HPLUS_instance::get_model_opt_eliminated_var() const { return this -> model_opt_eliminated_var_; }
 
-const my::BitField& HPLUS_instance::get_model_opt_eliminated_act() const { return this -> model_opt_eliminated_act; }
+const my::BitField& HPLUS_instance::get_model_opt_eliminated_act() const { return this -> model_opt_eliminated_act_; }
 
-unsigned int HPLUS_instance::cpxidx_to_actidx(unsigned int cpxidx) const { return this -> model_opt_cpxidx_to_actidx[cpxidx]; }
+int HPLUS_instance::varidx_to_cpxidx(unsigned int varidx) const { return this -> model_opt_varidx_to_cpxidx_[varidx]; }
+
+int HPLUS_instance::actidx_to_cpxidx(unsigned int actidx) const { return this -> model_opt_actidx_to_cpxidx_[actidx]; }
+
+unsigned int HPLUS_instance::cpxidx_to_actidx(unsigned int cpxidx) const { return this -> model_opt_cpxidx_to_actidx_[cpxidx]; }
 
 //[ ]: Optimize
 void HPLUS_instance::landmarks_extraction(std::vector<my::BitField>& landmarks_set, my::BitField& fact_landmarks, my::BitField& act_landmarks) const {
@@ -308,8 +397,8 @@ void HPLUS_instance::relevance_analysis(const my::BitField& fact_landmarks, cons
     relevant_variables |= this -> goal_state_;
 
     // eliminate actions and variables that are not relevant (or landmarks)
-    this -> model_opt_eliminated_var |= (!relevant_variables - fact_landmarks);
-    this -> model_opt_eliminated_act |= !relevant_actions;
+    this -> model_opt_eliminated_var_ |= (!relevant_variables - fact_landmarks);
+    this -> model_opt_eliminated_act_ |= !relevant_actions;
 
 }
 
@@ -319,7 +408,7 @@ void HPLUS_instance::dominated_actions_elimination(const std::vector<my::BitFiel
     lprint_info("(debug) Extracting dominated actions.");
     #endif
 
-    auto remaining_var_sparse = (!this -> model_opt_eliminated_var).sparse();
+    auto remaining_var_sparse = (!this -> model_opt_eliminated_var_).sparse();
     std::vector<my::BitField> act_flm = std::vector<my::BitField>(this -> n_act_, my::BitField(this -> n_var_));
     std::vector<std::vector<unsigned int>> var_flm_sparse(this -> n_var_);
 
@@ -331,24 +420,24 @@ void HPLUS_instance::dominated_actions_elimination(const std::vector<my::BitFiel
 
     // compute the landmarks for each action remaining
     for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++)
-        for (auto var_i : this -> actions_[act_i].get_pre_sparse()) if (!this -> model_opt_eliminated_var[var_i])
+        for (auto var_i : this -> actions_[act_i].get_pre_sparse()) if (!this -> model_opt_eliminated_var_[var_i])
             for (auto i : var_flm_sparse[var_i])
                 act_flm[act_i].set(i);
 
     // find efficently all actions that satisfy point 1) of Proposition 4 of in Imai's Paper
     my::SSBT subset_finder = my::SSBT();
-    for (auto act_i : !this -> model_opt_eliminated_act) subset_finder.add(act_i, fadd[act_i]);
+    for (auto act_i : !this -> model_opt_eliminated_act_) subset_finder.add(act_i, fadd[act_i]);
 
     my::BitField dominated_actions(this -> n_act_);
 
     // find all dominated actions and eliminate them
-    for (auto dominant_act : !this -> model_opt_eliminated_act) if (!dominated_actions[dominant_act]) {
-        for (auto dominated_act : subset_finder.find_subsets(fadd[dominant_act])) if (!this -> model_opt_eliminated_act[dominated_act]) {
+    for (auto dominant_act : !this -> model_opt_eliminated_act_) if (!dominated_actions[dominant_act]) {
+        for (auto dominated_act : subset_finder.find_subsets(fadd[dominant_act])) if (!this -> model_opt_eliminated_act_[dominated_act]) {
             
             if (this -> model_opt_fixed_act[dominated_act] || dominant_act == dominated_act || this -> actions_[dominant_act].get_cost() > this -> actions_[dominated_act].get_cost() || !act_flm[dominated_act].contains(this -> actions_[dominant_act].get_pre())) continue;
 
             dominated_actions.set(dominated_act);
-            this -> model_opt_eliminated_act.set(dominated_act);
+            this -> model_opt_eliminated_act_.set(dominated_act);
 
         }
 
@@ -363,7 +452,7 @@ void HPLUS_instance::immediate_action_application(const my::BitField& act_landma
     #endif
 
     my::BitField current_state(this -> n_var_);
-    my::BitField actions_left = !this -> model_opt_eliminated_act;
+    my::BitField actions_left = !this -> model_opt_eliminated_act_;
 
     // keep looking until no more actions can be applied
     int counter = 0;
@@ -374,8 +463,8 @@ void HPLUS_instance::immediate_action_application(const my::BitField& act_landma
 
         for (auto act_i : actions_left) {
 
-            const auto& pre = this -> actions_[act_i].get_pre() & !this -> model_opt_eliminated_var;
-            const auto& eff = this -> actions_[act_i].get_eff() & !this -> model_opt_eliminated_var;
+            const auto& pre = this -> actions_[act_i].get_pre() & !this -> model_opt_eliminated_var_;
+            const auto& eff = this -> actions_[act_i].get_eff() & !this -> model_opt_eliminated_var_;
 
             if (current_state.contains(pre) && (act_landmarks[act_i] || this -> actions_[act_i].get_cost() == 0)) {
 
@@ -460,17 +549,17 @@ void HPLUS_instance::imai_model_enhancements() {
     // if (inverse_actions != nullptr) this -> inverse_actions_extraction(eliminated_actions, this -> fixed_actions, *inverse_actions);
 
     int count = 0;
-    for (auto _ : this -> model_opt_eliminated_var) count++;
-    this -> model_opt_nvar = this -> n_var_ - count;
+    for (auto _ : this -> model_opt_eliminated_var_) count++;
+    this -> model_opt_nvar_ = this -> n_var_ - count;
     count = 0;
-    for (auto _ : this -> model_opt_eliminated_act) count++;
-    this -> model_opt_cpxidx_to_actidx = std::vector<unsigned int>();
-    for (auto act_i : !this -> model_opt_eliminated_act) this -> model_opt_cpxidx_to_actidx.push_back(act_i);
-    this -> model_opt_nact = this -> n_act_ - count;
+    for (auto _ : this -> model_opt_eliminated_act_) count++;
+    this -> model_opt_cpxidx_to_actidx_ = std::vector<unsigned int>();
+    for (auto act_i : !this -> model_opt_eliminated_act_) this -> model_opt_cpxidx_to_actidx_.push_back(act_i);
+    this -> model_opt_nact_ = this -> n_act_ - count;
 
     #if HPLUS_INTCHECK
-    my::assert(!this -> model_opt_fixed_var.intersects(this -> model_opt_eliminated_var), "Eliminated and fixed variables intersect.");
-    my::assert(!this -> model_opt_fixed_act.intersects(this -> model_opt_eliminated_act), "Eliminated and fixed actions intersect.");
+    my::assert(!this -> model_opt_fixed_var.intersects(this -> model_opt_eliminated_var_), "Eliminated and fixed variables intersect.");
+    my::assert(!this -> model_opt_fixed_act.intersects(this -> model_opt_eliminated_act_), "Eliminated and fixed actions intersect.");
     #endif
 
     #if HPLUS_VERBOSE >= 20
@@ -573,7 +662,7 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
         post_istate_removal_offset[var_i] = counter;
     }
     this -> n_var_ -= nvar_pre_exp;
-    this -> model_opt_nvar = this -> n_var_;
+    this -> model_opt_nvar_ = this -> n_var_;
 
     // * goal state section
     std::getline(*ifs, line);   // begin_goal
@@ -604,7 +693,7 @@ void HPLUS_instance::parse_inst_file_(std::ifstream* ifs) {
     std::getline(*ifs, line);   // n_act
     my::assert(my::isint(line, 0), "Corrupted file.");
     this -> n_act_ = stoi(line);
-    this -> model_opt_nact = this -> n_act_;
+    this -> model_opt_nact_ = this -> n_act_;
     this -> actions_ = std::vector<HPLUS_action>(this -> n_act_);
     for (unsigned int act_i = 0; act_i < this -> n_act_; act_i++) {
         // process each action
