@@ -99,7 +99,10 @@ void HPLUS_instance::update_best_sol(const std::vector<size_t>& solution, const 
 
     pthread_mutex_lock(&(this -> solution_read_write_));
 
-    if (cost >= this -> best_cost_) return;
+    if (cost >= this -> best_cost_) {
+        pthread_mutex_unlock(&(this -> solution_read_write_));
+        return;
+    }
 
     this -> best_solution_ = std::vector<size_t>(solution);
     this -> best_cost_ = cost;

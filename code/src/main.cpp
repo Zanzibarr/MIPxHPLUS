@@ -176,15 +176,14 @@ void HPLUS_end() {
     HPLUS_stats.total_time = timer.get_time();
     HPLUS_stats.print();
 
+    exit(0);
+
 }
 
 void signal_callback_handler(const int signum) {
 
     if (HPLUS_env.exec_status == my::execution_status::CPX_EXECUTION) HPLUS_env.cpx_terminate = 1;
-    else if (HPLUS_env.exec_status < my::execution_status::CPX_EXECUTION) {
-        HPLUS_end();
-        exit(0);
-    }
+    else if (HPLUS_env.exec_status < my::execution_status::CPX_EXECUTION) HPLUS_end();
 
 }
 
@@ -213,7 +212,5 @@ int main(const int argc, const char** argv) {
     HPLUS_run();
     timer_thread.join();
     HPLUS_end();
-
-    return 0;
 
 }
