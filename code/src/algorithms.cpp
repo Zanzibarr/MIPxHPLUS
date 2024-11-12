@@ -75,6 +75,70 @@ bool HPLUS_parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp) {
 // ############################# EXECUTION ############################# //
 // ##################################################################### //
 
+void HPLUS_find_heuristic() {
+
+    const auto& actions = HPLUS_inst.get_all_actions();
+    my::binary_set priority_rem_actions = HPLUS_inst.get_fixed_actions();
+    my::binary_set remaining_actions = HPLUS_inst.get_actions(true) & !priority_rem_actions;
+    const auto& remaining_variables = HPLUS_inst.get_variables(true);
+
+    my::binary_set current_state(HPLUS_inst.get_n_var());
+    std::vector<size_t> heur_solution;
+    unsigned int heur_cost = 0;
+
+    #if HPLUS_INTCHECK
+    int count_tmp = 0;
+    for (auto _ : priority_rem_actions) count_tmp++;
+    #endif
+
+    while (!current_state.contains(HPLUS_inst.get_goal_state())) {
+        unsigned int best_act_i = -1;
+        for (auto act_i : priority_rem_actions) {       // actions that were fixed by the problem simplification are gonna be added to the plan as soon as we can, since we know that at least one optimal solution will include them
+            if (current_state.contains(actions[act_i].get_pre())) {
+                #if HPLUS_INTCHECK
+                count_tmp--;
+                #endif
+                current_state |= actions[act_i].get_eff();
+                heur_solution.push_back(act_i);
+                heur_cost += actions[act_i].get_cost();
+                priority_rem_actions.remove(act_i);
+                best_act_i = act_i;
+            }
+        }
+        if (best_act_i == -1) {
+            double best_cost_per_eff = INFINITY;
+            // greedy idea: choose the next action as the one that makes me pay the less per (relevant) variable added to the current state
+            for (auto act_i : remaining_actions) {
+                if (current_state.contains(actions[act_i].get_pre())) {
+                    int n_eff = 0;
+                    for (auto var_i : actions[act_i].get_eff()) if (!current_state[var_i] && remaining_variables[var_i]) n_eff++;
+                    if (n_eff == 0) continue;
+                    if (((double) actions[act_i].get_cost()) / n_eff < best_cost_per_eff) {
+                        best_cost_per_eff = ((double) actions[act_i].get_cost()) / n_eff;
+                        best_act_i = act_i;
+                    }
+                }
+            }
+            if (best_act_i == -1) {
+                HPLUS_env.sol_status = my::solution_status::INFEAS;
+                return;
+            }
+            current_state |= actions[best_act_i].get_eff();
+            heur_solution.push_back(best_act_i);
+            heur_cost += actions[best_act_i].get_cost();
+            remaining_actions.remove(best_act_i);
+        }
+    }
+    
+    #if HPLUS_INTCHECK
+    my::assert(count_tmp == 0, "Error in finding heuristic.");
+    #endif
+    HPLUS_inst.update_best_sol(heur_solution, heur_cost);
+
+    HPLUS_env.sol_status = my::solution_status::FEAS;
+
+}
+
 void HPLUS_run() {
 
     if (
@@ -102,21 +166,19 @@ void HPLUS_run() {
 
     if (HPLUS_env.heuristic_enabled) {
 
-        //[ ]: heuristic
-        my::todo("heuristic");
-
         mylog.print_info("Calculating heuristic solution.");
         HPLUS_env.exec_status = my::execution_status::HEURISTIC;
 
         HPLUS_stats.heuristic_time = HPLUS_env.time_limit - timer.get_time();
         double start_time = timer.get_time();
 
-        // ...
+        HPLUS_find_heuristic();
 
-        HPLUS_env.sol_status = my::solution_status::FEAS;
         HPLUS_stats.heuristic_time = timer.get_time() - start_time;
 
     }
+
+    if (HPLUS_env.sol_status == my::solution_status::INFEAS) return;
 
     // ~~~~~~~~~~~~ MODEL BUILDING ~~~~~~~~~~~ //
 
@@ -147,8 +209,8 @@ void HPLUS_run() {
         std::vector<size_t> warm_start;
         unsigned int cost;
         HPLUS_inst.get_best_sol(warm_start, cost);
-        int* cpx_sol_ind = new int[HPLUS_inst.get_n_act(true)];
-        double* cpx_sol_val = new double[HPLUS_inst.get_n_act(true)];
+        int* cpx_sol_ind = new int[warm_start.size()];
+        double* cpx_sol_val = new double[warm_start.size()];
         int izero = 0;
         int effortlevel = CPX_MIPSTART_REPAIR;
         size_t tmp_cnt = 0;
@@ -156,6 +218,7 @@ void HPLUS_run() {
             cpx_sol_ind[tmp_cnt] = HPLUS_inst.act_idx_post_simplification(act_i);
             cpx_sol_val[tmp_cnt++] = 1;
         }
+        // my::assert(!CPXsetdblparam(env, CPXPARAM_MIP_Tolerances_UpperCutoff, (double)cost), "CPXsetdblparam failed.");
         my::assert(!CPXaddmipstarts(env, lp, 1, warm_start.size(), &izero, cpx_sol_ind, cpx_sol_val, &effortlevel, nullptr), "CPXaddmipstarts failed.");
         delete[] cpx_sol_ind; cpx_sol_ind = nullptr;
         delete[] cpx_sol_val; cpx_sol_val = nullptr;

@@ -68,10 +68,10 @@ extern class HPLUS_instance {
          */
         const my::binary_set get_variables(bool simplified = false) const;
         /**
-         * @brief Get the list of actions this problem has
+         * @brief Get a set containing the actions indexes this problem has
          * 
          * @param simplified set this to true to get the actions post simplification
-         * @return const std::vector<HPLUS_action>& List of actions pre/post simplification
+         * @return const my::binary_set& Set of actions pre/post simplification
          */
         const my::binary_set get_actions(bool simplified = false) const;
         const std::vector<HPLUS_action>& get_all_actions() const;
@@ -79,6 +79,7 @@ extern class HPLUS_instance {
 
         void update_best_sol(const std::vector<size_t>& solution, unsigned int cost);
         void get_best_sol(std::vector<size_t>& solution, unsigned int& cost);
+        unsigned int get_best_sol_cost();
         void print_best_sol();
         
         void problem_simplification();

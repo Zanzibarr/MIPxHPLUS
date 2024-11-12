@@ -14,8 +14,29 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp) {
     const auto& timestamps_var = HPLUS_inst.get_timestamps_var();
     const auto& timestamps_act = HPLUS_inst.get_timestamps_act();
 
+    const auto& gstate = HPLUS_inst.get_goal_state();
+
     const auto n_var = HPLUS_inst.get_n_var(true);
     const auto n_act = HPLUS_inst.get_n_act(true);
+
+    // ====================================================== //
+    // ============== TIGHTER TIMESTAMPS BOUNDS ============= //
+    // ====================================================== //
+
+    int timestamps_ubound = n_act;
+    if (HPLUS_env.imai_tighter_var_bound_enabled) {
+
+        // max number of steps to reach heuristic
+        unsigned int min_act_cost = actions[0].get_cost() + 1;      // +1 to avoid it being 0
+        size_t n_act_zerocost = 0;
+        for (auto act : actions) {
+            if (act.get_cost() == 0) n_act_zerocost++;
+            else if (act.get_cost() < min_act_cost) min_act_cost = act.get_cost();
+        }
+        int nsteps = HPLUS_inst.get_best_sol_cost() / min_act_cost + n_act_zerocost;
+        if (nsteps < timestamps_ubound) timestamps_ubound = nsteps;
+
+    }
 
     // ====================================================== //
     // =================== CPLEX VARIABLES ================== //
@@ -67,7 +88,7 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp) {
     for (auto act_i : remaining_actions) {
         objs[count] = 0;
         lbs[count] = timestamps_act[act_i] >= 0 ? timestamps_act[act_i] : 0;
-        ubs[count] = timestamps_act[act_i] >= 0 ? timestamps_act[act_i] : n_act-1;       //[ ]: Tighter bound
+        ubs[count] = timestamps_act[act_i] >= 0 ? timestamps_act[act_i] : timestamps_ubound-1;
         types[count++] = 'I';
     }
     #if HPLUS_INTCHECK
@@ -81,7 +102,6 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp) {
     
     // ------- variables ------ //
     size_t var_start = curr_col;
-    const auto& gstate = HPLUS_inst.get_goal_state();
     count = 0;
     for (auto var_i : remaining_variables) {
         objs[count] = 0;
@@ -102,7 +122,7 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp) {
     for (auto i : remaining_variables) {
         objs[count] = 0;
         lbs[count] = timestamps_var[i] >= 0 ? timestamps_var[i] : 0;
-        ubs[count] = timestamps_var[i] >= 0 ? timestamps_var[i] : n_act;                     //[ ]: Tighter bound
+        ubs[count] = timestamps_var[i] >= 0 ? timestamps_var[i] : timestamps_ubound;
         types[count++] = 'I';
     }
     #if HPLUS_INTCHECK
@@ -156,7 +176,7 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp) {
     double val_c2_4[2], val_c5[3];
     const int nnz_c2_4 = 2, nnz_c5 = 3;
     const char sensel = 'L', sensee = 'E';
-    const double rhs_c1_2_4 = 0, rhs_c5 = n_act;         //[ ]: Tighter bound
+    const double rhs_c1_2_4 = 0, rhs_c5 = timestamps_ubound;
     const int begin = 0;
 
     std::vector<int*> ind_c3(n_var);
@@ -216,7 +236,7 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp) {
             ind_c5[1] = get_tvar_idx(j);
             val_c5[1] = -1;
             ind_c5[2] = get_fa_idx(i, j);
-            val_c5[2] = n_act + 1;                                                                   //[ ]: Tighter bound
+            val_c5[2] = timestamps_ubound + 1;
             my::assert(!CPXaddrows(env, lp, 0, 1, nnz_c5, &rhs_c5, &sensel, &begin, ind_c5, val_c5, nullptr, nullptr), "CPXaddrows (c5) failed.");
             // constraint 3: I(v_j) + sum(z_avj) = y_vj
             ind_c3[HPLUS_inst.var_idx_post_simplification(j)][nnz_c3[HPLUS_inst.var_idx_post_simplification(j)]] = get_fa_idx(i, j);

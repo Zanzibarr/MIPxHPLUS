@@ -114,15 +114,15 @@ void HPLUS_parse_cli(const int argc, const char** argv) {
     my::assert(HPLUS_env.input_file != "N/A", "No input file specified.");
     my::assert(!HPLUS_env.alg.empty(), "No algorithm specified.");
 
-    //[ ]: tighter timestamps bounds
-    if (HPLUS_env.alg == HPLUS_CLI_ALG_IMAI) mylog.print_warn("Tighter bounds for imai is yet to be implemented, disabling that option.");
-    HPLUS_env.imai_tighter_var_bound_enabled = false;
-
     mylog = my::logger(HPLUS_env.run_name, HPLUS_env.log, HPLUS_env.log_name);
 
     if (HPLUS_env.warm_start_enabled && !HPLUS_env.heuristic_enabled) {
         mylog.print_warn("Warm start has been activated but heuristics have been disabled: disabling warm start.");
         HPLUS_env.warm_start_enabled = false;
+    }
+    if (HPLUS_env.imai_tighter_var_bound_enabled && !HPLUS_env.heuristic_enabled) {
+        mylog.print_warn("Tighter bounds for imai's variables timestamps has been activated but heuristics have been disabled: disabling tighter bounds.");
+        HPLUS_env.imai_tighter_var_bound_enabled = false;
     }
 
 }
@@ -190,7 +190,7 @@ void signal_callback_handler(const int signum) {
 
 void time_limit_termination(double duration) {
 
-    while (HPLUS_env.exec_status < my::execution_status::CPX_EXECUTION) {
+    while (HPLUS_env.exec_status < my::execution_status::CPX_EXECUTION && HPLUS_env.sol_status != my::solution_status::INFEAS) {
         if (timer.get_time() > duration) {
             raise(SIGINT);
             return;

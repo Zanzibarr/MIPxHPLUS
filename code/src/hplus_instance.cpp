@@ -121,6 +121,19 @@ void HPLUS_instance::get_best_sol(std::vector<size_t>& solution, unsigned int& c
 
 }
 
+unsigned int HPLUS_instance::get_best_sol_cost() {
+
+    pthread_mutex_lock(&(this -> solution_read_write_));
+
+    unsigned int ret = this -> best_cost_;
+
+    pthread_mutex_unlock(&(this -> solution_read_write_));
+
+    return ret;
+
+}
+
+
 void HPLUS_instance::print_best_sol() {
 
     pthread_mutex_lock(&(this -> solution_read_write_));
