@@ -2,82 +2,31 @@
 #define HPLUS_INST_H
 
 #include "utils.hpp"
-#include <thread>
 
 // ##################################################################### //
 // ############################ HPLUS_ACTION ########################### //
 // ##################################################################### //
 
-class HPLUS_action  {
+class HPLUS_action {
 
     public:
 
         explicit HPLUS_action() = default;
+        explicit HPLUS_action(const my::binary_set& preconditions, const my::binary_set& effects, unsigned int cost, const std::string& name);
 
-        /**
-         * @param pre_bf: BitField of the precondition state for this action
-         * @param eff_bf: BitField of the effects on the state this action has
-         * @param cost: Cost of the action
-         * @param name: Name of the action
-         */
-        explicit HPLUS_action(my::BitField& pre_bf, my::BitField& eff_bf, unsigned int cost, const std::string& name);
-
-        /**
-         * @return The BitField representing the precondition state for this action (note that the initial state variables have been removed)
-         */
-        const my::BitField& get_pre() const;
-
-        /**
-         * @return The precomputed sparse list of precondition of this action (note that the initial state variables have been removed) 
-         */
-        const std::vector<unsigned int>& get_pre_sparse() const;
-
-        /**
-         * @return The BitField representing the add effects on the state this action has (note that the initial state variables have been removed)
-         */
-        const my::BitField& get_eff() const;
-
-        /**
-         * @return The precomputed sparse list of add effects of this action (note that the initial state variables have been removed) 
-         */
-        const std::vector<unsigned int>& get_eff_sparse() const;
-
-        /**
-         * @return The cost of this action
-         */
+        const my::binary_set& get_pre() const;
+        const std::vector<size_t>& get_pre_sparse() const;
+        const my::binary_set& get_eff() const;
+        const std::vector<size_t>& get_eff_sparse() const;
         unsigned int get_cost() const;
-
-        /**
-         * @return The name of this action
-         */
         const std::string& get_name() const;
 
     private:
 
-        /**
-         * Value each variable must have for the action to be taken
-         * ->
-         * [1000 0100 0001] -> Assuming a size of 3 and a range of 4 for each variable, value(v0) must be 0, value(v1) must be 1, value(v2) must be 3
-         */
-        my::BitField pre_;
-
-        /**
-         * Precomputed list of preconditions
-         */
-        std::vector<unsigned int> sparse_pre_;
-
-        /**
-         * Value each variable has after the action has been taken
-         * ->
-         * [1000 0100 0001] -> Assuming a size of 3 and a range of 4 for each variable, value(v0) will be 0, value(v1) will be 1, value(v2) will be 3
-         */
-        my::BitField eff_;
-
-        /**
-         * Precomputed list of add effects
-         */
-        std::vector<unsigned int> sparse_eff_;
-
+        my::binary_set pre_;
+        my::binary_set eff_;
+        std::vector<size_t> pre_sparse_;
+        std::vector<size_t> eff_sparse_;
         unsigned int cost_;
         std::string name_;
 
@@ -90,220 +39,149 @@ class HPLUS_action  {
 extern class HPLUS_instance {
 
     public:
-
+    
         explicit HPLUS_instance() = default;
+        explicit HPLUS_instance(const std::string& instance_file);
 
-        /**
-         * Create an HPLUS_instance from a file produced by the fast downward translator
-         * 
-         * @param file_path: Path of the file where to read the instance from
-         */
-        explicit HPLUS_instance(const std::string& file_path);
-
-        /**
-         * @return The version of the fast downward translator used to generate this instance
-         */
         int get_version() const;
-
-        /**
-         * @return true if unitary cost is used, false if generic cost is used
-         */
         bool unitary_cost() const;
 
         /**
-         * @return The number of actions this domain has
+         * @brief Get the number of variables this problem has
+         * 
+         * @param simplified set this to true to get the number of variables post simplification
+         * @return size_t Number of variables pre/post simplification
          */
-        unsigned int get_nact() const;
-
+        size_t get_n_var(bool simplified = false) const;
         /**
-         * @return The number of variables (after binary expansion) this domain has
+         * @brief Get the number of actions this problem has
+         * 
+         * @param simplified set this to true to get the number of actions post simplification
+         * @return size_t Number of actions pre/post simplification
          */
-        unsigned int get_nvar() const;
-
+        size_t get_n_act(bool simplified = false) const;
         /**
-         * @return The list of actions this domain has
+         * @brief Get a set containing the variables indexes this problem has
+         * 
+         * @param simplified set this to true to get the variables post simplification
+         * @return const my::binary_set& Set of variables pre/post simplification
          */
-        const std::vector<HPLUS_action>& get_actions() const;
-
+        const my::binary_set get_variables(bool simplified = false) const;
         /**
-         * @return The goal state as a BitField (note that the initial state variables have been removed)
-         * ->
-         * [1000 0100 0001] -> Assuming a size of 3 and a range of 4 for each variable, value(v0) = 0, value(v1) = 1, value(v2) = 3
+         * @brief Get the list of actions this problem has
+         * 
+         * @param simplified set this to true to get the actions post simplification
+         * @return const std::vector<HPLUS_action>& List of actions pre/post simplification
          */
-        const my::BitField& get_gstate() const;
+        const my::binary_set get_actions(bool simplified = false) const;
+        const std::vector<HPLUS_action>& get_all_actions() const;
+        const my::binary_set& get_goal_state() const;
 
-        /**
-         * Compare a solution found with the best found so far and stores it if it's the new best one
-         * @param solution: ordered sequence of actions (represented by their index in the domain) that represent the solution found
-         * @param cost: cost of this solution
-         */
-        void update_best_solution(const std::vector<unsigned int>& solution, unsigned int cost);
-
-        /**
-         * Get the best solution found so far
-         * @param solution: Vector where to save the solution into (cleared and resized)
-         * @param cost: Integer where to save the cost into
-         */
-        void get_best_solution(std::vector<unsigned int>& solution, unsigned int& cost);
-
-        /**
-         * Prints the best solution found so far
-        */
+        void update_best_sol(const std::vector<size_t>& solution, unsigned int cost);
+        void get_best_sol(std::vector<size_t>& solution, unsigned int& cost);
         void print_best_sol();
+        
+        void problem_simplification();
 
-        // ====================================================== //
-        // ==================== OPTIMIZATIONS =================== //
-        // ====================================================== //
+        const my::binary_set& get_fixed_variables() const;
+        const my::binary_set& get_fixed_actions() const;
+        const std::vector<my::binary_set>& get_eliminated_fa() const;
+        const std::vector<my::binary_set>& get_fixed_fa() const;
+        const std::vector<int> get_timestamps_var() const;
+        const std::vector<int> get_timestamps_act() const;
 
-        void initial_heuristic();
-
-        void model_optimization();
-
-        void optimized_heuristic();
-
-        // set of fixed variables for model optimization
-        my::BitField model_opt_fixed_var;
-        // set of fixed variables for model optimization
-        my::BitField model_opt_fixed_act;
-        // set of fixed first archievers for model optimization
-        std::vector<my::BitField> model_opt_eliminated_fa;
-        // set of eliminated first archievers for model optimization
-        std::vector<my::BitField> model_opt_fixed_fa;
-        // set of variable timestamps for model optimization
-        std::vector<int> model_opt_timestamps_var;
-        // set of action timestamps for model optimization
-        std::vector<int> model_opt_timestamps_act;
-
-        /**
-         * @return the optimized number of variables (original nvar - # eliminated variables)
-         */
-        unsigned int get_nvar_opt() const;
-
-        /**
-         * @return the optimized number of actions (original nact - # eliminated actions)
-         */
-        unsigned int get_nact_opt() const;
-
-        /**
-         * @return the eliminated variables
-         */
-        const my::BitField& get_model_opt_eliminated_var() const;
-
-        /**
-         * @return the eliminated actions
-         */
-        const my::BitField& get_model_opt_eliminated_act() const;
-
-        /**
-         * @param cpxidx the index of the cplex action to convert
-         *
-         * @return the index of the action given the corresponding cplex index
-         */
-        unsigned int cpxidx_to_actidx(unsigned int cpxidx) const;
-
-        int actidx_to_cpxidx(unsigned int actidx) const;
-        int varidx_to_cpxidx(unsigned int varidx) const;
+        size_t var_idx_post_simplification(size_t var_idx) const;
+        size_t act_idx_post_simplification(size_t act_idx) const;
+        size_t cpx_idx_to_act_idx(size_t cpx_idx) const;
 
     private:
 
         int version_;
-        bool use_costs_;
+        bool unitary_costs_;
 
-        unsigned int n_act_;
-        unsigned int n_var_;
+        size_t n_var_;
+        size_t n_act_;
+        size_t n_var_post_simpl_;
+        size_t n_act_post_simpl_;
 
         std::vector<HPLUS_action> actions_;
 
-        my::BitField goal_state_;
+        my::binary_set goal_state_;
 
-        std::vector<unsigned int> best_solution_;
-        unsigned int best_nact_;
+        std::vector<size_t> best_solution_;
         unsigned int best_cost_;
 
-        // ====================================================== //
-        // ==================== OPTIMIZATIONS =================== //
-        // ====================================================== //
+        my::binary_set eliminated_var_;
+        my::binary_set fixed_var_;
+        my::binary_set eliminated_act_;
+        my::binary_set fixed_act_;
+        std::vector<my::binary_set> eliminated_fa_;
+        std::vector<my::binary_set> fixed_fa_;
+        std::vector<int> timestamps_var_;
+        std::vector<int> timestamps_act_;
+        // std::map<size_t, std::vector<size_t>>& inverse_act_;
 
-        /**
-         * Extracts landmarks
-         * (Section 4.1 of Imai's paper)
-         */
-        void landmarks_extraction(
-            std::vector<my::BitField>& landmarks_set,
-            my::BitField& fact_landmarks,
-            my::BitField& act_landmarks
-        ) const;
-
-        /**
-         * Extract first adders
-         * (Section 4.2 of Imai's paper)
-         */
-        void first_adders_extraction(
-            const std::vector<my::BitField>& landmarks_set,
-            std::vector<my::BitField>& fadd
-        ) const;
-
-        /**
-         * Extract relevant variables/actions
-         * (Section 4.2 of Imai's paper)
-         */
-        void relevance_analysis(
-            const my::BitField& fact_landmarks,
-            const std::vector<my::BitField>& fadd
-        );
-
-        /**
-         * Extract dominated actions
-         * (Section 4.3 of Imai's paper)
-         */
-        void dominated_actions_elimination(
-            const std::vector<my::BitField>& landmarks_set,
-            const std::vector<my::BitField>& fadd
-        );
-
-        /**
-         * Immediate action application
-         * (Section 4.4 of Imai's paper)
-         */
-        void immediate_action_application(
-            const my::BitField& act_landmarks
-        );
-
-        // /**
-        //  * Inverse action extraction
-        //  * (Section 4.6 of Imai's paper)
-        //  */
-        // void inverse_actions_extraction(
-        //     const my::BitField& eliminated_actions,
-        //     const my::BitField& fixed_actions,
-        //     std::map<unsigned int, std::vector<unsigned int>>& inverse_actions
-        // ) const;
-
-        /**
-         * Model enhancement form Imai's paper
-         * (Section 4 of Imai's paper)
-         */
-        void imai_model_enhancements();
-
-        // set of eliminated variables for model optimization
-        my::BitField model_opt_eliminated_var_;
-        // set of eliminated actions for model optimization
-        my::BitField model_opt_eliminated_act_;
-        // optimized number of variables
-        unsigned int model_opt_nvar_;
-        // optimized number of actions
-        unsigned int model_opt_nact_;
-
-        std::vector<int> model_opt_varidx_to_cpxidx_;
-        std::vector<int> model_opt_actidx_to_cpxidx_;
-        std::vector<unsigned int> model_opt_cpxidx_to_actidx_;
-
-        // UTILS
+        std::vector<size_t> var_idx_post_simplification_;
+        std::vector<size_t> act_idx_post_simplification_;
+        std::vector<size_t> cpx_idx_to_act_idx_;
 
         pthread_mutex_t solution_read_write_;
 
-        void parse_inst_file_(std::ifstream* file);
+        void landmarks_extraction(std::vector<my::binary_set>& landmarks_set, my::binary_set& fact_landmarks, my::binary_set& act_landmarks) const;
+        void first_adders_extraction(const std::vector<my::binary_set>& landmarks_set, std::vector<my::binary_set>& fadd) const;
+        void relevance_analysis(const my::binary_set& fact_landmarks, const std::vector<my::binary_set>& fadd);
+        void dominated_actions_elimination(const std::vector<my::binary_set>& landmarks_set, const std::vector<my::binary_set>& fadd);
+        void immediate_action_application(const my::binary_set& act_landmarks);
+        //[ ]: This might not be worth doing
+        // void inverse_actions_extraction();
+        void imai_model_enhancements();
+
+        void parse_inst_file_(const std::string& instance_path_);
 
 } HPLUS_inst;
+
+// ##################################################################### //
+// ############################# HPLUS_ENV ############################# //
+// ##################################################################### //
+
+extern struct HPLUS_environment {
+
+    my::execution_status exec_status;
+    my::solution_status sol_status;
+
+    int cpx_terminate;
+
+    std::string input_file;
+    bool log;
+    std::string log_name;
+    std::string run_name;
+
+    std::string alg;
+
+    bool problem_simplification_enabled;
+    bool imai_tighter_var_bound_enabled;
+    bool heuristic_enabled;
+    bool warm_start_enabled;
+
+    unsigned int time_limit;
+
+} HPLUS_env;
+
+// ##################################################################### //
+// ############################ HPLUS_STATS ############################ //
+// ##################################################################### //
+
+extern struct HPLUS_statistics {
+
+    double parsing_time;
+    double simplification_time;
+    double heuristic_time;
+    double build_time;
+    double execution_time;
+    double total_time;
+
+    void print() const;
+
+} HPLUS_stats;
 
 #endif

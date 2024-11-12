@@ -4,14 +4,8 @@
 #include "hplus_instance.hpp"
 #include <cplex.h>
 
-/**
- * Build the model from Imai's paper
- */
-void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, HPLUS_instance& inst);
+void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp);
 
-/**
- * Store the solution found by Imai's model
- */
-void HPLUS_store_imai_sol(const CPXENVptr& env, const CPXLPptr& lp, HPLUS_instance& inst);
+void HPLUS_store_imai_sol(const CPXENVptr& env, const CPXLPptr& lp);
 
 #endif

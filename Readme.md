@@ -69,24 +69,13 @@ make <target_option>
 #### Code execution
 
 - **-i** <input_file> : (abs path) specify the input file
-- **-a** <algorithm_name> : (string) specify the algorithm to use
+- **-a** <algorithm_name> : (string) (optional) specify the algorithm to use (default: rankooh)
   - **imai** : to use the model from the [Imai15 paper](references/Imai15.pdf)
   - **rankooh** : to use the model from the [Rankooh22 paper](references/Rankooh22.pdf)
-- **-opt-enhance** <0/1>: (bool) (optional) specify wether to use or not model enhancements algorithms (default: 1)
-  - **0** : to disable this option
-  - **1** : to enable this option
-- **-opt-heur-1** <0/1>: (bool) (optional) specify wether to search for an heuristic solution (probably a bad one, but at least a solution is almost always found) (default: 1)
-  - **0** : to disable this option
-  - **1** : to enable this option
-- **-opt-heur-2** <0/1>: (bool) (optional) specify wether to search for an optimized heuristic solution (better than the one found with -opt-heur-1) (default: 1)
-  - **0** : to disable this option
-  - **1** : to enable this option
-- **-opt-warmstart** <0/1>: (bool) (optional) specify wether to use or not an heuristic solution as warm start (default: 1)
-  - **0** : to disable this option
-  - **1** : to enable this option
-- **-opt-imai-var-bound** <0/1>: (bool) (optional) specify wether to use or not tighter bounds on the timestamp variables (to use with the imai algorithm) (default: 1)
-  - **0** : to disable this option
-  - **1** : to enable this option
+- **-nos**: (optional) don't perform problem simplification
+- **-notb**: (optional) don't use tighter timestamps bounds (imai)
+- **-noheur**: (optional) don't look for an heuristic solution
+- **-nowarm**: (optional) don't use an heuristic solution as warm start
 - **-t** \<int> : (int) (optional) specify the time limit (in seconds) (default: 60)
 
 #### Logging

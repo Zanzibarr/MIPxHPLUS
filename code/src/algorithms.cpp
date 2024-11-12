@@ -13,7 +13,7 @@ void HPLUS_cpx_init(CPXENVptr& env, CPXLPptr& lp) {
 
     // log file
     my::assert(!CPXsetintparam(env, CPXPARAM_ScreenOutput, CPX_OFF), "CPXsetintparam failed (CPXPARAM_ScreenOutput).");
-    my::assert(!CPXsetlogfilename(env, (HPLUS_CPLEX_OUT_DIR"/log/"+HPLUS_env.run_name+".log").c_str(), "w"), "CPXsetlogfilename failed.");
+    my::assert(!CPXsetlogfilename(env, (HPLUS_CPLEX_OUTPUT_DIR"/log/"+HPLUS_env.run_name+".log").c_str(), "w"), "CPXsetlogfilename failed.");
     my::assert(!CPXsetintparam(env, CPX_PARAM_CLONELOG, -1), "CPXsetintparam (CPX_PARAM_CLONELOG) failed.");
 
     // tolerance
@@ -40,32 +40,32 @@ bool HPLUS_parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp) {
 
     switch ( int cpxstatus = CPXgetstat(env, lp) ) {
         case CPXMIP_TIME_LIM_FEAS:      // exceeded time limit, found intermediate solution
-            HPLUS_env.status = my::status::FEAS;
+            HPLUS_env.sol_status = my::solution_status::FEAS;
             return true;
         case CPXMIP_TIME_LIM_INFEAS:    // exceeded time limit, no intermediate solution found
-            if (!HPLUS_env.warm_start) HPLUS_env.status = my::status::NOTFOUND;
+            if (!HPLUS_env.warm_start_enabled) HPLUS_env.sol_status = my::solution_status::NOTFOUND;
             return false;
         case CPXMIP_INFEASIBLE:         // proven to be unfeasible
-            HPLUS_env.status = my::status::INFEAS;
+            HPLUS_env.sol_status = my::solution_status::INFEAS;
             return false;
         case CPXMIP_ABORT_FEAS:         // terminated by user, found solution
-            HPLUS_env.status = my::status::FEAS;
+            HPLUS_env.sol_status = my::solution_status::FEAS;
             return true;
         case CPXMIP_ABORT_INFEAS:       // terminated by user, not found solution
-            if (!HPLUS_env.warm_start) HPLUS_env.status = my::status::NOTFOUND;
+            if (!HPLUS_env.warm_start_enabled) HPLUS_env.sol_status = my::solution_status::NOTFOUND;
             return false;
         case CPXMIP_OPTIMAL_TOL:        // found optimal within the tollerance
-            lprint_warn("Found optimal within the tolerance.");
-            HPLUS_env.status = my::status::OPT;
+            mylog.print_warn("Found optimal within the tolerance.");
+            HPLUS_env.sol_status = my::solution_status::OPT;
             return true;
         case CPXMIP_OPTIMAL:            // found optimal
-            HPLUS_env.status = my::status::OPT;
+            HPLUS_env.sol_status = my::solution_status::OPT;
             return true;
         case 0:
-            HPLUS_env.status = my::status::NOTFOUND;
+            HPLUS_env.sol_status = my::solution_status::NOTFOUND;
             return false;
         default:                        // unhandled status
-            HPLUS_env.logger.raise_error("Error in tsp_cplex: unhandled cplex status: %d.", cpxstatus);
+            mylog.raise_error("Error in tsp_cplex: unhandled cplex status: %d.", cpxstatus);
             return false;
     }
 
@@ -78,30 +78,53 @@ bool HPLUS_parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp) {
 void HPLUS_run() {
 
     if (
-        HPLUS_env.alg != HPLUS_CLI_IMAI &&
-        HPLUS_env.alg != HPLUS_CLI_RANKOOH
-    ) HPLUS_env.logger.raise_error("The algorithm specified (%s) is not on the list of possible algorithms... Please read the README.md for instructions.", HPLUS_env.alg.c_str());
+        HPLUS_env.alg != HPLUS_CLI_ALG_IMAI &&
+        HPLUS_env.alg != HPLUS_CLI_ALG_RANKOOH
+    ) mylog.raise_error("The algorithm specified (%s) is not on the list of possible algorithms... Please read the README.md for instructions.", HPLUS_env.alg.c_str());
 
-    // ~~~~~~~~~~~~~ HEURISTIC 1 ~~~~~~~~~~~~~ //
+    // ~~~~~~~~ PROBLEM SIMPLIFICATION ~~~~~~~ //
 
-    if (HPLUS_env.heur_1) HPLUS_inst.initial_heuristic();
-    if (HPLUS_env.status == my::status::INFEAS) return;
+    if (HPLUS_env.problem_simplification_enabled) {
 
-    // ~~~~~~~~~~ MODEL OPTIMIZATION ~~~~~~~~~ //
+        mylog.print_info("Problem simplification.");
+        HPLUS_env.exec_status = my::execution_status::PROBLEM_SIMPL;
+        
+        HPLUS_stats.simplification_time = HPLUS_env.time_limit - timer.get_time();
+        double start_time = timer.get_time();
 
-    if (HPLUS_env.model_enhancements) HPLUS_inst.model_optimization();
+        HPLUS_inst.problem_simplification();
 
-    // ~~~~~~~~~~~~~ HEURISTIC 2 ~~~~~~~~~~~~~ //
+        HPLUS_stats.simplification_time = timer.get_time() - start_time;
 
-    if (HPLUS_env.heur_2) HPLUS_inst.optimized_heuristic();
+    }
+
+    // ~~~~~~~~~~~~~~ HEURISTIC ~~~~~~~~~~~~~~ //
+
+    if (HPLUS_env.heuristic_enabled) {
+
+        //[ ]: heuristic
+        my::todo("heuristic");
+
+        mylog.print_info("Calculating heuristic solution.");
+        HPLUS_env.exec_status = my::execution_status::HEURISTIC;
+
+        HPLUS_stats.heuristic_time = HPLUS_env.time_limit - timer.get_time();
+        double start_time = timer.get_time();
+
+        // ...
+
+        HPLUS_env.sol_status = my::solution_status::FEAS;
+        HPLUS_stats.heuristic_time = timer.get_time() - start_time;
+
+    }
 
     // ~~~~~~~~~~~~ MODEL BUILDING ~~~~~~~~~~~ //
 
-    HPLUS_stats.build_time = HPLUS_env.time_limit - HPLUS_env.get_time();
-    double start_time = HPLUS_env.get_time();
+    mylog.print_info("Building model.");
+    HPLUS_env.exec_status = my::execution_status::MODEL_BUILD;
 
-    if (HPLUS_env.alg == HPLUS_CLI_IMAI) lprint_info("Running imai algorithm.");
-    else if (HPLUS_env.alg == HPLUS_CLI_RANKOOH) lprint_info("Running rankooh algorithm.");
+    HPLUS_stats.build_time = HPLUS_env.time_limit - timer.get_time();
+    double start_time = timer.get_time();
 
     CPXENVptr env = nullptr;
     CPXLPptr lp = nullptr;
@@ -109,31 +132,28 @@ void HPLUS_run() {
     HPLUS_cpx_init(env, lp);
 
     //[ ]: Slow (idk...)
-    if (HPLUS_env.alg == HPLUS_CLI_IMAI) HPLUS_cpx_build_imai(env, lp, HPLUS_inst);
-    else if (HPLUS_env.alg == HPLUS_CLI_RANKOOH) HPLUS_cpx_build_rankooh(env, lp, HPLUS_inst);
+    if (HPLUS_env.alg == HPLUS_CLI_ALG_IMAI) HPLUS_cpx_build_imai(env, lp);
+    else if (HPLUS_env.alg == HPLUS_CLI_ALG_RANKOOH) HPLUS_cpx_build_rankooh(env, lp);
 
     // time limit
-    if ((double)HPLUS_env.time_limit > HPLUS_env.get_time()) my::assert(!CPXsetdblparam(env, CPXPARAM_TimeLimit, (double)HPLUS_env.time_limit - HPLUS_env.get_time()), "CPXsetdblparam (CPXPARAM_TimeLimit) failed.");
+    if ((double)HPLUS_env.time_limit > timer.get_time()) my::assert(!CPXsetdblparam(env, CPXPARAM_TimeLimit, (double)HPLUS_env.time_limit - timer.get_time()), "CPXsetdblparam (CPXPARAM_TimeLimit) failed.");
     else while(true);                   // handling edge case of time limit reached (if we enter the else, at any time the timer thread should terminate the execution, so we wait for him)
 
-    if (HPLUS_env.warm_start) {     // Post warm starto to CPLEX
+    if (HPLUS_env.warm_start_enabled) {     // Post warm starto to CPLEX
 
         #if HPLUS_INTCHECK
-        my::assert(HPLUS_env.status != my::status::INFEAS && HPLUS_env.status != my::status::NOTFOUND, "Warm start failed.");
+        my::assert(HPLUS_env.sol_status != my::solution_status::INFEAS && HPLUS_env.sol_status != my::solution_status::NOTFOUND, "Warm start failed.");
         #endif
-        std::vector<unsigned int> warm_start;
-        unsigned int cost = -1;
-        HPLUS_inst.get_best_solution(warm_start, cost);
-        #if HPLUS_INTCHECK
-        my::assert(cost != -1, "HPLUS_inst.get_best_solution failed.");
-        #endif
-        int* cpx_sol_ind = new int[HPLUS_inst.get_nact_opt()];
-        double* cpx_sol_val = new double[HPLUS_inst.get_nact_opt()];
+        std::vector<size_t> warm_start;
+        unsigned int cost;
+        HPLUS_inst.get_best_sol(warm_start, cost);
+        int* cpx_sol_ind = new int[HPLUS_inst.get_n_act(true)];
+        double* cpx_sol_val = new double[HPLUS_inst.get_n_act(true)];
         int izero = 0;
         int effortlevel = CPX_MIPSTART_REPAIR;
-        unsigned int tmp_cnt = 0;
+        size_t tmp_cnt = 0;
         for (auto act_i : warm_start) {
-            cpx_sol_ind[tmp_cnt] = HPLUS_inst.actidx_to_cpxidx(act_i);
+            cpx_sol_ind[tmp_cnt] = HPLUS_inst.act_idx_post_simplification(act_i);
             cpx_sol_val[tmp_cnt++] = 1;
         }
         my::assert(!CPXaddmipstarts(env, lp, 1, warm_start.size(), &izero, cpx_sol_ind, cpx_sol_val, &effortlevel, nullptr), "CPXaddmipstarts failed.");
@@ -142,23 +162,25 @@ void HPLUS_run() {
 
     }
 
-    HPLUS_stats.build_time = HPLUS_env.get_time() - start_time;
+    HPLUS_stats.build_time = timer.get_time() - start_time;
 
     // ~~~~~~~~~~~ MODEL EXECUTION ~~~~~~~~~~~ //
 
-    HPLUS_stats.exec_time = HPLUS_env.time_limit - HPLUS_env.get_time();
-    start_time = HPLUS_env.get_time();
+    mylog.print_info("Running CPLEX.");
+    HPLUS_env.exec_status = my::execution_status::CPX_EXECUTION;
 
-    HPLUS_env.cplex_running = true;
+    HPLUS_stats.execution_time = HPLUS_env.time_limit - timer.get_time();
+    start_time = timer.get_time();
+
     my::assert(!CPXmipopt(env, lp), "CPXmipopt failed.");
 
     if (HPLUS_parse_cplex_status(env, lp)) {        // If CPLEX has found a solution
-        if (HPLUS_env.alg == HPLUS_CLI_IMAI) HPLUS_store_imai_sol(env, lp, HPLUS_inst);
-        else if (HPLUS_env.alg == HPLUS_CLI_RANKOOH) HPLUS_store_rankooh_sol(env, lp, HPLUS_inst);
+        if (HPLUS_env.alg == HPLUS_CLI_ALG_IMAI) HPLUS_store_imai_sol(env, lp);
+        else if (HPLUS_env.alg == HPLUS_CLI_ALG_RANKOOH) HPLUS_store_rankooh_sol(env, lp);
     }
 
     HPLUS_cpx_close(env, lp);
 
-    HPLUS_stats.exec_time = HPLUS_env.get_time() - start_time;
+    HPLUS_stats.execution_time = timer.get_time() - start_time;
 
 }

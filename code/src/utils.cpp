@@ -1,252 +1,255 @@
 #include "../include/utils.hpp"
 
+my::logger mylog;
+my::time_keeper timer;
+
 namespace my {
 
     // ##################################################################### //
-    // ############################## BITFIELD ############################# //
+    // ############################# BINARY SET ############################ //
     // ##################################################################### //
 
-    BitField::BitField(unsigned int size, bool full_flag) {
-        this -> size_ = size;
-        this -> field_ = std::vector<char>((size+7)/8, full_flag ? (char)~0u : 0);
-        if (full_flag && this -> size_ % 8 != 0) this->field_[this -> field_.size() - 1] &= (1u << this -> size_ % 8) - 1;          // mask for the bits outside the size
+    binary_set::binary_set(size_t capacity, bool full_flag) {
+        this -> capacity_ = capacity;
+        this -> set_ = std::vector<char>((this -> capacity_+7)/8, full_flag ? (char)~0u : 0);
+        if (full_flag && this -> capacity_ % 8 != 0) this -> set_[this -> set_.size() - 1] &= (1u << this -> capacity_ % 8) - 1;          // mask for the bits outside the size
     }
 
-    BitField::BitField(const BitField& other_bitfield) {
-        this -> size_ = other_bitfield.size_;
-        this -> field_ = std::vector<char>(other_bitfield.field_);
+    binary_set::binary_set(const binary_set& other_set) {
+        this -> capacity_ = other_set.capacity_;
+        this -> set_ = std::vector<char>(other_set.set_);
     }
 
-    void BitField::set(unsigned int i) {
+    void binary_set::add(size_t element) {
 
         #if HPLUS_INTCHECK
-        assert(i < this -> size_, "BitField::set failed.");
+        assert(element < this -> capacity_, "binary_set::add failed.");
         #endif
-        this -> field_[i/8] |= (1 << i%8);
+        this -> set_[element/8] |= (1 << element%8);
 
     }
 
-    void BitField::unset(const unsigned int i) {
+    void binary_set::remove(size_t element) {
 
         #if HPLUS_INTCHECK
-        assert(i < this -> size_, "BitField::unset failed.");
+        assert(element < this -> capacity_, "binary_set::remove failed.");
         #endif
-        this -> field_[i/8] &= ~(1 << i%8);
+        this -> set_[element/8] &= ~(1 << element%8);
 
     }
 
-    bool BitField::operator[](const unsigned int i) const {
+    void binary_set::clear() { this -> set_ = std::vector<char>((this -> capacity_+7)/8, 0); }
+
+    binary_set binary_set::operator&(const binary_set& other_set) const {
 
         #if HPLUS_INTCHECK
-        assert(i < this -> size_, "BitField::[] failed.");
+        assert(this -> capacity_ == other_set.capacity_, "binary_set::& failed.");
         #endif
-        return this -> field_[i/8] & (1 << i%8);
-
-    }
-
-    unsigned int BitField::size() const { return this -> size_; }
-
-    BitField BitField::operator&(const BitField& other_bitfield) const {
-
-        #if HPLUS_INTCHECK
-        assert(this -> size_ == other_bitfield.size_, "BitField::& failed.");
-        #endif
-        BitField new_bitfield(*this);
-        for (unsigned int i = 0; i < this -> field_.size(); i++) new_bitfield.field_[i] &= other_bitfield.field_[i];
+        binary_set new_bitfield(*this);
+        for (size_t i = 0; i < this -> set_.size(); i++) new_bitfield.set_[i] &= other_set.set_[i];
         return new_bitfield;
 
     }
 
-    BitField& BitField::operator&=(const BitField& other_bitfield) {
+    binary_set& binary_set::operator&=(const binary_set& other_set) {
 
         #if HPLUS_INTCHECK
-        assert(this -> size_ == other_bitfield.size_, "BitField::&= failed.");
+        assert(this -> capacity_ == other_set.capacity_, "binary_set::&= failed.");
         #endif
-        for (unsigned int i = 0; i < this -> field_.size(); i++) this -> field_[i] &= other_bitfield.field_[i];
+        for (size_t i = 0; i < this -> set_.size(); i++) this -> set_[i] &= other_set.set_[i];
         return *this;
 
     }
 
-    BitField BitField::operator|(const BitField& other_bitfield) const {
+    binary_set binary_set::operator|(const binary_set& other_set) const {
 
         #if HPLUS_INTCHECK
-        assert(this -> size_ == other_bitfield.size_, "BitField::| failed.");
+        assert(this -> capacity_ == other_set.capacity_, "binary_set::| failed.");
         #endif
-        BitField new_bitfield(*this);
-        for (unsigned int i = 0; i < this -> field_.size(); i++) new_bitfield.field_[i] |= other_bitfield.field_[i];
+        binary_set new_bitfield(*this);
+        for (size_t i = 0; i < this -> set_.size(); i++) new_bitfield.set_[i] |= other_set.set_[i];
         return new_bitfield;
 
     }
 
-    BitField& BitField::operator|=(const BitField& other_bitfield) {
+    binary_set& binary_set::operator|=(const binary_set& other_set) {
 
         #if HPLUS_INTCHECK
-        assert(this -> size_ == other_bitfield.size_, "BitField::|= failed.");
+        assert(this -> capacity_ == other_set.capacity_, "binary_set::|= failed.");
         #endif
-        for (unsigned int i = 0; i < this -> field_.size(); i++) this -> field_[i] |= other_bitfield.field_[i];
+        for (size_t i = 0; i < this -> set_.size(); i++) this -> set_[i] |= other_set.set_[i];
         return *this;
 
     }
 
-    BitField BitField::operator-(const BitField& other_bitfield) const {
+    binary_set binary_set::operator-(const binary_set& other_set) const {
 
         #if HPLUS_INTCHECK
-        assert(this -> size_ == other_bitfield.size_, "BitField::- failed.");
+        assert(this -> capacity_ == other_set.capacity_, "binary_set::- failed.");
         #endif
-        BitField new_bitfield(*this);
-        for (unsigned int i = 0; i < this -> field_.size(); i++) new_bitfield.field_[i] &= ~other_bitfield.field_[i];
+        binary_set new_bitfield(*this);
+        for (size_t i = 0; i < this -> set_.size(); i++) new_bitfield.set_[i] &= ~other_set.set_[i];
         return new_bitfield;
 
     }
 
-    BitField& BitField::operator-=(const BitField& other_bitfield) {
+    binary_set& binary_set::operator-=(const binary_set& other_set) {
 
         #if HPLUS_INTCHECK
-        assert(this -> size_ == other_bitfield.size_, "BitField::-= failed.");
+        assert(this -> capacity_ == other_set.capacity_, "binary_set::-= failed.");
         #endif
-        for (unsigned int i = 0; i < this -> field_.size(); i++) this -> field_[i] &= ~other_bitfield.field_[i];
+        for (size_t i = 0; i < this -> set_.size(); i++) this -> set_[i] &= ~other_set.set_[i];
         return *this;
 
     }
 
-    BitField BitField::operator!() const {
+    binary_set binary_set::operator!() const {
 
-        BitField new_bitfield(this -> size_);
-        for (unsigned int i = 0; i < this -> field_.size(); i++) new_bitfield.field_[i] = ~this -> field_[i];
-        if (this -> size_ % 8 != 0) new_bitfield.field_[this -> field_.size() - 1] &= (1u << this -> size_ % 8) - 1;        // mask for the bits outside the size
+        binary_set new_bitfield(this -> capacity_);
+        for (size_t i = 0; i < this -> set_.size(); i++) new_bitfield.set_[i] = ~this -> set_[i];
+        if (this -> capacity_ % 8 != 0) new_bitfield.set_[this -> set_.size() - 1] &= (1u << this -> capacity_ % 8) - 1;        // mask for the bits outside the size
         return new_bitfield;
 
     }
 
-    void BitField::clear() { this -> field_ = std::vector<char>((this -> size_+7)/8, 0); }
-
-    bool BitField::operator==(const BitField& other_bitfield) const {
+    bool binary_set::operator[](size_t element) const {
 
         #if HPLUS_INTCHECK
-        assert(this -> size_ == other_bitfield.size_, "BitField:== failed.");
+        assert(element < this -> capacity_, "binary_set::[] failed.");
         #endif
-        unsigned int i;
-        for (i = 0; i < this -> field_.size() && this -> field_[i] == other_bitfield.field_[i]; i++);
-        return i == this -> field_.size();
+        return this -> set_[element/8] & (1 << element%8);
 
     }
 
-    bool BitField::operator!=(const BitField& other_bitfield) const { return !((*this)==other_bitfield); }
+    size_t binary_set::size() const { return this -> capacity_; }
 
-    bool BitField::intersects(const BitField& other_bitfield) const {
+    bool binary_set::operator==(const binary_set& other_set) const {
 
         #if HPLUS_INTCHECK
-        assert(this -> size_ == other_bitfield.size_, "BitField:intersects failed.");
+        assert(this -> capacity_ == other_set.capacity_, "binary_set:== failed.");
         #endif
-        unsigned int i;
-        for (i = 0; i < this -> field_.size() && !(this -> field_[i] & other_bitfield.field_[i]); i++);
-        return i != this -> field_.size();
+        size_t i;
+        for (i = 0; i < this -> set_.size() && this -> set_[i] == other_set.set_[i]; i++);
+        return i == this -> set_.size();
 
     }
 
-    bool BitField::contains(const BitField& other_bitfield) const {
+    bool binary_set::operator!=(const binary_set& other_set) const { return !((*this)==other_set); }
+
+    bool binary_set::intersects(const binary_set& other_set) const {
 
         #if HPLUS_INTCHECK
-        assert(this -> size_ == other_bitfield.size_, "BitField:contains failed.");
+        assert(this -> capacity_ == other_set.capacity_, "binary_set:intersects failed.");
         #endif
-        unsigned int i;
-        for (i = 0; i < this -> field_.size() && !(~this -> field_[i] & other_bitfield.field_[i]); i++);
-        return i == this -> field_.size();
+        size_t i;
+        for (i = 0; i < this -> set_.size() && !(this -> set_[i] & other_set.set_[i]); i++);
+        return i != this -> set_.size();
 
     }
 
-    std::vector<unsigned int> BitField::sparse() const {
+    bool binary_set::contains(const binary_set& other_set) const {
 
-        std::vector<unsigned int> ret;
+        #if HPLUS_INTCHECK
+        assert(this -> capacity_ == other_set.capacity_, "binary_set:contains failed.");
+        #endif
+        size_t i;
+        for (i = 0; i < this -> set_.size() && !(~this -> set_[i] & other_set.set_[i]); i++);
+        return i == this -> set_.size();
+
+    }
+
+    std::vector<size_t> binary_set::sparse() const {
+
+        std::vector<size_t> ret;
         for (auto p : *this) ret.push_back(p);
         return ret;
 
     }
 
-    BitField::operator std::string() const {
+    binary_set::operator std::string() const {
 
         std::string ret = "[";
-        for (unsigned int i = 0; i < this -> size_; i++) ret.append(this -> operator[](i) ? "X" : " ");
+        for (size_t i = 0; i < this -> capacity_; i++) ret.append(this -> operator[](i) ? "X" : " ");
         ret.append("]");
         return ret;
 
     }
 
-    BitField::Iterator::Iterator(const BitField *bitField, unsigned int index) {
+    binary_set::Iterator::Iterator(const binary_set *bitField, size_t index) {
 
-        bf_ = bitField;
-        index_ = index;
-        if (index_ < bf_->size() && !(*bf_)[index_]) ++(*this);
+        set_ = bitField;
+        current_element_ = index;
+        if (current_element_ < set_->size() && !(*set_)[current_element_]) ++(*this);
 
     }
 
-    BitField::Iterator& BitField::Iterator::operator++()  {
+    binary_set::Iterator& binary_set::Iterator::operator++()  {
 
         do {
-            ++index_;
-        } while (index_ < bf_ -> size() && !(*bf_)[index_]);
+            ++current_element_;
+        } while (current_element_ < set_ -> size() && !(*set_)[current_element_]);
 
         return *this;
 
     }
 
-    unsigned int BitField::Iterator::operator*() const { return index_; }
+    size_t binary_set::Iterator::operator*() const { return current_element_; }
 
-    bool BitField::Iterator::operator!=(const Iterator &other) const { return index_ != other.index_; }
+    bool binary_set::Iterator::operator!=(const Iterator &other) const { return current_element_ != other.current_element_; }
 
-    BitField::Iterator BitField::begin() const { return Iterator(this, 0); }
+    binary_set::Iterator binary_set::begin() const { return Iterator(this, 0); }
 
-    BitField::Iterator BitField::end() const { return Iterator(this, size_); }
-
+    binary_set::Iterator binary_set::end() const { return Iterator(this, capacity_); }
+    
     // ##################################################################### //
-    // ####################### SUBSET SEARCH BIN TREE ###################### //
+    // ########################## SUBSET SEARCHER ########################## //
     // ##################################################################### //
 
-    SSBT::SSBT() { root = new treenode(); }
+    subset_searcher::subset_searcher() { root = new treenode(); }
 
-    void SSBT::add(unsigned int value, const BitField& set) {
+    void subset_searcher::add(size_t value, const binary_set& set) {
         treenode* leaf = this -> root;
-        for (unsigned int i = 0; i < set.size(); i++) {
+        for (size_t i = 0; i < set.size(); i++) {
             if (set[i]) {
-                if (leaf -> r == nullptr) leaf -> r = new treenode();
-                leaf = leaf -> r;
+                if (leaf -> right == nullptr) leaf -> right = new treenode();
+                leaf = leaf -> right;
             } else {
-                if (leaf -> l == nullptr) leaf -> l = new treenode();
-                leaf = leaf -> l;
+                if (leaf -> left == nullptr) leaf -> left = new treenode();
+                leaf = leaf -> left;
             }
         }
-        (leaf -> v).push_back(value);
+        (leaf -> values).push_back(value);
     }
 
-    std::vector<unsigned int> SSBT::find_subsets(const BitField& set) {
+    std::vector<size_t> subset_searcher::find_subsets(const binary_set& set) {
         std::deque<treenode*> open_nodes;
         open_nodes.push_back(this -> root);
-        for (unsigned int i = 0; i < set.size() && !open_nodes.empty(); i++) {
-            unsigned int tmp = open_nodes.size();
-            for (unsigned int _ = 0; _ < tmp; _++) {
+        for (size_t i = 0; i < set.size() && !open_nodes.empty(); i++) {
+            size_t tmp = open_nodes.size();
+            for (size_t _ = 0; _ < tmp; _++) {
                 treenode* node = open_nodes.front();
                 open_nodes.pop_front();
                 if (set[i]) {
-                    if (node -> l != nullptr) open_nodes.push_back(node -> l);
-                    if (node -> r != nullptr) open_nodes.push_back(node -> r);
+                    if (node -> left != nullptr) open_nodes.push_back(node -> left);
+                    if (node -> right != nullptr) open_nodes.push_back(node -> right);
                 } else {
-                    if (node -> l != nullptr) open_nodes.push_back(node -> l);
+                    if (node -> left != nullptr) open_nodes.push_back(node -> left);
                 }
             }
         }
-        std::vector<unsigned int> result;
-        for (auto node : open_nodes) result.insert(result.end(), node -> v.begin(), node -> v.end());
+        std::vector<size_t> result;
+        for (auto node : open_nodes) result.insert(result.end(), node -> values.begin(), node -> values.end());
         return result;
     }
 
-    SSBT::~SSBT() {
+    subset_searcher::~subset_searcher() {
         std::deque<treenode*> remaining_nodes;
         remaining_nodes.push_back(this -> root);
         while (!remaining_nodes.empty()) {
             treenode* node = remaining_nodes.front();
             remaining_nodes.pop_front();
-            if (node -> l != nullptr) remaining_nodes.push_back(node -> l);
-            if (node -> r != nullptr) remaining_nodes.push_back(node -> r);
+            if (node -> left != nullptr) remaining_nodes.push_back(node -> left);
+            if (node -> right != nullptr) remaining_nodes.push_back(node -> right);
             delete node;
         }
     }
@@ -255,12 +258,12 @@ namespace my {
     // ############################### LOGGER ############################## //
     // ##################################################################### //
 
-    void Logger::format_output_(const char* str, va_list ptr, FILE* log_file, const bool show_time, bool error) {
+    void logger::format_output_(const char* str, va_list ptr, FILE* log_file, bool print_log, bool show_time, bool error) {
 
         if (show_time) {
-            double elapsed_time = HPLUS_env.get_time();
+            double elapsed_time = timer.get_time();
             fprintf(error ? stderr : stdout, "%8.3f : ", elapsed_time);
-            if (HPLUS_env.log) fprintf(log_file, "%8.3f : ", elapsed_time);
+            if (print_log) fprintf(log_file, "%8.3f : ", elapsed_time);
         }
 
         // char array to store token
@@ -280,7 +283,7 @@ namespace my {
                 if (token[0] != '%') {
 
                     fprintf(error ? stderr : stdout, "%s", token); // printing the whole token if it is not a format specifier
-                    if (HPLUS_env.log) fprintf(log_file, "%s", token);
+                    if (print_log) fprintf(log_file, "%s", token);
 
                 } else {
 
@@ -294,19 +297,19 @@ namespace my {
 
                         int value = va_arg(ptr, int);
                         fprintf(error ? stderr : stdout, token, value);
-                        if (HPLUS_env.log) fprintf(log_file, token, value);
+                        if (print_log) fprintf(log_file, token, value);
 
                     } else if (ch1 == 'c') { // for chars
 
                         char value = va_arg(ptr, int);
                         fprintf(error ? stderr : stdout, token, value);
-                        if (HPLUS_env.log) fprintf(log_file, token, value);
+                        if (print_log) fprintf(log_file, token, value);
 
                     } else if (ch1 == 'f') { // for float values
 
                         double value = va_arg(ptr, double);
                         fprintf(error ? stderr : stdout, token, value);
-                        if (HPLUS_env.log) fprintf(log_file, token, value);
+                        if (print_log) fprintf(log_file, token, value);
 
                     } else if (ch1 == 'l') { // for long values
 
@@ -316,13 +319,13 @@ namespace my {
 
                             long value = va_arg(ptr, long);
                             fprintf(error ? stderr : stdout, token, value);
-                            if (HPLUS_env.log) fprintf(log_file, token, value);
+                            if (print_log) fprintf(log_file, token, value);
 
                         } else if (ch2 == 'f') {  // for double values
 
                             double value = va_arg(ptr, double);
                             fprintf(error ? stderr : stdout, token, value);
-                            if (HPLUS_env.log) fprintf(log_file, token, value);
+                            if (print_log) fprintf(log_file, token, value);
 
                         }
 
@@ -334,7 +337,7 @@ namespace my {
 
                             long long value = va_arg(ptr, long long);
                             fprintf(error ? stderr : stdout, token, value);
-                            if (HPLUS_env.log) fprintf(log_file, token, value);
+                            if (print_log) fprintf(log_file, token, value);
 
                         }
 
@@ -342,7 +345,7 @@ namespace my {
 
                             long double value = va_arg(ptr, long double);
                             fprintf(error ? stderr : stdout, token, value);
-                            if (HPLUS_env.log) fprintf(log_file, token, value);
+                            if (print_log) fprintf(log_file, token, value);
 
                         }
 
@@ -350,12 +353,12 @@ namespace my {
 
                         char* value = va_arg(ptr, char*);
                         fprintf(error ? stderr : stdout, token, value);
-                        if (HPLUS_env.log) fprintf(log_file, token, value);
+                        if (print_log) fprintf(log_file, token, value);
 
                     } else { // print the whole token if no case is matched
 
                         fprintf(error ? stderr : stdout, "%s", token);
-                        if (HPLUS_env.log) fprintf(log_file, "%s", token);
+                        if (print_log) fprintf(log_file, "%s", token);
 
                     }
 
@@ -366,18 +369,19 @@ namespace my {
         }
     }
 
-    Logger::Logger(const std::string& run_title, const std::string& log_name) {
+    logger::logger(const std::string& run_title, bool log_enabled, const std::string& log_name) {
 
-        this -> log_file_name_ = log_name;
-        if (HPLUS_env.log)  {
-            FILE* log_file = fopen(this -> log_file_name_.c_str(), "a");
+        this -> log_file_ = log_name;
+        if (log_enabled)  {
+            this -> log_enabled_ = log_enabled;
+            FILE* log_file = fopen(this -> log_file_.c_str(), "a");
             fprintf(log_file, "\n%s\nRUN_NAME: %s\n%s\n", THICK_LINE, run_title.c_str(), THICK_LINE);
             fclose(log_file);
         }
 
     }
 
-    void Logger::print(const char* str, ...) const {
+    void logger::print(const char* str, ...) const {
 
         #if HPLUS_VERBOSE == 0
         return;
@@ -385,26 +389,26 @@ namespace my {
 
         // logging file
         FILE* log_file = nullptr;
-        if (HPLUS_env.log) log_file = fopen(this -> log_file_name_.c_str(), "a");
+        if (this -> log_enabled_) log_file = fopen(this -> log_file_.c_str(), "a");
 
         // initializing list pointer
         va_list ptr;
         va_start(ptr, str);
 
         // printing and logging the formatted message
-        format_output_(str, ptr, log_file, false);
+        format_output_(str, ptr, log_file, this -> log_enabled_, false);
 
         fprintf(stdout, "\n");
-        if (HPLUS_env.log) fprintf(log_file, "\n");
+        if (this -> log_enabled_) fprintf(log_file, "\n");
 
-        if (HPLUS_env.log) fclose(log_file);
+        if (this -> log_enabled_) fclose(log_file);
 
         // ending traversal
         va_end(ptr);
 
     }
 
-    void Logger::print_info(const char* str, ...) const {
+    void logger::print_info(const char* str, ...) const {
 
         #if HPLUS_VERBOSE < 10
         return;
@@ -412,29 +416,29 @@ namespace my {
 
         // logging file
         FILE* log_file = nullptr;
-        if (HPLUS_env.log) log_file = fopen(this -> log_file_name_.c_str(), "a");
+        if (this -> log_enabled_) log_file = fopen(this -> log_file_.c_str(), "a");
 
         // initializing list pointer
         va_list ptr;
         va_start(ptr, str);
 
         fprintf(stdout, "\033[92m\033[1m[ INFO  ]\033[0m -- ");
-        if (HPLUS_env.log) fprintf(log_file, "[ INFO  ] -- ");
+        if (this -> log_enabled_) fprintf(log_file, "[ INFO  ] -- ");
 
         // printing and logging the formatted message
-        format_output_(str, ptr, log_file);
+        format_output_(str, ptr, log_file, this -> log_enabled_);
 
         fprintf(stdout, "\n");
-        if (HPLUS_env.log) fprintf(log_file, "\n");
+        if (this -> log_enabled_) fprintf(log_file, "\n");
 
-        if (HPLUS_env.log) fclose(log_file);
+        if (this -> log_enabled_) fclose(log_file);
 
         // ending traversal
         va_end(ptr);
 
     }
 
-    void Logger::print_warn(const char* str, ...) const {
+    void logger::print_warn(const char* str, ...) const {
 
         #if HPLUS_WARN == 0
         return;
@@ -442,48 +446,48 @@ namespace my {
 
         // logging file
         FILE* log_file = nullptr;
-        if (HPLUS_env.log) log_file = fopen(this -> log_file_name_.c_str(), "a");
+        if (this -> log_enabled_) log_file = fopen(this -> log_file_.c_str(), "a");
 
         // initializing list pointer
         va_list ptr;
         va_start(ptr, str);
 
         fprintf(stdout, "\033[93m\033[1m[ WARN  ]\033[0m -- ");
-        if (HPLUS_env.log) fprintf(log_file, "[ WARN  ] -- ");
+        if (this -> log_enabled_) fprintf(log_file, "[ WARN  ] -- ");
 
         // printing and logging the formatted message
-        format_output_(str, ptr, log_file);
+        format_output_(str, ptr, log_file, this -> log_enabled_);
 
         fprintf(stdout, "\n");
-        if (HPLUS_env.log) fprintf(log_file, "\n");
+        if (this -> log_enabled_) fprintf(log_file, "\n");
 
-        if (HPLUS_env.log) fclose(log_file);
+        if (this -> log_enabled_) fclose(log_file);
 
         // ending traversal
         va_end(ptr);
 
     }
 
-    void Logger::raise_error(const char* str, ...) const {
+    void logger::raise_error(const char* str, ...) const {
 
         // logging file
         FILE* log_file = nullptr;
-        if (HPLUS_env.log) log_file = fopen(this -> log_file_name_.c_str(), "a");
+        if (this -> log_enabled_) log_file = fopen(this -> log_file_.c_str(), "a");
 
         // initializing list pointer
         va_list ptr;
         va_start(ptr, str);
 
         fprintf(stderr, "\033[91m\033[1m[ ERROR ]\033[0m -- ");
-        if (HPLUS_env.log) fprintf(log_file, "[ ERROR ] -- ");
+        if (this -> log_enabled_) fprintf(log_file, "[ ERROR ] -- ");
 
         // printing and logging the formatted message
-        format_output_(str, ptr, log_file, true, true);
+        format_output_(str, ptr, log_file, this -> log_enabled_, true, true);
 
         fprintf(stderr, "\n");
-        if (HPLUS_env.log) fprintf(log_file, "\n");
+        if (this -> log_enabled_) fprintf(log_file, "\n");
 
-        if (HPLUS_env.log) fclose(log_file);
+        if (this -> log_enabled_) fclose(log_file);
 
         // ending traversal
         va_end(ptr);
@@ -491,6 +495,14 @@ namespace my {
         exit(1);
 
     }
+
+    // ##################################################################### //
+    // ############################ TIME KEEPER ############################ //
+    // ##################################################################### //
+
+    void time_keeper::start_timer() { this -> timer = std::chrono::steady_clock::now(); }
+
+    double time_keeper::get_time() const { return ((double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - this -> timer).count()) / 1000; }
 
     // ##################################################################### //
     // ############################ MY NAMESPACE ########################### //
@@ -513,7 +525,7 @@ namespace my {
 
     }
 
-    void assert(const bool condition, const std::string message) { if (!condition) HPLUS_env.logger.raise_error("%s - Assert check failed.", message.c_str()); }
+    void assert(bool condition, const std::string& message) { if (!condition) mylog.raise_error("%s - Assert check failed.", message.c_str()); }
 
     bool isint(const std::string& str, const int from, const int to) {
 
@@ -524,7 +536,7 @@ namespace my {
 
     }
 
-    void todo() { lraise_error("UNIMPLEMENTED."); }
+    void todo(const std::string& msg) { mylog.raise_error("%s: UNIMPLEMENTED.", msg.c_str()); }
 
     void pause(const std::string message) {
 
@@ -534,34 +546,5 @@ namespace my {
         if (test > 0) exit(1);
 
     }
-
-}
-
-// ##################################################################### //
-// ############################## GLOBALS ############################## //
-// ##################################################################### //
-
-HPLUS_Environment HPLUS_env;
-HPLUS_Statistics HPLUS_stats;
-
-void HPLUS_Environment::start_timer() { this -> timer = std::chrono::steady_clock::now(); }
-double HPLUS_Environment::get_time() const { return ((double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - this -> timer).count()) / 1000; }
-
-void HPLUS_Statistics::print() const {
-
-    #if HPLUS_VERBOSE < 5
-    return;
-    #endif
-
-    lprint("\n\n--------------------------------------------------");
-    lprint("-----------------   Statistics   -----------------");
-    lprint("--------------------------------------------------\n");
-    HPLUS_env.logger.print(" >>  Parsing time                  %10.3fs  <<", this->parsing_time);
-    HPLUS_env.logger.print(" >>  Model optimization time       %10.3fs  <<", this->opt_time);
-    HPLUS_env.logger.print(" >>  Heuristic time                %10.3fs  <<", this->heuristic_time);
-    HPLUS_env.logger.print(" >>  Model building time           %10.3fs  <<", this->build_time);
-    HPLUS_env.logger.print(" >>  CPLEX execution time          %10.3fs  <<", this->exec_time);
-    HPLUS_env.logger.print(" >>  Total time                    %10.3fs  <<", this->total_time);
-    lprint("\n\n");
 
 }

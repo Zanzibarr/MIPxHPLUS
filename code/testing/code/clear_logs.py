@@ -5,7 +5,7 @@ import utils
 
 utils.clear_dir(Path(utils.output_logs_dir))
 utils.clear_dir(Path(utils.opt_logs_dir))
-utils.clear_dir(Path(utils.good_logs_dir))
+utils.clear_dir(Path(utils.feas_logs_dir))
 utils.clear_dir(Path(utils.timelimit_logs_dir))
 utils.clear_dir(Path(utils.b_timelimit_logs_dir))
 utils.clear_dir(Path(utils.infease_logs_dir))
