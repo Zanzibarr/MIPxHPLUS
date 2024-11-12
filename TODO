@@ -1,4 +1,5 @@
-- TODO: Make it scale better with size of instance
+- TODO: Heuristic for warm start
 - TODO: Tighter bound for time labels in Imai's model
 - TODO: Test the DeleteFree instance vs the original instances
+- TODO: Make it scale better with size of instance
 - TODO: Better handling of time limit exiting
