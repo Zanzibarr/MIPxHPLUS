@@ -120,10 +120,6 @@ void HPLUS_parse_cli(const int argc, const char** argv) {
         mylog.print_warn("Warm start has been activated but heuristics have been disabled: disabling warm start.");
         HPLUS_env.warm_start_enabled = false;
     }
-    if (HPLUS_env.imai_tighter_var_bound_enabled && !HPLUS_env.heuristic_enabled) {
-        mylog.print_warn("Tighter bounds for imai's variables timestamps has been activated but heuristics have been disabled: disabling tighter bounds.");
-        HPLUS_env.imai_tighter_var_bound_enabled = false;
-    }
 
 }
 
@@ -159,7 +155,7 @@ void HPLUS_end() {
 
     switch(HPLUS_env.sol_status) {
         case my::solution_status::FEAS:
-            mylog.print("The solution is not optimal.");
+            mylog.print("The solution has not been proven optimal.");
             HPLUS_inst.print_best_sol();
             break;
         case my::solution_status::INFEAS:

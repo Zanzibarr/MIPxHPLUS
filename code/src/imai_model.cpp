@@ -26,15 +26,20 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp) {
     int timestamps_ubound = n_act;
     if (HPLUS_env.imai_tighter_var_bound_enabled) {
 
+        // number of variables
+        if (n_var < timestamps_ubound) timestamps_ubound = n_var;
+
         // max number of steps to reach heuristic
-        unsigned int min_act_cost = actions[0].get_cost() + 1;      // +1 to avoid it being 0
-        size_t n_act_zerocost = 0;
-        for (auto act : actions) {
-            if (act.get_cost() == 0) n_act_zerocost++;
-            else if (act.get_cost() < min_act_cost) min_act_cost = act.get_cost();
+        if (HPLUS_env.heuristic_enabled) {
+            unsigned int min_act_cost = actions[0].get_cost() + 1;      // +1 to avoid it being 0
+            size_t n_act_zerocost = 0;
+            for (auto act : actions) {
+                if (act.get_cost() == 0) n_act_zerocost++;
+                else if (act.get_cost() < min_act_cost) min_act_cost = act.get_cost();
+            }
+            int nsteps = HPLUS_inst.get_best_sol_cost() / min_act_cost + n_act_zerocost;
+            if (nsteps < timestamps_ubound) timestamps_ubound = nsteps;
         }
-        int nsteps = HPLUS_inst.get_best_sol_cost() / min_act_cost + n_act_zerocost;
-        if (nsteps < timestamps_ubound) timestamps_ubound = nsteps;
 
     }
 
@@ -198,58 +203,58 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp) {
 
     const auto& remaining_var_set = HPLUS_inst.get_variables(true);
 
-    for (auto i : remaining_actions) {
-        const auto& pre = actions[i].get_pre() & remaining_var_set;
-        for (auto j : pre) {
+    for (auto act_i : remaining_actions) {
+        const auto& pre = actions[act_i].get_pre() & remaining_var_set;
+        for (auto var_i : pre) {
             // constraint 1: x_a + sum_{inv(a, p)}(z_a'vj) <= y_vj, vj in pre(a)
-            ind_c1[0] = get_act_idx(i);
+            ind_c1[0] = get_act_idx(act_i);
             val_c1[0] = 1;
-            ind_c1[1] = get_var_idx(j);
+            ind_c1[1] = get_var_idx(var_i);
             val_c1[1] = -1;
             int nnz0 = 2;
             // (section 4.6 of Imai's paper)        //[ ]: This might not be worth doing
-            // if (inverse_actions.find(i) != inverse_actions.end()) {
-            //     for (auto inv_act : inverse_actions[i]) if (actions[inv_act].get_eff()[j]) {
-            //         ind_c1[nnz0] = get_fa_idx(inv_act, j);
+            // if (inverse_actions.find(act_i) != inverse_actions.end()) {
+            //     for (auto inv_act : inverse_actions[act_i]) if (actions[inv_act].get_eff()[var_i]) {
+            //         ind_c1[nnz0] = get_fa_idx(inv_act, var_i);
             //         val_c1[nnz0++] = 1;
             //     }
             // }
             my::assert(!CPXaddrows(env, lp, 0, 1, nnz0, &rhs_c1_2_4, &sensel, &begin, ind_c1, val_c1, nullptr, nullptr), "CPXaddrows (c1) failed.");
             // constraint 4: t_vj <= t_a, vj in pre(a)
-            ind_c2_4[0] = get_tvar_idx(j);
+            ind_c2_4[0] = get_tvar_idx(var_i);
             val_c2_4[0] = 1;
-            ind_c2_4[1] = get_tact_idx(i);
+            ind_c2_4[1] = get_tact_idx(act_i);
             val_c2_4[1] = -1;
             my::assert(!CPXaddrows(env, lp, 0, 1, nnz_c2_4, &rhs_c1_2_4, &sensel, &begin, ind_c2_4, val_c2_4, nullptr, nullptr), "CPXaddrows (c4) failed.");
         }
-        const auto& eff = actions[i].get_eff() & remaining_var_set;
-        for (auto j : eff) {
+        const auto& eff = actions[act_i].get_eff() & remaining_var_set;
+        for (auto var_i : eff) {
             // constraint 2: z_avj <= x_a, vj in eff(a)
-            ind_c2_4[0] = get_fa_idx(i, j);
+            ind_c2_4[0] = get_fa_idx(act_i, var_i);
             val_c2_4[0] = 1;
-            ind_c2_4[1] = get_act_idx(i);
+            ind_c2_4[1] = get_act_idx(act_i);
             val_c2_4[1] = -1;
             my::assert(!CPXaddrows(env, lp, 0, 1, nnz_c2_4, &rhs_c1_2_4, &sensel, &begin, ind_c2_4, val_c2_4, nullptr, nullptr), "CPXaddrows (c2) failed.");
             // constraint 5: t_a + 1 <= t_vj + (|A|+1)(1-z_avj), vj in eff(a)
-            ind_c5[0] = get_tact_idx(i);
+            ind_c5[0] = get_tact_idx(act_i);
             val_c5[0] = 1;
-            ind_c5[1] = get_tvar_idx(j);
+            ind_c5[1] = get_tvar_idx(var_i);
             val_c5[1] = -1;
-            ind_c5[2] = get_fa_idx(i, j);
+            ind_c5[2] = get_fa_idx(act_i, var_i);
             val_c5[2] = timestamps_ubound + 1;
             my::assert(!CPXaddrows(env, lp, 0, 1, nnz_c5, &rhs_c5, &sensel, &begin, ind_c5, val_c5, nullptr, nullptr), "CPXaddrows (c5) failed.");
             // constraint 3: I(v_j) + sum(z_avj) = y_vj
-            ind_c3[HPLUS_inst.var_idx_post_simplification(j)][nnz_c3[HPLUS_inst.var_idx_post_simplification(j)]] = get_fa_idx(i, j);
-            val_c3[HPLUS_inst.var_idx_post_simplification(j)][nnz_c3[HPLUS_inst.var_idx_post_simplification(j)]] = -1;
-            nnz_c3[HPLUS_inst.var_idx_post_simplification(j)]++;
+            ind_c3[HPLUS_inst.var_idx_post_simplification(var_i)][nnz_c3[HPLUS_inst.var_idx_post_simplification(var_i)]] = get_fa_idx(act_i, var_i);
+            val_c3[HPLUS_inst.var_idx_post_simplification(var_i)][nnz_c3[HPLUS_inst.var_idx_post_simplification(var_i)]] = -1;
+            nnz_c3[HPLUS_inst.var_idx_post_simplification(var_i)]++;
         }
     }
 
-    for (size_t i = 0; i < n_var; i++) my::assert(!CPXaddrows(env, lp, 0, 1, nnz_c3[i], &rhs_c3[i], &sensee, &begin, ind_c3[i], val_c3[i], nullptr, nullptr), "CPXaddrows (c3) failed.");
+    for (size_t var_i = 0; var_i < n_var; var_i++) my::assert(!CPXaddrows(env, lp, 0, 1, nnz_c3[var_i], &rhs_c3[var_i], &sensee, &begin, ind_c3[var_i], val_c3[var_i], nullptr, nullptr), "CPXaddrows (c3) failed.");
 
-    for (size_t i = 0; i < n_var; i++) {
-        delete[] ind_c3[i]; ind_c3[i] = nullptr;
-        delete[] val_c3[i]; val_c3[i] = nullptr;
+    for (size_t var_i = 0; var_i < n_var; var_i++) {
+        delete[] ind_c3[var_i]; ind_c3[var_i] = nullptr;
+        delete[] val_c3[var_i]; val_c3[var_i] = nullptr;
     }
     delete[] val_c1; val_c1 = nullptr;
     delete[] ind_c1; ind_c1 = nullptr;

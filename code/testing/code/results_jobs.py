@@ -39,7 +39,7 @@ def label_logs():
             move_file(filepath, utils.b_timelimit_logs_dir)
         elif "No solution found." in content:
             move_file(filepath, utils.timelimit_logs_dir)
-        elif "The solution is not optimal." in content:
+        elif "The solution has not been proven optimal." in content:
             move_file(filepath, utils.feas_logs_dir)
         elif "Solution cost: " in content:
             move_file(filepath, utils.opt_logs_dir)
@@ -217,7 +217,7 @@ def time_stats():
     if len(optimal_parsing_times) > 0: msg += f"""
 OPT SOLUTION FOUND:
  -> Average parsing time: {round(sum(optimal_parsing_times) / len(optimal_parsing_times), 4)}s
- -> Average model optimization time: {round(sum(optimal_prob_simpl_times) / len(optimal_prob_simpl_times), 4)}s
+ -> Average problem simplification time: {round(sum(optimal_prob_simpl_times) / len(optimal_prob_simpl_times), 4)}s
  -> Average heuristic time: {round(sum(optimal_heur_times) / len(optimal_heur_times), 4)}s
  -> Average model building time: {round(sum(optimal_build_times) / len(optimal_build_times), 4)}s
  -> Average CPLEX execution time: {round(sum(optimal_execution_times) / len(optimal_execution_times), 4)}s
@@ -225,7 +225,7 @@ OPT SOLUTION FOUND:
 """
     if len(feas_parsing_times) > 0: msg += f"""A SOLUTION FOUND:
  -> Average parsing time: {round(sum(feas_parsing_times) / len(feas_parsing_times), 4)}s
- -> Average model optimization time: {round(sum(feas_prob_simpl_times) / len(feas_prob_simpl_times), 4)}s
+ -> Average problem simplification time: {round(sum(feas_prob_simpl_times) / len(feas_prob_simpl_times), 4)}s
  -> Average heuristic time: {round(sum(feas_heur_times) / len(feas_heur_times), 4)}s
  -> Average model building time: {round(sum(feas_build_times) / len(feas_build_times), 4)}s
  -> Average CPLEX execution time: {round(sum(feas_execution_times) / len(feas_execution_times), 4)}s
@@ -233,13 +233,13 @@ OPT SOLUTION FOUND:
 """
     if len(timel_parsing_times) > 0: msg += f"""MODEL TOO SLOW:
  -> Average parsing time: {round(sum(timel_parsing_times) / len(timel_parsing_times), 4)}s
- -> Average model optimization time: {round(sum(timel_prob_simpl_times) / len(timel_prob_simpl_times), 4)}s
+ -> Average problem simplification time: {round(sum(timel_prob_simpl_times) / len(timel_prob_simpl_times), 4)}s
  -> Average heuristic time: {round(sum(timel_heur_times) / len(timel_heur_times), 4)}s
  -> Average model building time: {round(sum(timel_build_times) / len(timel_build_times), 4)}s
 """
     if total > 0: msg += f"""BUILD TOO SLOW:
  -> Stopped during parsing: {count_btl_parsing} / {total} ({round(count_btl_parsing * 100 / total, 2)}%)
- -> Stopped during model optimization: {count_btl_prob_simpl} / {total} ({round(count_btl_prob_simpl * 100 / total, 2)}%)
+ -> Stopped during problem simplification: {count_btl_prob_simpl} / {total} ({round(count_btl_prob_simpl * 100 / total, 2)}%)
  -> Stopped during heuristic: {count_btl_heur} / {total} ({round(count_btl_heur * 100 / total, 2)}%)
  -> Stopped during model building: {count_btl_build} / {total} ({round(count_btl_build * 100 / total, 2)}%)
 """
