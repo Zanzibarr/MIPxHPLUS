@@ -17,7 +17,7 @@ if any(not os.path.isdir(x) for x in sys.argv[1:]):
 
 logs_dirs = ["/AAB_opt_logs", "/AAB_good_logs", "/AAC_timelimit_logs", "/AAD_b_timelimit_logs"]
 
-times_dict = {}
+times_costs_dict = {}
 
 n_runs = len(sys.argv[1:])
 i_run = 0
@@ -34,13 +34,19 @@ for run_dir in sys.argv[1:]:
                 content = f.read()
 
             instance_name = Path(content.partition("Input file:")[2].partition(".\n")[0]).name.replace(".sas", "")
+
+            if instance_name not in times_costs_dict:
+                times_costs_dict[instance_name]["costs"] = [-1]*n_runs 
+                times_costs_dict[instance_name]["times"] = [-1]*n_runs
+            
+            if "Solution cost:" in content:
+                solution_cost = int(content.partition("Solution cost:")[2].partition("\n")[0])
+                times_costs_dict[instance_name]["costs"][i_run] = solution_cost
+            
             total_time = float(content.partition(">>  Total time")[2].partition("s")[0].strip())
-
-            if instance_name not in times_dict: times_dict[instance_name] = [-1]*n_runs
-
-            times_dict[instance_name][i_run] = total_time
+            times_costs_dict[instance_name]["times"][i_run] = total_time
 
     i_run += 1
 
 with open("comparator_data.json", "w") as file:
-    json.dump(times_dict, file, indent=4)
+    json.dump(times_costs_dict, file, indent=4)
