@@ -24,3 +24,4 @@ thesis/*.pdf
 # code
 code/build*
 code/testing/*_jobs
+code/testing/code/*.json
