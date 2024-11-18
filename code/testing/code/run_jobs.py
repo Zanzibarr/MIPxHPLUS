@@ -7,7 +7,7 @@ import subprocess, os
 import shlex
 
 if len(sys.argv) < 3:
-    print("Missing algorithm and batch index.")
+    print("Missing algorithm and batch.")
     exit(1)
 
 alg = sys.argv[1]

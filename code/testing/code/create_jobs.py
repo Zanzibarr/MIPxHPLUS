@@ -63,7 +63,7 @@ ulimit -v 16777216
 
 #####################
 
-{utils.build_dir}/main -a {alg} -l -ln {inst.replace('.sas', f'_{alg}')}.log -rn {inst.replace('.sas', f'_{alg}')} -t {time_limit} -i \"{inst_path}\"
+{utils.build_dir}/main -a {alg} -notb -l -ln {inst.replace('.sas', f'_{alg}')}.log -rn {inst.replace('.sas', f'_{alg}')} -t {time_limit} -i \"{inst_path}\"
 
 #####################
 
