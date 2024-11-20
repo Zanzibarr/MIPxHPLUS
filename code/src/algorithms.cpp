@@ -201,7 +201,8 @@ void HPLUS_run() {
 
     if (
         HPLUS_env.alg != HPLUS_CLI_ALG_IMAI &&
-        HPLUS_env.alg != HPLUS_CLI_ALG_RANKOOH
+        HPLUS_env.alg != HPLUS_CLI_ALG_RANKOOH && 
+        HPLUS_env.alg != HPLUS_CLI_ALG_GREEDY
     ) mylog.raise_error("The algorithm specified (%s) is not on the list of possible algorithms... Please read the README.md for instructions.", HPLUS_env.alg.c_str());
 
     // ~~~~~~~~ PROBLEM SIMPLIFICATION ~~~~~~~ //
@@ -222,7 +223,7 @@ void HPLUS_run() {
 
     // ~~~~~~~~~~~~~~ HEURISTIC ~~~~~~~~~~~~~~ //
 
-    if (HPLUS_env.heuristic_enabled) {
+    if (HPLUS_env.heuristic_enabled || HPLUS_env.alg == HPLUS_CLI_ALG_GREEDY) {
 
         mylog.print_info("Calculating heuristic solution.");
         HPLUS_env.exec_status = my::execution_status::HEURISTIC;
@@ -237,6 +238,11 @@ void HPLUS_run() {
     }
 
     if (HPLUS_env.sol_status == my::solution_status::INFEAS) return;
+
+    if (HPLUS_env.alg == HPLUS_CLI_ALG_GREEDY) {
+        HPLUS_env.exec_status = my::execution_status::STOP_TL;
+        return;
+    }
 
     // ~~~~~~~~~~~~ MODEL BUILDING ~~~~~~~~~~~ //
 

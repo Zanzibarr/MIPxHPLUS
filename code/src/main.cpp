@@ -68,8 +68,8 @@ void HPLUS_show_info() {
     mylog.print("Algorithm: %s.", HPLUS_env.alg.c_str());
     mylog.print("Problem simplification: %s.", HPLUS_env.problem_simplification_enabled ? "enabled" : "disabled");
     if (HPLUS_env.alg == HPLUS_CLI_ALG_IMAI) mylog.print("Tighter bounds on variable timestamps: %s.", HPLUS_env.imai_tighter_var_bound_enabled ? "enabled" : "disabled");
-    mylog.print("Heuristic: %s.", HPLUS_env.heuristic_enabled ? "enabled" : "disabled");
-    mylog.print("Warm start: %s.", HPLUS_env.warm_start_enabled ? "enabled" : "disabled");
+    if (HPLUS_env.alg != HPLUS_CLI_ALG_GREEDY) mylog.print("Heuristic: %s.", HPLUS_env.heuristic_enabled ? "enabled" : "disabled");
+    if (HPLUS_env.alg != HPLUS_CLI_ALG_GREEDY) mylog.print("Warm start: %s.", HPLUS_env.warm_start_enabled ? "enabled" : "disabled");
     mylog.print("Time limit: %ds.", HPLUS_env.time_limit);
     mylog.print(LINE);
 
@@ -185,7 +185,7 @@ void signal_callback_handler(const int signum) {
 
 void time_limit_termination(double duration) {
 
-    while (HPLUS_env.exec_status < my::execution_status::CPX_EXECUTION && HPLUS_env.sol_status != my::solution_status::INFEAS) {
+    while (HPLUS_env.exec_status < my::execution_status::STOP_TL && HPLUS_env.sol_status != my::solution_status::INFEAS) {
         if (timer.get_time() > duration) {
             raise(SIGINT);
             return;

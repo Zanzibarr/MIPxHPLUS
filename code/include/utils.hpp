@@ -46,6 +46,7 @@
 
 #define HPLUS_CLI_ALG_IMAI              "imai"
 #define HPLUS_CLI_ALG_RANKOOH           "rankooh"
+#define HPLUS_CLI_ALG_GREEDY         "greedy"
 
 #define HPLUS_CLI_OPT_NO_SIMPL          "-nos"
 #define HPLUS_CLI_OPT_IMAI_NO_TB        "-notb"
@@ -208,6 +209,7 @@ namespace my {
         PROBLEM_SIMPL = 10,
         HEURISTIC = 20,
         MODEL_BUILD = 30,
+        STOP_TL = 35,
         CPX_EXECUTION = 40,
         EXITING = 100
     };
