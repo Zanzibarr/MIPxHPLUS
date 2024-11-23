@@ -3,6 +3,10 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
+if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 11)
+    message(FATAL_ERROR "C++20 requires GCC 11 or later. Please load a compatible compiler module.")
+endif()
+
 # Enforce out-of-source build
 if ("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
     message(FATAL_ERROR "Please build the project from a build folder.\nCreate a separate build directory and run CMake from there:\n  mkdir build\n  cd build\n  cmake <buid_options> ..\n\nYou may delete the CMakeCache.txt file and the CMakeFiles folder that has been created.\n" )
@@ -59,6 +63,8 @@ endif()
 
 # build
 
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
 include_directories(include)
 include_directories(${CPLEX_INCLUDE})
 
@@ -115,6 +121,7 @@ target_link_libraries(
     IMAI_model
     RANKOOH_model
     ${CPLEX_LIBRARY}
+    Threads::Threads
 )
 
 # adding definitions
