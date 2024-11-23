@@ -3,71 +3,64 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-if (CMAKE_CXX_COMPILER_VERSION VERSION_LESS 11)
-    message(FATAL_ERROR "C++20 requires GCC 11 or later. Please load a compatible compiler module.")
-endif()
-
 # Enforce out-of-source build
 if ("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
-    message(FATAL_ERROR "Please build the project from a build folder.\nCreate a separate build directory and run CMake from there:\n  mkdir build\n  cd build\n  cmake <buid_options> ..\n\nYou may delete the CMakeCache.txt file and the CMakeFiles folder that has been created.\n" )
+    message(FATAL_ERROR "Please build the project from a build folder.\nCreate a separate build directory and run CMake from there:\n  mkdir build\n  cd build\n  cmake <build_options> ..\n\nYou may delete the CMakeCache.txt file and the CMakeFiles folder that has been created.\n" )
 endif()
 
 project(main)
 
-# setting flags for optimization and debug builds
+# Set default build type
+if(NOT CMAKE_BUILD_TYPE)
+    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
+endif()
+
+# Compiler flags for release and debug builds
 set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3")
 set(CMAKE_CXX_FLAGS_DEBUG "-Og -ggdb")
 
-# setting the default verbose/warn/intchecks (edited with the -D flag)
+# Verbosity, warnings, and integrity checks
 set(VERBOSE "1" CACHE STRING "Verbose setting set from command line")
 message(STATUS "VERBOSE is set to ${VERBOSE}")
 set(WARN "1" CACHE STRING "Flag to enable warning messages")
 message(STATUS "WARN is set to ${WARN}")
 set(INTCHECK "0" CACHE STRING "Flag to enable integrity checks")
 message(STATUS "INTCHECK is set to ${INTCHECK}")
+
+# CPLEX directories
 set(CPLEX_DIR "/Applications/CPLEX_Studio2211/cplex/lib/arm64_osx/static_pic" CACHE STRING "Path to the CPLEX library")
 set(CPLEX_INCLUDE "/Applications/CPLEX_Studio2211/cplex/include/ilcplex" CACHE STRING "Path to the CPLEX headers")
 
-# check if all necessary folders exist
-cmake_path(GET CMAKE_HOME_DIRECTORY PARENT_PATH HOME_DIR)
-set(LOGS_DIR "${HOME_DIR}/logs")
-set(CPXOUT_DIR "${HOME_DIR}/logs/cpxout")
-set(CPXLOG_DIR "${CPXOUT_DIR}/log")
-set(CPXLP_DIR "${CPXOUT_DIR}/lp")
-if(NOT EXISTS ${LOGS_DIR})
-    file(MAKE_DIRECTORY ${LOGS_DIR})
-    message(STATUS "Directory ${LOGS_DIR} created.")
-endif()
-if(NOT EXISTS "${LOGS_DIR}/AAA_output_logs")
-    file(MAKE_DIRECTORY "${LOGS_DIR}/AAA_output_logs")
-    message(STATUS "Directory ${LOGS_DIR}/AAA_output_logs created.")
-endif()
-if(NOT EXISTS ${CPXOUT_DIR})
-    file(MAKE_DIRECTORY ${CPXOUT_DIR})
-    message(STATUS "Directory ${CPXOUT_DIR} created.")
-endif()
-if(NOT EXISTS ${CPXLP_DIR})
-    file(MAKE_DIRECTORY ${CPXLP_DIR})
-    message(STATUS "Directory ${CPXLP_DIR} created.")
-endif()
-if(NOT EXISTS ${CPXLOG_DIR})
-    file(MAKE_DIRECTORY ${CPXLOG_DIR})
-    message(STATUS "Directory ${CPXLOG_DIR} created.")
-endif()
 if(NOT EXISTS ${CPLEX_DIR})
-    message(FATAL_ERROR "Directory ${CPLEX_DIR} doesn't exist... Please set with -DCPLEX_DIR=<path> the correct path to CPLEXs static pic folder.")
+    message(FATAL_ERROR "Directory ${CPLEX_DIR} doesn't exist... Please set with -DCPLEX_DIR=<path> the correct path to CPLEX's static pic folder.")
 endif()
 if(NOT EXISTS ${CPLEX_INCLUDE})
-message(FATAL_ERROR "Directory ${CPLEX_INCLUDE} doesn't exist... Please set with -DCPLEX_INCLUDE=<path> the correct path to CPLEXs headers folder.")
+    message(FATAL_ERROR "Directory ${CPLEX_INCLUDE} doesn't exist... Please set with -DCPLEX_INCLUDE=<path> the correct path to CPLEX's headers folder.")
 endif()
 
-# build
+# Directory setup
+cmake_path(GET CMAKE_HOME_DIRECTORY PARENT_PATH HOME_DIR)
+set(LOGS_DIR "${HOME_DIR}/logs")
+set(CPXOUT_DIR "${LOGS_DIR}/cpxout")
+set(CPXLOG_DIR "${CPXOUT_DIR}/log")
+set(CPXLP_DIR "${CPXOUT_DIR}/lp")
 
+foreach(DIR ${LOGS_DIR} ${CPXOUT_DIR} ${CPXLOG_DIR} ${CPXLP_DIR} "${LOGS_DIR}/AAA_output_logs")
+    if(NOT EXISTS ${DIR})
+        file(MAKE_DIRECTORY ${DIR})
+        message(STATUS "Directory ${DIR} created.")
+    endif()
+endforeach()
+
+# Threads support
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
+
+# Include directories
 include_directories(include)
 include_directories(${CPLEX_INCLUDE})
 
+# Libraries
 add_library(
     Utils
     src/utils.cpp
@@ -108,6 +101,7 @@ if(NOT CPLEX_LIBRARY)
     message(FATAL_ERROR "CPLEX library not found in ${CPLEX_DIR}")
 endif()
 
+# Main executable
 add_executable(
     main
     src/main.cpp
@@ -122,24 +116,22 @@ target_link_libraries(
     RANKOOH_model
     ${CPLEX_LIBRARY}
     Threads::Threads
+    dl
 )
 
-# adding definitions
+# Definitions
 add_definitions(-DHPLUS_HOME_DIR="${HOME_DIR}" -DHPLUS_VERBOSE=${VERBOSE} -DHPLUS_WARN=${WARN} -DHPLUS_INTCHECK=${INTCHECK})
 
-# custom builds
+# Custom build targets
 add_custom_target(opt
-    COMMAND echo "flags used: ${CMAKE_CXX_FLAGS_RELEASE}"
-    COMMAND ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=Release ${CMAKE_SOURCE_DIR}
-    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target main
+    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --config Release
 )
 
 add_custom_target(debug
-    COMMAND echo "flags used: ${CMAKE_CXX_FLAGS_DEBUG}"
-    COMMAND ${CMAKE_COMMAND} -DCMAKE_BUILD_TYPE=Debug ${CMAKE_SOURCE_DIR}
-    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target main
+    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --config Debug
 )
 
 add_custom_target(clear
     COMMAND rm -r ${CMAKE_HOME_DIRECTORY}/build/*
 )
+
