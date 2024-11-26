@@ -87,9 +87,13 @@ void HPLUS_find_heuristic() {
     my::subset_searcher feasible_actions = my::subset_searcher();
     for (auto act_i : remaining_actions) feasible_actions.add(act_i, actions[act_i].get_pre());
 
+    // list of actions that have as precondition variable p
+    std::vector<std::vector<size_t>> n_act_with_pre(HPLUS_inst.get_n_var());
+    for (auto var_i : remaining_variables) for (auto act_i : remaining_actions) if (actions[act_i].get_pre()[var_i]) n_act_with_pre[var_i].push_back(act_i);
+
     // greedy idea: choose the next action as the one that makes me pay the less per (relevant) variable added to the current state
     // -> this takes too much time... use a randomized approach: take a random (relevant) action, and calculate its cost per (relevant) variable added, then look for a better action and immediatelly return that one, if it exists, otherwise return that random action
-    auto find_best_act = [&remaining_actions, &remaining_variables, &feasible_actions, &actions](const my::binary_set& current_state) {
+    auto find_best_act = [&n_act_with_pre, &remaining_actions, &remaining_variables, &feasible_actions, &actions](const my::binary_set& current_state) {
 
         // only actions that can be executed from the current state
         const auto& cand_actions = feasible_actions.find_subsets(current_state);
@@ -99,55 +103,56 @@ void HPLUS_find_heuristic() {
         for (auto act_i : cand_actions) if (remaining_actions[act_i]) { infeas = false; break; }
         if (infeas) return -1;
 
-        // ~~~~~~~ FIRST ACTION WE CAN USE ~~~~~~~ //
+        // ~~~~~~~ FIRST ACTION WE CAN USE ~~~~~~~ //   Not a good solution
         // for (auto act_i : cand_actions) if (remaining_actions[act_i]) { return (int)act_i; }
         // return -1;
+
+        // ~~~~~~~~~~~~~~ BEST COST ~~~~~~~~~~~~~~ //   Not good for unitary costs problems
+        // int best_act = -1;
+        // int best_cost = INT_MAX;
+
+        // for (auto act_i : cand_actions) if (remaining_actions[act_i]) {
+        //     if (actions[act_i].get_cost() < best_cost) {
+        //         best_act = act_i;
+        //         best_cost = actions[act_i].get_cost();
+        //     }
+        // }
+
+        // #if HPLUS_INTCHECK
+        // my::assert(best_act != -1, "Error in finding best action for heuristic.");
+        // #endif
+
+        // return best_act;
+
 
         // ~~~~~~~~~ BEST COST PER EFFECT ~~~~~~~~ //
         int best_act = -1;
         double best_cost_per_eff = INFINITY;
 
-        int improvements_count = 0;
-        int improvements_bound = 2;                 // with 2 this has the same effect of the randomized one: the first one surely updates the current best action (can be considered as a random one, since actions are not sorted), than the next best is returned      ->     it's deterministic
-
         for (auto act_i : cand_actions) if (remaining_actions[act_i]) {
-            int n_eff = 0;
-            for (auto var_i : actions[act_i].get_eff_sparse()) if (!current_state[var_i] && remaining_variables[var_i]) n_eff++;
+            int n_eff = 0, n_new_act = 0;
+            for (auto var_i : actions[act_i].get_eff_sparse()) if (!current_state[var_i] && remaining_variables[var_i]) {
+                n_eff++;
+                my::binary_set tmp = my::binary_set(actions.size());
+                for (auto act_j : n_act_with_pre[var_i]) if (remaining_actions[act_j] && !tmp[act_j]) {
+                    n_new_act++;
+                    tmp.add(act_j);
+                }
+            }
             if (n_eff == 0) continue;
-            double cost_per_eff = ((double)actions[act_i].get_cost())/n_eff;
+            double cost_per_eff = actions[act_i].get_cost() * ((double)HPLUS_inst.get_n_var(true) / n_eff + (n_new_act == 0 ? 0 : (double)HPLUS_inst.get_n_act(true) / n_new_act));
             if (cost_per_eff < best_cost_per_eff) {
                 best_act = act_i;
                 best_cost_per_eff = cost_per_eff;
-                improvements_count++;
             }
-            if (improvements_count == improvements_bound) return best_act;
         }
 
         #if HPLUS_INTCHECK
         my::assert(best_act != -1, "Error in finding best action for heuristic.");
         #endif
 
+        mylog.print_warn("%10.4f.", best_cost_per_eff);
         return best_act;
-
-        // ~~~ BEST COST PER EFFECT RANDOMIZED ~~~ //
-        // std::srand(std::time(nullptr));
-        // int random_act_i;
-        // do { random_act_i = cand_actions[std::rand() % cand_actions.size()]; } while (!remaining_actions[random_act_i]);        // pick a random (relevant) action
-
-        // int n_eff = 0;
-        // for (auto var_i : actions[random_act_i].get_eff_sparse()) if (!current_state[var_i] && remaining_variables[var_i]) n_eff++;
-        // if (n_eff == 0) n_eff = 1;
-        // double best_cost_per_eff = ((double)actions[random_act_i].get_cost())/n_eff;        // calculate its cost per (relevant) variable added
-            
-        // for (auto act_i : cand_actions) if (remaining_actions[act_i]) {         // look for a better choice
-        //     int n_eff = 0;
-        //     for (auto var_i : actions[act_i].get_eff_sparse()) if (!current_state[var_i] && remaining_variables[var_i]) n_eff++;
-        //     if (n_eff == 0) continue;
-        //     double cost_per_eff = ((double)actions[act_i].get_cost())/n_eff;
-        //     if (cost_per_eff < best_cost_per_eff) return (int) act_i;       // if found, return that (not the best, but better than a random one)
-        // }
-
-        // return random_act_i;        // if no one was better, return the random one
 
     };
 
