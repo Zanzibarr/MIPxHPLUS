@@ -1,6 +1,6 @@
-- TODO: Make it scale better with size of instance
-- TODO: Better handling of time limit exiting
-
-- TODO: Test warm-start vs no warm-start
-- TODO: Test if tighter bounds is better on variables timestamps or on sum of all actions selected
+- TODO: Better heuristic
 - TODO: Test the DeleteFree instance vs the original instances
+- TODO: Test if tighter bounds is better on variables timestamps or on sum of all actions selected
+
+- TODO: Better scaling
+- TODO: Better handling of time limit exiting

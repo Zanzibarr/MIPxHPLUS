@@ -75,12 +75,13 @@ bool HPLUS_parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp) {
 // ############################# EXECUTION ############################# //
 // ##################################################################### //
 
+//[ ]: Better heuristic
 void HPLUS_find_heuristic() {
 
-    const auto& actions = HPLUS_inst.get_all_actions();
+    const auto& actions = HPLUS_inst.get_actions();
     my::binary_set priority_rem_actions = HPLUS_inst.get_fixed_actions();
-    my::binary_set remaining_actions = HPLUS_inst.get_actions(true) & !priority_rem_actions;
-    const auto& remaining_variables = HPLUS_inst.get_variables(true);
+    my::binary_set remaining_actions = HPLUS_inst.get_remaining_actions() & !priority_rem_actions;
+    const auto& remaining_variables = HPLUS_inst.get_remaining_variables();
 
     my::binary_set current_state(HPLUS_inst.get_n_var());
 
@@ -124,7 +125,6 @@ void HPLUS_find_heuristic() {
 
         // return best_act;
 
-
         // ~~~~~~~~~ BEST COST PER EFFECT ~~~~~~~~ //
         int best_act = -1;
         double best_cost_per_eff = INFINITY;
@@ -151,7 +151,6 @@ void HPLUS_find_heuristic() {
         my::assert(best_act != -1, "Error in finding best action for heuristic.");
         #endif
 
-        mylog.print_warn("%10.4f.", best_cost_per_eff);
         return best_act;
 
     };
@@ -262,7 +261,6 @@ void HPLUS_run() {
 
     HPLUS_cpx_init(env, lp);
 
-    //[ ]: Slow (idk...)
     if (HPLUS_env.alg == HPLUS_CLI_ALG_IMAI) HPLUS_cpx_build_imai(env, lp);
     else if (HPLUS_env.alg == HPLUS_CLI_ALG_RANKOOH) HPLUS_cpx_build_rankooh(env, lp);
 
@@ -272,25 +270,8 @@ void HPLUS_run() {
 
     if (HPLUS_env.warm_start_enabled) {     // Post warm starto to CPLEX
 
-        #if HPLUS_INTCHECK
-        my::assert(HPLUS_env.sol_status != my::solution_status::INFEAS && HPLUS_env.sol_status != my::solution_status::NOTFOUND, "Warm start failed.");
-        #endif
-        std::vector<size_t> warm_start;
-        unsigned int cost;
-        HPLUS_inst.get_best_sol(warm_start, cost);
-        int* cpx_sol_ind = new int[warm_start.size()];
-        double* cpx_sol_val = new double[warm_start.size()];
-        int izero = 0;
-        int effortlevel = CPX_MIPSTART_REPAIR;
-        size_t tmp_cnt = 0;
-        for (auto act_i : warm_start) {
-            cpx_sol_ind[tmp_cnt] = HPLUS_inst.act_idx_post_simplification(act_i);
-            cpx_sol_val[tmp_cnt++] = 1;
-        }
-        // my::assert(!CPXsetdblparam(env, CPXPARAM_MIP_Tolerances_UpperCutoff, (double)cost), "CPXsetdblparam failed.");
-        my::assert(!CPXaddmipstarts(env, lp, 1, warm_start.size(), &izero, cpx_sol_ind, cpx_sol_val, &effortlevel, nullptr), "CPXaddmipstarts failed.");
-        delete[] cpx_sol_ind; cpx_sol_ind = nullptr;
-        delete[] cpx_sol_val; cpx_sol_val = nullptr;
+        if (HPLUS_env.alg == HPLUS_CLI_ALG_IMAI) HPLUS_cpx_post_warmstart_imai(env, lp);
+        else if (HPLUS_env.alg == HPLUS_CLI_ALG_RANKOOH) HPLUS_cpx_post_warmstart_rankooh(env, lp);
 
     }
 

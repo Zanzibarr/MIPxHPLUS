@@ -63,18 +63,16 @@ extern class HPLUS_instance {
         /**
          * @brief Get a set containing the variables indexes this problem has
          * 
-         * @param simplified set this to true to get the variables post simplification
-         * @return const my::binary_set& Set of variables pre/post simplification
+         * @return const my::binary_set& Set of variables post simplification
          */
-        const my::binary_set get_variables(bool simplified = false) const;
+        const my::binary_set get_remaining_variables() const;
         /**
          * @brief Get a set containing the actions indexes this problem has
          * 
-         * @param simplified set this to true to get the actions post simplification
-         * @return const my::binary_set& Set of actions pre/post simplification
+         * @return const my::binary_set& Set of actions post simplification
          */
-        const my::binary_set get_actions(bool simplified = false) const;
-        const std::vector<HPLUS_action>& get_all_actions() const;
+        const my::binary_set get_remaining_actions() const;
+        const std::vector<HPLUS_action>& get_actions() const;
         const my::binary_set& get_goal_state() const;
 
         void update_best_sol(const std::vector<size_t>& solution, unsigned int cost);
@@ -93,6 +91,7 @@ extern class HPLUS_instance {
 
         size_t var_idx_post_simplification(size_t var_idx) const;
         size_t act_idx_post_simplification(size_t act_idx) const;
+        size_t fa_idx_post_simplification(size_t act_idx, size_t var_idx);
         size_t cpx_idx_to_act_idx(size_t cpx_idx) const;
 
     private:
@@ -124,6 +123,7 @@ extern class HPLUS_instance {
 
         std::vector<size_t> var_idx_post_simplification_;
         std::vector<size_t> act_idx_post_simplification_;
+        std::vector<size_t> fa_individual_start_;
         std::vector<size_t> cpx_idx_to_act_idx_;
 
         pthread_mutex_t solution_read_write_;

@@ -6,6 +6,8 @@
 
 void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp);
 
+void HPLUS_cpx_post_warmstart_imai(CPXENVptr& env, CPXLPptr& lp);
+
 void HPLUS_store_imai_sol(const CPXENVptr& env, const CPXLPptr& lp);
 
 #endif

@@ -70,11 +70,11 @@ size_t HPLUS_instance::get_n_var(bool simplified) const { return simplified ? th
 
 size_t HPLUS_instance::get_n_act(bool simplified) const { return simplified ? this -> n_act_post_simpl_ : this -> n_act_; }
 
-const my::binary_set HPLUS_instance::get_variables(bool simplified) const { return simplified ? !this -> eliminated_var_ : my::binary_set(this -> n_var_); }
+const my::binary_set HPLUS_instance::get_remaining_variables() const { return !this -> eliminated_var_; }
 
-const my::binary_set HPLUS_instance::get_actions(bool simplified) const { return simplified ? !this -> eliminated_act_ : my::binary_set(this -> n_act_); }
+const my::binary_set HPLUS_instance::get_remaining_actions() const { return !this -> eliminated_act_; }
 
-const std::vector<HPLUS_action>& HPLUS_instance::get_all_actions() const { return this -> actions_; }
+const std::vector<HPLUS_action>& HPLUS_instance::get_actions() const { return this -> actions_; }
 
 const my::binary_set& HPLUS_instance::get_goal_state() const { return this -> goal_state_; }
 
@@ -162,6 +162,9 @@ void HPLUS_instance::problem_simplification() {
     }
     this -> n_act_post_simpl_ = count;
 
+    this -> fa_individual_start_ = std::vector<size_t>(this -> n_act_post_simpl_);
+    for (size_t act_i = 0; act_i < this -> n_act_post_simpl_; act_i++) this -> fa_individual_start_[act_i] = act_i * this -> n_var_post_simpl_;
+
     #if HPLUS_INTCHECK
     my::assert(!this -> fixed_var_.intersects(this -> eliminated_var_), "Eliminated and fixed variables intersect.");
     my::assert(!this -> fixed_act_.intersects(this -> eliminated_act_), "Eliminated and fixed actions intersect.");
@@ -198,9 +201,10 @@ size_t HPLUS_instance::var_idx_post_simplification(size_t var_idx) const { retur
 
 size_t HPLUS_instance::act_idx_post_simplification(size_t act_idx) const { return this -> act_idx_post_simplification_[act_idx]; }
 
+size_t HPLUS_instance::fa_idx_post_simplification(size_t act_idx, size_t var_idx) { return this -> fa_individual_start_[this -> act_idx_post_simplification_[act_idx]] + this -> var_idx_post_simplification_[var_idx]; }
+
 size_t HPLUS_instance::cpx_idx_to_act_idx(size_t cpx_idx) const { return this -> cpx_idx_to_act_idx_[cpx_idx]; }
 
-//[ ]: Optimize
 void HPLUS_instance::landmarks_extraction(std::vector<my::binary_set>& landmarks_set, my::binary_set& fact_landmarks, my::binary_set& act_landmarks) const {
 
     #if HPLUS_VERBOSE >= 20

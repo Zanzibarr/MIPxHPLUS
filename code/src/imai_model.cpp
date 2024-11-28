@@ -2,10 +2,10 @@
 
 void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp) {
 
-    const auto& actions = HPLUS_inst.get_all_actions();
+    const auto& actions = HPLUS_inst.get_actions();
 
-    const auto& remaining_variables = HPLUS_inst.get_variables(true).sparse();
-    const auto& remaining_actions = HPLUS_inst.get_actions(true).sparse();
+    const auto& remaining_variables = HPLUS_inst.get_remaining_variables().sparse();
+    const auto& remaining_actions = HPLUS_inst.get_remaining_actions().sparse();
 
     const auto& fixed_variables = HPLUS_inst.get_fixed_variables();
     const auto& fixed_actions = HPLUS_inst.get_fixed_actions();
@@ -139,10 +139,8 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp) {
 
     // --- first archievers --- //
     size_t fa_start = curr_col;
-    std::vector<size_t> fa_individual_start(n_act);
     count = 0;
     for (auto act_i : remaining_actions) {
-        fa_individual_start[count] = count * n_var;
         size_t count_var = 0;
         for (auto var_i : remaining_variables) {
             objs[count_var] = 0;
@@ -173,7 +171,7 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp) {
     auto get_tact_idx = [tact_start](size_t idx) { return tact_start + HPLUS_inst.act_idx_post_simplification(idx); };
     auto get_var_idx = [var_start](size_t idx) { return var_start + HPLUS_inst.var_idx_post_simplification(idx); };
     auto get_tvar_idx = [tvar_start](size_t idx) { return tvar_start + HPLUS_inst.var_idx_post_simplification(idx); };
-    auto get_fa_idx = [fa_start, fa_individual_start](size_t act_idx, size_t var_idx) { return fa_start + fa_individual_start[HPLUS_inst.act_idx_post_simplification(act_idx)] + HPLUS_inst.var_idx_post_simplification(var_idx); };
+    auto get_fa_idx = [fa_start](size_t act_idx, size_t var_idx) { return fa_start + HPLUS_inst.fa_idx_post_simplification(act_idx, var_idx); };
     
     int* ind_c1 = new int[n_act + 1];
     double* val_c1 = new double[n_act + 1];
@@ -201,7 +199,7 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp) {
     
     // mylog.print_info("Adding constraints to CPLEX.");
 
-    const auto& remaining_var_set = HPLUS_inst.get_variables(true);
+    const auto& remaining_var_set = HPLUS_inst.get_remaining_variables();
 
     for (auto act_i : remaining_actions) {
         const auto& pre = actions[act_i].get_pre() & remaining_var_set;
@@ -265,6 +263,56 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp) {
 
 }
 
+void HPLUS_cpx_post_warmstart_imai(CPXENVptr& env, CPXLPptr& lp)  {
+    
+    #if HPLUS_INTCHECK
+    my::assert(HPLUS_env.sol_status != my::solution_status::INFEAS && HPLUS_env.sol_status != my::solution_status::NOTFOUND, "Warm start failed.");
+    #endif
+
+    const auto& actions = HPLUS_inst.get_actions();
+    size_t nvar = HPLUS_inst.get_n_var(true);
+    size_t nact = HPLUS_inst.get_n_act(true);
+    const auto& remaining_variables = HPLUS_inst.get_remaining_variables();
+    my::binary_set current_state = my::binary_set(HPLUS_inst.get_n_var());
+
+    std::vector<size_t> warm_start;
+    unsigned int _;
+    HPLUS_inst.get_best_sol(warm_start, _);
+
+    size_t ncols = CPXgetnumcols(env, lp);
+    int* cpx_sol_ind = new int[ncols];
+    double* cpx_sol_val = new double[ncols];
+
+    int izero = 0;
+    int effortlevel = CPX_MIPSTART_REPAIR;
+    size_t nnz = 0, timestamp = 0;
+
+    for (auto act_i : warm_start) {
+        if (!HPLUS_inst.get_remaining_actions()[act_i]) mylog.raise_error("WTF1");
+        cpx_sol_ind[nnz] = HPLUS_inst.act_idx_post_simplification(act_i);
+        cpx_sol_val[nnz++] = 1;
+        cpx_sol_ind[nnz] = nact + HPLUS_inst.act_idx_post_simplification(act_i);
+        cpx_sol_val[nnz++] = timestamp;
+        timestamp++;
+        for (auto var_i : actions[act_i].get_eff_sparse()) {
+            cpx_sol_ind[nnz] = 2 * nact + HPLUS_inst.var_idx_post_simplification(var_i);
+            cpx_sol_val[nnz++] = 1;
+            if (!current_state[var_i] && remaining_variables[var_i]) {
+                cpx_sol_ind[nnz] = 2 * nact + nvar + HPLUS_inst.var_idx_post_simplification(var_i);
+                cpx_sol_val[nnz++] = timestamp;
+                cpx_sol_ind[nnz] = 2 * nact + 2 * nvar + HPLUS_inst.fa_idx_post_simplification(act_i, var_i);
+                cpx_sol_val[nnz++] = 1;
+            }
+            current_state.add(var_i);
+        }
+    }
+
+    my::assert(!CPXaddmipstarts(env, lp, 1, nnz, &izero, cpx_sol_ind, cpx_sol_val, &effortlevel, nullptr), "CPXaddmipstarts failed.");
+    delete[] cpx_sol_ind; cpx_sol_ind = nullptr;
+    delete[] cpx_sol_val; cpx_sol_val = nullptr;
+
+}
+
 /**
  * Check if this solution is the best one and if so, stores it
 */
@@ -296,7 +344,7 @@ void HPLUS_store_imai_sol(const CPXENVptr& env, const CPXLPptr& lp) {
     );
 
     // store solution
-    const auto& actions = HPLUS_inst.get_all_actions();
+    const auto& actions = HPLUS_inst.get_actions();
     HPLUS_inst.update_best_sol(solution,
         std::accumulate(solution.begin(), solution.end(), 0,
             [&actions](const size_t acc, const size_t index) {

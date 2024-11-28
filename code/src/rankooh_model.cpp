@@ -2,11 +2,11 @@
 
 void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp) {
 
-    const auto& actions = HPLUS_inst.get_all_actions();
+    const auto& actions = HPLUS_inst.get_actions();
 
-    const auto& remaining_variables = HPLUS_inst.get_variables(true).sparse();
-    const auto& remaining_var_set = HPLUS_inst.get_variables(true);
-    const auto& remaining_actions = HPLUS_inst.get_actions(true).sparse();
+    const auto& remaining_variables = HPLUS_inst.get_remaining_variables().sparse();
+    const auto& remaining_var_set = HPLUS_inst.get_remaining_variables();
+    const auto& remaining_actions = HPLUS_inst.get_remaining_actions().sparse();
 
     const auto& fixed_variables = HPLUS_inst.get_fixed_variables();
     const auto& fixed_actions = HPLUS_inst.get_fixed_actions();
@@ -355,6 +355,50 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp) {
 
 }
 
+void HPLUS_cpx_post_warmstart_rankooh(CPXENVptr& env, CPXLPptr& lp) {
+    
+    #if HPLUS_INTCHECK
+    my::assert(HPLUS_env.sol_status != my::solution_status::INFEAS && HPLUS_env.sol_status != my::solution_status::NOTFOUND, "Warm start failed.");
+    #endif
+
+    const auto& actions = HPLUS_inst.get_actions();
+    size_t nvar = HPLUS_inst.get_n_var(true);
+    size_t nact = HPLUS_inst.get_n_act(true);
+    const auto& remaining_variables = HPLUS_inst.get_remaining_variables();
+    my::binary_set current_state = my::binary_set(HPLUS_inst.get_n_var());
+
+    std::vector<size_t> warm_start;
+    unsigned int _;
+    HPLUS_inst.get_best_sol(warm_start, _);
+
+    size_t ncols = CPXgetnumcols(env, lp);
+    int* cpx_sol_ind = new int[ncols];
+    double* cpx_sol_val = new double[ncols];
+
+    int izero = 0;
+    int effortlevel = CPX_MIPSTART_REPAIR;
+    size_t nnz = 0;
+
+    for (auto act_i : warm_start) {
+        cpx_sol_ind[nnz] = HPLUS_inst.act_idx_post_simplification(act_i);
+        cpx_sol_val[nnz++] = 1;
+        for (auto var_i : actions[act_i].get_eff_sparse()) {
+            cpx_sol_ind[nnz] = nact + nact * nvar + HPLUS_inst.var_idx_post_simplification(var_i);
+            cpx_sol_val[nnz++] = 1;
+            if (!current_state[var_i] && remaining_variables[var_i]) {
+                cpx_sol_ind[nnz] = nact + HPLUS_inst.fa_idx_post_simplification(act_i, var_i);
+                cpx_sol_val[nnz++] = 1;
+            }
+            current_state.add(var_i);
+        }
+    }
+
+    my::assert(!CPXaddmipstarts(env, lp, 1, nnz, &izero, cpx_sol_ind, cpx_sol_val, &effortlevel, nullptr), "CPXaddmipstarts failed.");
+    delete[] cpx_sol_ind; cpx_sol_ind = nullptr;
+    delete[] cpx_sol_val; cpx_sol_val = nullptr;
+
+}
+
 void HPLUS_store_rankooh_sol(const CPXENVptr& env, const CPXLPptr& lp) {
 
     const size_t n_var = HPLUS_inst.get_n_var(true);
@@ -382,7 +426,7 @@ void HPLUS_store_rankooh_sol(const CPXENVptr& env, const CPXLPptr& lp) {
     for (size_t i = 0; i < n_act; i++) if (plan[i] > .5) cpx_result.push_back(HPLUS_inst.cpx_idx_to_act_idx(i));
     delete[] plan; plan = nullptr;
 
-    const auto& actions = HPLUS_inst.get_all_actions();
+    const auto& actions = HPLUS_inst.get_actions();
     std::vector<size_t> solution;
     my::binary_set sorted(cpx_result.size());
     my::binary_set current_state(HPLUS_inst.get_n_var());
