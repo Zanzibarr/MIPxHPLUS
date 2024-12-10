@@ -85,6 +85,7 @@ void HPLUS_find_heuristic() {
 
     my::binary_set current_state(HPLUS_inst.get_n_var());
 
+    // prepare the set of feasible actions given the current_state
     my::subset_searcher feasible_actions = my::subset_searcher();
     for (auto act_i : remaining_actions) feasible_actions.add(act_i, actions[act_i].get_pre());
 
@@ -93,7 +94,6 @@ void HPLUS_find_heuristic() {
     for (auto var_i : remaining_variables) for (auto act_i : remaining_actions) if (actions[act_i].get_pre()[var_i]) n_act_with_pre[var_i].push_back(act_i);
 
     // greedy idea: choose the next action as the one that makes me pay the less per (relevant) variable added to the current state
-    // -> this takes too much time... use a randomized approach: take a random (relevant) action, and calculate its cost per (relevant) variable added, then look for a better action and immediatelly return that one, if it exists, otherwise return that random action
     auto find_best_act = [&n_act_with_pre, &remaining_actions, &remaining_variables, &feasible_actions, &actions](const my::binary_set& current_state) {
 
         // only actions that can be executed from the current state
@@ -104,51 +104,29 @@ void HPLUS_find_heuristic() {
         for (auto act_i : cand_actions) if (remaining_actions[act_i]) { infeas = false; break; }
         if (infeas) return -1;
 
-        // ~~~~~~~ FIRST ACTION WE CAN USE ~~~~~~~ //   Not a good solution
-        // for (auto act_i : cand_actions) if (remaining_actions[act_i]) { return (int)act_i; }
-        // return -1;
-
-        // ~~~~~~~~~~~~~~ BEST COST ~~~~~~~~~~~~~~ //   Not good for unitary costs problems
-        // int best_act = -1;
-        // int best_cost = INT_MAX;
-
-        // for (auto act_i : cand_actions) if (remaining_actions[act_i]) {
-        //     if (actions[act_i].get_cost() < best_cost) {
-        //         best_act = act_i;
-        //         best_cost = actions[act_i].get_cost();
-        //     }
-        // }
-
-        // #if HPLUS_INTCHECK
-        // my::assert(best_act != -1, "Error in finding best action for heuristic.");
-        // #endif
-
-        // return best_act;
-
-        // ~~~~~~~~~ BEST COST PER EFFECT ~~~~~~~~ //
         int best_act = -1;
         double best_cost_per_eff = INFINITY;
 
         for (auto act_i : cand_actions) if (remaining_actions[act_i]) {
             int n_eff = 0, n_new_act = 0;
+            my::binary_set counted_new_actions = my::binary_set(actions.size());
             for (auto var_i : actions[act_i].get_eff_sparse()) if (!current_state[var_i] && remaining_variables[var_i]) {
                 n_eff++;
-                my::binary_set tmp = my::binary_set(actions.size());
-                for (auto act_j : n_act_with_pre[var_i]) if (remaining_actions[act_j] && !tmp[act_j]) {
+                for (auto act_j : n_act_with_pre[var_i]) if (remaining_actions[act_j] && !counted_new_actions[act_j]) {
                     n_new_act++;
-                    tmp.add(act_j);
+                    counted_new_actions.add(act_j);
                 }
             }
-            if (n_eff == 0) continue;
-            double cost_per_eff = actions[act_i].get_cost() * ((double)HPLUS_inst.get_n_var(true) / n_eff + (n_new_act == 0 ? 0 : (double)HPLUS_inst.get_n_act(true) / n_new_act));
-            if (cost_per_eff < best_cost_per_eff) {
+            if (n_eff == 0) continue;           // actions that have no useful effects can be skipped (if there are no useful effects that can be added, the current state will never move on --> Infeasible --> We should have already detected that)
+            double cost_per_eff = actions[act_i].get_cost() * ((double)HPLUS_inst.get_n_var(true) / n_eff + ((double)HPLUS_inst.get_n_act(true)) / (n_new_act == 0 ? 1 : n_new_act));
+            if (cost_per_eff <= best_cost_per_eff) {
                 best_act = act_i;
                 best_cost_per_eff = cost_per_eff;
             }
         }
 
         #if HPLUS_INTCHECK
-        my::assert(best_act != -1, "Error in finding best action for heuristic.");
+        my::assert(best_act != -1, "Error in finding best action for heuristic.");      // if no action found we have an error -> we already proved it's not infeasible, so we must have an action to use
         #endif
 
         return best_act;
@@ -160,8 +138,9 @@ void HPLUS_find_heuristic() {
 
     int priority_act_count = 0;
     for (auto _ : priority_rem_actions) priority_act_count++;
+    const auto& goal_state = HPLUS_inst.get_goal_state();
 
-    while (!current_state.contains(HPLUS_inst.get_goal_state())) {
+    while (!current_state.contains(goal_state)) {
 
         int best_act_i = -1;
 
@@ -176,7 +155,8 @@ void HPLUS_find_heuristic() {
             }
         }
 
-        if (best_act_i >= 0) continue;
+        if (best_act_i >= 0) continue;      // if I used an action among the fixed ones, the current state changed and another one may be used next, so go back and look again
+        // otherwise seek for the next one among the rest of them
 
         best_act_i = find_best_act(current_state);
         if (best_act_i == -1) {
