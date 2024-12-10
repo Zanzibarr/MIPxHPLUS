@@ -288,15 +288,16 @@ void HPLUS_cpx_post_warmstart_imai(CPXENVptr& env, CPXLPptr& lp)  {
     size_t nnz = 0, timestamp = 0;
 
     for (auto act_i : warm_start) {
-        if (!HPLUS_inst.get_remaining_actions()[act_i]) mylog.raise_error("WTF1");
         cpx_sol_ind[nnz] = HPLUS_inst.act_idx_post_simplification(act_i);
         cpx_sol_val[nnz++] = 1;
         cpx_sol_ind[nnz] = nact + HPLUS_inst.act_idx_post_simplification(act_i);
         cpx_sol_val[nnz++] = timestamp;
         timestamp++;
         for (auto var_i : actions[act_i].get_eff_sparse()) {
-            cpx_sol_ind[nnz] = 2 * nact + HPLUS_inst.var_idx_post_simplification(var_i);
-            cpx_sol_val[nnz++] = 1;
+            if (remaining_variables[var_i]) {
+                cpx_sol_ind[nnz] = 2 * nact + HPLUS_inst.var_idx_post_simplification(var_i);
+                cpx_sol_val[nnz++] = 1;
+            }
             if (!current_state[var_i] && remaining_variables[var_i]) {
                 cpx_sol_ind[nnz] = 2 * nact + nvar + HPLUS_inst.var_idx_post_simplification(var_i);
                 cpx_sol_val[nnz++] = timestamp;

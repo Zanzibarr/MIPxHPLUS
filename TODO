@@ -1,6 +1,7 @@
-- TODO: Better heuristic
-- TODO: Test the DeleteFree instance vs the original instances
-- TODO: Test if tighter bounds is better on variables timestamps or on sum of all actions selected
+- TODO: Test the DeleteFree instance vs the original instances (DOING)
+- TODO: Test warm start for Imai
+- TODO: Test if tighter bounds is better on variables timestamps or on sum of all actions selected (the second one can be used on Rankooh too)
 
-- TODO: Better scaling
+
+- TODO: Make it scale better with size of instance
 - TODO: Better handling of time limit exiting

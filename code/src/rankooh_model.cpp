@@ -383,8 +383,10 @@ void HPLUS_cpx_post_warmstart_rankooh(CPXENVptr& env, CPXLPptr& lp) {
         cpx_sol_ind[nnz] = HPLUS_inst.act_idx_post_simplification(act_i);
         cpx_sol_val[nnz++] = 1;
         for (auto var_i : actions[act_i].get_eff_sparse()) {
-            cpx_sol_ind[nnz] = nact + nact * nvar + HPLUS_inst.var_idx_post_simplification(var_i);
-            cpx_sol_val[nnz++] = 1;
+            if (remaining_variables[var_i]) {
+                cpx_sol_ind[nnz] = nact + nact * nvar + HPLUS_inst.var_idx_post_simplification(var_i);
+                cpx_sol_val[nnz++] = 1;
+            }
             if (!current_state[var_i] && remaining_variables[var_i]) {
                 cpx_sol_ind[nnz] = nact + HPLUS_inst.fa_idx_post_simplification(act_i, var_i);
                 cpx_sol_val[nnz++] = 1;
