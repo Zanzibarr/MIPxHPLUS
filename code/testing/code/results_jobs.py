@@ -14,8 +14,10 @@ timelimit = 900
 
 runsum = {}
 
-runfile = "run_file.json"
-if len(sys.argv) > 1: runfile = sys.argv[1]
+run_name = "testrun"
+if len(sys.argv) > 1: run_name = sys.argv[1]
+
+run_file = run_name + ".json"
 
 runsum["stats"] = {
     "avg_ptime" : 0,
@@ -99,6 +101,15 @@ def label_logs():
 
         if runsum["results"][instance_name]["status"] > -2:
             runsum["ntotal"] += 1
+
+    os.mkdir(f"{utils.logs_dir}/saved_logs/{run_name}")
+    subprocess.run(shlex.split(f"cp -r {utils.opt_logs_dir} {utils.logs_dir}/saved_logs/{run_name}/"))
+    subprocess.run(shlex.split(f"cp -r {utils.feas_logs_dir} {utils.logs_dir}/saved_logs/{run_name}/"))
+    subprocess.run(shlex.split(f"cp -r {utils.timelimit_logs_dir} {utils.logs_dir}/saved_logs/{run_name}/"))
+    subprocess.run(shlex.split(f"cp -r {utils.b_timelimit_logs_dir} {utils.logs_dir}/saved_logs/{run_name}/"))
+    subprocess.run(shlex.split(f"cp -r {utils.infease_logs_dir} {utils.logs_dir}/saved_logs/{run_name}/"))
+    subprocess.run(shlex.split(f"cp -r {utils.errors_logs_dir} {utils.logs_dir}/saved_logs/{run_name}/"))
+    subprocess.run(shlex.split(f"cp -r {utils.other_logs_dir} {utils.logs_dir}/saved_logs/{run_name}/"))
 
     runsum["stats"]["perc_found"] /= runsum["ntotal"]
     runsum["stats"]["perc_opt"] /= runsum["ntotal"]
@@ -211,6 +222,12 @@ def time_stats():
         runsum["results"][instance_name]["btime"] = build_time
         runsum["results"][instance_name]["ctime"] = exec_time
         runsum["results"][instance_name]["time"] = total_time
+        runsum["stats"]["avg_ptime"] += runsum["results"][instance_name]["ptime"]
+        runsum["stats"]["avg_stime"] += runsum["results"][instance_name]["stime"]
+        runsum["stats"]["avg_htime"] += runsum["results"][instance_name]["htime"]
+        runsum["stats"]["avg_btime"] += runsum["results"][instance_name]["btime"]
+        runsum["stats"]["avg_ctime"] += runsum["results"][instance_name]["ctime"]
+        runsum["stats"]["avg_time"] += runsum["results"][instance_name]["time"]
 
         if content.partition("Warm start:")[2].partition(".\n")[0].strip() in ["Y", "enabled"]:
             if "Updated best solution - Cost:" in content:
@@ -251,6 +268,12 @@ def time_stats():
         runsum["results"][instance_name]["btime"] = build_time
         runsum["results"][instance_name]["ctime"] = exec_time
         runsum["results"][instance_name]["time"] = total_time
+        runsum["stats"]["avg_ptime"] += runsum["results"][instance_name]["ptime"]
+        runsum["stats"]["avg_stime"] += runsum["results"][instance_name]["stime"]
+        runsum["stats"]["avg_htime"] += runsum["results"][instance_name]["htime"]
+        runsum["stats"]["avg_btime"] += runsum["results"][instance_name]["btime"]
+        runsum["stats"]["avg_ctime"] += runsum["results"][instance_name]["ctime"]
+        runsum["stats"]["avg_time"] += runsum["results"][instance_name]["time"]
 
         if content.partition("Warm start:")[2].partition(".\n")[0].strip() in ["Y", "enabled"]:
             if "Updated best solution - Cost:" in content:
@@ -285,6 +308,12 @@ def time_stats():
         runsum["results"][instance_name]["btime"] = build_time
         runsum["results"][instance_name]["ctime"] = timelimit - parsing_time + simplification_time + heur_time + build_time
         runsum["results"][instance_name]["time"] = timelimit
+        runsum["stats"]["avg_ptime"] += runsum["results"][instance_name]["ptime"]
+        runsum["stats"]["avg_stime"] += runsum["results"][instance_name]["stime"]
+        runsum["stats"]["avg_htime"] += runsum["results"][instance_name]["htime"]
+        runsum["stats"]["avg_btime"] += runsum["results"][instance_name]["btime"]
+        runsum["stats"]["avg_ctime"] += runsum["results"][instance_name]["ctime"]
+        runsum["stats"]["avg_time"] += runsum["results"][instance_name]["time"]
 
         if content.partition("Warm start:")[2].partition(".\n")[0].strip() in ["Y", "enabled"]:
             if "Updated best solution - Cost:" in content:
@@ -313,6 +342,12 @@ def time_stats():
         runsum["results"][instance_name]["btime"] = timelimit - parsing_time + simplification_time + heur_time
         runsum["results"][instance_name]["ctime"] = timelimit - parsing_time + simplification_time + heur_time
         runsum["results"][instance_name]["time"] = timelimit
+        runsum["stats"]["avg_ptime"] += runsum["results"][instance_name]["ptime"]
+        runsum["stats"]["avg_stime"] += runsum["results"][instance_name]["stime"]
+        runsum["stats"]["avg_htime"] += runsum["results"][instance_name]["htime"]
+        runsum["stats"]["avg_btime"] += runsum["results"][instance_name]["btime"]
+        runsum["stats"]["avg_ctime"] += runsum["results"][instance_name]["ctime"]
+        runsum["stats"]["avg_time"] += runsum["results"][instance_name]["time"]
 
         if content.partition("Warm start:")[2].partition(".\n")[0].strip() in ["Y", "enabled"]:
             if "Updated best solution - Cost:" in content:
@@ -373,7 +408,15 @@ if __name__ == "__main__":
     data += read_logs()
     data += time_stats()
 
+    runsum["other"] = data
+    runsum["stats"]["avg_ptime"] /= runsum["ntotal"]
+    runsum["stats"]["avg_stime"] /= runsum["ntotal"]
+    runsum["stats"]["avg_htime"] /= runsum["ntotal"]
+    runsum["stats"]["avg_btime"] /= runsum["ntotal"]
+    runsum["stats"]["avg_ctime"] /= runsum["ntotal"]
+    runsum["stats"]["avg_time"] /= runsum["ntotal"]
+
     print(data)
 
-    with open(runfile, "w") as f:
+    with open(f"{utils.logs_dir}/saved_logs/{run_name}/{run_file}", "w") as f:
         json.dump(runsum, f, indent=4)
