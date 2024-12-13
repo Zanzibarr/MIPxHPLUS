@@ -118,6 +118,7 @@ def label_logs():
 def check_results():
 
     errors = 0
+    errors_names = ""
     total = 0
 
     for file in os.listdir(utils.opt_logs_dir):
@@ -138,13 +139,13 @@ def check_results():
         cost_range = [float(x) for x in content_baseline[0].split(" ")]
 
         if cost < cost_range[0] or cost > cost_range[1]:
-            print(f"ERROR: {instance_name}.")
+            errors_names += f"{instance_name}\n"
             errors += 1
 
     return f"""
 RESULTS COMPARED WITH FAST DOWNWARD RANKOOH IMPLEMENTATION:
 ERRORS: {errors} / {total} ({round(errors*100/total, 2)}%)
-"""
+{errors_names}"""
 
 def read_logs():
 
