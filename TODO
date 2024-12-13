@@ -1,4 +1,3 @@
-- TODO: Test the DeleteFree instance vs the original instances (DOING)
 - TODO: Test warm start for Imai
 - TODO: Test warm start for Rankooh
 - TODO: Test if tighter bounds is better on variables timestamps or on sum of all actions selected (the second one can be used on Rankooh too)
