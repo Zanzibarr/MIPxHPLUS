@@ -65,12 +65,12 @@ void HPLUS_show_info() {
     mylog.print(LINE);
     #endif
 
-    mylog.print("Algorithm: %s.", HPLUS_env.alg.c_str());
-    mylog.print("Problem simplification: %s.", HPLUS_env.problem_simplification_enabled ? "enabled" : "disabled");
-    if (HPLUS_env.alg == HPLUS_CLI_ALG_IMAI) mylog.print("Tighter bounds on variable timestamps: %s.", HPLUS_env.imai_tighter_var_bound_enabled ? "enabled" : "disabled");
-    if (HPLUS_env.alg != HPLUS_CLI_ALG_GREEDY) mylog.print("Heuristic: %s.", HPLUS_env.heuristic_enabled ? "enabled" : "disabled");
-    if (HPLUS_env.alg != HPLUS_CLI_ALG_GREEDY) mylog.print("Warm start: %s.", HPLUS_env.warm_start_enabled ? "enabled" : "disabled");
-    mylog.print("Time limit: %ds.", HPLUS_env.time_limit);
+    mylog.print("Algorithm:                             %10s.", HPLUS_env.alg.c_str());
+    mylog.print("Problem simplification:                %10s.", HPLUS_env.problem_simplification_enabled ? "Y" : "N");
+    if (HPLUS_env.alg == HPLUS_CLI_ALG_IMAI) mylog.print("Tighter bounds on variable timestamps: %10s.", HPLUS_env.imai_tighter_var_bound_enabled ? "Y" : "N");
+    if (HPLUS_env.alg != HPLUS_CLI_ALG_GREEDY) mylog.print("Heuristic:                             %10s.", HPLUS_env.heuristic_enabled ? "Y" : "N");
+    if (HPLUS_env.alg != HPLUS_CLI_ALG_GREEDY) mylog.print("Warm start:                            %10s.", HPLUS_env.warm_start_enabled ? "Y" : "N");
+    mylog.print("Time limit:                           %10ds.", HPLUS_env.time_limit);
     mylog.print(LINE);
 
 }

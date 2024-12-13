@@ -8,6 +8,29 @@ import subprocess
 import shlex
 import os
 from pathlib import Path
+import json
+
+timelimit = 900
+
+runsum = {}
+
+runfile = "run_file.json"
+if len(sys.argv) > 1: runfile = sys.argv[1]
+
+runsum["stats"] = {
+    "avg_ptime" : 0,
+    "avg_stime" : 0,
+    "avg_htime" : 0,
+    "avg_btime" : 0,
+    "avg_ctime" : 0,
+    "avg_time" : 0,
+    "perc_found" : 0,
+    "perc_opt" : 0,
+    "perc_nfound" : 0
+}
+runsum["ntotal"] = 0
+runsum["other"] = ""
+runsum["results"] = {}
 
 os.makedirs(utils.opt_logs_dir, exist_ok=True)
 os.makedirs(utils.feas_logs_dir, exist_ok=True)
@@ -30,22 +53,56 @@ def label_logs():
         with open(filepath, "r") as f:
             content = f.read()
 
+        instance_name = Path(content.partition("Input file: ")[2].partition(".\n")[0]).name.replace(".sas", "")
+        runsum["results"][instance_name] = {
+            "status" : -1,
+            "wscost" : -1,
+            "fcost" : -1,
+            "ptime" : -1,
+            "stime" : -1,
+            "htime" : -1,
+            "btime" : -1,
+            "ctime" : -1,
+            "time" : -1,
+            "other" : "none"
+        }
+
         if "Testing small instances only." in content or "Axiom layer is" in content:
+            runsum["results"][instance_name]["status"] = -2
             move_file(filepath, utils.other_logs_dir)
         elif "[ ERROR ]" in content:
             move_file(filepath, utils.errors_logs_dir)
         elif "The problem is infeasible." in content:
+            runsum["stats"]["perc_found"] += 1
+            runsum["stats"]["perc_opt"] += 1
+            runsum["results"][instance_name]["status"] = 1
             move_file(filepath, utils.infease_logs_dir)
         elif "Reached time limit" in content and "Reached time limit during CPLEX's execution." not in content:
+            runsum["stats"]["perc_nfound"] += 1
+            runsum["results"][instance_name]["status"] = 4
             move_file(filepath, utils.b_timelimit_logs_dir)
         elif "No solution found." in content:
+            runsum["stats"]["perc_nfound"] += 1
+            runsum["results"][instance_name]["status"] = 3
             move_file(filepath, utils.timelimit_logs_dir)
         elif "The solution has not been proven optimal." in content:
+            runsum["stats"]["perc_found"] += 1
+            runsum["results"][instance_name]["status"] = 2
             move_file(filepath, utils.feas_logs_dir)
         elif "Solution cost: " in content:
+            runsum["stats"]["perc_found"] += 1
+            runsum["stats"]["perc_opt"] += 1
+            runsum["results"][instance_name]["status"] = 0
             move_file(filepath, utils.opt_logs_dir)
         else:
             move_file(filepath, utils.errors_logs_dir)
+
+        if runsum["results"][instance_name]["status"] > -2:
+            runsum["ntotal"] += 1
+
+    runsum["stats"]["perc_found"] /= runsum["ntotal"]
+    runsum["stats"]["perc_opt"] /= runsum["ntotal"]
+    runsum["stats"]["perc_nfound"] /= runsum["ntotal"]
 
 def check_results():
 
@@ -146,6 +203,21 @@ def time_stats():
         feas_execution_times.append(exec_time)
         feas_total_times.append(total_time)
 
+        instance_name = Path(content.partition("Input file: ")[2].partition(".\n")[0]).name.replace(".sas", "")
+
+        runsum["results"][instance_name]["ptime"] = parsing_time
+        runsum["results"][instance_name]["stime"] = simplification_time
+        runsum["results"][instance_name]["htime"] = heur_time
+        runsum["results"][instance_name]["btime"] = build_time
+        runsum["results"][instance_name]["ctime"] = exec_time
+        runsum["results"][instance_name]["time"] = total_time
+
+        if content.partition("Warm start:")[2].partition(".\n")[0] == "Y":
+            if "Updated best solution - Cost:" in content:
+                runsum["results"][instance_name]["wscost"] = int(content.partition("Updated best solution - Cost:")[2].partition(".\n")[0])
+
+        if "Solution cost:" in content: runsum["results"][instance_name]["fcost"] = int(content.partition("Solution cost:")[2].partition("\n")[0])
+
     optimal_parsing_times = []
     optimal_prob_simpl_times = []
     optimal_heur_times = []
@@ -171,6 +243,15 @@ def time_stats():
         optimal_execution_times.append(exec_time)
         optimal_total_times.append(total_time)
 
+        instance_name = Path(content.partition("Input file: ")[2].partition(".\n")[0]).name.replace(".sas", "")
+
+        runsum["results"][instance_name]["ptime"] = parsing_time
+        runsum["results"][instance_name]["stime"] = simplification_time
+        runsum["results"][instance_name]["htime"] = heur_time
+        runsum["results"][instance_name]["btime"] = build_time
+        runsum["results"][instance_name]["ctime"] = exec_time
+        runsum["results"][instance_name]["time"] = total_time
+
     timel_parsing_times = []
     timel_prob_simpl_times = []
     timel_heur_times = []
@@ -190,6 +271,15 @@ def time_stats():
         timel_heur_times.append(heur_time)
         timel_build_times.append(build_time)
 
+        instance_name = Path(content.partition("Input file: ")[2].partition(".\n")[0]).name.replace(".sas", "")
+
+        runsum["results"][instance_name]["ptime"] = parsing_time
+        runsum["results"][instance_name]["stime"] = simplification_time
+        runsum["results"][instance_name]["htime"] = heur_time
+        runsum["results"][instance_name]["btime"] = build_time
+        runsum["results"][instance_name]["ctime"] = timelimit - parsing_time + simplification_time + heur_time + build_time
+        runsum["results"][instance_name]["time"] = timelimit
+
     count_btl_parsing = 0
     count_btl_prob_simpl = 0
     count_btl_heur = 0
@@ -200,6 +290,19 @@ def time_stats():
     for file in os.listdir(utils.b_timelimit_logs_dir):
         with open(f"{utils.b_timelimit_logs_dir}/{file}", "r") as f:
             content = f.read()
+
+        parsing_time = float(content.partition(">>  Parsing time")[2].partition("s")[0].strip())
+        simplification_time = float(content.partition(">>  Problem simplification time")[2].partition("s")[0].strip())
+        heur_time = float(content.partition(">>  Heuristic time")[2].partition("s")[0].strip())
+
+        instance_name = Path(content.partition("Input file: ")[2].partition(".\n")[0]).name.replace(".sas", "")
+
+        runsum["results"][instance_name]["ptime"] = parsing_time
+        runsum["results"][instance_name]["stime"] = simplification_time
+        runsum["results"][instance_name]["htime"] = heur_time
+        runsum["results"][instance_name]["btime"] = timelimit - parsing_time + simplification_time + heur_time
+        runsum["results"][instance_name]["ctime"] = timelimit - parsing_time + simplification_time + heur_time
+        runsum["results"][instance_name]["time"] = timelimit
         
         if "Reached time limit while parsing the instance file." in content:
             count_btl_parsing += 1
@@ -257,3 +360,6 @@ if __name__ == "__main__":
     data += time_stats()
 
     print(data)
+
+    with open(runfile, "w") as f:
+        json.dump(runsum, f, indent=4)

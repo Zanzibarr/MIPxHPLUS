@@ -91,7 +91,7 @@ extern class HPLUS_instance {
 
         size_t var_idx_post_simplification(size_t var_idx) const;
         size_t act_idx_post_simplification(size_t act_idx) const;
-        size_t fa_idx_post_simplification(size_t act_idx, size_t var_idx);
+        size_t fa_idx_post_simplification(size_t act_idx, size_t var_idx) const;
         size_t cpx_idx_to_act_idx(size_t cpx_idx) const;
 
     private:

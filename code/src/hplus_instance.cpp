@@ -201,7 +201,7 @@ size_t HPLUS_instance::var_idx_post_simplification(size_t var_idx) const { retur
 
 size_t HPLUS_instance::act_idx_post_simplification(size_t act_idx) const { return this -> act_idx_post_simplification_[act_idx]; }
 
-size_t HPLUS_instance::fa_idx_post_simplification(size_t act_idx, size_t var_idx) { return this -> fa_individual_start_[this -> act_idx_post_simplification_[act_idx]] + this -> var_idx_post_simplification_[var_idx]; }
+size_t HPLUS_instance::fa_idx_post_simplification(size_t act_idx, size_t var_idx) const { return this -> fa_individual_start_[this -> act_idx_post_simplification_[act_idx]] + this -> var_idx_post_simplification_[var_idx]; }
 
 size_t HPLUS_instance::cpx_idx_to_act_idx(size_t cpx_idx) const { return this -> cpx_idx_to_act_idx_[cpx_idx]; }
 
