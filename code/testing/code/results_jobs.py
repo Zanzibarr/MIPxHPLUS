@@ -212,7 +212,7 @@ def time_stats():
         runsum["results"][instance_name]["ctime"] = exec_time
         runsum["results"][instance_name]["time"] = total_time
 
-        if content.partition("Warm start:")[2].partition(".\n")[0] == "Y":
+        if content.partition("Warm start:")[2].partition(".\n")[0] in ["Y", "Enabled"]:
             if "Updated best solution - Cost:" in content:
                 runsum["results"][instance_name]["wscost"] = int(content.partition("Updated best solution - Cost:")[2].partition(".\n")[0])
 
@@ -252,7 +252,7 @@ def time_stats():
         runsum["results"][instance_name]["ctime"] = exec_time
         runsum["results"][instance_name]["time"] = total_time
 
-        if content.partition("Warm start:")[2].partition(".\n")[0] == "Y":
+        if content.partition("Warm start:")[2].partition(".\n")[0] in ["Y", "Enabled"]:
             if "Updated best solution - Cost:" in content:
                 runsum["results"][instance_name]["wscost"] = int(content.partition("Updated best solution - Cost:")[2].partition(".\n")[0])
 
@@ -286,7 +286,7 @@ def time_stats():
         runsum["results"][instance_name]["ctime"] = timelimit - parsing_time + simplification_time + heur_time + build_time
         runsum["results"][instance_name]["time"] = timelimit
 
-        if content.partition("Warm start:")[2].partition(".\n")[0] == "Y":
+        if content.partition("Warm start:")[2].partition(".\n")[0] in ["Y", "Enabled"]:
             if "Updated best solution - Cost:" in content:
                 runsum["results"][instance_name]["wscost"] = int(content.partition("Updated best solution - Cost:")[2].partition(".\n")[0])
 
@@ -314,7 +314,7 @@ def time_stats():
         runsum["results"][instance_name]["ctime"] = timelimit - parsing_time + simplification_time + heur_time
         runsum["results"][instance_name]["time"] = timelimit
 
-        if content.partition("Warm start:")[2].partition(".\n")[0] == "Y":
+        if content.partition("Warm start:")[2].partition(".\n")[0] in ["Y", "Enabled"]:
             if "Updated best solution - Cost:" in content:
                 runsum["results"][instance_name]["wscost"] = int(content.partition("Updated best solution - Cost:")[2].partition(".\n")[0])
         
