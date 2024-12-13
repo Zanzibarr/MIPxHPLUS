@@ -306,7 +306,7 @@ def time_stats():
         runsum["results"][instance_name]["stime"] = simplification_time
         runsum["results"][instance_name]["htime"] = heur_time
         runsum["results"][instance_name]["btime"] = build_time
-        runsum["results"][instance_name]["ctime"] = timelimit - parsing_time + simplification_time + heur_time + build_time
+        runsum["results"][instance_name]["ctime"] = timelimit - (parsing_time + simplification_time + heur_time + build_time)
         runsum["results"][instance_name]["time"] = timelimit
         runsum["stats"]["avg_ptime"] += runsum["results"][instance_name]["ptime"]
         runsum["stats"]["avg_stime"] += runsum["results"][instance_name]["stime"]
@@ -339,8 +339,8 @@ def time_stats():
         runsum["results"][instance_name]["ptime"] = parsing_time
         runsum["results"][instance_name]["stime"] = simplification_time
         runsum["results"][instance_name]["htime"] = heur_time
-        runsum["results"][instance_name]["btime"] = timelimit - parsing_time + simplification_time + heur_time
-        runsum["results"][instance_name]["ctime"] = timelimit - parsing_time + simplification_time + heur_time
+        runsum["results"][instance_name]["btime"] = timelimit - (parsing_time + simplification_time + heur_time)
+        runsum["results"][instance_name]["ctime"] = timelimit - (parsing_time + simplification_time + heur_time)
         runsum["results"][instance_name]["time"] = timelimit
         runsum["stats"]["avg_ptime"] += runsum["results"][instance_name]["ptime"]
         runsum["stats"]["avg_stime"] += runsum["results"][instance_name]["stime"]
