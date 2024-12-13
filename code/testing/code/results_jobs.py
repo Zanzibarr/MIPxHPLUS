@@ -252,6 +252,12 @@ def time_stats():
         runsum["results"][instance_name]["ctime"] = exec_time
         runsum["results"][instance_name]["time"] = total_time
 
+        if content.partition("Warm start:")[2].partition(".\n")[0] == "Y":
+            if "Updated best solution - Cost:" in content:
+                runsum["results"][instance_name]["wscost"] = int(content.partition("Updated best solution - Cost:")[2].partition(".\n")[0])
+
+        if "Solution cost:" in content: runsum["results"][instance_name]["fcost"] = int(content.partition("Solution cost:")[2].partition("\n")[0])
+
     timel_parsing_times = []
     timel_prob_simpl_times = []
     timel_heur_times = []
@@ -280,6 +286,10 @@ def time_stats():
         runsum["results"][instance_name]["ctime"] = timelimit - parsing_time + simplification_time + heur_time + build_time
         runsum["results"][instance_name]["time"] = timelimit
 
+        if content.partition("Warm start:")[2].partition(".\n")[0] == "Y":
+            if "Updated best solution - Cost:" in content:
+                runsum["results"][instance_name]["wscost"] = int(content.partition("Updated best solution - Cost:")[2].partition(".\n")[0])
+
     count_btl_parsing = 0
     count_btl_prob_simpl = 0
     count_btl_heur = 0
@@ -303,6 +313,10 @@ def time_stats():
         runsum["results"][instance_name]["btime"] = timelimit - parsing_time + simplification_time + heur_time
         runsum["results"][instance_name]["ctime"] = timelimit - parsing_time + simplification_time + heur_time
         runsum["results"][instance_name]["time"] = timelimit
+
+        if content.partition("Warm start:")[2].partition(".\n")[0] == "Y":
+            if "Updated best solution - Cost:" in content:
+                runsum["results"][instance_name]["wscost"] = int(content.partition("Updated best solution - Cost:")[2].partition(".\n")[0])
         
         if "Reached time limit while parsing the instance file." in content:
             count_btl_parsing += 1
