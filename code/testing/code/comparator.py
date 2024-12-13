@@ -1,5 +1,7 @@
 # ONLY FOR CLUSTER USE
 
+# TODO: Redo with the new json summary of the run
+
 import sys
 sys.dont_write_bytecode = True
 
