@@ -91,6 +91,12 @@ add_library(
     include/rankooh_model.hpp
 )
 
+add_library(
+    DYNAMIC_model
+    src/dynamic_model.cpp
+    include/dynamic_model.hpp
+)
+
 find_library(CPLEX_LIBRARY
     NAMES cplex
     PATHS ${CPLEX_DIR}
@@ -114,6 +120,7 @@ target_link_libraries(
     HPLUS_algorithms
     IMAI_model
     RANKOOH_model
+    DYNAMIC_model
     ${CPLEX_LIBRARY}
     Threads::Threads
     dl

@@ -275,6 +275,16 @@ namespace my {
         for (int i = 0; str[i] != '\0'; i++) {
 
             token[k++] = str[i];
+            
+            // Check if the next character forms %%
+            if (str[i] == '%' && str[i + 1] == '%') {
+                // Print a single '%' and skip the second '%'
+                fprintf(error ? stderr : stdout, "%%");
+                if (print_log) fprintf(log_file, "%%");
+                i++; // Skip the second '%'
+                k = 0; // Reset token index
+                continue;
+            }
 
             if (str[i + 1] == '%' || str[i + 1] == '\0') {
 

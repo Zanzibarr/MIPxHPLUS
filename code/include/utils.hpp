@@ -46,12 +46,14 @@
 
 #define HPLUS_CLI_ALG_IMAI              "imai"
 #define HPLUS_CLI_ALG_RANKOOH           "rankooh"
+#define HPLUS_CLI_ALG_DYNAMIC           "dynamic"
 #define HPLUS_CLI_ALG_GREEDY            "greedy"
 
 #define HPLUS_CLI_OPT_NO_SIMPL          "-nos"
 #define HPLUS_CLI_OPT_IMAI_NO_TB        "-notb"
 #define HPLUS_CLI_OPT_NO_HEUR           "-noheur"
 #define HPLUS_CLI_OPT_NO_WARM_START     "-nowarm"
+#define HPLUS_CLI_CUT_SIMPLE_CYCLES     "-noccut"
 
 // ##################################################################### //
 // ########################### DEFAULT VALUES ########################## //
@@ -67,6 +69,9 @@
 #define HPLUS_DEF_IMAI_VAR_BOUND_ENABLED true
 #define HPLUS_DEF_HEURISTIC_ENABLED true
 #define HPLUS_DEF_WARM_START_ENABLED true
+#define HPLUS_DEF_CUT_CYCLES true
+
+#define HPLUS_CPX_INT_ROUNDING 0.5
 
 // ##################################################################### //
 // ####################### PRINTING AND DEBUGGING ###################### //

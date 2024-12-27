@@ -12,8 +12,6 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp) {
     const auto& fixed_actions = HPLUS_inst.get_fixed_actions();
     const auto& eliminated_fa = HPLUS_inst.get_eliminated_fa();
     const auto& fixed_fa = HPLUS_inst.get_fixed_fa();
-    const auto& timestamps_var = HPLUS_inst.get_timestamps_var();
-    const auto& timestamps_act = HPLUS_inst.get_timestamps_act();
 
     const auto n_var_presim = HPLUS_inst.get_n_var();
     const auto n_var = HPLUS_inst.get_n_var(true);
@@ -382,13 +380,11 @@ void HPLUS_cpx_post_warmstart_rankooh(CPXENVptr& env, CPXLPptr& lp) {
     for (auto act_i : warm_start) {
         cpx_sol_ind[nnz] = HPLUS_inst.act_idx_post_simplification(act_i);
         cpx_sol_val[nnz++] = 1;
-        for (auto var_i : actions[act_i].get_eff_sparse()) if (remaining_variables[var_i]) {
+        for (auto var_i : actions[act_i].get_eff_sparse()) if (remaining_variables[var_i] && !current_state[var_i]) {
             cpx_sol_ind[nnz] = nact + nact * nvar + HPLUS_inst.var_idx_post_simplification(var_i);
             cpx_sol_val[nnz++] = 1;
-            if (!current_state[var_i]) {
-                cpx_sol_ind[nnz] = nact + HPLUS_inst.fa_idx_post_simplification(act_i, var_i);
-                cpx_sol_val[nnz++] = 1;
-            }
+            cpx_sol_ind[nnz] = nact + HPLUS_inst.fa_idx_post_simplification(act_i, var_i);
+            cpx_sol_val[nnz++] = 1;
             current_state.add(var_i);
         }
     }
@@ -403,6 +399,7 @@ void HPLUS_store_rankooh_sol(const CPXENVptr& env, const CPXLPptr& lp) {
 
     const size_t n_var = HPLUS_inst.get_n_var(true);
     const size_t n_act = HPLUS_inst.get_n_act(true);
+
     double* plan = new double[n_act + n_act * n_var];
     my::assert(!CPXgetx(env, lp, plan, 0, n_act + n_act * n_var - 1), "CPXgetx failed.");
     

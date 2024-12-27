@@ -21,6 +21,7 @@ void HPLUS_start() {
     HPLUS_env.imai_tighter_var_bound_enabled = HPLUS_DEF_IMAI_VAR_BOUND_ENABLED;
     HPLUS_env.heuristic_enabled = HPLUS_DEF_HEURISTIC_ENABLED;
     HPLUS_env.warm_start_enabled = HPLUS_DEF_WARM_START_ENABLED;
+    HPLUS_env.cycle_cuts_enabled = HPLUS_DEF_CUT_CYCLES;
     HPLUS_env.time_limit = HPLUS_DEF_TIME_LIMIT;
 
     HPLUS_stats.parsing_time = 0;
@@ -70,6 +71,7 @@ void HPLUS_show_info() {
     if (HPLUS_env.alg == HPLUS_CLI_ALG_IMAI) mylog.print("Tighter bounds on variable timestamps: %10s.", HPLUS_env.imai_tighter_var_bound_enabled ? "Y" : "N");
     if (HPLUS_env.alg != HPLUS_CLI_ALG_GREEDY) mylog.print("Heuristic:                             %10s.", HPLUS_env.heuristic_enabled ? "Y" : "N");
     if (HPLUS_env.alg != HPLUS_CLI_ALG_GREEDY) mylog.print("Warm start:                            %10s.", HPLUS_env.warm_start_enabled ? "Y" : "N");
+    if (HPLUS_env.alg == HPLUS_CLI_ALG_DYNAMIC) mylog.print("Cycle cuts:                            %10s.", HPLUS_env.cycle_cuts_enabled ? "Y" : "N");
     mylog.print("Time limit:                           %10ds.", HPLUS_env.time_limit);
     mylog.print(LINE);
 
@@ -102,6 +104,7 @@ void HPLUS_parse_cli(const int argc, const char** argv) {
         else if (std::string(argv[i]) == HPLUS_CLI_OPT_IMAI_NO_TB) HPLUS_env.imai_tighter_var_bound_enabled = false;
         else if (std::string(argv[i]) == HPLUS_CLI_OPT_NO_HEUR) HPLUS_env.heuristic_enabled = false;
         else if (std::string(argv[i]) == HPLUS_CLI_OPT_NO_WARM_START) HPLUS_env.warm_start_enabled = false;
+        else if (std::string(argv[i]) == HPLUS_CLI_CUT_SIMPLE_CYCLES) HPLUS_env.cycle_cuts_enabled = false;
         else if (std::string(argv[i]) == HPLUS_CLI_TIME_LIMIT) { my::assert(my::isint(argv[i+1]), "The time limit must be an integer."); HPLUS_env.time_limit = atoi(argv[++i]); }
 
         else unknown_args.push_back(argv[i]);

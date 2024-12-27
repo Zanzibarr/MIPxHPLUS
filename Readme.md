@@ -72,11 +72,13 @@ make <target_option>
 - **-a** <algorithm_name> : (string) (optional) specify the algorithm to use (default: rankooh)
   - **imai** : to use the model from the [Imai15 paper](references/Imai15.pdf)
   - **rankooh** : to use the model from the [Rankooh22 paper](references/Rankooh22.pdf)
+  - **dynamic** : to use a dynamic model (preconditions & effects + dinamically added cuts)
   - **greedy** : to use a greedy algorithm (at each step, choose the action with the lowest cost per relevant variable)
 - **-nos**: (optional) don't perform problem simplification
 - **-notb**: (optional) don't use tighter timestamps bounds (only for imai)
 - **-noheur**: (optional) don't look for an heuristic solution (this flag doesn't work for the greedy algorithm)
 - **-nowarm**: (optional) don't use an heuristic solution as warm start (this flag doesn't work for the greedy algorithm)
+- **-noccut**: (optional) don't use the cycle cuts (this flag works only for the dynamic algorithm)
 - **-t** \<int> : (int) (optional) specify the time limit (in seconds) (default: 60)
 
 #### Logging

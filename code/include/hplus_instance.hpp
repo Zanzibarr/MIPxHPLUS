@@ -163,6 +163,7 @@ extern struct HPLUS_environment {
     bool imai_tighter_var_bound_enabled;
     bool heuristic_enabled;
     bool warm_start_enabled;
+    bool cycle_cuts_enabled;
 
     unsigned int time_limit;
 

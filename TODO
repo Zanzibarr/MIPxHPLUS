@@ -1,8 +1,5 @@
-- TODO: Test warm start for Imai
-- TODO: Test warm start for Rankooh
+- TODO: Add more cuts to the dynamic model
 - TODO: Test if tighter bounds is better on variables timestamps or on sum of all actions selected (the second one can be used on Rankooh too)
-- TODO: Find why I can't use CPX_MIPSTART_NOCHECK in imai warmstart
-
 
 - TODO: Make it scale better with size of instance
 - TODO: Better handling of time limit exiting

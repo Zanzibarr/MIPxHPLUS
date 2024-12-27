@@ -3,6 +3,7 @@
 
 #include "imai_model.hpp"
 #include "rankooh_model.hpp"
+#include "dynamic_model.hpp"
 
 void HPLUS_run();
 
