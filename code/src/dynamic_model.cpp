@@ -53,7 +53,7 @@ static int CPXPUBLIC HPLUS_cpx_candidate_callback(CPXCALLBACKCONTEXTptr context,
         double lower_bound = CPX_INFBOUND; my::assert(!CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_BND, &lower_bound), "CPXcallbackgetinfodbl(CPXCALLBACKINFO_BEST_BND) failed.");
         double incumbent = CPX_INFBOUND; my::assert(!CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_SOL, &incumbent), "CPXcallbackgetinfodbl(CPXCALLBACKINFO_BEST_SOL) failed.");
         double gap = (1 - lower_bound/incumbent) * 100;
-        mylog.print_info("Pruned infeasible solution - cost : %7d - gap : %6.2f%%.", int(cost), gap);
+        mylog.print_info("Pruned infeasible solution - cost : %7d - incumbent : %d - gap : %6.2f%%.", (int)cost, (int)incumbent, gap);
     }
     #endif
 

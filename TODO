@@ -1,5 +1,21 @@
-- TODO: Add more cuts to the dynamic model
+DYNAMIC MODEL:
+- TODO: Add cycle cuts to the model
+- TODO: Find new constraints to add
+
+IMAI MODEL:
+- TODO: Test tighter bounds usefulness
 - TODO: Test if tighter bounds is better on variables timestamps or on sum of all actions selected (the second one can be used on Rankooh too)
 
+ALL MODELS:
+- TODO: Fix inverse actions constraint
+
+HEURISTIC:
+- TODO: Improve heuristic
+- TODO: Try relaxing the model and find a way to reconstruct a feasible plan as an heuristic
+
+TESTING:
+- TODO: Comparator among json files of runs
+
+EFFICIENCY / MEMORY LEAKS:
 - TODO: Make it scale better with size of instance
 - TODO: Better handling of time limit exiting
