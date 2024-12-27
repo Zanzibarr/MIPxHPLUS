@@ -21,7 +21,7 @@ instances_list = os.listdir(instances_folder)
 random.shuffle(instances_list)
 n_batches = (len(instances_list)//batch_size) + 1
 
-algs = ["imai", "rankooh", "greedy"]
+algs = ["imai", "rankooh", "greedy", "dynamic"]
 
 for alg in algs:
 
