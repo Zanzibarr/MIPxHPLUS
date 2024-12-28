@@ -4,8 +4,8 @@ static int CPXPUBLIC HPLUS_cpx_candidate_callback(CPXCALLBACKCONTEXTptr context,
 
     if (context_id != CPX_CALLBACKCONTEXT_CANDIDATE) mylog.raise_error("Wrong callback context called.");
 
-    size_t n_act = HPLUS_inst.get_n_act(true);
-    size_t n_var = HPLUS_inst.get_n_var(false);
+    const size_t n_act = HPLUS_inst.get_n_act(true);
+    const size_t n_var = HPLUS_inst.get_n_var(false);
     const auto& actions = HPLUS_inst.get_actions();
     const auto& remaining_variables = HPLUS_inst.get_remaining_variables();
 
@@ -21,7 +21,7 @@ static int CPXPUBLIC HPLUS_cpx_candidate_callback(CPXCALLBACKCONTEXTptr context,
         if (xstar[act_i_cpx] < HPLUS_CPX_INT_ROUNDING) actions_unused.push_back(act_i_cpx);
         else actions_used.push_back(act_i_cpx);
     }
-    delete[] xstar;
+    delete[] xstar; xstar = nullptr;
 
     // split used actions among reachable and unreachable
     std::vector<size_t> actions_reachable;
@@ -61,7 +61,7 @@ static int CPXPUBLIC HPLUS_cpx_candidate_callback(CPXCALLBACKCONTEXTptr context,
     my::binary_set reachability_gap(n_var);
     for (auto act_i_cpx : actions_unreachable) reachability_gap |= actions[HPLUS_inst.cpx_idx_to_act_idx(act_i_cpx)].get_pre();
     for (auto act_i_cpx : actions_reachable) reachability_gap -= actions[HPLUS_inst.cpx_idx_to_act_idx(act_i_cpx)].get_eff();
-    reachability_gap &= HPLUS_inst.get_remaining_variables();
+    reachability_gap &= remaining_variables;
 
     // actions to be forced
     std::vector<size_t> forced_actions;
@@ -88,8 +88,8 @@ static int CPXPUBLIC HPLUS_cpx_candidate_callback(CPXCALLBACKCONTEXTptr context,
 
     my::assert(!CPXcallbackrejectcandidate(context, 1, nnz, &rhs, &sense, &izero, ind, val), "CPXcalbackrejectcandidate failed");
 
-    delete[] val;
-    delete[] ind;
+    delete[] val; val = nullptr;
+    delete[] ind; ind = nullptr;
 
     // TODO: Look for loops and create new constraint (loops require external actions)
 
@@ -218,6 +218,9 @@ void HPLUS_cpx_build_dynamic(CPXENVptr& env, CPXLPptr& lp) {
         my::assert(!CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &begin, ind, val, nullptr, nullptr), "CPXaddrows(newc) failed.");
     }
 
+    delete[] val; val = nullptr;
+    delete[] ind; ind = nullptr;
+
     // Adding the callback function
     my::assert(!CPXcallbacksetfunc(env, lp, CPX_CALLBACKCONTEXT_CANDIDATE, HPLUS_cpx_candidate_callback, NULL), "CPXcallbacksetfunc failed.");
 
@@ -285,7 +288,7 @@ void HPLUS_store_dynamic_sol(const CPXENVptr& env, const CPXLPptr& lp) {
     my::binary_set sol_rem_actions(n_act);
     for (size_t act_i_cpx = 0; act_i_cpx < HPLUS_inst.get_n_act(true); act_i_cpx++) if (plan[act_i_cpx] > HPLUS_CPX_INT_ROUNDING) sol_rem_actions.add(HPLUS_inst.cpx_idx_to_act_idx(act_i_cpx));
 
-    delete[] plan;
+    delete[] plan; plan = nullptr;
 
     std::vector<size_t> solution;
     const auto& actions = HPLUS_inst.get_actions();
