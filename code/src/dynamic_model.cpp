@@ -260,12 +260,8 @@ void HPLUS_cpx_post_warmstart_dynamic(CPXENVptr& env, CPXLPptr& lp) {
     size_t nnz = 0;
 
     for (auto act_i : warm_start) {
-        // cpx_sol_ind[nnz] = HPLUS_inst.act_idx_post_simplification(act_i);
-        // cpx_sol_val[nnz++] = 1;
         cpx_sol_val[HPLUS_inst.act_idx_post_simplification(act_i)] = 1;
         for (auto var_i : actions[act_i].get_eff_sparse()) if (remaining_variables[var_i] && !current_state[var_i]) {
-            // cpx_sol_ind[nnz] = nact + HPLUS_inst.var_idx_post_simplification(var_i);
-            // cpx_sol_val[nnz++] = 1;
             cpx_sol_val[nact + HPLUS_inst.var_idx_post_simplification(var_i)] = 1;
             current_state.add(var_i);
         }
@@ -283,7 +279,7 @@ void HPLUS_store_dynamic_sol(const CPXENVptr& env, const CPXLPptr& lp) {
     const size_t n_act = HPLUS_inst.get_n_act(false);
 
     double* plan = new double[HPLUS_inst.get_n_act(true)];
-    my::assert(!CPXgetx(env, lp, plan, 0, HPLUS_inst.get_n_act(true)), "CPXgetx failed.");
+    my::assert(!CPXgetx(env, lp, plan, 0, HPLUS_inst.get_n_act(true)-1), "CPXgetx failed.");
 
     my::binary_set sol_rem_actions(n_act);
     for (size_t act_i_cpx = 0; act_i_cpx < HPLUS_inst.get_n_act(true); act_i_cpx++) if (plan[act_i_cpx] > HPLUS_CPX_INT_ROUNDING) sol_rem_actions.add(HPLUS_inst.cpx_idx_to_act_idx(act_i_cpx));
