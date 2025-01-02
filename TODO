@@ -13,9 +13,6 @@ HEURISTIC:
 - TODO: Improve heuristic
 - TODO: Try relaxing the model and find a way to reconstruct a feasible plan as an heuristic
 
-TESTING:
-- TODO: Comparator among json files of runs
-
 EFFICIENCY / MEMORY LEAKS:
 - TODO: Make it scale better with size of instance
 - TODO: Better handling of time limit exiting
