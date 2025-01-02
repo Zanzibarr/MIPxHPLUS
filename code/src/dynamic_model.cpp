@@ -12,7 +12,7 @@ static int CPXPUBLIC HPLUS_cpx_candidate_callback(CPXCALLBACKCONTEXTptr context,
     // get candidate point
     double* xstar = new double[n_act];
     double cost = CPX_INFBOUND;
-    my::assert(!CPXcallbackgetcandidatepoint(context, xstar, 0, n_act, &cost), "CPXcallbackgetcandidatepoint failed.");
+    my::assert(!CPXcallbackgetcandidatepoint(context, xstar, 0, n_act-1, &cost), "CPXcallbackgetcandidatepoint failed.");
 
     // split actions among used and unused
     std::vector<size_t> actions_used;

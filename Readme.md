@@ -40,7 +40,7 @@ make <target_option>
 
 ### CMake flags
 
-- **-DVERBOSE=**\<verbose_option> : set the verbose option (default: 1)
+- **-DVERBOSE=**\<verbose_option> : set the verbose option (default: 5)
   - = **0** : no output
   - < **5** : just solution
   - \>= **5** : view time statistics

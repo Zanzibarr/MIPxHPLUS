@@ -78,7 +78,7 @@
 // ##################################################################### //
 
 #ifndef HPLUS_VERBOSE
-#define HPLUS_VERBOSE 10                            // overwritten by cmake
+#define HPLUS_VERBOSE 5                            // overwritten by cmake
 #endif
 #ifndef HPLUS_WARN
 #define HPLUS_WARN 1                                // overwritten by cmake

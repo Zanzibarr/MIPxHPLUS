@@ -20,7 +20,7 @@ set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3")
 set(CMAKE_CXX_FLAGS_DEBUG "-Og -ggdb")
 
 # Verbosity, warnings, and integrity checks
-set(VERBOSE "1" CACHE STRING "Verbose setting set from command line")
+set(VERBOSE "5" CACHE STRING "Verbose setting set from command line")
 message(STATUS "VERBOSE is set to ${VERBOSE}")
 set(WARN "1" CACHE STRING "Flag to enable warning messages")
 message(STATUS "WARN is set to ${WARN}")
