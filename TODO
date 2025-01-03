@@ -5,9 +5,10 @@ DYNAMIC MODEL:
 IMAI MODEL:
 - TODO: Test tighter bounds usefulness
 - TODO: Test if tighter bounds is better on variables timestamps or on sum of all actions selected (the second one can be used on Rankooh too)
+- FIXME: Why with heuristic an instance generates a wrong optimal????
 
 ALL MODELS:
-- TODO: Fix inverse actions constraint
+- FIXME: Fix inverse actions constraint
 
 HEURISTIC:
 - TODO: Improve heuristic
@@ -15,4 +16,4 @@ HEURISTIC:
 
 EFFICIENCY / MEMORY LEAKS:
 - TODO: Make it scale better with size of instance
-- TODO: Better handling of time limit exiting
+- FIXME: Better handling of time limit exiting
