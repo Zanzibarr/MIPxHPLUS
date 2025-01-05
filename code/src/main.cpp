@@ -21,7 +21,6 @@ void HPLUS_start() {
     HPLUS_env.imai_tighter_var_bound_enabled = HPLUS_DEF_IMAI_VAR_BOUND_ENABLED;
     HPLUS_env.heuristic_enabled = HPLUS_DEF_HEURISTIC_ENABLED;
     HPLUS_env.warm_start_enabled = HPLUS_DEF_WARM_START_ENABLED;
-    HPLUS_env.cycle_cuts_enabled = HPLUS_DEF_CUT_CYCLES;
     HPLUS_env.time_limit = HPLUS_DEF_TIME_LIMIT;
 
     HPLUS_stats.parsing_time = 0;
@@ -29,6 +28,7 @@ void HPLUS_start() {
     HPLUS_stats.heuristic_time = 0;
     HPLUS_stats.build_time = 0;
     HPLUS_stats.execution_time = 0;
+    HPLUS_stats.callback_time = 0;
     HPLUS_stats.total_time = 0;
 
 }
@@ -42,7 +42,7 @@ void HPLUS_show_info() {
     mylog.print(LINE);
 
     std::time_t time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-    mylog.print("%sCode version: 02/01/25.\n%s", std::ctime(&time), LINE);          // TODO: Update each time the code is updated
+    mylog.print("%sCode version: 05/01/25.\n%s", std::ctime(&time), LINE);          // TODO: Update each time the code is updated
     mylog.print("Input file: %s.", HPLUS_env.input_file.c_str());
     if (HPLUS_env.log && !HPLUS_env.log_name.empty()) mylog.print("Log name: %s.", HPLUS_env.log_name.c_str());
     if (!HPLUS_env.run_name.empty()) mylog.print("Run name: %s.", HPLUS_env.run_name.c_str());
@@ -64,17 +64,11 @@ void HPLUS_show_info() {
 
     mylog.print(LINE);
 
-    #if HPLUS_INTCHECK
-    mylog.print("Integrity checks enabled.");
-    mylog.print(LINE);
-    #endif
-
     mylog.print("Algorithm:                             %10s.", HPLUS_env.alg.c_str());
     mylog.print("Problem simplification:                %10s.", HPLUS_env.problem_simplification_enabled ? "Y" : "N");
     if (HPLUS_env.alg == HPLUS_CLI_ALG_IMAI) mylog.print("Tighter bounds on variable timestamps: %10s.", HPLUS_env.imai_tighter_var_bound_enabled ? "Y" : "N");
     if (HPLUS_env.alg != HPLUS_CLI_ALG_GREEDY) mylog.print("Heuristic:                             %10s.", HPLUS_env.heuristic_enabled ? "Y" : "N");
     if (HPLUS_env.alg != HPLUS_CLI_ALG_GREEDY) mylog.print("Warm start:                            %10s.", HPLUS_env.warm_start_enabled ? "Y" : "N");
-    if (HPLUS_env.alg == HPLUS_CLI_ALG_DYNAMIC) mylog.print("Cycle cuts:                            %10s.", HPLUS_env.cycle_cuts_enabled ? "Y" : "N");
     mylog.print("Time limit:                           %10ds.", HPLUS_env.time_limit);
     mylog.print(LINE);
 
@@ -107,7 +101,6 @@ void HPLUS_parse_cli(const int argc, const char** argv) {
         else if (std::string(argv[i]) == HPLUS_CLI_OPT_IMAI_NO_TB) HPLUS_env.imai_tighter_var_bound_enabled = false;
         else if (std::string(argv[i]) == HPLUS_CLI_OPT_NO_HEUR) HPLUS_env.heuristic_enabled = false;
         else if (std::string(argv[i]) == HPLUS_CLI_OPT_NO_WARM_START) HPLUS_env.warm_start_enabled = false;
-        else if (std::string(argv[i]) == HPLUS_CLI_CUT_SIMPLE_CYCLES) HPLUS_env.cycle_cuts_enabled = false;
         else if (std::string(argv[i]) == HPLUS_CLI_TIME_LIMIT) { my::assert(my::isint(argv[i+1]), "The time limit must be an integer."); HPLUS_env.time_limit = atoi(argv[++i]); }
 
         else unknown_args.push_back(argv[i]);
@@ -205,6 +198,7 @@ int main(const int argc, const char** argv) {
 
     signal(SIGINT, signal_callback_handler);
     pthread_mutex_init(&exit_mutex, nullptr);
+    pthread_mutex_init(&(HPLUS_stats.callback_time_mutex_), nullptr);
     HPLUS_start();
     HPLUS_parse_cli(argc, argv);
     std::chrono::seconds time_limit(HPLUS_env.time_limit);

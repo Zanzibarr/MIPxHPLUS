@@ -21,8 +21,6 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp) {
     // ================= VERTEX ELIMINATION ================= //
     // ====================================================== //
 
-    // mylog.print_info("Vertex elimination from Rankooh's paper.");
-
     struct Node {
         size_t deg, id;
         Node(size_t i, size_t d) : deg(d), id(i) {}
@@ -145,8 +143,6 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp) {
     // =================== CPLEX VARIABLES ================== //
     // ====================================================== //
 
-    // mylog.print_info("Adding variables to CPLEX.");
-
     size_t curr_col = 0;
     double* objs = new double[n_act];
     double* lbs = new double[n_act];
@@ -249,8 +245,6 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp) {
     // ================== CPLEX CONSTRAINTS ================= //
     // ====================================================== //
 
-    // mylog.print_info("Adding constraints to CPLEX.");
-
     // accessing cplex variables
     auto get_act_idx = [act_start](size_t idx) { return act_start + HPLUS_inst.act_idx_post_simplification(idx); };
     auto get_var_idx = [var_start](size_t idx) { return var_start + HPLUS_inst.var_idx_post_simplification(idx); };
@@ -349,8 +343,6 @@ void HPLUS_cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp) {
 
     // my::assert(!CPXwriteprob(env, lp, (HPLUS_CPLEX_OUT_DIR"/lp/"+HPLUS_env.run_name+".lp").c_str(), "LP"), "CPXwriteprob failed.");
 
-    // mylog.print_info("Created CPLEX lp for rankooh.");
-
 }
 
 void HPLUS_cpx_post_warmstart_rankooh(CPXENVptr& env, CPXLPptr& lp) {
@@ -404,18 +396,18 @@ void HPLUS_store_rankooh_sol(const CPXENVptr& env, const CPXLPptr& lp) {
     my::assert(!CPXgetx(env, lp, plan, 0, n_act + n_act * n_var - 1), "CPXgetx failed.");
     
     // fixing the solution to read the plan (some actions are set to 1 even if they are not a first archiever of anything)
-    for (size_t act_i = 0, fadd_i = n_act; act_i < n_act; act_i++, fadd_i += n_var) {
+    for (size_t act_i_cpx = 0, fadd_i = n_act; act_i_cpx < n_act; act_i_cpx++, fadd_i += n_var) {
         bool set_zero = true;
-        for (size_t var_i = 0; var_i < n_var; var_i++) {
-            if (plan[fadd_i + var_i] > 0.5) {
+        for (size_t var_i_cpx = 0; var_i_cpx < n_var; var_i_cpx++) {
+            if (plan[fadd_i + var_i_cpx] > HPLUS_CPX_INT_ROUNDING) {
                 #if HPLUS_INTCHECK
-                my::assert(plan[act_i] > 0.5, "Action is set to 0 even if it's a first archiever.");
+                my::assert(plan[act_i_cpx] > HPLUS_CPX_INT_ROUNDING, "Action is set to 0 even if it's a first archiever.");
                 #endif
                 set_zero = false;
                 break;
             }
         }
-        if (set_zero) plan[act_i] = 0;
+        if (set_zero) plan[act_i_cpx] = 0;
     }
 
     // convert to std collections for easier parsing

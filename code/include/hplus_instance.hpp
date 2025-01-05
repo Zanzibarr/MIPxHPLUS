@@ -89,6 +89,9 @@ extern class HPLUS_instance {
         const std::vector<int> get_timestamps_var() const;
         const std::vector<int> get_timestamps_act() const;
 
+        void store_cycle(std::vector<size_t>& cycle);
+        const std::vector<std::vector<size_t>>& get_cycles() const;
+
         size_t var_idx_post_simplification(size_t var_idx) const;
         size_t act_idx_post_simplification(size_t act_idx) const;
         size_t fa_idx_post_simplification(size_t act_idx, size_t var_idx) const;
@@ -125,6 +128,8 @@ extern class HPLUS_instance {
         std::vector<size_t> act_idx_post_simplification_;
         std::vector<size_t> fa_individual_start_;
         std::vector<size_t> cpx_idx_to_act_idx_;
+
+        std::vector<std::vector<size_t>> dynamic_model_cycles_;
 
         pthread_mutex_t solution_read_write_;
 
@@ -163,7 +168,6 @@ extern struct HPLUS_environment {
     bool imai_tighter_var_bound_enabled;
     bool heuristic_enabled;
     bool warm_start_enabled;
-    bool cycle_cuts_enabled;
 
     unsigned int time_limit;
 
@@ -179,8 +183,11 @@ extern struct HPLUS_statistics {
     double simplification_time;
     double heuristic_time;
     double build_time;
+    double callback_time;
     double execution_time;
     double total_time;
+
+    pthread_mutex_t callback_time_mutex_;
 
     void print() const;
 

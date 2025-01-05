@@ -22,6 +22,7 @@ void HPLUS_statistics::print() const {
     mylog.print(" >>  Heuristic time                %10.3fs  <<", this -> heuristic_time);
     mylog.print(" >>  Model building time           %10.3fs  <<", this -> build_time);
     mylog.print(" >>  CPLEX execution time          %10.3fs  <<", this -> execution_time);
+    if (HPLUS_env.alg == HPLUS_CLI_ALG_DYNAMIC) mylog.print(" >>  CPLEX callback time           %10.3fs  <<", this -> callback_time);
     mylog.print(" >>  Total time                    %10.3fs  <<", this -> total_time);
     mylog.print("\n\n");
 
@@ -196,6 +197,10 @@ const std::vector<my::binary_set>& HPLUS_instance::get_fixed_fa() const { return
 const std::vector<int> HPLUS_instance::get_timestamps_var() const { return this -> timestamps_var_; }
 
 const std::vector<int> HPLUS_instance::get_timestamps_act() const { return this -> timestamps_act_; }
+
+void HPLUS_instance::store_cycle(std::vector<size_t>& cycle) { this -> dynamic_model_cycles_.push_back(std::vector<size_t>(cycle)); }
+
+const std::vector<std::vector<size_t>>& HPLUS_instance::get_cycles() const { return this -> dynamic_model_cycles_; }
 
 size_t HPLUS_instance::var_idx_post_simplification(size_t var_idx) const { return this -> var_idx_post_simplification_[var_idx]; }
 

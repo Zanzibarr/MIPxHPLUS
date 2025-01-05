@@ -48,8 +48,6 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp) {
     // ====================================================== //
     // (section 3 of Imai's paper)
 
-    // mylog.print_info("Adding variables to CPLEX.");
-
     size_t curr_col = 0;
 
     double* objs = new double[n_act];
@@ -197,8 +195,6 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp) {
         nnz_c3[HPLUS_inst.var_idx_post_simplification(i)]++;
     }
     
-    // mylog.print_info("Adding constraints to CPLEX.");
-
     const auto& remaining_var_set = HPLUS_inst.get_remaining_variables();
 
     for (auto act_i : remaining_actions) {
@@ -258,8 +254,6 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp) {
     delete[] ind_c1; ind_c1 = nullptr;
 
     // my::assert(!CPXwriteprob(env, lp, (HPLUS_CPLEX_OUT_DIR"/lp/"+HPLUS_env.run_name+".lp").c_str(), "LP"), "CPXwriteprob failed.");
-
-    // mylog.print_info("Created CPLEX lp for imai.");
 
 }
 
@@ -322,7 +316,7 @@ void HPLUS_store_imai_sol(const CPXENVptr& env, const CPXLPptr& lp) {
 
     // convert to std collections for easier parsing
     std::vector<std::pair<double, size_t>> cpx_result;
-    for (size_t i = 0; i < nact; i++) if (plan[i] > .5) cpx_result.emplace_back(plan[nact+i], i);
+    for (size_t i = 0; i < nact; i++) if (plan[i] > HPLUS_CPX_INT_ROUNDING) cpx_result.emplace_back(plan[nact+i], i);
     delete[] plan; plan = nullptr;
 
     // sort cpx_result based on actions timestamps

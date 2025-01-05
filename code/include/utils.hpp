@@ -53,7 +53,6 @@
 #define HPLUS_CLI_OPT_IMAI_NO_TB        "-notb"
 #define HPLUS_CLI_OPT_NO_HEUR           "-noheur"
 #define HPLUS_CLI_OPT_NO_WARM_START     "-nowarm"
-#define HPLUS_CLI_CUT_SIMPLE_CYCLES     "-noccut"
 
 // ##################################################################### //
 // ########################### DEFAULT VALUES ########################## //

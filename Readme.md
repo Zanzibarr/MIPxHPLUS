@@ -78,7 +78,6 @@ make <target_option>
 - **-notb**: (optional) don't use tighter timestamps bounds (only for imai)
 - **-noheur**: (optional) don't look for an heuristic solution (this flag doesn't work for the greedy algorithm)
 - **-nowarm**: (optional) don't use an heuristic solution as warm start (this flag doesn't work for the greedy algorithm)
-- **-noccut**: (optional) don't use the cycle cuts (this flag works only for the dynamic algorithm)
 - **-t** \<int> : (int) (optional) specify the time limit (in seconds) (default: 60)
 
 #### Logging
