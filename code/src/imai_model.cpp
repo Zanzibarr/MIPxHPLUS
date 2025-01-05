@@ -198,6 +198,7 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp) {
     const auto& remaining_var_set = HPLUS_inst.get_remaining_variables();
 
     for (auto act_i : remaining_actions) {
+        const auto& inverse_actions = HPLUS_inst.get_inverse_actions(act_i);
         const auto& pre = actions[act_i].get_pre() & remaining_var_set;
         for (auto var_i : pre) {
             // constraint 1: x_a + sum_{inv(a, p)}(z_a'vj) <= y_vj, vj in pre(a)
@@ -206,13 +207,11 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp) {
             ind_c1[1] = get_var_idx(var_i);
             val_c1[1] = -1;
             int nnz0 = 2;
-            // (section 4.6 of Imai's paper)        //[ ]: This might not be worth doing
-            // if (inverse_actions.find(act_i) != inverse_actions.end()) {
-            //     for (auto inv_act : inverse_actions[act_i]) if (actions[inv_act].get_eff()[var_i]) {
-            //         ind_c1[nnz0] = get_fa_idx(inv_act, var_i);
-            //         val_c1[nnz0++] = 1;
-            //     }
-            // }
+            // (section 4.6 of Imai's paper)
+            for (size_t i = 0; i < inverse_actions.size(); i++) if (actions[inverse_actions[i]].get_eff()[var_i]) {
+                ind_c1[nnz0] = get_fa_idx(inverse_actions[i], var_i);
+                val_c1[nnz0++] = 1;
+            }
             my::assert(!CPXaddrows(env, lp, 0, 1, nnz0, &rhs_c1_2_4, &sensel, &begin, ind_c1, val_c1, nullptr, nullptr), "CPXaddrows (c1) failed.");
             // constraint 4: t_vj <= t_a, vj in pre(a)
             ind_c2_4[0] = get_tvar_idx(var_i);

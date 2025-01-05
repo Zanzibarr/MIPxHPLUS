@@ -1,14 +1,10 @@
 DYNAMIC MODEL:
-- TODO: Add cycle cuts to the model
-- TODO: Find new constraints to add
+- TODO: Find new cuts to add
 
 IMAI MODEL:
 - TODO: Test tighter bounds usefulness
 - TODO: Test if tighter bounds is better on variables timestamps or on sum of all actions selected (the second one can be used on Rankooh too)
 - FIXME: Why with heuristic an instance generates a wrong optimal????
-
-ALL MODELS:
-- FIXME: Fix inverse actions constraint
 
 HEURISTIC:
 - TODO: Improve heuristic

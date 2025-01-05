@@ -50,6 +50,8 @@ HPLUS_instance::HPLUS_instance(const std::string& instance_file) {
     this -> timestamps_var_ = std::vector<int>(this -> n_var_, -1);
     this -> timestamps_act_ = std::vector<int>(this -> n_act_, -1);
 
+    this -> inverse_act_ = std::vector<std::vector<size_t>>(n_act_, std::vector<size_t>());
+
     this -> var_idx_post_simplification_ = std::vector<size_t>(this -> n_var_);
     for (size_t var_i = 0; var_i < this -> n_var_; var_i++) this -> var_idx_post_simplification_[var_i] = var_i;
     this -> act_idx_post_simplification_ = std::vector<size_t>(this -> n_act_);
@@ -197,6 +199,8 @@ const std::vector<my::binary_set>& HPLUS_instance::get_fixed_fa() const { return
 const std::vector<int> HPLUS_instance::get_timestamps_var() const { return this -> timestamps_var_; }
 
 const std::vector<int> HPLUS_instance::get_timestamps_act() const { return this -> timestamps_act_; }
+
+const std::vector<size_t>& HPLUS_instance::get_inverse_actions(const size_t act_i) const { return this -> inverse_act_[act_i]; }
 
 void HPLUS_instance::store_cycle(std::vector<size_t>& cycle) { this -> dynamic_model_cycles_.push_back(std::vector<size_t>(cycle)); }
 
@@ -459,36 +463,30 @@ void HPLUS_instance::immediate_action_application(const my::binary_set& act_land
 
 }
 
-// void HPLUS_instance::inverse_actions_extraction(const my::binary_set& eliminated_actions, const my::binary_set& fixed_actions, std::map<size_t, std::vector<size_t>>& inverse_actions) const {
+void HPLUS_instance::inverse_actions_extraction() {
 
-//     #if HPLUS_VERBOSE >= 20
-//     mylog.print_info("(debug) Extracting inverse actions.");
-//     #endif
+    #if HPLUS_VERBOSE >= 20
+    mylog.print_info("(debug) Extracting inverse actions.");
+    #endif
 
-//     my::subset_searcher subset_finder = my::subset_searcher();
+    my::subset_searcher subset_finder = my::subset_searcher();
 
-//     // find efficiently all actions that satisfy point 2) of the Definition 1 in section 4.6 of Imai's paper
-//     auto remaining_actions = (!eliminated_actions).sparse();
-//     for (auto act_i : remaining_actions) subset_finder.add(act_i, this -> actions_[act_i].get_eff());
+    // find efficiently all actions that satisfy point 2) of the Definition 1 in section 4.6 of Imai's paper
+    const auto remaining_actions = this -> get_remaining_actions().sparse();
+    for (auto act_i : remaining_actions) subset_finder.add(act_i, this -> actions_[act_i].get_eff());
 
-//     for (auto act_i : !eliminated_actions) {
-//         const auto& pre = this -> actions_[act_i].get_pre();
-//         const auto& eff = this -> actions_[act_i].get_eff();
-//         for (auto act_j : subset_finder.find_subsets(pre)) {
-//             if (this -> actions_[act_j].get_pre().contains(eff)) {
-//                 if (!fixed_actions[act_i]) {
-//                     inverse_actions.try_emplace(act_i, std::vector<size_t>());
-//                     inverse_actions[act_i].push_back(act_j);
-//                 }
-//                 if (!fixed_actions[act_j]) {
-//                     inverse_actions.try_emplace(act_j, std::vector<size_t>());
-//                     inverse_actions[act_j].push_back(act_i);
-//                 }
-//             }
-//         }
-//     }
+    for (auto act_i : remaining_actions) {
+        const auto& pre = this -> actions_[act_i].get_pre();
+        const auto& eff = this -> actions_[act_i].get_eff();
+        for (auto act_j : subset_finder.find_subsets(pre)) {
+            if (this -> actions_[act_j].get_pre().contains(eff)) {
+                if (!this -> get_fixed_actions()[act_i]) this -> inverse_act_[act_i].push_back(act_j);
+                if (!this -> get_fixed_actions()[act_j]) this -> inverse_act_[act_j].push_back(act_i);
+            }
+        }
+    }
 
-// }
+}
 
 void HPLUS_instance::imai_model_enhancements() {
 
@@ -514,8 +512,7 @@ void HPLUS_instance::imai_model_enhancements() {
 
     this -> immediate_action_application(act_landmarks);
 
-    //[ ]: This might not be worth doing (and might be wrong)
-    // if (inverse_actions != nullptr) this -> inverse_actions_extraction(eliminated_actions, this -> fixed_actions, *inverse_actions);
+    if (HPLUS_env.alg != HPLUS_CLI_ALG_RANKOOH && HPLUS_env.alg != HPLUS_CLI_ALG_GREEDY) this -> inverse_actions_extraction();
 
 }
 

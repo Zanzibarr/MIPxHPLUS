@@ -82,6 +82,7 @@ static int CPXPUBLIC HPLUS_cpx_candidate_callback(CPXCALLBACKCONTEXTptr context,
         if (xstar[act_i_cpx] < HPLUS_CPX_INT_ROUNDING) actions_unused.push_back(act_i_cpx);
         else actions_used.push_back(act_i_cpx);
     }
+    delete[] xstar; xstar = nullptr;
 
     // split used actions among reachable and unreachable
     std::vector<size_t> actions_reachable;
@@ -105,10 +106,7 @@ static int CPXPUBLIC HPLUS_cpx_candidate_callback(CPXCALLBACKCONTEXTptr context,
     } while(loop);
 
     // solution is feasible
-    if (actions_unreachable.empty()) {
-        delete[] xstar; xstar = nullptr;
-        return 0;
-    }
+    if (actions_unreachable.empty()) return 0;
 
     #if HPLUS_VERBOSE >= 20
     double lower_bound = CPX_INFBOUND; my::assert(!CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_BND, &lower_bound), "CPXcallbackgetinfodbl(CPXCALLBACKINFO_BEST_BND) failed.");
@@ -181,7 +179,7 @@ static int CPXPUBLIC HPLUS_cpx_candidate_callback(CPXCALLBACKCONTEXTptr context,
             }
         }
 
-        // cannot ALL be selected (at least one must come from outside the cycle)
+        // cannot have all selected (at least one must come from outside the cycle)
         rhs = nnz - 1;
 
         my::assert(!CPXcallbackrejectcandidate(context, 1, nnz, &rhs, &sense_l, &izero, ind, val), "CPXcalbackrejectcandidate failed");
@@ -190,7 +188,6 @@ static int CPXPUBLIC HPLUS_cpx_candidate_callback(CPXCALLBACKCONTEXTptr context,
 
     delete[] val; val = nullptr;
     delete[] ind; ind = nullptr;
-    delete[] xstar; xstar = nullptr;
 
     pthread_mutex_lock(&(HPLUS_stats.callback_time_mutex_));
     HPLUS_stats.callback_time += timer.get_time() - start_time;
@@ -315,7 +312,7 @@ void HPLUS_cpx_build_dynamic(CPXENVptr& env, CPXLPptr& lp) {
     double* val = new double[n_act + 1];
     int nnz = 0;
     const char sense_l = 'L', sense_e = 'E';
-    const double rhs_0 = 0;
+    const double rhs_0 = 0, rhs_1 = 1;
     const int begin = 0;
 
     // precompute list of actions that have a specific variable as effect (some sort of hashing)
@@ -350,6 +347,20 @@ void HPLUS_cpx_build_dynamic(CPXENVptr& env, CPXLPptr& lp) {
             }
             my::assert(!CPXaddrows(env, lp, 0, 1, nnz, &rhs_0, &sense_l, &begin, ind, val, nullptr, nullptr), "CPXaddwors (c3) failed.");
         }
+    }
+
+    // inverse actions constraint
+    for (auto act_i : remaining_actions) {
+        const auto& inverse_actions = HPLUS_inst.get_inverse_actions(act_i);
+        if (inverse_actions.empty()) continue;
+        nnz = 0;
+        ind[nnz] = get_act_idx(act_i);
+        val[nnz++] = 1;
+        for (auto act_j : inverse_actions) {
+            ind[nnz] = get_act_idx(act_j);
+            val[nnz++] = 1.0 / inverse_actions.size();
+        }
+        my::assert(!CPXaddrows(env, lp, 0, 1, nnz, &rhs_1, &sense_l, &begin, ind, val, nullptr, nullptr), "CPXaddwors (c3) failed.");
     }
 
     delete[] val; val = nullptr;

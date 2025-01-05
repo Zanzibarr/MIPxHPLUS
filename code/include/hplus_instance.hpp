@@ -88,6 +88,7 @@ extern class HPLUS_instance {
         const std::vector<my::binary_set>& get_fixed_fa() const;
         const std::vector<int> get_timestamps_var() const;
         const std::vector<int> get_timestamps_act() const;
+        const std::vector<size_t>& get_inverse_actions(const size_t act_i) const;
 
         void store_cycle(std::vector<size_t>& cycle);
         const std::vector<std::vector<size_t>>& get_cycles() const;
@@ -122,7 +123,7 @@ extern class HPLUS_instance {
         std::vector<my::binary_set> fixed_fa_;
         std::vector<int> timestamps_var_;
         std::vector<int> timestamps_act_;
-        // std::map<size_t, std::vector<size_t>>& inverse_act_;
+        std::vector<std::vector<size_t>> inverse_act_;
 
         std::vector<size_t> var_idx_post_simplification_;
         std::vector<size_t> act_idx_post_simplification_;
@@ -138,8 +139,7 @@ extern class HPLUS_instance {
         void relevance_analysis(const my::binary_set& fact_landmarks, const std::vector<my::binary_set>& fadd);
         void dominated_actions_elimination(const std::vector<my::binary_set>& landmarks_set, const std::vector<my::binary_set>& fadd);
         void immediate_action_application(const my::binary_set& act_landmarks);
-        //[ ]: This might not be worth doing
-        // void inverse_actions_extraction();
+        void inverse_actions_extraction();
         void imai_model_enhancements();
 
         void parse_inst_file_(const std::string& instance_path_);
