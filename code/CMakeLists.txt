@@ -92,9 +92,15 @@ add_library(
 )
 
 add_library(
-    DYNAMIC_model
-    src/dynamic_model.cpp
-    include/dynamic_model.hpp
+    DYNAMIC_SMALL_model
+    src/dynamic_model_small.cpp
+    include/dynamic_model_small.hpp
+)
+
+add_library(
+    DYNAMIC_LARGE_model
+    src/dynamic_model_large.cpp
+    include/dynamic_model_large.hpp
 )
 
 find_library(CPLEX_LIBRARY
@@ -120,7 +126,8 @@ target_link_libraries(
     HPLUS_algorithms
     IMAI_model
     RANKOOH_model
-    DYNAMIC_model
+    DYNAMIC_SMALL_model
+    DYNAMIC_LARGE_model
     ${CPLEX_LIBRARY}
     Threads::Threads
     dl

@@ -186,7 +186,8 @@ void HPLUS_run() {
     if (
         HPLUS_env.alg != HPLUS_CLI_ALG_IMAI &&
         HPLUS_env.alg != HPLUS_CLI_ALG_RANKOOH && 
-        HPLUS_env.alg != HPLUS_CLI_ALG_DYNAMIC &&
+        HPLUS_env.alg != HPLUS_CLI_ALG_DYNAMIC_SMALL &&
+        HPLUS_env.alg != HPLUS_CLI_ALG_DYNAMIC_LARGE &&
         HPLUS_env.alg != HPLUS_CLI_ALG_GREEDY 
     ) mylog.raise_error("The algorithm specified (%s) is not on the list of possible algorithms... Please read the README.md for instructions.", HPLUS_env.alg.c_str());
 
@@ -244,7 +245,8 @@ void HPLUS_run() {
 
     if (HPLUS_env.alg == HPLUS_CLI_ALG_IMAI) HPLUS_cpx_build_imai(env, lp);
     else if (HPLUS_env.alg == HPLUS_CLI_ALG_RANKOOH) HPLUS_cpx_build_rankooh(env, lp);
-    else if (HPLUS_env.alg == HPLUS_CLI_ALG_DYNAMIC) HPLUS_cpx_build_dynamic(env, lp);
+    else if (HPLUS_env.alg == HPLUS_CLI_ALG_DYNAMIC_SMALL) HPLUS_cpx_build_dynamic_small(env, lp);
+    else if (HPLUS_env.alg == HPLUS_CLI_ALG_DYNAMIC_LARGE) HPLUS_cpx_build_dynamic_large(env, lp);
 
     // time limit
     if ((double)HPLUS_env.time_limit > timer.get_time()) my::assert(!CPXsetdblparam(env, CPXPARAM_TimeLimit, (double)HPLUS_env.time_limit - timer.get_time()), "CPXsetdblparam (CPXPARAM_TimeLimit) failed.");
@@ -254,7 +256,8 @@ void HPLUS_run() {
 
         if (HPLUS_env.alg == HPLUS_CLI_ALG_IMAI) HPLUS_cpx_post_warmstart_imai(env, lp);
         else if (HPLUS_env.alg == HPLUS_CLI_ALG_RANKOOH) HPLUS_cpx_post_warmstart_rankooh(env, lp);
-        else if (HPLUS_env.alg == HPLUS_CLI_ALG_DYNAMIC) HPLUS_cpx_post_warmstart_dynamic(env, lp);
+        else if (HPLUS_env.alg == HPLUS_CLI_ALG_DYNAMIC_SMALL) HPLUS_cpx_post_warmstart_dynamic_small(env, lp);
+        else if (HPLUS_env.alg == HPLUS_CLI_ALG_DYNAMIC_LARGE) HPLUS_cpx_post_warmstart_dynamic_large(env, lp);
 
     }
 
@@ -273,7 +276,8 @@ void HPLUS_run() {
     if (HPLUS_parse_cplex_status(env, lp)) {        // If CPLEX has found a solution
         if (HPLUS_env.alg == HPLUS_CLI_ALG_IMAI) HPLUS_store_imai_sol(env, lp);
         else if (HPLUS_env.alg == HPLUS_CLI_ALG_RANKOOH) HPLUS_store_rankooh_sol(env, lp);
-        else if (HPLUS_env.alg == HPLUS_CLI_ALG_DYNAMIC) HPLUS_store_dynamic_sol(env, lp);
+        else if (HPLUS_env.alg == HPLUS_CLI_ALG_DYNAMIC_SMALL) HPLUS_store_dynamic_small_sol(env, lp);
+        else if (HPLUS_env.alg == HPLUS_CLI_ALG_DYNAMIC_LARGE) HPLUS_store_dynamic_large_sol(env, lp);
     }
 
     HPLUS_cpx_close(env, lp);

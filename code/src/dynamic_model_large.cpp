@@ -1,42 +1,4 @@
-#include "../include/dynamic_model.hpp"
-
-// straight from Johnson's paper
-void unblock(size_t u, std::vector<bool>& blocked, std::vector<std::set<size_t>>& block_map) {
-
-    blocked[u] = false;
-    for (int w : block_map[u]) if (blocked[w]) unblock(w, blocked, block_map);
-    block_map[u].clear();
-
-}
-
-// straight from Johnson's paper
-bool circuit(size_t v, size_t start, std::vector<std::vector<size_t>>& graph, std::vector<bool>& blocked, std::vector<std::set<size_t>>& block_map, std::stack<size_t>& path, std::vector<std::vector<size_t>>& cycles) {
-
-    bool found_cycle = false;
-    path.push(v);
-    blocked[v] = true;
-    for (auto w : graph[v]) {
-        if (w == start) {
-            // found a cycle
-            std::stack<size_t> copy = path;
-            std::vector<size_t> cycle;
-            while (!copy.empty()) {
-                cycle.push_back(copy.top());
-                copy.pop();
-            }
-            std::reverse(cycle.begin(), cycle.end());
-            cycles.push_back(cycle);
-            found_cycle = true;
-        } else if (!blocked[w] && circuit(w, start, graph, blocked, block_map, path, cycles)) found_cycle = true;
-    }
-
-    if (found_cycle) unblock(v, blocked, block_map);
-    else for (auto w : graph[v]) block_map[w].insert(v);
-
-    path.pop();
-    return found_cycle;
-
-}
+#include "../include/dynamic_model_large.hpp"
 
 static int CPXPUBLIC HPLUS_cpx_candidate_callback(CPXCALLBACKCONTEXTptr context, CPXLONG context_id, void* user_handle) {
 
@@ -109,10 +71,13 @@ static int CPXPUBLIC HPLUS_cpx_candidate_callback(CPXCALLBACKCONTEXTptr context,
     if (actions_unreachable.empty()) return 0;
 
     #if HPLUS_VERBOSE >= 20
-    double lower_bound = CPX_INFBOUND; my::assert(!CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_BND, &lower_bound), "CPXcallbackgetinfodbl(CPXCALLBACKINFO_BEST_BND) failed.");
-    double incumbent = CPX_INFBOUND; my::assert(!CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_SOL, &incumbent), "CPXcallbackgetinfodbl(CPXCALLBACKINFO_BEST_SOL) failed.");
-    double gap = (1 - lower_bound/incumbent) * 100;
-    mylog.print_info("Pruned infeasible solution - cost : %7d - incumbent : %d - gap : %6.2f%%.", (int)cost, (int)incumbent, gap);
+    int itcount = 0; my::assert(!CPXcallbackgetinfoint(context, CPXCALLBACKINFO_ITCOUNT, &itcount), "CPXcallbackgetinfoint(CPXCALLBACKINFO_ITCOUNT) failed.");
+    if (itcount % 100 == 0) {
+        double lower_bound = CPX_INFBOUND; my::assert(!CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_BND, &lower_bound), "CPXcallbackgetinfodbl(CPXCALLBACKINFO_BEST_BND) failed.");
+        double incumbent = CPX_INFBOUND; my::assert(!CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_SOL, &incumbent), "CPXcallbackgetinfodbl(CPXCALLBACKINFO_BEST_SOL) failed.");
+        double gap = (1 - lower_bound/incumbent) * 100;
+        mylog.print_info("Pruned infeasible solution - cost : %7d - incumbent : %d - gap : %6.2f%%.", (int)cost, (int)incumbent, gap);
+    }
     #endif
 
     std::vector<std::vector<size_t>> act_with_pre(n_var);
@@ -136,7 +101,7 @@ static int CPXPUBLIC HPLUS_cpx_candidate_callback(CPXCALLBACKCONTEXTptr context,
         for (size_t u = act_i_cpx; u < n; u++) for (auto v : graph[u]) if (v >= act_i_cpx) subgraph[u].push_back(v);
 
         // run circuit function to find all cycles starting at "act_i_cpx"
-        circuit(act_i_cpx, act_i_cpx, subgraph, blocked, bock_map, path, cycles);
+        my::circuit(act_i_cpx, act_i_cpx, subgraph, blocked, bock_map, path, cycles);
 
         // remove act_i_cpx vertex from the graph
         for (size_t u = 0; u < n; u++) graph[u].erase(act_i_cpx);
@@ -167,14 +132,14 @@ static int CPXPUBLIC HPLUS_cpx_candidate_callback(CPXCALLBACKCONTEXTptr context,
         for (size_t i = 0; i < cycle.size() - 1; i++) {
             for (auto var_i_cpx : cpx_var_archieved[cycle[i]]) {
                 if (actions[HPLUS_inst.cpx_idx_to_act_idx(cycle[i+1])].get_pre()[var_idx_presim[var_i_cpx]]) {
-                    ind[nnz] = n_act + cycle[i] * n_var + var_i_cpx;
+                    ind[nnz] = n_act + cycle[i] * n_var + var_i_cpx;                        // variable associated to that first archiever
                     val[nnz++] = 1;
                 }
             }
         }
         for (auto var_i_cpx : cpx_var_archieved[cycle[cycle.size() - 1]]) {
             if (actions[HPLUS_inst.cpx_idx_to_act_idx(cycle[0])].get_pre()[var_idx_presim[var_i_cpx]]) {
-                ind[nnz] = n_act + cycle[cycle.size() - 1] * n_var + var_i_cpx;
+                ind[nnz] = n_act + cycle[cycle.size() - 1] * n_var + var_i_cpx;             // variable associated to that first archiever
                 val[nnz++] = 1;
             }
         }
@@ -182,6 +147,7 @@ static int CPXPUBLIC HPLUS_cpx_candidate_callback(CPXCALLBACKCONTEXTptr context,
         // cannot have all selected (at least one must come from outside the cycle)
         rhs = nnz - 1;
 
+        // TODO: try insthead of forcing a first archiever to be removed, to force an outside first archiever going into a variable in the cycle: 1/size(gamma) * sum_{a\in gamma}(xa) <= sum_{fa\in{first archievers of variables in the cycle}}(x_fa)
         my::assert(!CPXcallbackrejectcandidate(context, 1, nnz, &rhs, &sense_l, &izero, ind, val), "CPXcalbackrejectcandidate failed");
 
     }
@@ -197,7 +163,7 @@ static int CPXPUBLIC HPLUS_cpx_candidate_callback(CPXCALLBACKCONTEXTptr context,
 
 }
 
-void HPLUS_cpx_build_dynamic(CPXENVptr& env, CPXLPptr& lp) {
+void HPLUS_cpx_build_dynamic_large(CPXENVptr& env, CPXLPptr& lp) {
 
     const auto& actions = HPLUS_inst.get_actions();
 
@@ -386,7 +352,7 @@ void HPLUS_cpx_build_dynamic(CPXENVptr& env, CPXLPptr& lp) {
 
 }
 
-void HPLUS_cpx_post_warmstart_dynamic(CPXENVptr& env, CPXLPptr& lp) {
+void HPLUS_cpx_post_warmstart_dynamic_large(CPXENVptr& env, CPXLPptr& lp) {
     
     #if HPLUS_INTCHECK
     my::assert(HPLUS_env.sol_status != my::solution_status::INFEAS && HPLUS_env.sol_status != my::solution_status::NOTFOUND, "Warm start failed.");
@@ -428,7 +394,7 @@ void HPLUS_cpx_post_warmstart_dynamic(CPXENVptr& env, CPXLPptr& lp) {
 
 }
 
-void HPLUS_store_dynamic_sol(const CPXENVptr& env, const CPXLPptr& lp) {
+void HPLUS_store_dynamic_large_sol(const CPXENVptr& env, const CPXLPptr& lp) {
 
     const size_t n_var = HPLUS_inst.get_n_var(true);
     const size_t n_act = HPLUS_inst.get_n_act(true);

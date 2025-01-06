@@ -42,7 +42,7 @@ void HPLUS_show_info() {
     mylog.print(LINE);
 
     std::time_t time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-    mylog.print("%sCode version: 05/01/25.\n%s", std::ctime(&time), LINE);          // TODO: Update each time the code is updated
+    mylog.print("%sCode version: 06/01/25.\n%s", std::ctime(&time), LINE);          // TODO: Update each time the code is updated
     mylog.print("Input file: %s.", HPLUS_env.input_file.c_str());
     if (HPLUS_env.log && !HPLUS_env.log_name.empty()) mylog.print("Log name: %s.", HPLUS_env.log_name.c_str());
     if (!HPLUS_env.run_name.empty()) mylog.print("Run name: %s.", HPLUS_env.run_name.c_str());

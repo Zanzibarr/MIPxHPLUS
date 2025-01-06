@@ -15,6 +15,7 @@
 #include <vector>
 #include <list>
 #include <set>
+#include <stack>
 #include <map>
 #include <queue>
 #include <tuple>
@@ -46,7 +47,8 @@
 
 #define HPLUS_CLI_ALG_IMAI              "imai"
 #define HPLUS_CLI_ALG_RANKOOH           "rankooh"
-#define HPLUS_CLI_ALG_DYNAMIC           "dynamic"
+#define HPLUS_CLI_ALG_DYNAMIC_SMALL     "dynamic-s"
+#define HPLUS_CLI_ALG_DYNAMIC_LARGE     "dynamic-l"
 #define HPLUS_CLI_ALG_GREEDY            "greedy"
 
 #define HPLUS_CLI_OPT_NO_SIMPL          "-nos"
@@ -221,6 +223,8 @@ namespace my {
     std::vector<std::string> split_string(const std::string& str, char del);
     void assert(bool condition, const std::string& msg);
     bool isint(const std::string& str, const int from = INT_MIN, const int to = INT_MAX);
+    void unblock(size_t u, std::vector<bool>& blocked, std::vector<std::set<size_t>>& block_map);
+    bool circuit(size_t v, size_t start, std::vector<std::vector<size_t>>& graph, std::vector<bool>& blocked, std::vector<std::set<size_t>>& block_map, std::stack<size_t>& path, std::vector<std::vector<size_t>>& cycles);
     void todo(const std::string& msg);
     void pause(const std::string msg);
 

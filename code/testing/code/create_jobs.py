@@ -21,7 +21,7 @@ instances_list = os.listdir(instances_folder)
 random.shuffle(instances_list)
 n_batches = (len(instances_list)//batch_size) + 1
 
-algs = ["imai", "rankooh", "greedy", "dynamic"]
+algs = ["imai", "rankooh", "greedy", "dynamic-s", "dynamic-l"]
 
 for alg in algs:
 
@@ -64,7 +64,7 @@ ulimit -v 16777216
 
 #####################
 
-{utils.build_dir}/main -a {alg} -noheur -notb -l -ln {inst.replace('.sas', f'_{alg}')}.log -rn {inst.replace('.sas', f'_{alg}')} -t {time_limit} -i \"{inst_path}\"
+{utils.build_dir}/main -a {alg} -notb -l -ln {inst.replace('.sas', f'_{alg}')}.log -rn {inst.replace('.sas', f'_{alg}')} -t {time_limit} -i \"{inst_path}\"
 
 #####################
 

@@ -22,7 +22,7 @@ void HPLUS_statistics::print() const {
     mylog.print(" >>  Heuristic time                %10.3fs  <<", this -> heuristic_time);
     mylog.print(" >>  Model building time           %10.3fs  <<", this -> build_time);
     mylog.print(" >>  CPLEX execution time          %10.3fs  <<", this -> execution_time);
-    if (HPLUS_env.alg == HPLUS_CLI_ALG_DYNAMIC) mylog.print(" >>  CPLEX callback time           %10.3fs  <<", this -> callback_time);
+    if (HPLUS_env.alg == HPLUS_CLI_ALG_DYNAMIC_SMALL || HPLUS_env.alg == HPLUS_CLI_ALG_DYNAMIC_LARGE) mylog.print(" >>  CPLEX callback time           %10.3fs  <<", this -> callback_time);
     mylog.print(" >>  Total time                    %10.3fs  <<", this -> total_time);
     mylog.print("\n\n");
 

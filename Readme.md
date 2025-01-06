@@ -72,7 +72,8 @@ make <target_option>
 - **-a** <algorithm_name> : (string) (optional) specify the algorithm to use (default: rankooh)
   - **imai** : to use the model from the [Imai15 paper](references/Imai15.pdf)
   - **rankooh** : to use the model from the [Rankooh22 paper](references/Rankooh22.pdf)
-  - **dynamic** : to use a dynamic model (preconditions & effects + dinamically added cuts)
+  - **dynamic-s** : to use a dynamic model (small version) (preconditions & effects + dinamically added cuts)
+  - **dynamic-l** : to use a dynamic model (bigger version) (preconditions & effects w. first archievers + dinamically added cuts)
   - **greedy** : to use a greedy algorithm (at each step, choose the action with the lowest cost per relevant variable)
 - **-nos**: (optional) don't perform problem simplification
 - **-notb**: (optional) don't use tighter timestamps bounds (only for imai)

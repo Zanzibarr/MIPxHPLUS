@@ -546,6 +546,44 @@ namespace my {
 
     }
 
+    // straight from Johnson's paper
+    void unblock(size_t u, std::vector<bool>& blocked, std::vector<std::set<size_t>>& block_map) {
+
+        blocked[u] = false;
+        for (int w : block_map[u]) if (blocked[w]) unblock(w, blocked, block_map);
+        block_map[u].clear();
+
+    }
+
+    // straight from Johnson's paper
+    bool circuit(size_t v, size_t start, std::vector<std::vector<size_t>>& graph, std::vector<bool>& blocked, std::vector<std::set<size_t>>& block_map, std::stack<size_t>& path, std::vector<std::vector<size_t>>& cycles) {
+
+        bool found_cycle = false;
+        path.push(v);
+        blocked[v] = true;
+        for (auto w : graph[v]) {
+            if (w == start) {
+                // found a cycle
+                std::stack<size_t> copy = path;
+                std::vector<size_t> cycle;
+                while (!copy.empty()) {
+                    cycle.push_back(copy.top());
+                    copy.pop();
+                }
+                std::reverse(cycle.begin(), cycle.end());
+                cycles.push_back(cycle);
+                found_cycle = true;
+            } else if (!blocked[w] && circuit(w, start, graph, blocked, block_map, path, cycles)) found_cycle = true;
+        }
+
+        if (found_cycle) unblock(v, blocked, block_map);
+        else for (auto w : graph[v]) block_map[w].insert(v);
+
+        path.pop();
+        return found_cycle;
+
+    }
+
     void todo(const std::string& msg) { mylog.raise_error("%s: UNIMPLEMENTED.", msg.c_str()); }
 
     void pause(const std::string message) {
