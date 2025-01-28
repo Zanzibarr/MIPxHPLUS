@@ -83,7 +83,6 @@ const my::binary_set& HPLUS_instance::get_goal_state() const { return this -> go
 
 void HPLUS_instance::update_best_sol(const std::vector<size_t>& solution, const unsigned int cost) {
 
-    #if HPLUS_INTCHECK
     my::binary_set dbcheck = my::binary_set(this -> n_act_);
     unsigned int costcheck = 0;
     my::assert(solution.size() <= this -> n_act_, "Solution has more actions that there actually exists.");             // check that there aren't more actions that there exists
@@ -98,7 +97,6 @@ void HPLUS_instance::update_best_sol(const std::vector<size_t>& solution, const 
     }
     my::assert(feas_checker.contains(this -> goal_state_), "The solution doesn't lead to the final state.");            // check if the solution leads to the goal state
     my::assert(costcheck == cost, "Declared cost is different from calculated one.");                                   // check if the cost is the declared one
-    #endif
 
     pthread_mutex_lock(&(this -> solution_read_write_));
 
