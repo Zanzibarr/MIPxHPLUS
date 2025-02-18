@@ -75,108 +75,100 @@ bool HPLUS_parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp) {
 // ############################# EXECUTION ############################# //
 // ##################################################################### //
 
-//[ ]: Better heuristic
-void HPLUS_find_heuristic() {
+// std::vector<size_t> heur_solution;
+// unsigned int heur_cost = 0;
+void greedy_heur_cost(std::vector<size_t>& heur_solution, unsigned int& heur_cost) {
+
+    // TODO
+
+}
+
+void greedy_heur_costxeff(std::vector<size_t>& heur_solution, unsigned int& heur_cost) {
+
+    // TODO
+
+}
+
+void rand_heur(std::vector<size_t>& heur_solution, unsigned int& heur_cost) {
 
     const auto& actions = HPLUS_inst.get_actions();
-    my::binary_set priority_rem_actions = HPLUS_inst.get_fixed_actions();
-    my::binary_set remaining_actions = HPLUS_inst.get_remaining_actions() & !priority_rem_actions;
-    const auto& remaining_variables = HPLUS_inst.get_remaining_variables();
+    my::binary_set remaining_actions(HPLUS_inst.get_n_act(), true);
 
-    my::binary_set current_state(HPLUS_inst.get_n_var());
-
-    // prepare the set of feasible actions given the current_state
-    my::subset_searcher feasible_actions = my::subset_searcher();
-    for (auto act_i : remaining_actions) feasible_actions.add(act_i, actions[act_i].get_pre());
-
-    // list of actions that have as precondition variable p
-    std::vector<std::vector<size_t>> n_act_with_pre(HPLUS_inst.get_n_var());
-    for (auto var_i : remaining_variables) for (auto act_i : remaining_actions) if (actions[act_i].get_pre()[var_i]) n_act_with_pre[var_i].push_back(act_i);
-
-    // greedy idea: choose the next action as the one that makes me pay the less per (relevant) variable added to the current state
-    auto find_best_act = [&n_act_with_pre, &remaining_actions, &remaining_variables, &feasible_actions, &actions](const my::binary_set& current_state) {
-
-        // only actions that can be executed from the current state
-        const auto& cand_actions = feasible_actions.find_subsets(current_state);
-
-        // check if the problem is infeasible
-        bool infeas = true;
-        for (auto act_i : cand_actions) if (remaining_actions[act_i]) { infeas = false; break; }
-        if (infeas) return -1;
-
-        int best_act = -1;
-        double best_cost_per_eff = INFINITY;
-
-        for (auto act_i : cand_actions) if (remaining_actions[act_i]) {
-            int n_eff = 0, n_new_act = 0;
-            my::binary_set counted_new_actions = my::binary_set(actions.size());
-            for (auto var_i : actions[act_i].get_eff_sparse()) if (!current_state[var_i] && remaining_variables[var_i]) {
-                n_eff++;
-                for (auto act_j : n_act_with_pre[var_i]) if (remaining_actions[act_j] && !counted_new_actions[act_j]) {
-                    n_new_act++;
-                    counted_new_actions.add(act_j);
-                }
-            }
-            if (n_eff == 0) continue;           // actions that have no useful effects can be skipped (if there are no useful effects that can be added, the current state will never move on --> Infeasible --> We should have already detected that)
-            double cost_per_eff = actions[act_i].get_cost() * ((double)HPLUS_inst.get_n_var(true) / n_eff + ((double)HPLUS_inst.get_n_act(true)) / (n_new_act == 0 ? 1 : n_new_act));
-            if (cost_per_eff <= best_cost_per_eff) {
-                best_act = act_i;
-                best_cost_per_eff = cost_per_eff;
-            }
-        }
-
-        #if HPLUS_INTCHECK
-        my::assert(best_act != -1, "Error in finding best action for heuristic.");      // if no action found we have an error -> we already proved it's not infeasible, so we must have an action to use
-        #endif
-
-        return best_act;
-
-    };
-
-    std::vector<size_t> heur_solution;
-    unsigned int heur_cost = 0;
-
-    int priority_act_count = 0;
-    for (auto _ : priority_rem_actions) priority_act_count++;
-    const auto& goal_state = HPLUS_inst.get_goal_state();
-
-    while (!current_state.contains(goal_state)) {
-
-        int best_act_i = -1;
-
-        if (priority_act_count > 0) for (auto act_i : priority_rem_actions) {       // actions that were fixed by the problem simplification are gonna be added to the plan as soon as we can, since we know that at least one optimal solution will include them
-            if (current_state.contains(actions[act_i].get_pre())) {
-                priority_act_count--;
-                current_state |= actions[act_i].get_eff();
+    heur_cost = 0;
+    
+    // TODO: Optimize
+    my::binary_set state(HPLUS_inst.get_n_var());
+    while (!(state.contains(HPLUS_inst.get_goal_state()))) {
+        for (auto act_i : remaining_actions) {
+            if (state.contains(actions[act_i].get_pre())) {
                 heur_solution.push_back(act_i);
                 heur_cost += actions[act_i].get_cost();
-                priority_rem_actions.remove(act_i);
-                best_act_i = act_i;
+                remaining_actions.remove(act_i);
+                state |= actions[act_i].get_eff();
             }
         }
-
-        if (best_act_i >= 0) continue;      // if I used an action among the fixed ones, the current state changed and another one may be used next, so go back and look again
-        // otherwise seek for the next one among the rest of them
-
-        best_act_i = find_best_act(current_state);
-        if (best_act_i == -1) {
-            HPLUS_env.sol_status = my::solution_status::INFEAS;
-            return;
-        }
-        
-        current_state |= actions[best_act_i].get_eff();
-        heur_solution.push_back(best_act_i);
-        heur_cost += actions[best_act_i].get_cost();
-        remaining_actions.remove(best_act_i);
-
+        mylog.print_info("%d", heur_solution.size());
     }
+
+}
+
+void rand_heur_repeat(std::vector<size_t>& heur_solution, unsigned int& heur_cost) {
     
-    #if HPLUS_INTCHECK
-    my::assert(priority_act_count == 0, "Error in finding heuristic.");
-    #endif
+    // TODO: Choose on CLI
+    size_t repetitions = 10;
+    std::vector<size_t> random_solution[repetitions];
+    unsigned int random_costs[repetitions];
+
+    // TODO: Threads
+    for (size_t i = 0; i < repetitions; i++) rand_heur(random_solution[i], random_costs[i]);
+
+    size_t best_sol = 0;
+    unsigned int best_cost = random_costs[0];
+    for (size_t i = 1; i < repetitions; i++) if (random_costs[i] < best_cost) {
+        best_sol = i;
+        best_cost = random_costs[i];
+    }
+
+    heur_solution = random_solution[best_sol];
+    heur_cost = best_cost;
+
+}
+
+void hmax_heur(std::vector<size_t>& heur_solution, unsigned int& heur_cost) {
+
+    // TODO
+
+}
+
+void hadd_heur(std::vector<size_t>& heur_solution, unsigned int& heur_cost) {
+
+    // TODO
+
+}
+
+void linrel_heur(std::vector<size_t>& heur_solution, unsigned int& heur_cost) {
+
+    // TODO
+
+}
+
+void local_search_heur(void (*initial_heur_function)(std::vector<size_t>&, unsigned int&), std::vector<size_t>& heur_solution, unsigned int& heur_cost) {
+
+    initial_heur_function(heur_solution, heur_cost);
+
+    // TODO
+
+}
+
+void HPLUS_find_heuristic() {
+
+    std::vector<size_t> heur_solution;
+    unsigned int heur_cost;
+
+    rand_heur(heur_solution, heur_cost);
+    if (HPLUS_env.sol_status == my::solution_status::INFEAS) return;
 
     HPLUS_inst.update_best_sol(heur_solution, heur_cost);
-
     HPLUS_env.sol_status = my::solution_status::FEAS;
 
 }

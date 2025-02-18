@@ -49,13 +49,14 @@ HPLUS_instance::HPLUS_instance(const std::string& instance_file) {
     this -> fixed_fa_ = std::vector<my::binary_set>(this -> n_act_, my::binary_set(this -> n_var_));
     this -> timestamps_var_ = std::vector<int>(this -> n_var_, -1);
     this -> timestamps_act_ = std::vector<int>(this -> n_act_, -1);
-
     this -> inverse_act_ = std::vector<std::vector<size_t>>(n_act_, std::vector<size_t>());
 
     this -> var_idx_post_simplification_ = std::vector<size_t>(this -> n_var_);
     for (size_t var_i = 0; var_i < this -> n_var_; var_i++) this -> var_idx_post_simplification_[var_i] = var_i;
     this -> act_idx_post_simplification_ = std::vector<size_t>(this -> n_act_);
     for (size_t act_i = 0; act_i < this -> n_act_; act_i++) this -> act_idx_post_simplification_[act_i] = act_i;
+    this -> fa_individual_start_ = std::vector<size_t>(this -> n_act_);
+    for (size_t act_i = 0; act_i < this -> n_act_post_simpl_; act_i++) this -> fa_individual_start_[act_i] = act_i * this -> n_var_;
     this -> cpx_idx_to_act_idx_ = std::vector<size_t>(this -> n_act_);
     for (size_t act_i = 0; act_i < this -> n_act_; act_i++) this -> cpx_idx_to_act_idx_[act_i] = act_i;
 
@@ -199,10 +200,6 @@ const std::vector<int> HPLUS_instance::get_timestamps_var() const { return this 
 const std::vector<int> HPLUS_instance::get_timestamps_act() const { return this -> timestamps_act_; }
 
 const std::vector<size_t>& HPLUS_instance::get_inverse_actions(const size_t act_i) const { return this -> inverse_act_[act_i]; }
-
-void HPLUS_instance::store_cycle(std::vector<size_t>& cycle) { this -> dynamic_model_cycles_.push_back(std::vector<size_t>(cycle)); }
-
-const std::vector<std::vector<size_t>>& HPLUS_instance::get_cycles() const { return this -> dynamic_model_cycles_; }
 
 size_t HPLUS_instance::var_idx_post_simplification(size_t var_idx) const { return this -> var_idx_post_simplification_[var_idx]; }
 
@@ -561,7 +558,7 @@ void HPLUS_instance::parse_inst_file_(const std::string& instance_path_) {
         size_t range = stoi(line);
         var_ranges[var_i] = range;
         this -> n_var_ += range;
-        for (size_t j = 0; j < range; j++) std::getline(ifs, line);   // name for variable value (ignored)
+        for (size_t _ = 0; _ < range; _++) std::getline(ifs, line);   // name for variable value (ignored)
         std::getline(ifs, line);   // end_variable
         my::assert(line == "end_variable", "Corrupted file.");
     }
@@ -620,7 +617,7 @@ void HPLUS_instance::parse_inst_file_(const std::string& instance_path_) {
         my::assert(my::isint(tokens[1], 0, var_ranges[var] - 1), "Corrupted file."); // variable goal
         size_t value = stoi(tokens[1]);
         size_t var_strips = value;
-        for (size_t j = 0; j < var; var_strips +=var_ranges[j], j++) {}
+        for (size_t _ = 0; _ < var; var_strips += var_ranges[_], _++) {}
         if (!istate[var_strips]) this -> goal_state_.add(var_strips - post_istate_removal_offset[var_strips]);
     }
     std::getline(ifs, line);   // end_goal
@@ -642,7 +639,7 @@ void HPLUS_instance::parse_inst_file_(const std::string& instance_path_) {
         std::getline(ifs, line);   // number of prevail conditions
         my::assert(my::isint(line, 0, nvar_pre_exp), "Corrupted file.");
         size_t n_pre = stoi(line);
-        for (size_t pre_i = 0; pre_i < n_pre; pre_i++) {
+        for (size_t _ = 0; _ < n_pre; _++) {
             // parsing each prevail condition
             std::vector<std::string> tokens;
             std::getline(ifs, line);   // pair 'variable value'
@@ -653,7 +650,7 @@ void HPLUS_instance::parse_inst_file_(const std::string& instance_path_) {
             my::assert(my::isint(tokens[1], 0,var_ranges[var] - 1), "Corrupted file."); // variable value
             size_t value = stoi(tokens[1]);
             size_t var_strips = value;
-            for (size_t i = 0; i < var; var_strips += var_ranges[i], i++) {}
+            for (size_t __ = 0; __ < var; var_strips += var_ranges[__], __++) {}
             if (!istate[var_strips]) act_pre.add(var_strips - post_istate_removal_offset[var_strips]);
         }
         std::getline(ifs, line);   // number of effects
@@ -674,7 +671,7 @@ void HPLUS_instance::parse_inst_file_(const std::string& instance_path_) {
             my::assert(my::isint(tokens[3], 0, var_ranges[var] - 1), "Corrupted file."); // effect of the variable
             size_t eff_val = stoi(tokens[3]);
             size_t c = 0;
-            for (size_t i = 0; i < var; c += var_ranges[i], i++){}
+            for (size_t _ = 0; _ < var; c += var_ranges[_], _++) {}
             if (pre_val >= 0 && !istate[c + pre_val]) act_pre.add(c + pre_val - post_istate_removal_offset[c + pre_val]);
             if (!istate[c + eff_val]) act_eff.add(c + eff_val - post_istate_removal_offset[c + eff_val]);
         }

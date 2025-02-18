@@ -16,7 +16,7 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # Compiler flags for release and debug builds
-set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3")
+set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -Ofast")
 set(CMAKE_CXX_FLAGS_DEBUG "-Og -ggdb")
 
 # Verbosity, warnings, and integrity checks

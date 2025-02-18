@@ -90,9 +90,6 @@ extern class HPLUS_instance {
         const std::vector<int> get_timestamps_act() const;
         const std::vector<size_t>& get_inverse_actions(const size_t act_i) const;
 
-        void store_cycle(std::vector<size_t>& cycle);
-        const std::vector<std::vector<size_t>>& get_cycles() const;
-
         size_t var_idx_post_simplification(size_t var_idx) const;
         size_t act_idx_post_simplification(size_t act_idx) const;
         size_t fa_idx_post_simplification(size_t act_idx, size_t var_idx) const;
@@ -130,8 +127,6 @@ extern class HPLUS_instance {
         std::vector<size_t> fa_individual_start_;
         std::vector<size_t> cpx_idx_to_act_idx_;
 
-        std::vector<std::vector<size_t>> dynamic_model_cycles_;
-
         pthread_mutex_t solution_read_write_;
 
         void landmarks_extraction(std::vector<my::binary_set>& landmarks_set, my::binary_set& fact_landmarks, my::binary_set& act_landmarks) const;
@@ -155,7 +150,7 @@ extern struct HPLUS_environment {
     my::execution_status exec_status;
     my::solution_status sol_status;
 
-    int cpx_terminate;
+    volatile int cpx_terminate;
 
     std::string input_file;
     bool log;

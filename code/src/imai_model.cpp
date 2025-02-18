@@ -102,7 +102,7 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp) {
     my::assert(!CPXnewcols(env, lp, n_act, objs, lbs, ubs, types, nullptr), "CPXnewcols (action timestamps) failed.");
 
     resize_cpx_arrays(n_var);
-    
+
     // ------- variables ------ //
     size_t var_start = curr_col;
     count = 0;
@@ -122,10 +122,10 @@ void HPLUS_cpx_build_imai(CPXENVptr& env, CPXLPptr& lp) {
     // -- variable timestamps - //
     size_t tvar_start = curr_col;
     count = 0;
-    for (auto i : remaining_variables) {
+    for (auto var_i : remaining_variables) {
         objs[count] = 0;
-        lbs[count] = timestamps_var[i] >= 0 ? timestamps_var[i] : 0;
-        ubs[count] = timestamps_var[i] >= 0 ? timestamps_var[i] : timestamps_ubound;
+        lbs[count] = timestamps_var[var_i] >= 0 ? timestamps_var[var_i] : 0;
+        ubs[count] = timestamps_var[var_i] >= 0 ? timestamps_var[var_i] : timestamps_ubound;
         types[count++] = 'I';
     }
     #if HPLUS_INTCHECK
