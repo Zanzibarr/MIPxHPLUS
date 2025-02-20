@@ -20,7 +20,7 @@ This software requires as input the SAS file produced by the [Fast Downward tran
 
 ## Requirements
 
-- UNIX based OS (didn't test on Windows if this works as it is)
+- UNIX based OS
 - cmake 3.20 +
 
 ## Build/Run instructions
@@ -69,7 +69,7 @@ make <target_option>
 ### Run options
 
 #### Code execution
-
+- TODO
 
 #### Logging
-
+- TODO
