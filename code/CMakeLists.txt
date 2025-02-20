@@ -58,49 +58,21 @@ find_package(Threads REQUIRED)
 
 # Include directories
 include_directories(include)
+include_directories(external)
 include_directories(${CPLEX_INCLUDE})
 
 # Libraries
-add_library(
-    Utils
-    src/utils.cpp
-    include/utils.hpp
-)
 
 add_library(
-    HPLUS_instance
+    hplus_instance
     src/hplus_instance.cpp
     include/hplus_instance.hpp
 )
 
 add_library(
-    HPLUS_algorithms
+    algorithms
     src/algorithms.cpp
     include/algorithms.hpp
-)
-
-add_library(
-    IMAI_model
-    src/imai_model.cpp
-    include/imai_model.hpp
-)
-
-add_library(
-    RANKOOH_model
-    src/rankooh_model.cpp
-    include/rankooh_model.hpp
-)
-
-add_library(
-    DYNAMIC_SMALL_model
-    src/dynamic_model_small.cpp
-    include/dynamic_model_small.hpp
-)
-
-add_library(
-    DYNAMIC_LARGE_model
-    src/dynamic_model_large.cpp
-    include/dynamic_model_large.hpp
 )
 
 find_library(CPLEX_LIBRARY
@@ -121,13 +93,8 @@ add_executable(
 
 target_link_libraries(
     main
-    Utils
-    HPLUS_instance
-    HPLUS_algorithms
-    IMAI_model
-    RANKOOH_model
-    DYNAMIC_SMALL_model
-    DYNAMIC_LARGE_model
+    hplus_instance
+    algorithms
     ${CPLEX_LIBRARY}
     Threads::Threads
     dl

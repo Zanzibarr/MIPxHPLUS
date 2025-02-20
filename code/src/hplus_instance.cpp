@@ -1,276 +1,430 @@
-#include "../include/hplus_instance.hpp"
+/**
+ * @file hplus_instance.cpp
+ * @brief Methods implementation of the hplus_instance.hpp interface
+ *
+ * @author Matteo Zanella <matteozanella2@gmail.com>
+ * Copyright 2025 Matteo Zanella
+ */
 
-// ##################################################################### //
-// ############################## GLOBALS ############################## //
-// ##################################################################### //
+#include "hplus_instance.hpp"
+#include "utils.hpp"
+#include "bs.hxx"
+#include "log.hxx"
+#include <algorithm>
+#include <fstream>
 
-HPLUS_instance HPLUS_inst;
-HPLUS_environment HPLUS_env;
-HPLUS_statistics HPLUS_stats;
-
-void HPLUS_statistics::print() const {
-
+void hplus::print_stats(const statistics& _s, const logger& _l) {
     #if HPLUS_VERBOSE < 5
-    return;
+    return
     #endif
-
-    mylog.print("\n\n--------------------------------------------------");
-    mylog.print("-----------------   Statistics   -----------------");
-    mylog.print("--------------------------------------------------\n");
-    mylog.print(" >>  Parsing time                  %10.3fs  <<", this -> parsing_time);
-    mylog.print(" >>  Problem simplification time   %10.3fs  <<", this -> simplification_time);
-    mylog.print(" >>  Heuristic time                %10.3fs  <<", this -> heuristic_time);
-    mylog.print(" >>  Model building time           %10.3fs  <<", this -> build_time);
-    mylog.print(" >>  CPLEX execution time          %10.3fs  <<", this -> execution_time);
-    if (HPLUS_env.alg == HPLUS_CLI_ALG_DYNAMIC_SMALL || HPLUS_env.alg == HPLUS_CLI_ALG_DYNAMIC_LARGE) mylog.print(" >>  CPLEX callback time           %10.3fs  <<", this -> callback_time);
-    mylog.print(" >>  Total time                    %10.3fs  <<", this -> total_time);
-    mylog.print("\n\n");
-
+    _l.print("\n\n--------------------------------------------------");
+    _l.print("-----------------   Statistics   -----------------");
+    _l.print("--------------------------------------------------\n");
+    _l.print(" >>  Parsing time                  %10.3fs  <<", _s.parsing);
+    _l.print(" >>  Problem simplification time   %10.3fs  <<", _s.optimization);
+    _l.print(" >>  Heuristic time                %10.3fs  <<", _s.heuristic);
+    _l.print(" >>  Model building time           %10.3fs  <<", _s.build);
+    _l.print(" >>  CPLEX execution time          %10.3fs  <<", _s.execution);
+    _l.print(" >>  CPLEX callback time           %10.3fs  <<", _s.callback);
+    _l.print(" >>  Total time                    %10.3fs  <<", _s.total);
+    _l.print("\n\n");
 }
 
-// ##################################################################### //
-// ########################### HPLUS_INSTANCE ########################## //
-// ##################################################################### //
+static inline void init(hplus::instance& _i) {
+    _i = (hplus::instance){
+        .unary_costs = false,
+        .n = 0,
+        .m = 0,
+        .n_opt = 0,
+        .m_opt = 0,
+        .var_ranges = std::vector<size_t>(0),
+        .actions = std::vector<hplus::action>(0),
+        .goal = binary_set(),
+        .best_solution = std::vector<size_t>(0),
+        .best_cost = UINT_MAX,
+        .var_e = binary_set(),
+        .var_f = binary_set(),
+        .act_e = binary_set(),
+        .act_f = binary_set(),
+        .fadd_e = std::vector<binary_set>(0),
+        .fadd_f = std::vector<binary_set>(0),
+        .var_t = std::vector<int>(0),
+        .act_t = std::vector<int>(0),
+        .act_inv = std::vector<std::vector<size_t>>(0),
+        .var_opt_conv = std::vector<size_t>(0),
+        .act_opt_conv = std::vector<size_t>(0),
+        .fadd_checkpoint = std::vector<size_t>(0),
+        .act_cpxtoidx = std::vector<size_t>(0),
+        .act_with_eff = std::vector<std::vector<size_t>>(0),
+        .act_with_pre = std::vector<std::vector<size_t>>(0)
+    };
+}
+static inline bool is_deletefree(const hplus::instance& _i, std::vector<std::vector<std::pair<size_t, size_t>>>& _tmp_act_eff) {
+    for (auto r : _i.var_ranges) if (r != 2) return false;
+    std::vector<size_t> check(_i.n, -1);
+    for (auto act_eff : _tmp_act_eff) {
+        for (auto pair : act_eff) {
+            if (check[pair.first] == -1) check[pair.first] = pair.second;
+            else if (check[pair.first] != pair.second) return false;
+        }
+    }
+    return true;
+}
+static inline void parse_inst_file(hplus::instance& _i, const hplus::environment& _e, hplus::statistics& _s, const logger& _l) {
 
-HPLUS_instance::HPLUS_instance(const std::string& instance_file) {
+    // ====================================================== //
+    // ================== PARSING SAS FILE ================== //
+    // ====================================================== //
 
-    parse_inst_file_(instance_file);
+    _PRINT_INFO("Parsing SAS file.");
 
-    this -> n_var_post_simpl_ = this -> n_var_;
-    this -> n_act_post_simpl_ = this -> n_act_;
+    std::ifstream ifs(_e.input_file.c_str(), std::ifstream::in);
+    assert(ifs.good());
 
-    this -> best_cost_ = UINT_MAX;
+    _s.parsing = _e.time_limit - _e.timer.get_time();
+    std::string line;
 
-    this -> eliminated_var_ = my::binary_set(this -> n_var_);
-    this -> fixed_var_ = my::binary_set(this -> n_var_);
-    this -> eliminated_act_ = my::binary_set(this -> n_act_);
-    this -> fixed_act_ = my::binary_set(this -> n_act_);
-    this -> eliminated_fa_ = std::vector<my::binary_set>(this -> n_act_, my::binary_set(this -> n_var_));
-    this -> fixed_fa_ = std::vector<my::binary_set>(this -> n_act_, my::binary_set(this -> n_var_));
-    this -> timestamps_var_ = std::vector<int>(this -> n_var_, -1);
-    this -> timestamps_act_ = std::vector<int>(this -> n_act_, -1);
-    this -> inverse_act_ = std::vector<std::vector<size_t>>(n_act_, std::vector<size_t>());
+    // * version section
+    std::getline(ifs, line);   // begin_version
+    if(line != "begin_version") _l.raise_error("Corrupted file");
+    std::getline(ifs, line);   // version_number (ignored)
+    if(!isint(line)) _l.raise_error("Corrupted file");
+    std::getline(ifs, line);   // end_version
+    if(line != "end_version") _l.raise_error("Corrupted file");
 
-    this -> var_idx_post_simplification_ = std::vector<size_t>(this -> n_var_);
-    for (size_t var_i = 0; var_i < this -> n_var_; var_i++) this -> var_idx_post_simplification_[var_i] = var_i;
-    this -> act_idx_post_simplification_ = std::vector<size_t>(this -> n_act_);
-    for (size_t act_i = 0; act_i < this -> n_act_; act_i++) this -> act_idx_post_simplification_[act_i] = act_i;
-    this -> fa_individual_start_ = std::vector<size_t>(this -> n_act_);
-    for (size_t act_i = 0; act_i < this -> n_act_post_simpl_; act_i++) this -> fa_individual_start_[act_i] = act_i * this -> n_var_;
-    this -> cpx_idx_to_act_idx_ = std::vector<size_t>(this -> n_act_);
-    for (size_t act_i = 0; act_i < this -> n_act_; act_i++) this -> cpx_idx_to_act_idx_[act_i] = act_i;
+    // * metric section
+    std::getline(ifs, line);   // begin_metric
+    if(line != "begin_metric") _l.raise_error("Corrupted file");
+    std::getline(ifs, line);   // metric
+    if(!isint(line, 0, 1)) _l.raise_error("Corrupted file");
+    _i.unary_costs = stoi(line) != 1;
+    std::getline(ifs, line);   // end_metric
+    if(line != "end_metric") _l.raise_error("Corrupted file");
 
-    pthread_mutex_init(&(this -> solution_read_write_), nullptr);
+    // * variables section
+    _PRINT_WARN("Ignoring axiom layers.");
+    std::getline(ifs, line);   // _i.n
+    if(!isint(line, 0)) _l.raise_error("Corrupted file");
+    size_t nvar = stoi(line);
+    _i.n = nvar;
+    _i.var_ranges = std::vector<size_t>(_i.n);
+    for (size_t var_i = 0; var_i < _i.n; var_i++) {
+        // process each variable
+        std::getline(ifs, line);   // begin_variable
+        if(line != "begin_variable") _l.raise_error("Corrupted file");
+        std::getline(ifs, line);   // variable name (ignored)
+        std::getline(ifs, line);   // axiom layer (ignored)
+        if(line != "-1") _l.raise_error("Axiom layer is not -1, this software is not made for this instance.");
+        std::getline(ifs, line);   // range of variable
+        if(!isint(line, 0)) _l.raise_error("Corrupted file");
+        size_t range = stoi(line);
+        _i.var_ranges[var_i] = range;
+        for (size_t j = 0; j < range; j++) std::getline(ifs, line);   // name for variable value (ignored)
+        std::getline(ifs, line);   // end_variable
+        if(line != "end_variable") _l.raise_error("Corrupted file");
+    }
+    
+    // * mutex section (ignored)
+    _PRINT_WARN("Ignoring mutex section.");
+    std::getline(ifs, line);   // number of mutex groups
+    if(!isint(line, 0)) _l.raise_error("Corrupted file");
+    size_t nmgroups = stoi(line);
+    for (size_t i = 0; i < nmgroups; i++) {
+        std::getline(ifs, line);   // begin_mutex_group
+        if(line != "begin_mutex_group") _l.raise_error("Corrupted file");
+        while (line != "end_mutex_group") {
+            std::getline(ifs, line); // reach end_mutex_group (ignore all content)
+            if(line == "begin_state") _l.raise_error("Corrupted file");
+        }
+    }
 
-    mylog.print_info("Created HPLUS_instance.");
+    // * initial state section
+    std::getline(ifs, line);   // begin_state
+    if(line != "begin_state") _l.raise_error("Corrupted file");
+    std::vector<int> tmp_istate(_i.n);
+    for (size_t var_i = 0; var_i < _i.n; var_i++) {
+        std::getline(ifs, line);   // initial value of var_i
+        if(!isint(line, 0, _i.var_ranges[var_i] - 1)) _l.raise_error("Corrupted file");
+        size_t val = stoi(line);
+        tmp_istate[var_i] = val;
+    }
+    std::getline(ifs, line);   // end_state
+    if(line != "end_state") _l.raise_error("Corrupted file");
 
+    // * goal state section
+    std::getline(ifs, line);   // begin_goal
+    if(line != "begin_goal") _l.raise_error("Corrupted file");
+    std::vector<int> tmp_goal(_i.n, -1);
+    std::getline(ifs, line);   // number of goals
+    if(!isint(line, 0, _i.n)) _l.raise_error("Corrupted file");
+    size_t ngoals = stoi(line);
+    for (size_t _ = 0; _ < ngoals; _++) {
+        // parsing each goal
+        std::vector<std::string> tokens;
+        std::getline(ifs, line);   // pair 'variable goal'
+        tokens = split_string(line, ' ');
+        if(tokens.size() != 2) _l.raise_error("Corrupted file");
+        if(!isint(tokens[0], 0, _i.n - 1)) _l.raise_error("Corrupted file"); // variable index
+        size_t var = stoi(tokens[0]);
+        if(!isint(tokens[1], 0, _i.var_ranges[var] - 1)) _l.raise_error("Corrupted file"); // variable goal
+        size_t value = stoi(tokens[1]);
+        tmp_goal[var] = value;
+    }
+    std::getline(ifs, line);   // end_goal
+    if(line != "end_goal") _l.raise_error("Corrupted file");
+
+    // * operator (actions) section
+    _PRINT_WARN("Ignoring effect conditions.");
+    std::getline(ifs, line);   // n_act
+    if(!isint(line, 0)) _l.raise_error("Corrupted file");
+    _i.m = stoi(line);
+    _i.actions = std::vector<hplus::action>(_i.m);
+    std::vector<std::vector<std::pair<size_t, size_t>>> tmp_act_pre(_i.m), tmp_act_eff(_i.m);
+    for (size_t act_i = 0; act_i < _i.m; act_i++) {
+        // process each action
+        std::getline(ifs, line);   // begin_operator
+        if(line != "begin_operator") _l.raise_error("Corrupted file");
+        std::getline(ifs, line);   // symbolic action name
+        std::string name = line;
+        std::vector<int> act_pre(_i.n, -1);
+        std::getline(ifs, line);   // number of prevail conditions
+        if(!isint(line, 0, _i.n)) _l.raise_error("Corrupted file");
+        size_t n_pre = stoi(line);
+        for (size_t pre_i = 0; pre_i < n_pre; pre_i++) {
+            // parsing each prevail condition
+            std::vector<std::string> tokens;
+            std::getline(ifs, line);   // pair 'variable value'
+            tokens = split_string(line, ' ');
+            if(tokens.size() != 2) _l.raise_error("Corrupted file");
+            if(!isint(tokens[0], 0, _i.n - 1)) _l.raise_error("Corrupted file"); // variable index
+            size_t var = stoi(tokens[0]);
+            if(!isint(tokens[1], 0, _i.var_ranges[var] - 1)) _l.raise_error("Corrupted file"); // variable value
+            size_t value = stoi(tokens[1]);
+            act_pre[var] = value;
+        }
+        std::getline(ifs, line);   // number of effects
+        if(!isint(line, 0)) _l.raise_error("Corrupted file");
+        size_t n_eff = stoi(line);
+        std::vector<int> act_eff(_i.n, -1);
+        for (size_t eff_i = 0; eff_i < n_eff; eff_i++) {
+            // parsing each effect
+            std::getline(ifs, line);   // effect line
+            std::vector<std::string> tokens;
+            tokens = split_string(line, ' ');
+            if(tokens.size() != 4) _l.raise_error("This program won't handle effect conditions."); // not expecting effect conditions
+            if(!isint(tokens[0], 0, 0)) _l.raise_error("This program won't handle effect conditions."); // number of effect conditions (ignored and check to be 0)
+            if(!isint(tokens[1], 0, _i.n - 1)) _l.raise_error("Corrupted file");   // variable affected by the action
+            size_t var = stoi(tokens[1]);
+            if(!isint(tokens[2], -1, _i.var_ranges[var] - 1)) _l.raise_error("Corrupted file");    // precondition of the variable
+            int pre_val = stoi(tokens[2]);
+            if(!isint(tokens[3], 0, _i.var_ranges[var] - 1)) _l.raise_error("Corrupted file"); // effect of the variable
+            size_t eff_val = stoi(tokens[3]);
+            if (pre_val >= 0) act_pre[var] = pre_val;
+            act_eff[var] = eff_val;
+        }
+        std::getline(ifs, line);   // action cost
+        if(!isint(line)) _l.raise_error("Corrupted file");
+        unsigned int cost = 1;
+        if (!_i.unary_costs) cost = stoi(line);
+        std::getline(ifs, line);   // end_operator
+        if(line != "end_operator") _l.raise_error("Corrupted file");
+        _i.actions[act_i] = (hplus::action){.cost=cost, .name=name};
+
+        for (size_t i = 0; i < _i.n; i++) {
+            if (act_pre[i] >= 0) tmp_act_pre[act_i].emplace_back(i, act_pre[i]);
+            if (act_eff[i] >= 0) tmp_act_eff[act_i].emplace_back(i, act_eff[i]);
+        }
+    }
+
+    _PRINT_WARN("Ignoring axiom section.");
+
+    ifs.close();
+
+    // ====================================================== //
+    // ================== BINARY EXPANSION ================== //
+    // ====================================================== //
+
+    binary_set istate;
+    if (is_deletefree(_i, tmp_act_eff)) {
+        #if HPLUS_VERBOSE >= 20
+        _PRINT_INFO("Detected delete-free instance, skipping binary expansion.");
+        #endif
+        // TODO: Parsing delete-free instance
+        todo(_l, "Parsing delete-free instance");
+    } else {
+        // binary expansion
+        #if HPLUS_VERBOSE >= 20
+        _PRINT_INFO("Performing binary expansion.");
+        #endif
+        size_t n_exp = 0;
+        std::vector<size_t> offsets(_i.n);
+        for (size_t i = 0; i < _i.n; i++) {
+            offsets[i] = n_exp;
+            n_exp += _i.var_ranges[i];
+        }
+        istate = binary_set(n_exp);
+        _i.goal = binary_set(n_exp);
+        for (size_t i = 0; i < _i.n; i++) {
+            istate.add(offsets[i] + tmp_istate[i]);
+            if (tmp_goal[i] >= 0) _i.goal.add(offsets[i] + tmp_goal[i]);
+        }
+        _i.n = n_exp;
+        for (size_t i = 0; i < _i.m; i++) {
+            binary_set act_pre(_i.n), act_eff(_i.n);
+            for (auto pair : tmp_act_pre[i]) act_pre.add(offsets[pair.first] + pair.second);
+            for (auto pair : tmp_act_eff[i]) act_eff.add(offsets[pair.first] + pair.second);
+            _i.actions[i].pre = act_pre;
+            _i.actions[i].pre_sparse = act_pre.sparse();
+            _i.actions[i].eff = act_eff;
+            _i.actions[i].eff_sparse = act_eff.sparse();
+        }
+    }
+
+    // ====================================================== //
+    // ================ INITIAL STATE REMOVAL =============== //
+    // ====================================================== //
+
+    #if HPLUS_VERBOSE >= 20
+    _PRINT_INFO("Removing initial state variables.");
+    #endif
+    std::vector<size_t> istate_offsets(_i.n);
+    for (size_t i = 0, c = 0; i < _i.n; i++) {
+        if (istate[i]) c++;
+        istate_offsets[i] = c;
+    }
+    _i.n -= nvar;
+    binary_set goal_opt(_i.n);
+    for (auto var : _i.goal) if (!istate[var]) goal_opt.add(var - istate_offsets[var]);
+    _i.goal = goal_opt;
+    for (size_t i = 0; i < _i.m; i++) {
+        binary_set act_pre(_i.n), act_eff(_i.n);
+        for (auto var : _i.actions[i].pre_sparse) if (!istate[var]) act_pre.add(var - istate_offsets[var]);
+        for (auto var : _i.actions[i].eff_sparse) if (!istate[var]) act_eff.add(var - istate_offsets[var]);
+        _i.actions[i].pre = act_pre;
+        _i.actions[i].pre_sparse = act_pre.sparse();
+        _i.actions[i].eff = act_eff;
+        _i.actions[i].eff_sparse = act_eff.sparse();
+    }
+    
+    _s.parsing = _e.timer.get_time();
+}
+static inline void init_instance_opt(hplus::instance& _i) {
+    _i.n_opt = _i.n;
+    _i.m_opt = _i.m;
+    _i.var_e = binary_set(_i.n);
+    _i.var_f = binary_set(_i.n);
+    _i.act_e = binary_set(_i.m);
+    _i.act_f = binary_set(_i.m);
+    _i.fadd_e = std::vector<binary_set>(_i.m, binary_set(_i.n));
+    _i.fadd_f = std::vector<binary_set>(_i.m, binary_set(_i.n));
+    _i.var_t = std::vector<int>(_i.n, -1);
+    _i.act_t = std::vector<int>(_i.m, -1);
+    _i.act_inv = std::vector<std::vector<size_t>>(_i.m, std::vector<size_t>());
+    _i.var_opt_conv = std::vector<size_t>(_i.n);
+    for (size_t idx = 0; idx < _i.n; idx++) _i.var_opt_conv[idx] = idx;
+    _i.act_opt_conv = std::vector<size_t>(_i.m);
+    for (size_t idx = 0; idx < _i.m; idx++) _i.act_opt_conv[idx] = idx;
+    _i.fadd_checkpoint = std::vector<size_t>(_i.m);
+    for (size_t idx = 0; idx < _i.m; idx++) _i.fadd_checkpoint[idx] = idx * _i.n;
+    _i.act_cpxtoidx = std::vector<size_t>(_i.m);
+    for (size_t idx = 0; idx < _i.m; idx++) _i.act_cpxtoidx[idx] = idx;
+}
+void hplus::create_instance(instance& _i, const environment& _e, statistics& _s, const logger& _l) {
+    init(_i);
+    parse_inst_file(_i, _e, _s, _l);
+    init_instance_opt(_i);
+
+    _PRINT_INFO("Created HPLUS_instance.");
 }
 
-int HPLUS_instance::get_version() const { return this -> version_; }
+binary_set hplus::var_remaining(const instance& _i) { return !_i.var_e; }
+binary_set hplus::act_remaining(const instance& _i) { return !_i.act_e; }
 
-bool HPLUS_instance::unitary_cost() const { return this -> unitary_costs_; }
-
-size_t HPLUS_instance::get_n_var(bool simplified) const { return simplified ? this -> n_var_post_simpl_ : this -> n_var_; }
-
-size_t HPLUS_instance::get_n_act(bool simplified) const { return simplified ? this -> n_act_post_simpl_ : this -> n_act_; }
-
-const my::binary_set HPLUS_instance::get_remaining_variables() const { return !this -> eliminated_var_; }
-
-const my::binary_set HPLUS_instance::get_remaining_actions() const { return !this -> eliminated_act_; }
-
-const std::vector<HPLUS_action>& HPLUS_instance::get_actions() const { return this -> actions_; }
-
-const my::binary_set& HPLUS_instance::get_goal_state() const { return this -> goal_state_; }
-
-void HPLUS_instance::update_best_sol(const std::vector<size_t>& solution, const unsigned int cost) {
-
-    my::binary_set dbcheck = my::binary_set(this -> n_act_);
+void hplus::update_sol(instance& _i, const std::vector<size_t> _s, const unsigned int _c, const logger& _l) {
+    binary_set dbcheck = binary_set(_i.m);
     unsigned int costcheck = 0;
-    my::assert(solution.size() <= this -> n_act_, "Solution has more actions that there actually exists.");             // check that there aren't more actions that there exists
-    my::binary_set feas_checker(this -> n_var_);
-    for (auto act_i : solution) {
-        my::assert(act_i < this -> n_act_, "Solution contains unexisting action.");                                     // check that the solution only contains existing actions
-        my::assert(!dbcheck[act_i], "Solution contains duplicate action.");                                             // check that there are no duplicates
+    _ASSERT(_s.size() <= _i.m);      // check that there aren't more actions that there exists
+    binary_set feas_checker(_i.n);
+    for (auto act_i : _s) {
+        _ASSERT(act_i < _i.m);       // check that the solution only contains existing actions
+        _ASSERT(!dbcheck[act_i]);        // check that there are no duplicates
         dbcheck.add(act_i);
-        my::assert(feas_checker.contains(this -> actions_[act_i].get_pre()), "Preconditions are not respected.");       // check if the preconditions are respected at each step
-        feas_checker |= this -> actions_[act_i].get_eff();
-        costcheck += this -> actions_[act_i].get_cost();
+        _ASSERT(feas_checker.contains(_i.actions[act_i].pre));       // check if the preconditions are respected at each step
+        feas_checker |= _i.actions[act_i].eff;
+        costcheck += _i.actions[act_i].cost;
     }
-    my::assert(feas_checker.contains(this -> goal_state_), "The solution doesn't lead to the final state.");            // check if the solution leads to the goal state
-    my::assert(costcheck == cost, "Declared cost is different from calculated one.");                                   // check if the cost is the declared one
+    _ASSERT(feas_checker.contains(_i.goal));     // check if the solution leads to the goal state
+    _ASSERT(costcheck == _c);    // check if the cost is the declared one
 
-    pthread_mutex_lock(&(this -> solution_read_write_));
+    if (_c >= _i.best_cost) return;
 
-    if (cost >= this -> best_cost_) {
-        pthread_mutex_unlock(&(this -> solution_read_write_));
-        return;
-    }
+    _i.best_solution = std::vector<size_t>(_s);
+    _i.best_cost = _c;
 
-    this -> best_solution_ = std::vector<size_t>(solution);
-    this -> best_cost_ = cost;
-
-    mylog.print_info("Updated best solution - Cost: %4d.", this -> best_cost_);
-
-    pthread_mutex_unlock(&(this -> solution_read_write_));
-
+    _l.print_info("Updated best solution - Cost: %10u.", _i.best_cost);
+}
+void hplus::print_sol(const instance& _i, const logger& _l) {
+    _l.print("Solution cost: %10u", _i.best_cost);
+    for(auto act_i : _i.best_solution) _l.print("(%s)", _i.actions[act_i].name.c_str());
 }
 
-void HPLUS_instance::get_best_sol(std::vector<size_t>& solution, unsigned int& cost) {
-
-    pthread_mutex_lock(&(this -> solution_read_write_));
-
-    solution = std::vector<size_t>(this -> best_solution_);
-    cost = this -> best_cost_;
-
-    pthread_mutex_unlock(&(this -> solution_read_write_));
-
-}
-
-unsigned int HPLUS_instance::get_best_sol_cost() {
-
-    pthread_mutex_lock(&(this -> solution_read_write_));
-
-    unsigned int ret = this -> best_cost_;
-
-    pthread_mutex_unlock(&(this -> solution_read_write_));
-
-    return ret;
-
-}
-
-
-void HPLUS_instance::print_best_sol() {
-
-    pthread_mutex_lock(&(this -> solution_read_write_));
-    
-    mylog.print("Solution cost: %d", this -> best_cost_);
-    for(auto act_i : this -> best_solution_) mylog.print("(%s)", this -> actions_[act_i].get_name().c_str());
-
-    pthread_mutex_unlock(&(this -> solution_read_write_));
-
-}
-
-void HPLUS_instance::problem_simplification() {
-
-    this -> imai_model_enhancements();
-
-    size_t count = 0;
-    for (auto var_i : !this -> eliminated_var_) this -> var_idx_post_simplification_[var_i] = count++;
-    this -> n_var_post_simpl_ = count;
-    count = 0;
-    for (auto act_i : !this -> eliminated_act_) {
-        this -> cpx_idx_to_act_idx_[count] = act_i;
-        this -> act_idx_post_simplification_[act_i] = count++;
-    }
-    this -> n_act_post_simpl_ = count;
-
-    this -> fa_individual_start_ = std::vector<size_t>(this -> n_act_post_simpl_);
-    for (size_t act_i = 0; act_i < this -> n_act_post_simpl_; act_i++) this -> fa_individual_start_[act_i] = act_i * this -> n_var_post_simpl_;
-
-    #if HPLUS_INTCHECK
-    my::assert(!this -> fixed_var_.intersects(this -> eliminated_var_), "Eliminated and fixed variables intersect.");
-    my::assert(!this -> fixed_act_.intersects(this -> eliminated_act_), "Eliminated and fixed actions intersect.");
-    #endif
-
+static inline void landmark_extraction(hplus::instance& _i, std::vector<binary_set>& _lm, binary_set& _fl, binary_set& _al, const logger& _l) {
     #if HPLUS_VERBOSE >= 20
-    count = 0;
-    for (auto _ : this -> fixed_var_) count++;
-    mylog.print_info("Optimized number of variables:         %10d --> %10d.", this -> n_var_, this -> n_var_post_simpl_ - count);
-    count = 0;
-    for (auto _ : this -> fixed_act_) count++;
-    mylog.print_info("Optimized number of actions:           %10d --> %10d.", this -> n_act_, this -> n_act_post_simpl_ - count);
-    count = 0;
-    for (auto _ : this -> eliminated_fa_) count++;
-    for (auto _ : this -> fixed_fa_) count++;
-    mylog.print_info("Optimized number of first archievers:  %10d --> %10d.", this -> n_var_ * this -> n_act_, this -> n_var_post_simpl_ * this -> n_act_post_simpl_ - count);
-    #endif
-    
-}
-
-const my::binary_set& HPLUS_instance::get_fixed_variables() const { return this -> fixed_var_; }
-
-const my::binary_set& HPLUS_instance::get_fixed_actions() const { return this -> fixed_act_; }
-
-const std::vector<my::binary_set>& HPLUS_instance::get_eliminated_fa() const { return this -> eliminated_fa_; }
-
-const std::vector<my::binary_set>& HPLUS_instance::get_fixed_fa() const { return this -> fixed_fa_; }
-
-const std::vector<int> HPLUS_instance::get_timestamps_var() const { return this -> timestamps_var_; }
-
-const std::vector<int> HPLUS_instance::get_timestamps_act() const { return this -> timestamps_act_; }
-
-const std::vector<size_t>& HPLUS_instance::get_inverse_actions(const size_t act_i) const { return this -> inverse_act_[act_i]; }
-
-size_t HPLUS_instance::var_idx_post_simplification(size_t var_idx) const { return this -> var_idx_post_simplification_[var_idx]; }
-
-size_t HPLUS_instance::act_idx_post_simplification(size_t act_idx) const { return this -> act_idx_post_simplification_[act_idx]; }
-
-size_t HPLUS_instance::fa_idx_post_simplification(size_t act_idx, size_t var_idx) const { return this -> fa_individual_start_[this -> act_idx_post_simplification_[act_idx]] + this -> var_idx_post_simplification_[var_idx]; }
-
-size_t HPLUS_instance::cpx_idx_to_act_idx(size_t cpx_idx) const { return this -> cpx_idx_to_act_idx_[cpx_idx]; }
-
-void HPLUS_instance::landmarks_extraction(std::vector<my::binary_set>& landmarks_set, my::binary_set& fact_landmarks, my::binary_set& act_landmarks) const {
-
-    #if HPLUS_VERBOSE >= 20
-    mylog.print_info("(debug) Extracting landmarks.");
+    _PRINT_INFO("(debug) Extracting landmarks.");
     #endif
 
-    landmarks_set = std::vector<my::binary_set>(this -> n_var_, my::binary_set(this -> n_var_ + 1));
-    fact_landmarks = my::binary_set(this -> n_var_);
-    act_landmarks = my::binary_set(this -> n_act_);
+    for (size_t var_i = 0; var_i < _i.n; var_i++) _lm[var_i].add(_i.n);
 
-    for (size_t var_i = 0; var_i < this -> n_var_; var_i++) landmarks_set[var_i].add(this -> n_var_);
-
-    my::binary_set s_set(this -> n_var_);
+    binary_set s_set(_i.n);
 
     std::deque<size_t> actions_queue;
-    for (size_t act_i = 0; act_i < this -> n_act_; act_i++) if(s_set.contains(this -> actions_[act_i].get_pre())) actions_queue.push_back(act_i);
+    for (size_t act_i = 0; act_i < _i.m; act_i++) if(s_set.contains(_i.actions[act_i].pre)) actions_queue.push_back(act_i);
 
     // list of actions that have as precondition variable p
-    std::vector<std::vector<size_t>> act_with_pre(this -> n_var_);
-    for (size_t var_i = 0; var_i < this -> n_var_; var_i++) for (size_t act_i = 0; act_i < this -> n_act_; act_i++) if (this -> actions_[act_i].get_pre()[var_i]) act_with_pre[var_i].push_back(act_i);
+    std::vector<std::vector<size_t>> act_with_pre(_i.n);
+    for (size_t var_i = 0; var_i < _i.n; var_i++) for (size_t act_i = 0; act_i < _i.m; act_i++) if (_i.actions[act_i].pre[var_i]) act_with_pre[var_i].push_back(act_i);
 
     while(!actions_queue.empty()) {
 
-        const HPLUS_action a = this -> actions_[actions_queue.front()];
+        const hplus::action a = _i.actions[actions_queue.front()];
         actions_queue.pop_front();
 
-        const auto& pre_sparse = a.get_pre_sparse();
-        const auto& add_sparse = a.get_eff_sparse();
+        const auto& pre_sparse = a.pre_sparse;
+        const auto& add_sparse = a.eff_sparse;
 
         for (auto var_i : add_sparse) {
 
             s_set.add(var_i);
 
-            my::binary_set x = my::binary_set(this -> n_var_ + 1);
+            binary_set x = binary_set(_i.n + 1);
             for (auto var_j : add_sparse) x.add(var_j);
 
             for (auto var_j : pre_sparse) {
                 // if variable var_i' has the "full" flag then the unification
                 // generates a "full" bitfield -> no need to unificate, just set the flag
-                if (landmarks_set[var_j][this -> n_var_]) {
-                    x.add(this -> n_var_);
+                if (_lm[var_j][_i.n]) {
+                    x.add(_i.n);
                     // if x is now full we can exit, since all further unions won't change x
                     break;
-                } else x |= landmarks_set[var_j];
+                } else x |= _lm[var_j];
             }
 
             // we then check if L[var_i] != X, and if they are the same we skip,
             // if X = P, then (X intersection L[P]) = L[P], hence we can already skip
-            if (!x[this -> n_var_]) {
+            if (!x[_i.n]) {
 
                 // if the set for variable var_i is the full set of variables,
                 // the intersection generates back x -> we can skip the intersection
-                if (!landmarks_set[var_i][this -> n_var_]) x &= landmarks_set[var_i];
+                if (!_lm[var_i][_i.n]) x &= _lm[var_i];
 
                 // we already know that x is not the full set now, so if
                 // the set for variable var_i is the full set, we know that x is not
                 // equal to the set for variable var_i -> we can skip the check
-                if (landmarks_set[var_i][this -> n_var_] || x != landmarks_set[var_i]) {
+                if (_lm[var_i][_i.n] || x != _lm[var_i]) {
 
-                    landmarks_set[var_i] = x;
+                    _lm[var_i] = x;
                     for (auto act_i : act_with_pre[var_i])
-                        if (s_set.contains(this -> actions_[act_i].get_pre()) && std::find(actions_queue.begin(), actions_queue.end(), act_i) == actions_queue.end())
+                        if (s_set.contains(_i.actions[act_i].pre) && std::find(actions_queue.begin(), actions_queue.end(), act_i) == actions_queue.end())
                             actions_queue.push_back(act_i);
 
                 }
@@ -282,63 +436,58 @@ void HPLUS_instance::landmarks_extraction(std::vector<my::binary_set>& landmarks
     }
 
     // list of actions that have as effect variable p
-    std::vector<std::vector<size_t>> act_with_eff(this -> n_var_);
-    for (auto var_i : !fact_landmarks) for (size_t act_i = 0; act_i < this -> n_act_; act_i++) if (this -> actions_[act_i].get_eff()[var_i]) act_with_eff[var_i].push_back(act_i);
+    std::vector<std::vector<size_t>> act_with_eff(_i.n);
+    for (auto var_i : !_fl) for (size_t act_i = 0; act_i < _i.m; act_i++) if (_i.actions[act_i].eff[var_i]) act_with_eff[var_i].push_back(act_i);
 
-    // popolate fact_landmarks and act_landmarks sets
-    for (auto var_i : this -> goal_state_) {
-        for (auto var_j : !fact_landmarks) {
-            if (landmarks_set[var_i][var_j] || landmarks_set[var_i][this -> n_var_]) {
-                fact_landmarks.add(var_j);
+    // popolate _fl and _al sets
+    for (auto var_i : _i.goal) {
+        for (auto var_j : !_fl) {
+            if (_lm[var_i][var_j] || _lm[var_i][_i.n]) {
+                _fl.add(var_j);
                 size_t count = 0, cand_act;
                 for (auto act_i : act_with_eff[var_j]) {
                     cand_act = act_i;
                     count++;
                     if (count > 1) break;
                 }
-                if (count == 1) act_landmarks.add(cand_act);
+                if (count == 1) _al.add(cand_act);
             }
         }
     }
-
+    _i.var_f |= _fl;
+    _i.act_f |= _al;
 }
-
-void HPLUS_instance::first_adders_extraction(const std::vector<my::binary_set>& landmarks_set, std::vector<my::binary_set>& fadd) const {
-
+static inline void fadd_extraction(hplus::instance& _i, const std::vector<binary_set>& _lm, std::vector<binary_set>& _fadd, const logger& _l) {
     #if HPLUS_VERBOSE >= 20
-    mylog.print_info("(debug) Extracting first adders.");
+    _PRINT_INFO("(debug) Extracting first adders.");
     #endif
-
-    fadd = std::vector<my::binary_set>(this -> n_act_, my::binary_set(this -> n_var_));
 
     // list of fact landmarks for each variable
-    std::vector<std::vector<size_t>> var_flm_sparse(this -> n_var_);
-    for (size_t var_i = 0; var_i < this -> n_var_; var_i++) for (size_t var_j = 0; var_j < this -> n_var_; var_j++) if (landmarks_set[var_i][var_j] || landmarks_set[var_i][this -> n_var_]) var_flm_sparse[var_i].push_back(var_j);
+    std::vector<std::vector<size_t>> var_flm_sparse(_i.n);
+    for (size_t var_i = 0; var_i < _i.n; var_i++) for (size_t var_j = 0; var_j < _i.n; var_j++) if (_lm[var_i][var_j] || _lm[var_i][_i.n]) var_flm_sparse[var_i].push_back(var_j);
 
     // compute the set of first adders
-    for (size_t act_i = 0; act_i < this -> n_act_; act_i++) {
+    for (size_t act_i = 0; act_i < _i.m; act_i++) {
         // f_lm_a is the set of fact landmarks of action act_i
-        my::binary_set f_lm_a(this -> n_var_);
-        for (auto var_i : this -> actions_[act_i].get_pre()) for (auto i : var_flm_sparse[var_i]) f_lm_a.add(i);
-        // fadd[a] := { p in add(a) s.t. p is not a fact landmark for a }
-        fadd[act_i] |= (this -> actions_[act_i].get_eff() & !f_lm_a);
+        binary_set f_lm_a(_i.n);
+        for (auto var_i : _i.actions[act_i].pre) for (auto i : var_flm_sparse[var_i]) f_lm_a.add(i);
+        // _fadd[a] := { p in add(a) s.t. p is not a fact landmark for a }
+        _fadd[act_i] |= (_i.actions[act_i].eff & !f_lm_a);
     }
-
+    for (size_t act_i = 0; act_i < _i.m; act_i++) _i.fadd_e[act_i] |= (_i.actions[act_i].eff & !_fadd[act_i]);
 }
-
-void HPLUS_instance::relevance_analysis(const my::binary_set& fact_landmarks, const std::vector<my::binary_set>& fadd) {
-
+static inline void relevance_analysis(hplus::instance& _i, binary_set& _fl, std::vector<binary_set>& _fadd, const logger& _l) {
     #if HPLUS_VERBOSE >= 20
-    mylog.print_info("(debug) Relevance analysis.");
+    _PRINT_INFO("(debug) Relevance analysis.");
     #endif
 
-    my::binary_set relevant_variables = my::binary_set(this -> n_var_);
-    my::binary_set relevant_actions = my::binary_set(this -> n_act_);
+    binary_set relevant_variables = binary_set(_i.n);
+    binary_set relevant_actions = binary_set(_i.m);
 
     // compute first round of relevand variables and actions
-    for (size_t act_i = 0; act_i < this -> n_act_; act_i++) {
-        if (fadd[act_i].intersects(this -> goal_state_)) {
-            relevant_variables |= this -> actions_[act_i].get_pre();
+    for (size_t act_i = 0; act_i < _i.m; act_i++) {
+        if (_fadd[act_i].intersects(_i.goal)) {
+            relevant_variables |= _i.actions[act_i].pre;
             relevant_actions.add(act_i);
         }
     }
@@ -352,9 +501,9 @@ void HPLUS_instance::relevance_analysis(const my::binary_set& fact_landmarks, co
         new_act = false;
         std::vector<size_t> new_relevant_actions;
         for (auto act_i : cand_actions_sparse) {
-            if (this -> actions_[act_i].get_eff().intersects(relevant_variables)) {
+            if (_i.actions[act_i].eff.intersects(relevant_variables)) {
                 relevant_actions.add(act_i);
-                relevant_variables |= this -> actions_[act_i].get_pre();
+                relevant_variables |= _i.actions[act_i].pre;
                 new_relevant_actions.push_back(act_i);
                 new_act = true;
             }
@@ -362,361 +511,146 @@ void HPLUS_instance::relevance_analysis(const my::binary_set& fact_landmarks, co
         auto it = std::set_difference(cand_actions_sparse.begin(), cand_actions_sparse.end(), new_relevant_actions.begin(), new_relevant_actions.end(), cand_actions_sparse.begin());
         cand_actions_sparse.resize(it - cand_actions_sparse.begin());
     }
-    relevant_variables |= this -> goal_state_;
+    relevant_variables |= _i.goal;
 
     // eliminate actions and variables that are not relevant (or landmarks)
-    this -> eliminated_var_ |= (!relevant_variables - fact_landmarks);
-    this -> eliminated_act_ |= !relevant_actions;
-
+    _i.var_e |= (!relevant_variables - _fl);
+    _i.act_e |= !relevant_actions;
 }
-
-void HPLUS_instance::dominated_actions_elimination(const std::vector<my::binary_set>& landmarks_set, const std::vector<my::binary_set>& fadd) {
-    
+static inline void dominated_actions_elimination(hplus::instance& _i, std::vector<binary_set>& _lm, std::vector<binary_set>& _fadd, const logger& _l) {
     #if HPLUS_VERBOSE >= 20
-    mylog.print_info("(debug) Extracting dominated actions.");
+    _PRINT_INFO("(debug) Extracting dominated actions.");
     #endif
 
-    auto remaining_var_sparse = (!this -> eliminated_var_).sparse();
-    std::vector<my::binary_set> act_flm = std::vector<my::binary_set>(this -> n_act_, my::binary_set(this -> n_var_));
-    std::vector<std::vector<size_t>> var_flm_sparse(this -> n_var_);
+    auto remaining_var_sparse = hplus::var_remaining(_i).sparse();
+    std::vector<binary_set> act_flm = std::vector<binary_set>(_i.m, binary_set(_i.n));
+    std::vector<std::vector<size_t>> var_flm_sparse(_i.n);
 
     // compute the landmarks for each variable remaining
     for (auto var_i : remaining_var_sparse)
         for (auto var_j : remaining_var_sparse)
-            if (landmarks_set[var_i][var_j] || landmarks_set[var_i][this -> n_var_])
+            if (_lm[var_i][var_j] || _lm[var_i][_i.n])
                 var_flm_sparse[var_i].push_back(var_j);
                 
     // compute the landmarks for each action remaining
-    for (size_t act_i = 0; act_i < this -> n_act_; act_i++)
-        for (auto var_i : this -> actions_[act_i].get_pre_sparse()) if (!this -> eliminated_var_[var_i])
+    for (size_t act_i = 0; act_i < _i.m; act_i++)
+        for (auto var_i : _i.actions[act_i].pre_sparse) if (hplus::var_remaining(_i)[var_i])
             for (auto i : var_flm_sparse[var_i])
                 act_flm[act_i].add(i);
 
     // find efficently all actions that satisfy point 1) of Proposition 4 of in Imai's Paper
-    my::subset_searcher subset_finder = my::subset_searcher();
-    for (auto act_i : !this -> eliminated_act_) subset_finder.add(act_i, fadd[act_i]);
+    bs_searcher subset_finder = bs_searcher(_i.n);
+    for (auto act_i : hplus::act_remaining(_i)) subset_finder.add(act_i, _fadd[act_i]);
 
-    my::binary_set dominated_actions(this -> n_act_);
+    binary_set dominated_actions(_i.m);
 
     // find all dominated actions and eliminate them
-    for (auto dominant_act : !this -> eliminated_act_) if (!dominated_actions[dominant_act]) {
-        for (auto dominated_act : subset_finder.find_subsets(fadd[dominant_act])) if (!this -> eliminated_act_[dominated_act]) {
+    for (auto dominant_act : hplus::act_remaining(_i)) if (!dominated_actions[dominant_act]) {
+        for (auto dominated_act : subset_finder.find_subsets(_fadd[dominant_act])) if (hplus::act_remaining(_i)[dominated_act]) {
             
-            if (this -> fixed_act_[dominated_act] || dominant_act == dominated_act || this -> actions_[dominant_act].get_cost() > this -> actions_[dominated_act].get_cost() || !act_flm[dominated_act].contains(this -> actions_[dominant_act].get_pre())) continue;
+            if (_i.act_f[dominated_act] || dominant_act == dominated_act || _i.actions[dominant_act].cost > _i.actions[dominated_act].cost || !act_flm[dominated_act].contains(_i.actions[dominant_act].pre)) continue;
 
             dominated_actions.add(dominated_act);
-            this -> eliminated_act_.add(dominated_act);
+            _i.act_e.add(dominated_act);
 
         }
 
     }
-
 }
-
-void HPLUS_instance::immediate_action_application(const my::binary_set& act_landmarks) {
-
+static inline void immediate_action_application(hplus::instance& _i, const hplus::environment& _e, binary_set& _al, const logger& _l) {
     #if HPLUS_VERBOSE >= 20
-    mylog.print_info("(debug) Immediate action application.");
+    _PRINT_INFO("(debug) Immediate action application.");
     #endif
 
-    my::binary_set current_state(this -> n_var_);
-    my::binary_set actions_left = !this -> eliminated_act_;
+    binary_set current_state(_i.n);
+    binary_set actions_left = hplus::act_remaining(_i);
 
     // keep looking until no more actions can be applied
     int counter = 0;
     bool found_next_action = true;
     while (found_next_action) {
-
         found_next_action = false;
 
         for (auto act_i : actions_left) {
+            const auto& pre = _i.actions[act_i].pre & hplus::var_remaining(_i);
+            const auto& eff = _i.actions[act_i].eff & hplus::var_remaining(_i);
 
-            const auto& pre = this -> actions_[act_i].get_pre() & !this -> eliminated_var_;
-            const auto& eff = this -> actions_[act_i].get_eff() & !this -> eliminated_var_;
-
-            if (current_state.contains(pre) && (act_landmarks[act_i] || this -> actions_[act_i].get_cost() == 0)) {
+            if (current_state.contains(pre) && (_al[act_i] || _i.actions[act_i].cost == 0)) {
 
                 actions_left.remove(act_i);
-                this -> fixed_act_.add(act_i);
-                if (HPLUS_env.alg == HPLUS_CLI_ALG_IMAI) this -> timestamps_act_[act_i] = counter;
-                this -> fixed_var_ |= pre;
+                _i.act_f.add(act_i);
+                if (_e.alg == HPLUS_CLI_ALG_IMAI) _i.act_t[act_i] = counter;
+                _i.var_f |= pre;
                 for (auto var_i : eff) if (!current_state[var_i]) {
-                    this -> fixed_var_.add(var_i);
-                    if (HPLUS_env.alg == HPLUS_CLI_ALG_IMAI) this -> timestamps_var_[var_i] = counter+1;
-                    this -> fixed_fa_[act_i].add(var_i);
-                    for (auto act_j : actions_left) this -> eliminated_fa_[act_j].add(var_i);
+                    _i.var_f.add(var_i);
+                    if (_e.alg == HPLUS_CLI_ALG_IMAI) _i.var_t[var_i] = counter+1;
+                    _i.fadd_f[act_i].add(var_i);
+                    for (auto act_j : actions_left) _i.fadd_e[act_j].add(var_i);
                 }
                 current_state |= eff;
                 counter++;
                 found_next_action = true;
-
             }
-
         }
-
     }
-
 }
-
-void HPLUS_instance::inverse_actions_extraction() {
-
+static inline void inverse_actions_extraction(hplus::instance& _i, const logger& _l) {
     #if HPLUS_VERBOSE >= 20
-    mylog.print_info("(debug) Extracting inverse actions.");
+    _PRINT_INFO("(debug) Extracting inverse actions.");
     #endif
 
-    my::subset_searcher subset_finder = my::subset_searcher();
+    bs_searcher subset_finder = bs_searcher(_i.n);
 
     // find efficiently all actions that satisfy point 2) of the Definition 1 in section 4.6 of Imai's paper
-    const auto remaining_actions = this -> get_remaining_actions().sparse();
-    for (auto act_i : remaining_actions) subset_finder.add(act_i, this -> actions_[act_i].get_eff());
+    const auto remaining_actions = hplus::act_remaining(_i).sparse();
+    for (auto act_i : remaining_actions) subset_finder.add(act_i, _i.actions[act_i].eff);
 
     for (auto act_i : remaining_actions) {
-        const auto& pre = this -> actions_[act_i].get_pre();
-        const auto& eff = this -> actions_[act_i].get_eff();
+        const auto& pre = _i.actions[act_i].pre;
+        const auto& eff = _i.actions[act_i].eff;
         for (auto act_j : subset_finder.find_subsets(pre)) {
-            if (this -> actions_[act_j].get_pre().contains(eff)) {
-                if (!this -> get_fixed_actions()[act_i]) this -> inverse_act_[act_i].push_back(act_j);
-                if (!this -> get_fixed_actions()[act_j]) this -> inverse_act_[act_j].push_back(act_i);
+            if (_i.actions[act_j].pre.contains(eff)) {
+                if (!_i.act_f[act_i]) _i.act_inv[act_i].push_back(act_j);
+                if (!_i.act_f[act_j]) _i.act_inv[act_j].push_back(act_i);
             }
         }
     }
-
+}
+static inline void finish_opt(hplus::instance& _i) {
+    size_t count = 0;
+    for (auto var_i : hplus::var_remaining(_i)) _i.var_opt_conv[var_i] = count++;
+    _i.n_opt = count;
+    count = 0;
+    for (auto act_i : hplus::act_remaining(_i)) {
+        _i.act_opt_conv[act_i] = count;
+        _i.act_cpxtoidx[count++] = act_i;
+    }
+    _i.m_opt = count;
+    _i.fadd_checkpoint = std::vector<size_t>(_i.m_opt);
+    for (size_t act_i = 0; act_i < _i.m_opt; act_i++) _i.fadd_checkpoint[act_i] = act_i * _i.n_opt;
+    _ASSERT(!_i.var_f.intersects(_i.var_e));
+    _ASSERT(!_i.act_f.intersects(_i.act_e));
+}
+void hplus::instance_optimization(instance& _i, const environment& _e, const logger& _l) {
+    std::vector<binary_set> landmarks = std::vector<binary_set>(_i.n, binary_set(_i.n+1));
+    binary_set fact_landmarks = binary_set(_i.n);
+    binary_set act_landmarks = binary_set(_i.m);
+    std::vector<binary_set> fadd = std::vector<binary_set>(_i.m, binary_set(_i.n));
+    landmark_extraction(_i, landmarks, fact_landmarks, act_landmarks, _l);
+    fadd_extraction(_i, landmarks, fadd, _l);
+    relevance_analysis(_i, fact_landmarks, fadd, _l);
+    dominated_actions_elimination(_i, landmarks, fadd, _l);
+    immediate_action_application(_i, _e, act_landmarks, _l);
+    if (_e.inv_act) inverse_actions_extraction(_i, _l);
+    finish_opt(_i);
 }
 
-void HPLUS_instance::imai_model_enhancements() {
-
-    // mylog.print_info("Model enhancement from Imai's paper.");
-
-    std::vector<my::binary_set> landmarks_set;
-    my::binary_set fact_landmarks;
-    my::binary_set act_landmarks;
-    std::vector<my::binary_set> fadd;
-
-    this -> landmarks_extraction(landmarks_set, fact_landmarks, act_landmarks);
-
-    this -> fixed_var_ |= fact_landmarks;
-    this -> fixed_act_ |= act_landmarks;
-
-    this -> first_adders_extraction(landmarks_set, fadd);
-
-    for (size_t act_i = 0; act_i < this -> n_act_; act_i++) this -> eliminated_fa_[act_i] |= (this -> actions_[act_i].get_eff() & !fadd[act_i]);
-
-    this -> relevance_analysis(fact_landmarks, fadd);
-
-    this -> dominated_actions_elimination(landmarks_set, fadd);
-
-    this -> immediate_action_application(act_landmarks);
-
-    if (HPLUS_env.alg != HPLUS_CLI_ALG_RANKOOH && HPLUS_env.alg != HPLUS_CLI_ALG_GREEDY) this -> inverse_actions_extraction();
-
+void hplus::prepare_faster_actsearch(instance& _i) {
+    _i.act_with_pre = std::vector<std::vector<size_t>>(_i.n);
+    _i.act_with_eff = std::vector<std::vector<size_t>>(_i.n);
+    std::vector<size_t> rem_var = var_remaining(_i).sparse(), rem_act = act_remaining(_i).sparse();
+    for (auto var_i : rem_var) for (auto act_i : rem_act) {
+        if (_i.actions[act_i].pre[var_i]) _i.act_with_pre[var_i].push_back(act_i);
+        if (_i.actions[act_i].eff[var_i]) _i.act_with_eff[var_i].push_back(act_i);
+    }
 }
-
-void HPLUS_instance::parse_inst_file_(const std::string& instance_path_) {
-
-    mylog.print_info("Parsing SAS file.");
-
-    std::ifstream ifs(instance_path_.c_str(), std::ifstream::in);
-    my::assert(ifs.good(), "Opening instance file failed.");
-
-    HPLUS_stats.parsing_time = HPLUS_env.time_limit - timer.get_time();
-    std::string line;
-
-    // * version section
-    std::getline(ifs, line);   // begin_version
-    my::assert(line == "begin_version", "Corrupted file.");
-    std::getline(ifs, line);   // version_number
-    my::assert(my::isint(line), "Corrupted file.");
-    this -> version_ = std::stoi(line);
-    std::getline(ifs, line);   // end_version
-    my::assert(line == "end_version", "Corrupted file.");
-
-    // * metric section
-    std::getline(ifs, line);   // begin_metric
-    my::assert(line == "begin_metric", "Corrupted file.");
-    std::getline(ifs, line);   // metric
-    my::assert(my::isint(line, 0, 1), "Corrupted file.");
-    this -> unitary_costs_ = stoi(line) != 1;
-    std::getline(ifs, line);   // end_metric
-    my::assert(line == "end_metric", "Corrupted file.");
-
-    // * variables section
-    mylog.print_warn("Ignoring axiom layers.");
-    std::getline(ifs, line);   // nvar_pre_exp
-    my::assert(my::isint(line, 0), "Corrupted file.");
-    size_t nvar_pre_exp = std::stoi(line);
-    std::vector<size_t> var_ranges(nvar_pre_exp);
-    this -> n_var_ = 0;
-    for (size_t var_i = 0; var_i < nvar_pre_exp; var_i++) {
-        // process each variable
-        std::getline(ifs, line);   // begin_variable
-        my::assert(line == "begin_variable", "Corrupted file.");
-        std::getline(ifs, line);   // variable name (ignored)
-        std::getline(ifs, line);   // axiom layer (ignored)
-        my::assert(line == "-1", "Axiom layer is not -1, this software is not made for this instance.");
-        std::getline(ifs, line);   // range of variable
-        my::assert(my::isint(line, 0), "Corrupted file.");
-        size_t range = stoi(line);
-        var_ranges[var_i] = range;
-        this -> n_var_ += range;
-        for (size_t _ = 0; _ < range; _++) std::getline(ifs, line);   // name for variable value (ignored)
-        std::getline(ifs, line);   // end_variable
-        my::assert(line == "end_variable", "Corrupted file.");
-    }
-    
-    // * mutex section (ignored)
-    mylog.print_warn("Ignoring mutex section.");
-    std::getline(ifs, line);   // number of mutex groups
-    my::assert(my::isint(line, 0), "Corrupted file.");
-    size_t nmgroups = stoi(line);
-    for (size_t i = 0; i < nmgroups; i++) {
-        std::getline(ifs, line);   // begin_mutex_group
-        my::assert(line == "begin_mutex_group", "Corrupted file.");
-        while (line != "end_mutex_group") {
-            std::getline(ifs, line); // reach end_mutex_group (ignore all content)
-            my::assert(line != "begin_state", "Corrupted file.");
-        }
-    }
-
-    // * initial state section
-    std::getline(ifs, line);   // begin_state
-    my::assert(line == "begin_state", "Corrupted file.");
-    my::binary_set istate = my::binary_set(this -> n_var_);
-    for (size_t var_i = 0, c = 0; var_i < nvar_pre_exp; c += var_ranges[var_i], var_i++) {
-        std::getline(ifs, line);   // initial value of var_i
-        my::assert(my::isint(line, 0, var_ranges[var_i] - 1), "Corrupted file.");
-        size_t val = stoi(line);
-        istate.add(c + val);
-    }
-    std::getline(ifs, line);   // end_state
-    my::assert(line == "end_state", "Corrupted file.");
-
-    // removing initial state variables
-    std::vector<size_t> post_istate_removal_offset(this -> n_var_);
-    size_t counter = 0;
-    for (size_t var_i = 0; var_i < this -> n_var_; var_i++) {
-        if (istate[var_i]) counter++;
-        post_istate_removal_offset[var_i] = counter;
-    }
-    this -> n_var_ -= nvar_pre_exp;
-
-    // * goal state section
-    std::getline(ifs, line);   // begin_goal
-    my::assert(line == "begin_goal", "Corrupted file.");
-    this -> goal_state_ = my::binary_set(this -> n_var_);
-    std::getline(ifs, line);   // number of goals
-    my::assert(my::isint(line, 0, nvar_pre_exp), "Corrupted file.");
-    size_t ngoals = stoi(line);
-    for (size_t _ = 0; _ < ngoals; _++) {
-        // parsing each goal
-        std::vector<std::string> tokens;
-        std::getline(ifs, line);   // pair 'variable goal'
-        tokens = my::split_string(line, ' ');
-        my::assert(tokens.size() == 2, "Corrupted file.");
-        my::assert(my::isint(tokens[0], 0, nvar_pre_exp - 1), "Corrupted file."); // variable index
-        size_t var = stoi(tokens[0]);
-        my::assert(my::isint(tokens[1], 0, var_ranges[var] - 1), "Corrupted file."); // variable goal
-        size_t value = stoi(tokens[1]);
-        size_t var_strips = value;
-        for (size_t _ = 0; _ < var; var_strips += var_ranges[_], _++) {}
-        if (!istate[var_strips]) this -> goal_state_.add(var_strips - post_istate_removal_offset[var_strips]);
-    }
-    std::getline(ifs, line);   // end_goal
-    my::assert(line == "end_goal", "Corrupted file.");
-
-    // * operator (actions) section
-    mylog.print_warn("Ignoring effect conditions.");
-    std::getline(ifs, line);   // n_act
-    my::assert(my::isint(line, 0), "Corrupted file.");
-    this -> n_act_ = stoi(line);
-    this -> actions_ = std::vector<HPLUS_action>(this -> n_act_);
-    for (size_t act_i = 0; act_i < this -> n_act_; act_i++) {
-        // process each action
-        std::getline(ifs, line);   // begin_operator
-        my::assert(line == "begin_operator", "Corrupted file.");
-        std::getline(ifs, line);   // symbolic action name
-        std::string name = line;
-        my::binary_set act_pre(this -> n_var_);
-        std::getline(ifs, line);   // number of prevail conditions
-        my::assert(my::isint(line, 0, nvar_pre_exp), "Corrupted file.");
-        size_t n_pre = stoi(line);
-        for (size_t _ = 0; _ < n_pre; _++) {
-            // parsing each prevail condition
-            std::vector<std::string> tokens;
-            std::getline(ifs, line);   // pair 'variable value'
-            tokens = my::split_string(line, ' ');
-            my::assert(tokens.size() == 2, "Corrupted file.");
-            my::assert(my::isint(tokens[0], 0, nvar_pre_exp - 1), "Corrupted file."); // variable index
-            size_t var = stoi(tokens[0]);
-            my::assert(my::isint(tokens[1], 0,var_ranges[var] - 1), "Corrupted file."); // variable value
-            size_t value = stoi(tokens[1]);
-            size_t var_strips = value;
-            for (size_t __ = 0; __ < var; var_strips += var_ranges[__], __++) {}
-            if (!istate[var_strips]) act_pre.add(var_strips - post_istate_removal_offset[var_strips]);
-        }
-        std::getline(ifs, line);   // number of effects
-        my::assert(my::isint(line, 0), "Corrupted file.");
-        size_t n_eff = stoi(line);
-        my::binary_set act_eff(this -> n_var_);
-        for (size_t eff_i = 0; eff_i < n_eff; eff_i++) {
-            // parsing each effect
-            std::getline(ifs, line);   // effect line
-            std::vector<std::string> tokens;
-            tokens = my::split_string(line, ' ');
-            my::assert(tokens.size() == 4, "This program won't handle effect conditions."); // not expecting effect conditions
-            my::assert(my::isint(tokens[0], 0, 0), "This program won't handle effect conditions."); // number of effect conditions (ignored and check to be 0)
-            my::assert(my::isint(tokens[1], 0, nvar_pre_exp - 1), "Corrupted file.");   // variable affected by the action
-            size_t var = stoi(tokens[1]);
-            my::assert(my::isint(tokens[2], -1, var_ranges[var] - 1), "Corrupted file.");    // precondition of the variable
-            int pre_val = stoi(tokens[2]);
-            my::assert(my::isint(tokens[3], 0, var_ranges[var] - 1), "Corrupted file."); // effect of the variable
-            size_t eff_val = stoi(tokens[3]);
-            size_t c = 0;
-            for (size_t _ = 0; _ < var; c += var_ranges[_], _++) {}
-            if (pre_val >= 0 && !istate[c + pre_val]) act_pre.add(c + pre_val - post_istate_removal_offset[c + pre_val]);
-            if (!istate[c + eff_val]) act_eff.add(c + eff_val - post_istate_removal_offset[c + eff_val]);
-        }
-        std::getline(ifs, line);   // action cost
-        my::assert(my::isint(line), "Corrupted file.");
-        unsigned int cost = 1;
-        if (!this -> unitary_costs_) cost = stoi(line);
-        std::getline(ifs, line);   // end_operator
-        my::assert(line == "end_operator", "Corrupted file.");
-        this -> actions_[act_i] = HPLUS_action(act_pre, act_eff, cost, name);
-    }
-
-    mylog.print_warn("Ignoring axiom section.");
-
-    ifs.close();
-
-    HPLUS_stats.parsing_time = timer.get_time();
-    
-}
-
-// ##################################################################### //
-// ############################ HPLUS_ACTION ########################### //
-// ##################################################################### //
-
-HPLUS_action::HPLUS_action(const my::binary_set& preconditions, const my::binary_set& effects, unsigned int cost, const std::string& name) {
-
-    this -> pre_ = my::binary_set(preconditions);
-    this -> eff_ = my::binary_set(effects);
-    for (size_t var_i = 0; var_i < this -> pre_.size(); var_i++) {
-        if (this -> pre_[var_i]) this -> pre_sparse_.push_back(var_i);
-        if (this -> eff_[var_i]) this -> eff_sparse_.push_back(var_i);
-    }
-    this -> cost_ = cost;
-    this -> name_ = name;
-
-}
-
-const my::binary_set& HPLUS_action::get_pre() const { return this -> pre_; }
-
-const std::vector<size_t>& HPLUS_action::get_pre_sparse() const { return this -> pre_sparse_; }
-
-const my::binary_set& HPLUS_action::get_eff() const { return this -> eff_; }
-
-const std::vector<size_t>& HPLUS_action::get_eff_sparse() const { return this -> eff_sparse_; }
-
-const std::string& HPLUS_action::get_name() const { return this -> name_; }
-
-unsigned int HPLUS_action::get_cost() const { return this -> cost_; }
