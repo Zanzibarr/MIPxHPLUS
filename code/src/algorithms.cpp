@@ -937,7 +937,7 @@ void store_rankooh_sol(CPXENVptr& env, CPXLPptr& lp, hplus::instance& _i, const 
                 break;
             }
         }
-        _ASSERT(intcheck);
+        _ASSERT(intcheck);      // FIXME: FAILED ON "woodworking-opt08-strips-p01.sas --no-op"
     }
 
     // store solution
