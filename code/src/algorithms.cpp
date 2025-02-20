@@ -560,12 +560,12 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
     std::vector<triangle> triangles_list;
 
     // TODO: (maybe) Implement using pq.hxx
-    typedef struct {
+    struct node {
         size_t deg, id;
-    } node;
-    typedef struct {
+    };
+    struct compare_node {
         bool operator()(const node& n1, const node& n2) { return n1.deg > n2.deg; }
-    } compare_node;
+    };
     std::priority_queue<node, std::vector<node>, compare_node> nodes_queue;
     std::vector<size_t> degree_counter(_i.n, 0);
 

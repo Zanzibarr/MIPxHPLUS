@@ -1,5 +1,5 @@
 # junk folders for IDE's and extensions
-.DS_store/
+.DS_Store/
 .vscode/
 .idea/
 .trunk/
