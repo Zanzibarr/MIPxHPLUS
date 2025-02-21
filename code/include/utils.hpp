@@ -22,7 +22,7 @@
 
 #include "log.hxx"
 
-#define CODE_VERSION "20/02/2025"
+#define CODE_VERSION "21/02/2025"
 
 // ##################################################################### //
 // ######################### PATHS AND FOLDERS ######################### //
@@ -115,46 +115,65 @@ static inline bool isint(const std::string& _str, const int _from = INT_MIN, con
     } catch (std::invalid_argument&) { return false; }
 
 }
+
 /** Exits with error message due to missing implementation, prints through @param _log the message @param _msg formatted as error */
 static inline void todo(const logger& _log, const std::string& _msg) { _log.raise_error("%s: UNIMPLEMENTED.", _msg.c_str()); }
-/** Pauses the code execution until resuming, prints @param msg formatted as warning */
-static inline void pause(const std::string& _msg) {
+
+/** Pauses the code execution until resuming, prints msg formatted as warning */
+static inline void pause(const std::string& _msg) {                      
     size_t i = 0;
     std::cout << _msg << "(1 to exit, 0 to continue): ";
     std::cin >> i;
     if (i > 0) exit(1);
 }
 
-#ifndef assert
-#define assert(cond)                                                                                        \
-if (!(cond)) {                                                                                                \
-    std::cerr << "Assert check failed at " << __func__ << "(): " << __FILE__ << ":"<< __LINE__ << "\n";     \
-    exit(1);                                                                                                \
+#define _ACK_REQ(msg) {                                          \
+    std::cout << msg << ".\nPress any key to continue...";  \
+    std::cin.ignore();                                      \
+}
+
+#ifndef _ASSERT
+#define _ASSERT(_cond)                                                                                           \
+if (!(_cond)) {                                                                                                 \
+    std::cerr << "Assert check failed at " << __func__ << "(): " << __FILE__ << ":"<< __LINE__ << "\n";         \
+    exit(1);                                                                                                    \
 }
 #endif
 
 #if HPLUS_WARN == 1
-#define _PRINT_WARN(msg) {  \
-_l.print_warn(msg);         \
+#define _PRINT_WARN(_msg) {  \
+_l.print_warn(_msg);         \
 }
 #else
-#define _PRINT_WARN(msg) {}
+#define _PRINT_WARN(_msg) {}
 #endif
 
-#if HPLUS_VERBOSE > 1
-#define _PRINT_INFO(msg) {  \
-_l.print_info(msg);         \
+#if HPLUS_VERBOSE >= 10
+#define _PRINT_INFO(_msg) {  \
+_l.print_info(_msg);         \
 }
 #else
-#define _PRINT_INFO(msg) {}
+#define _PRINT_INFO(_msg) {}
+#endif
+
+#if HPLUS_VERBOSE >= 20
+#define _PRINT_DEBUG(_msg) _PRINT_INFO(_msg)
+#else
+#define _PRINT_DEBUG(_msg) {}
+#endif
+
+#if HPLUS_VERBOSE >= 100
+#define _PRINT_VERBOSE(_msg) _PRINT_INFO(_msg)
+#else
+#define _PRINT_VERBOSE(_msg) {}
 #endif
 
 #if HPLUS_INTCHECK
-#define _ASSERT(cond) {     \
-assert(cond);               \
+#define _INTCHECK_ASSERT(_cond) {     \
+_ASSERT(_cond);               \
 }
 #else
-#define _ASSERT(cond) {}
+#define _INTCHECK_ASSERT(_cond) {}
 #endif
 
 #endif /* UTILS_H */

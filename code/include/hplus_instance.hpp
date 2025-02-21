@@ -81,7 +81,7 @@ namespace hplus {
     /** Perform instance optimization to @param _i using flags stored in the @param _e environment */
     void instance_optimization(instance& _i, const environment& _e, const logger& _l);
     /** Prepare helper data structure for faster action lookup on instance @param _i */
-    void prepare_faster_actsearch(instance& _i);
+    void prepare_faster_actsearch(instance& _i, const logger& _l);
 
 }
 

@@ -9,8 +9,8 @@
 #ifndef BS_H
 #define BS_H
 
-#ifndef assert
-#define assert(cond)                                                                                        \
+#ifndef _ASSERT
+#define _ASSERT(cond)                                                                                        \
 if (!(cond)) {                                                                                                \
     std::cerr << "Assert check failed at " << __func__ << "(): " << __FILE__ << ":"<< __LINE__ << "\n";     \
     exit(1);                                                                                                \
@@ -32,12 +32,12 @@ class binary_set {
         binary_set(const binary_set& _bs) : capacity(_bs.capacity), set(_bs.set) {}
         /** Add element @param _e to the set (if already present does nothing) */
         inline void add(size_t _e) {
-            assert(_e < this->capacity);
+            _ASSERT(_e < this->capacity);
             this->set[_e/8] |= (1 << _e%8);
         }
         /** Remove element @param _e from the set (if not present does nothing) */
         inline void remove(size_t _e) {
-            assert(_e < this->capacity);
+            _ASSERT(_e < this->capacity);
             this->set[_e/8] &= ~(1 << _e%8);
         }
         /** Remove all elements from the set */
@@ -49,40 +49,40 @@ class binary_set {
         }
         /** Compute intersection of this and @param _bs sets and returns it */
         binary_set operator&(const binary_set& _bs) const {
-            assert(this->capacity == _bs.capacity && this->capacity != 0 && _bs.capacity != 0);
+            _ASSERT(this->capacity == _bs.capacity && this->capacity != 0 && _bs.capacity != 0);
             binary_set new_bs(*this);
             for (size_t i = 0; i < this->set.size(); i++) new_bs.set[i] &= _bs.set[i];
             return new_bs;
         }
         /** Compute intersection of this and @param _bs sets and stores it in this set - returns itself */
         binary_set operator&=(const binary_set& _bs) {
-            assert(this->capacity == _bs.capacity && this->capacity != 0 && _bs.capacity != 0);
+            _ASSERT(this->capacity == _bs.capacity && this->capacity != 0 && _bs.capacity != 0);
             for (size_t i = 0; i < this->set.size(); i++) this->set[i] &= _bs.set[i];
             return *this;
         }
         /** Compute the union of this and @param _bs sets and returns it */
         binary_set operator|(const binary_set& _bs) const {
-            assert(this->capacity == _bs.capacity && this->capacity != 0 && _bs.capacity != 0);
+            _ASSERT(this->capacity == _bs.capacity && this->capacity != 0 && _bs.capacity != 0);
             binary_set new_bs(*this);
             for (size_t i = 0; i < this->set.size(); i++) new_bs.set[i] |= _bs.set[i];
             return new_bs;
         }
         /** Compute the union of this and @param _bs sets and stores it in this set - returns itself */
         binary_set operator|=(const binary_set& _bs) {
-            assert(this->capacity == _bs.capacity && this->capacity != 0 && _bs.capacity != 0);
+            _ASSERT(this->capacity == _bs.capacity && this->capacity != 0 && _bs.capacity != 0);
             for (size_t i = 0; i < this->set.size(); i++) this->set[i] |= _bs.set[i];
             return *this;
         }
         /** Compute the set difference of this and @param _bs sets and returns it */
         binary_set operator-(const binary_set& _bs) const {
-            assert(this->capacity == _bs.capacity && this->capacity != 0 && _bs.capacity != 0);
+            _ASSERT(this->capacity == _bs.capacity && this->capacity != 0 && _bs.capacity != 0);
             binary_set new_bs(*this);
             for (size_t i = 0; i < this->set.size(); i++) new_bs.set[i] &= ~_bs.set[i];
             return new_bs;
         }
         /** Compute the set difference of this and @param _bs sets and stores it in this set - returns itself */
         binary_set operator-=(const binary_set& _bs) {
-            assert(this->capacity == _bs.capacity && this->capacity != 0 && _bs.capacity != 0);
+            _ASSERT(this->capacity == _bs.capacity && this->capacity != 0 && _bs.capacity != 0);
             for (size_t i = 0; i < this->set.size(); i++) this->set[i] &= ~_bs.set[i];
             return *this;
         }
@@ -95,14 +95,16 @@ class binary_set {
         }
         /** Check if @param _e is in the set */
         bool operator[](size_t _e) const {
-            assert(_e < this->capacity);
+            _ASSERT(_e < this->capacity);
             return this->set[_e/8] & (1 << _e%8);
         }
         /** Returns the capacity of the set */
         inline size_t size() const { return this->capacity; }
+        /** Tells wether the set is empty or not */
+        inline bool empty() const { return (*this) == binary_set(this->capacity); }
         /** Confront this and @param _bs sets */
         bool operator==(const binary_set& _bs) const {
-            assert(this->capacity == _bs.capacity && this->capacity != 0 && _bs.capacity != 0);
+            _ASSERT(this->capacity == _bs.capacity && this->capacity != 0 && _bs.capacity != 0);
             size_t i;
             for (i = 0; i < this->set.size() && this->set[i] == _bs.set[i]; i++);
             return i == this->set.size();
@@ -111,14 +113,14 @@ class binary_set {
         bool operator!=(const binary_set& _bs) const { return !((*this)==_bs); }
         /** Checks if this and @param _bs have a non-empty intersection */
         inline bool intersects(const binary_set& _bs) const {
-            assert(this->capacity == _bs.capacity && this->capacity != 0 && _bs.capacity != 0);
+            _ASSERT(this->capacity == _bs.capacity && this->capacity != 0 && _bs.capacity != 0);
             size_t i = 0;
             for (i = 0; i < this->set.size() && !(this->set[i] & _bs.set[i]); i++);
             return i != this->set.size();
         }
         /** Check if this set contains @param _bs */
         inline bool contains(const binary_set& _bs) const {
-            assert(this->capacity == _bs.capacity && this->capacity != 0 && _bs.capacity != 0);
+            _ASSERT(this->capacity == _bs.capacity && this->capacity != 0 && _bs.capacity != 0);
             size_t i = 0;
             for (i = 0; i < this->set.size() && !(~this->set[i] & _bs.set[i]); i++);
             return i == this->set.size();
@@ -175,7 +177,7 @@ class bs_searcher {
         bs_searcher(size_t _c) : root(new treenode()), capacity(_c) {}
         /** Add to the search a new binary set @param _bs and assign to it value @param _v */
         inline void add(size_t _v, const binary_set& _bs) {
-            assert(this->capacity == _bs.size());
+            _ASSERT(this->capacity == _bs.size());
             treenode* leaf = this->root;
             for (size_t i = 0; i < _bs.size(); i++) {
                 if (_bs[i]) {
@@ -189,7 +191,7 @@ class bs_searcher {
             leaf->values.push_back(_v);
         }
         inline void remove(size_t _v, const binary_set& _bs) {
-            assert(this->capacity == _bs.size());
+            _ASSERT(this->capacity == _bs.size());
             // Helper function to check if a node is empty (no values and no children)
             auto is_empty_node = [](treenode* node) -> bool {
                 return node != nullptr && 

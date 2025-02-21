@@ -1,5 +1,5 @@
-- [ ] Deletefree parsing
 - [ ] Prepare testing structure for cluster use
+- [ ] Test correctness of Deletefree parsing
 - [ ] Why some deletefree instances appear infeasible?
 - [ ] Implement dynamic-s and dynamic-l
 - [ ] Implement other heuristics

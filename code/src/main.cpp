@@ -94,7 +94,11 @@ static inline void parse_cli(const int& _argc, const char** _argv, hplus::enviro
     _e.imai_tight_bounds = !no_tightbounds;
     if (heur) _e.heur = args::get(heur);
     _e.warm_start = !no_warmstart;
-    if (timelimit) _e.time_limit = args::get(timelimit);
+    if (timelimit) {
+        int tl = args::get(timelimit);
+        if (tl < 0) _ACK_REQ("Time limit is negative: setting time limit to UINT_MAX");
+        _e.time_limit = (tl < 0) ? UINT_MAX : tl;
+    }
     if (logname) {
         _e.log = true;
         _e.log_name = args::get(logname);
@@ -105,8 +109,7 @@ static inline void parse_cli(const int& _argc, const char** _argv, hplus::enviro
         _e.using_cplex = false;
     }
     if (_e.warm_start && _e.heur == "none") {
-        std::cout << "Warm start has been activated but heuristic has been disabled: disabling warm start.\nPress any key to continue...";
-        std::cin.ignore();
+        _ACK_REQ("Warm start has been activated but heuristic has been disabled: disabling warm start");
         _e.warm_start = false;
     }
 
@@ -125,6 +128,7 @@ void* time_limit_termination(void* args) {
 }
 
 static inline void show_info(const hplus::instance& _i, const hplus::environment& _e, const logger& _l) {
+    _PRINT_VERBOSE("Showing info about the execution.");
     #if HPLUS_VERBOSE <= 1
     return;
     #endif
@@ -134,7 +138,7 @@ static inline void show_info(const hplus::instance& _i, const hplus::environment
     std::time_t time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
     _l.print("%sCode version: %s.\n%s", std::ctime(&time), CODE_VERSION, LINE);
     _l.print("Input file: %s.", _e.input_file.c_str());
-    if (_e.log && !_e.log_name.empty()) _l.print("Log name:           %29s.", _e.log_name.c_str());
+    if (_e.log && !_e.log_name.empty()) _l.print("Log name:               %35s.", _e.log_name.c_str());
     if (!_e.run_name.empty()) _l.print("Run name:                              %20s.", _e.run_name.c_str());
     _l.print("Verbose parameter:                               %10d.", HPLUS_VERBOSE);
     _l.print("Warnings parameter:                              %10d.", HPLUS_WARN);
@@ -152,7 +156,7 @@ static inline void show_info(const hplus::instance& _i, const hplus::environment
     _l.print(LINE);
 
     #if HPLUS_INTCHECK
-    _l.print("Integrity checks enabled (execution might be slower).");
+    _l.print("\e[1m!!  Integrity checks enabled (execution might be slower)  !!\e[0m");
     _l.print(LINE);
     #endif
 
@@ -161,11 +165,13 @@ static inline void show_info(const hplus::instance& _i, const hplus::environment
     if (_e.alg == HPLUS_CLI_ALG_IMAI) _l.print("Tighter bounds on variable timestamps:           %10s.", _e.imai_tight_bounds ? "Y" : "N");
     if (_e.heur != "none") _l.print("Heuristic:                                       %10s.", _e.heur.c_str());
     if (_e.using_cplex) _l.print("Warm start:                                      %10s.", _e.warm_start ? "Y" : "N");
-    _l.print("Time limit:                                     %10ds.", _e.time_limit);
+    _l.print("Time limit:                                     %10us.", _e.time_limit);
     _l.print(LINE);
+
 }
 
 static inline void run(hplus::instance& _i, hplus::environment& _e, hplus::statistics& _s, const logger& _l) {
+    _PRINT_VERBOSE("Executing the chosen algorithms.");
 
     if (
         _e.alg != HPLUS_CLI_ALG_IMAI &&
@@ -191,7 +197,7 @@ static inline void run(hplus::instance& _i, hplus::environment& _e, hplus::stati
 
     }
     
-    hplus::prepare_faster_actsearch(_i);
+    hplus::prepare_faster_actsearch(_i, _l);
 
     // ~~~~~~~~~~~~~~ HEURISTIC ~~~~~~~~~~~~~~ //
 
@@ -252,7 +258,7 @@ static inline void run(hplus::instance& _i, hplus::environment& _e, hplus::stati
     CPXENVptr env = nullptr;
     CPXLPptr lp = nullptr;
 
-    cpx_init(env, lp, _e);
+    cpx_init(env, lp, _e, _l);
 
     if (_e.alg == HPLUS_CLI_ALG_IMAI) cpx_build_imai(env, lp, _i, _e, _l);
     else if (_e.alg == HPLUS_CLI_ALG_RANKOOH) cpx_build_rankooh(env, lp, _i, _e, _l);
@@ -260,9 +266,11 @@ static inline void run(hplus::instance& _i, hplus::environment& _e, hplus::stati
     else if (_e.alg == HPLUS_CLI_ALG_DYNAMIC_LARGE) cpx_build_dynamic_large(env, lp, _i, _e, _l);
 
     // time limit
-    if ((double)_e.time_limit > _e.timer.get_time()) assert(!CPXsetdblparam(env, CPXPARAM_TimeLimit, (double)_e.time_limit - _e.timer.get_time()));
+    if ((double)_e.time_limit > _e.timer.get_time()) _ASSERT(!CPXsetdblparam(env, CPXPARAM_TimeLimit, (double)_e.time_limit - _e.timer.get_time()));
 
     if (_e.warm_start) {     // Post warm starto to CPLEX
+
+        _PRINT_INFO("Posting warm start.");
 
         if (_e.alg == HPLUS_CLI_ALG_IMAI) cpx_post_warmstart_imai(env, lp, _i, _e, _l);
         else if (_e.alg == HPLUS_CLI_ALG_RANKOOH) cpx_post_warmstart_rankooh(env, lp, _i, _e, _l);
@@ -281,7 +289,7 @@ static inline void run(hplus::instance& _i, hplus::environment& _e, hplus::stati
     _s.execution = _e.time_limit - _e.timer.get_time();
     start_time = _e.timer.get_time();
 
-    assert(!CPXmipopt(env, lp));
+    _ASSERT(!CPXmipopt(env, lp));
 
     if (parse_cpx_status(env, lp, _i, _e, _l)) {        // If CPLEX has found a solution
         if (_e.alg == HPLUS_CLI_ALG_IMAI) store_imai_sol(env, lp, _i, _e, _l);
@@ -350,7 +358,7 @@ int main(const int _argc, const char** _argv) {
     hplus::environment env; init(env);
     hplus::statistics stats; init(stats);
     parse_cli(_argc, _argv, env);
-    logger log(env.run_name, env.log, env.log_name);
+    logger log(env.run_name, env.log, HPLUS_LOG_DIR"/"+env.log_name);
     pthread_t timer_thread; pthread_create(&timer_thread, nullptr, time_limit_termination, &env);
     hplus::create_instance(inst, env, stats, log);
     show_info(inst, env, log);

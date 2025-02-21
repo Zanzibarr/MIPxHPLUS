@@ -17,7 +17,7 @@
 // ===================== CPLEX UTILS ==================== //
 // ====================================================== //
 
-void cpx_init(CPXENVptr& env, CPXLPptr& lp, const hplus::environment& _e);
+void cpx_init(CPXENVptr& env, CPXLPptr& lp, const hplus::environment& _e, const logger& _l);
 
 void cpx_close(CPXENVptr& env, CPXLPptr& lp);
 

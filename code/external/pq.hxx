@@ -9,8 +9,8 @@
 #ifndef PQ_H
 #define PQ_H
 
-#ifndef assert
-#define assert(cond)                                                                                        \
+#ifndef _ASSERT
+#define _ASSERT(cond)                                                                                        \
 if (!(cond)) {                                                                                                \
     std::cerr << "Assert check failed at " << __func__ << "(): " << __FILE__ << ":"<< __LINE__ << "\n";     \
     exit(1);                                                                                                \
@@ -26,7 +26,7 @@ class priority_queue {
         priority_queue(int _n) : n(_n), cnt(0), data(n), prior(n), position(n, -1) {}
         /** Return the integer with minimal priority (throws exception if empty) */
         inline int top() const {
-            assert(!is_empty());
+            _ASSERT(!is_empty());
             return data[0];
         }
         /** Check whether the queue is empty */
@@ -54,8 +54,8 @@ class priority_queue {
         }
         /** Insert integer @param j into the queue with a priority @param p */
         inline void push(int j, score_type p, bool mantain_heap = true) {
-            assert((j >= 0) && (j < n));
-            assert(position[j] == -1);
+            _ASSERT((j >= 0) && (j < n));
+            _ASSERT(position[j] == -1);
             prior[j] = p;
             // put gap at last position
             int gap = cnt++;
@@ -69,18 +69,18 @@ class priority_queue {
         }
         /** Removes the integer with minimal priority */
         inline void pop() {
-            assert(!is_empty());
+            _ASSERT(!is_empty());
             remove_at(0, true);
         }
         /** Removes integer @param j from the queue */
         inline void remove(int j, bool mantain_heap = true) {
-            assert(position[j] >= 0);
+            _ASSERT(position[j] >= 0);
             remove_at(position[j], mantain_heap);
-            assert(position[j] == -1);
+            _ASSERT(position[j] == -1);
         }
         /** Changes the score of an integer @param j already in the queue to @param p */
         inline void change(int j, score_type p, bool mantain_heap = true) {
-            assert(position[j] >= 0);
+            _ASSERT(position[j] >= 0);
             int gap = position[j];
             if (mantain_heap) {
                 score_type oldp = prior[gap];
