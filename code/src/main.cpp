@@ -35,7 +35,6 @@ static inline void init(hplus::environment& _e) {
         .problem_opt = true,
         .warm_start = true,
         .imai_tight_bounds = true,
-        .inv_act = true,
         .using_cplex = true,
         .time_limit = 60,
         .timer = time_keeper()
@@ -362,7 +361,7 @@ int main(const int _argc, const char** _argv) {
     pthread_t timer_thread; pthread_create(&timer_thread, nullptr, time_limit_termination, &env);
     hplus::create_instance(inst, env, stats, log);
     show_info(inst, env, log);
-    run(inst, env, stats, log);
+    if (check_feasibility(inst, env, log)) run(inst, env, stats, log);
     env.exec_s = exec_status::EXIT;
     pthread_join(timer_thread, nullptr);
     end(inst, env, stats, log);

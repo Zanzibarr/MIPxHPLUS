@@ -13,6 +13,8 @@
 #include "utils.hpp"
 #include "hplus_instance.hpp"
 
+bool check_feasibility(const hplus::instance& _i, hplus::environment& _e, const logger& _l);
+
 // ====================================================== //
 // ===================== CPLEX UTILS ==================== //
 // ====================================================== //

@@ -4,6 +4,25 @@
 #include "algorithms.hpp"
 #include "utils.hpp"
 
+bool check_feasibility(const hplus::instance& _i, hplus::environment& _e, const logger& _l) {
+    _PRINT_VERBOSE("Checking problem feasibility.");
+    binary_set state(_i.n);
+    // binary_set searcher for faster actions lookup
+    bs_searcher feasible_actions = bs_searcher(_i.n);
+    for (auto act_i : hplus::act_remaining(_i)) feasible_actions.add(act_i, _i.actions[act_i].pre);
+    while (!state.contains(_i.goal)) {
+        std::vector<size_t> candidates = feasible_actions.find_subsets(state);
+        if (candidates.empty()) {
+            _PRINT_VERBOSE("The problem is infeasible.");
+            _e.sol_s = solution_status::INFEAS;
+            return false;
+        }
+        state |= _i.actions[candidates[0]].eff;
+        feasible_actions.remove(candidates[0], _i.actions[candidates[0]].pre);
+    }
+    return true;
+}
+
 // ##################################################################### //
 // ############################ CPLEX UTILS ############################ //
 // ##################################################################### //

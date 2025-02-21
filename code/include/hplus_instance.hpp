@@ -51,7 +51,7 @@ namespace hplus {
         std::string input_file, log_name, run_name, alg, heur;
         bool log;
         /** Execution flags */
-        bool problem_opt, warm_start, imai_tight_bounds, inv_act, using_cplex;
+        bool problem_opt, warm_start, imai_tight_bounds, using_cplex;
         /** Time limit */
         unsigned int time_limit;
         time_keeper timer;

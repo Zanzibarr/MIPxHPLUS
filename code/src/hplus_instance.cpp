@@ -463,7 +463,7 @@ static inline void landmark_extraction(hplus::instance& _i, std::vector<binary_s
         }
     }
     _i.var_f |= _fl;
-    _i.act_f |= _al;
+    _i.act_f |= _al;    
 }
 static inline void fadd_extraction(hplus::instance& _i, const std::vector<binary_set>& _lm, std::vector<binary_set>& _fadd, const logger& _l) {
     _PRINT_VERBOSE("Extracting first adders.");
@@ -644,7 +644,7 @@ void hplus::instance_optimization(instance& _i, const environment& _e, const log
     relevance_analysis(_i, fact_landmarks, fadd, _l);
     dominated_actions_elimination(_i, landmarks, fadd, _l);
     immediate_action_application(_i, _e, act_landmarks, _l);
-    if (_e.inv_act) inverse_actions_extraction(_i, _l);
+    inverse_actions_extraction(_i, _l);
     finish_opt(_i);
 }
 
