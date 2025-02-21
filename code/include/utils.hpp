@@ -94,7 +94,7 @@ enum exec_status {
     CPX_EXEC = 50,
     EXIT = 100
 };
-/** Split the string @param _str using @param _del as delimiter */
+/** Split the string _str using _del as delimiter */
 static inline std::vector<std::string> split_string(const std::string& _str, char _del) {
     std::vector<std::string> tokens;
     std::string tmp;
@@ -107,7 +107,7 @@ static inline std::vector<std::string> split_string(const std::string& _str, cha
     if (!tmp.empty()) tokens.push_back(tmp);
     return tokens;
 }
-/** Check if @param _str is an integer between @param from and @param to (inclusive) */
+/** Check if _str is an integer between from and to (inclusive) */
 static inline bool isint(const std::string& _str, const int _from = INT_MIN, const int _to = INT_MAX) {
     try {
         int num = stoi(_str);
@@ -116,7 +116,7 @@ static inline bool isint(const std::string& _str, const int _from = INT_MIN, con
 
 }
 
-/** Exits with error message due to missing implementation, prints through @param _log the message @param _msg formatted as error */
+/** Exits with error message due to missing implementation, prints through _log the message _msg formatted as error */
 static inline void todo(const logger& _log, const std::string& _msg) { _log.raise_error("%s: UNIMPLEMENTED.", _msg.c_str()); }
 
 /** Pauses the code execution until resuming, prints msg formatted as warning */
@@ -127,20 +127,23 @@ static inline void pause(const std::string& _msg) {
     if (i > 0) exit(1);
 }
 
-#define _ACK_REQ(msg) {                                          \
-    std::cout << msg << ".\nPress any key to continue...";  \
-    std::cin.ignore();                                      \
+/** Require user acknowledge to resume execution */
+#define _ACK_REQ(msg) {                                         \
+    std::cout << msg << ".\nPress any key to continue...";      \
+    std::cin.ignore();                                          \
 }
 
+/** Define an assert function */
 #ifndef _ASSERT
-#define _ASSERT(_cond)                                                                                           \
+#define _ASSERT(_cond)                                                                                          \
 if (!(_cond)) {                                                                                                 \
     std::cerr << "Assert check failed at " << __func__ << "(): " << __FILE__ << ":"<< __LINE__ << "\n";         \
     exit(1);                                                                                                    \
 }
 #endif
 
-#if HPLUS_WARN == 1
+/** Print a warning message only if the warn flag is set */
+#if HPLUS_WARN
 #define _PRINT_WARN(_msg) {  \
 _l.print_warn(_msg);         \
 }
@@ -148,6 +151,7 @@ _l.print_warn(_msg);         \
 #define _PRINT_WARN(_msg) {}
 #endif
 
+/** Print info message only with the right verbose settings */
 #if HPLUS_VERBOSE >= 10
 #define _PRINT_INFO(_msg) {  \
 _l.print_info(_msg);         \
@@ -156,18 +160,21 @@ _l.print_info(_msg);         \
 #define _PRINT_INFO(_msg) {}
 #endif
 
+/** Print info message only with the right verbose settings */
 #if HPLUS_VERBOSE >= 20
 #define _PRINT_DEBUG(_msg) _PRINT_INFO(_msg)
 #else
 #define _PRINT_DEBUG(_msg) {}
 #endif
 
+/** Print info message only with the right verbose settings */
 #if HPLUS_VERBOSE >= 100
 #define _PRINT_VERBOSE(_msg) _PRINT_INFO(_msg)
 #else
 #define _PRINT_VERBOSE(_msg) {}
 #endif
 
+/** Asserts to be made only if integrity checks flag is set */
 #if HPLUS_INTCHECK
 #define _INTCHECK_ASSERT(_cond) {     \
 _ASSERT(_cond);               \

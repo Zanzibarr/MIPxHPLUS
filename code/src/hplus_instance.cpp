@@ -59,7 +59,7 @@ static inline void init(hplus::instance& _i) {
         .act_with_pre = std::vector<std::vector<size_t>>(0)
     };
 }
-static inline void parse_inst_file(hplus::instance& _i, const hplus::environment& _e, hplus::statistics& _s, const logger& _l) {
+static inline bool parse_inst_file(hplus::instance& _i, const hplus::environment& _e, hplus::statistics& _s, const logger& _l) {
 
     // ====================================================== //
     // ================== PARSING SAS FILE ================== //
@@ -229,6 +229,11 @@ static inline void parse_inst_file(hplus::instance& _i, const hplus::environment
 
     ifs.close();
 
+    if (_i.m == 0) for (size_t i = 0; i < _i.n; i++) if (tmp_istate[i] != tmp_goal[i] && tmp_goal[i] >= 0) {
+        _s.parsing = _e.timer.get_time();
+        return false;        // no actions and goal isn't the starting point
+    }
+
     // ====================================================== //
     // ================== BINARY EXPANSION ================== //
     // ====================================================== //
@@ -315,6 +320,13 @@ static inline void parse_inst_file(hplus::instance& _i, const hplus::environment
     }
     
     _s.parsing = _e.timer.get_time();
+
+    bool is_infeasible = (
+        _i.m == 0 && !_i.goal.empty()
+    );
+
+    return !is_infeasible;
+
 }
 static inline void init_instance_opt(hplus::instance& _i, const hplus::environment& _e) {
     _i.n_opt = _i.n;
@@ -337,12 +349,17 @@ static inline void init_instance_opt(hplus::instance& _i, const hplus::environme
     _i.act_cpxtoidx = std::vector<size_t>(_i.m);
     for (size_t idx = 0; idx < _i.m; idx++) _i.act_cpxtoidx[idx] = idx;
 }
-void hplus::create_instance(instance& _i, const environment& _e, statistics& _s, const logger& _l) {
+bool hplus::create_instance(instance& _i, environment& _e, statistics& _s, const logger& _l) {
     init(_i);
-    parse_inst_file(_i, _e, _s, _l);
+    if (!parse_inst_file(_i, _e, _s, _l)) {
+        _PRINT_VERBOSE("The problem is infeasible.");
+        _e.sol_s = solution_status::INFEAS;
+        return false;
+    }
     init_instance_opt(_i, _e);
 
     _PRINT_VERBOSE("Created HPLUS_instance.");
+    return true;
 }
 
 binary_set hplus::var_remaining(const instance& _i) { return !_i.var_e; }
@@ -463,7 +480,8 @@ static inline void landmark_extraction(hplus::instance& _i, std::vector<binary_s
         }
     }
     _i.var_f |= _fl;
-    _i.act_f |= _al;    
+    _i.act_f |= _al;
+    exit(1);    
 }
 static inline void fadd_extraction(hplus::instance& _i, const std::vector<binary_set>& _lm, std::vector<binary_set>& _fadd, const logger& _l) {
     _PRINT_VERBOSE("Extracting first adders.");

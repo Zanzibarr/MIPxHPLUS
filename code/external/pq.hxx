@@ -22,7 +22,7 @@ if (!(cond)) {                                                                  
 template <typename score_type>
 class priority_queue {
     public:
-        /** Construct a priority queue for the integer form 0 to @param _n - 1 */
+        /** Construct a priority queue for the integer form 0 to _n - 1 */
         priority_queue(int _n) : n(_n), cnt(0), data(n), prior(n), position(n, -1) {}
         /** Return the integer with minimal priority (throws exception if empty) */
         inline int top() const {
@@ -31,7 +31,7 @@ class priority_queue {
         }
         /** Check whether the queue is empty */
         inline bool is_empty() const { return (cnt == 0); }
-        /** Checks whether an integer @param j is in the queue */
+        /** Checks whether an integer j is in the queue */
         inline bool has(int j) const { return (position[j] >= 0); }
         /** Clear content */
         inline void clear() {
@@ -52,7 +52,7 @@ class priority_queue {
                 start--;
             }
         }
-        /** Insert integer @param j into the queue with a priority @param p */
+        /** Insert integer j into the queue with a priority p */
         inline void push(int j, score_type p, bool mantain_heap = true) {
             _ASSERT((j >= 0) && (j < n));
             _ASSERT(position[j] == -1);
@@ -72,13 +72,13 @@ class priority_queue {
             _ASSERT(!is_empty());
             remove_at(0, true);
         }
-        /** Removes integer @param j from the queue */
+        /** Removes integer j from the queue */
         inline void remove(int j, bool mantain_heap = true) {
             _ASSERT(position[j] >= 0);
             remove_at(position[j], mantain_heap);
             _ASSERT(position[j] == -1);
         }
-        /** Changes the score of an integer @param j already in the queue to @param p */
+        /** Changes the score of an integer j already in the queue to p */
         inline void change(int j, score_type p, bool mantain_heap = true) {
             _ASSERT(position[j] >= 0);
             int gap = position[j];
@@ -114,8 +114,8 @@ class priority_queue {
         std::vector<score_type> prior;
         std::vector<int> position;
         /**
-         * Moves the gap up from the current position @param gap to the proper place for a priority of value @param p
-         * The final position of the gap is stored in @param gap
+         * Moves the gap up from the current position gap to the proper place for a priority of value p
+         * The final position of the gap is stored in gap
          */
         inline void sift_up(int &gap, score_type p) {
             while (gap > 0) {
@@ -130,8 +130,8 @@ class priority_queue {
             }
         }
         /**
-         * Moves the gap down from the current position @param gap
-         * The final position of the gap is stored in @param gap
+         * Moves the gap down from the current position gap
+         * The final position of the gap is stored in gap
          */
         inline void sift_down(int &gap, score_type p) {
             int newgap;

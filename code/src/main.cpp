@@ -359,9 +359,10 @@ int main(const int _argc, const char** _argv) {
     parse_cli(_argc, _argv, env);
     logger log(env.run_name, env.log, HPLUS_LOG_DIR"/"+env.log_name);
     pthread_t timer_thread; pthread_create(&timer_thread, nullptr, time_limit_termination, &env);
-    hplus::create_instance(inst, env, stats, log);
-    show_info(inst, env, log);
-    if (check_feasibility(inst, env, log)) run(inst, env, stats, log);
+    if (hplus::create_instance(inst, env, stats, log)) {
+        show_info(inst, env, log);
+        run(inst, env, stats, log);
+    }
     env.exec_s = exec_status::EXIT;
     pthread_join(timer_thread, nullptr);
     end(inst, env, stats, log);

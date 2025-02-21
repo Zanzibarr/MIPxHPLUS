@@ -17,8 +17,9 @@ bool check_feasibility(const hplus::instance& _i, hplus::environment& _e, const 
             _e.sol_s = solution_status::INFEAS;
             return false;
         }
-        state |= _i.actions[candidates[0]].eff;
-        feasible_actions.remove(candidates[0], _i.actions[candidates[0]].pre);
+        size_t choice = candidates[0];//candidates[rand() % candidates.size()];
+        state |= _i.actions[choice].eff;
+        feasible_actions.remove(choice, _i.actions[choice].pre);
     }
     return true;
 }
