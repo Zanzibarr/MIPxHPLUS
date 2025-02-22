@@ -1,4 +1,4 @@
-- [ ] Fix time limit
+- [x] Fix time limit
 - [x] Prepare testing structure for cluster use
 - [ ] Test correctness of Deletefree parsing
 - [x] Why some deletefree instances appear infeasible?

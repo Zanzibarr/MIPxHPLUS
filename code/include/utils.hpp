@@ -64,7 +64,7 @@
 #define HPLUS_INTCHECK 1                            // overwritten by cmake
 #endif
 
-extern volatile int cpx_terminate;
+extern volatile int global_terminate;
 
 // ##################################################################### //
 // #################### UTILS STRUCTS AND FUNCTIONS #################### //
@@ -127,11 +127,22 @@ static inline void pause(const std::string& _msg) {
     if (i > 0) exit(1);
 }
 
+class timelimit_exception : public std::exception {
+    private:
+        std::string msg;
+    public:
+        timelimit_exception(const char* _m) : msg(_m) {}
+        const char* what() const throw() { return msg.c_str(); }
+};
+
 /** Require user acknowledge to resume execution */
 #define _ACK_REQ(msg) {                                         \
     std::cout << msg << ".\nPress any key to continue...";      \
     std::cin.ignore();                                          \
 }
+
+/** Check for external execution termination required */
+#define _CHECK_STOP() global_terminate == 1
 
 /** Define an assert function */
 #ifndef _ASSERT

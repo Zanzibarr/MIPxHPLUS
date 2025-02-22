@@ -7,18 +7,33 @@
  */
 
 #include <csignal>
+#include <thread>
 #include <sys/stat.h>
+#include <termios.h>
+#include <unistd.h>
 #include <cplex.h>
 #include "args.hxx"
 #include "utils.hpp"
 #include "hplus_instance.hpp"
 #include "algorithms.hpp"
 
-volatile int cpx_terminate = 0;
+volatile int global_terminate = 0;
 
 void signal_callback_handler(const int signum) {
-    if (cpx_terminate) exit(1);
-    cpx_terminate = 1;
+    if (global_terminate) exit(1);
+    global_terminate = 1;
+}
+
+void* time_limit_termination(void* args) {
+    hplus::environment* _e = (hplus::environment*)args;
+    while (_e->exec_s < exec_status::STOP_TL && _e->sol_s != solution_status::INFEAS) {
+        if (_e->timer.get_time() > _e->time_limit) {
+            raise(SIGINT);
+            return nullptr;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    return nullptr;
 }
 
 static inline void init(hplus::environment& _e) {
@@ -55,7 +70,7 @@ static inline void init(hplus::statistics &_s) {
 }
 
 static inline void parse_cli(const int& _argc, const char** _argv, hplus::environment& _e) {
-    args::ArgumentParser parser("//TODO: HEADER.", "//TODO: FOOTER.");
+    args::ArgumentParser parser("//[ ]: HEADER.", "//[ ]: FOOTER.");
     args::HelpFlag help(parser, "help", "Display the help menu", {"h", "help"});
     args::Positional<std::string> input_file(parser, "input_file", "Specify the input file (a .sas file provided by the FastDownward translator).");
     args::ValueFlag<std::string> algorithm(parser, "algorithm", "Specify the algorithm to use (rankooh, imai, dynamic-s, dynamic-l).", {"a", "alg"});
@@ -167,6 +182,13 @@ static inline void run(hplus::instance& _i, hplus::environment& _e, hplus::stati
         _e.alg != HPLUS_CLI_ALG_HEUR
     ) _l.raise_error("The algorithm specified (%s) is not on the list of possible algorithms... Please read the Readme.md for instructions.", _e.alg.c_str());
 
+    auto stopchk = [&_e](){
+        if (_CHECK_STOP()) {
+            _e.exec_s = exec_status::STOP_TL;
+            throw timelimit_exception("Reached time limit.");
+        }
+    };
+
     // ~~~~~~~~ PROBLEM SIMPLIFICATION ~~~~~~~ //
 
     if (_e.problem_opt) {
@@ -182,6 +204,7 @@ static inline void run(hplus::instance& _i, hplus::environment& _e, hplus::stati
         _s.optimization = _e.timer.get_time() - start_time;
 
     }
+    stopchk();
     
     hplus::prepare_faster_actsearch(_i, _l);
 
@@ -225,6 +248,7 @@ static inline void run(hplus::instance& _i, hplus::environment& _e, hplus::stati
         _s.heuristic = _e.timer.get_time() - start_time;
 
     }
+    stopchk();
 
     if (_e.sol_s == solution_status::INFEAS) return;
 
@@ -245,11 +269,13 @@ static inline void run(hplus::instance& _i, hplus::environment& _e, hplus::stati
     CPXLPptr lp = nullptr;
 
     cpx_init(env, lp, _e, _l);
+    stopchk();
 
     if (_e.alg == HPLUS_CLI_ALG_IMAI) cpx_build_imai(env, lp, _i, _e, _l);
     else if (_e.alg == HPLUS_CLI_ALG_RANKOOH) cpx_build_rankooh(env, lp, _i, _e, _l);
     else if (_e.alg == HPLUS_CLI_ALG_DYNAMIC_SMALL) cpx_build_dynamic_small(env, lp, _i, _e, _l);
     else if (_e.alg == HPLUS_CLI_ALG_DYNAMIC_LARGE) cpx_build_dynamic_large(env, lp, _i, _e, _l);
+    stopchk();
 
     // time limit
     if ((double)_e.time_limit > _e.timer.get_time()) {
@@ -342,16 +368,24 @@ static inline void end(const hplus::instance& _i, hplus::environment& _e, hplus:
 int main(const int _argc, const char** _argv) {
 
     signal(SIGINT, signal_callback_handler);
+    struct termios t;
+    tcgetattr(STDIN_FILENO, &t);
+    t.c_lflag &= ~ECHOCTL;
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &t);
     hplus::instance inst;
     hplus::environment env; init(env);
     hplus::statistics stats; init(stats);
     parse_cli(_argc, _argv, env);
     logger log(env.run_name, env.log, HPLUS_LOG_DIR"/"+env.log_name);
+    pthread_t timer_thread; pthread_create(&timer_thread, nullptr, time_limit_termination, &env);
     if (hplus::create_instance(inst, env, stats, log)) {
         show_info(inst, env, log);
-        run(inst, env, stats, log);
+        try{
+            run(inst, env, stats, log);
+        } catch (timelimit_exception& e) {}
     }
     env.exec_s = exec_status::EXIT;
+    pthread_join(timer_thread, nullptr);
     end(inst, env, stats, log);
 
 }

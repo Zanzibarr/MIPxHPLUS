@@ -457,6 +457,7 @@ static inline void landmark_extraction(hplus::instance& _i, std::vector<binary_s
             }
 
         }
+        if (_CHECK_STOP()) throw timelimit_exception("Reached time limit.");
 
     }
 
@@ -478,6 +479,7 @@ static inline void landmark_extraction(hplus::instance& _i, std::vector<binary_s
                 if (count == 1) _al.add(cand_act);
             }
         }
+        if (_CHECK_STOP()) throw timelimit_exception("Reached time limit.");
     }
     _i.var_f |= _fl;
     _i.act_f |= _al; 
@@ -496,6 +498,7 @@ static inline void fadd_extraction(hplus::instance& _i, const std::vector<binary
         for (auto var_i : _i.actions[act_i].pre) for (auto i : var_flm_sparse[var_i]) f_lm_a.add(i);
         // _fadd[a] := { p in add(a) s.t. p is not a fact landmark for a }
         _fadd[act_i] |= (_i.actions[act_i].eff & !f_lm_a);
+        if (_CHECK_STOP()) throw timelimit_exception("Reached time limit.");
     }
     for (size_t act_i = 0; act_i < _i.m; act_i++) _i.fadd_e[act_i] |= (_i.actions[act_i].eff & !_fadd[act_i]);
 }
@@ -512,6 +515,7 @@ static inline void relevance_analysis(hplus::instance& _i, binary_set& _fl, std:
             relevant_actions.add(act_i);
         }
     }
+    if (_CHECK_STOP()) throw timelimit_exception("Reached time limit.");
 
     // list of actions yet to check
     auto cand_actions_sparse = (!relevant_actions).sparse();
@@ -531,6 +535,7 @@ static inline void relevance_analysis(hplus::instance& _i, binary_set& _fl, std:
         }
         auto it = std::set_difference(cand_actions_sparse.begin(), cand_actions_sparse.end(), new_relevant_actions.begin(), new_relevant_actions.end(), cand_actions_sparse.begin());
         cand_actions_sparse.resize(it - cand_actions_sparse.begin());
+        if (_CHECK_STOP()) throw timelimit_exception("Reached time limit.");
     }
     relevant_variables |= _i.goal;
 
@@ -546,17 +551,22 @@ static inline void dominated_actions_elimination(hplus::instance& _i, std::vecto
     std::vector<std::vector<size_t>> var_flm_sparse(_i.n);
 
     // compute the landmarks for each variable remaining
-    for (auto var_i : remaining_var_sparse)
-        for (auto var_j : remaining_var_sparse)
+    for (auto var_i : remaining_var_sparse) {
+        for (auto var_j : remaining_var_sparse) {
             if (_lm[var_i][var_j] || _lm[var_i][_i.n])
                 var_flm_sparse[var_i].push_back(var_j);
+        }
+        if (_CHECK_STOP()) throw timelimit_exception("Reached time limit.");
+    }
 
-    
     // compute the landmarks for each action remaining
-    for (size_t act_i = 0; act_i < _i.m; act_i++)
-        for (auto var_i : _i.actions[act_i].pre_sparse) if (hplus::var_remaining(_i)[var_i])
+    for (size_t act_i = 0; act_i < _i.m; act_i++) {
+        for (auto var_i : _i.actions[act_i].pre_sparse) if (hplus::var_remaining(_i)[var_i]) {
             for (auto i : var_flm_sparse[var_i])
                 act_flm[act_i].add(i);
+        }
+        if (_CHECK_STOP()) throw timelimit_exception("Reached time limit.");
+    }
 
     // find efficently all actions that satisfy point 1) of Proposition 4 of in Imai's Paper
     bs_searcher candidates = bs_searcher(_i.n);
@@ -576,6 +586,7 @@ static inline void dominated_actions_elimination(hplus::instance& _i, std::vecto
             candidates.remove(dominated_act, _fadd[dominated_act]);
 
         }
+        if (_CHECK_STOP()) throw timelimit_exception("Reached time limit.");
 
     }
 
@@ -613,6 +624,7 @@ static inline void immediate_action_application(hplus::instance& _i, const hplus
                 found_next_action = true;
             }
         }
+        if (_CHECK_STOP()) throw timelimit_exception("Reached time limit.");
     }
 }
 static inline void inverse_actions_extraction(hplus::instance& _i, const logger& _l) {
@@ -633,6 +645,7 @@ static inline void inverse_actions_extraction(hplus::instance& _i, const logger&
                 if (!_i.act_f[act_j]) _i.act_inv[act_j].push_back(act_i);
             }
         }
+        if (_CHECK_STOP()) throw timelimit_exception("Reached time limit.");
     }
 }
 static inline void finish_opt(hplus::instance& _i) {

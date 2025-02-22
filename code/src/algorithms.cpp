@@ -44,7 +44,7 @@ void cpx_init(CPXENVptr& env, CPXLPptr& lp, const hplus::environment& _e, const 
     _ASSERT(!CPXsetdblparam(env, CPXPARAM_WorkMem, 4096));
     _ASSERT(!CPXsetintparam(env, CPXPARAM_MIP_Strategy_File, 3));
     // terminate condition
-    _ASSERT(!CPXsetterminate(env, &cpx_terminate));
+    _ASSERT(!CPXsetterminate(env, &global_terminate));
 }
 
 void cpx_close(CPXENVptr& env, CPXLPptr& lp) {
@@ -177,11 +177,11 @@ static inline bool randheur(const hplus::instance& _i, std::vector<size_t>& _s, 
 
 static inline bool randr(const hplus::instance& _i, std::vector<size_t>& _s, unsigned int& _c, const logger& _l) {
     _PRINT_VERBOSE("Running randr algorithm.");
-    // TODO: (maybe) Choose on CLI
+    // [ ]: (maybe) Choose on CLI
     size_t repetitions = 100;
     std::vector<size_t> random_solution[repetitions];
     unsigned int random_costs[repetitions];
-    // TODO: Threads
+    // [ ]: Threads
     for (size_t i = 0; i < repetitions; i++) if(!randheur(_i, random_solution[i], random_costs[i], _l)) return false;
     size_t best_sol = 0;
     unsigned int best_cost = random_costs[0];
@@ -196,26 +196,26 @@ static inline bool randr(const hplus::instance& _i, std::vector<size_t>& _s, uns
 
 static inline bool hmax(const hplus::instance& _i, std::vector<size_t>& _s, unsigned int& _c, const logger& _l) {
     _PRINT_VERBOSE("Running hmax algorithm.");
-    // TODO: hmax heuristic
+    // [ ]: hmax heuristic
     return false;
 }
 
 static inline bool hadd(const hplus::instance& _i, std::vector<size_t>& _s, unsigned int& _c, const logger& _l) {
     _PRINT_VERBOSE("Running hadd algorithm.");
-    // TODO: hadd heuristic
+    // [ ]: hadd heuristic
     return false;
 }
 
 static inline bool relax(const hplus::instance& _i, std::vector<size_t>& _s, unsigned int& _c, const logger& _l) {
     _PRINT_VERBOSE("Running relax algorithm.");
-    // TODO: Solve linear relaxation and apply random walk
+    // [ ]: Solve linear relaxation and apply random walk
     return false;
 }
 
 static inline bool localsearch(const hplus::instance& _i, bool (*_h)(const hplus::instance& _i, std::vector<size_t>& _s, unsigned int& _c, const logger& _l), std::vector<size_t>& _s, unsigned int& _c, const logger& _l) {
     _PRINT_VERBOSE("Running local-search algorithm.");
     if (!_h(_i, _s, _c, _l)) return false;
-    // TODO: Local search on top of the initial solution
+    // [ ]: Local search on top of the initial solution
     return false;
 }
 
@@ -261,6 +261,8 @@ void find_heuristic(hplus::instance& _i, hplus::environment& _e, const logger& _
 void cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, const hplus::environment& _e, const logger& _l) {
     _PRINT_VERBOSE("Building imai's model.");
 
+    auto stopchk1 = []() { if (_CHECK_STOP()) throw timelimit_exception("Reached time limit."); };
+
     const auto& rem_var = hplus::var_remaining(_i).sparse();
     const auto& rem_act = hplus::act_remaining(_i).sparse();
 
@@ -287,6 +289,7 @@ void cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, con
         }
 
     }
+    stopchk1();
 
     // ====================================================== //
     // =================== CPLEX VARIABLES ================== //
@@ -313,6 +316,16 @@ void cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, con
         types = new char[new_size];
 
     };
+
+    auto stopchk2 = [&objs, &lbs, &ubs, &types]() {
+        if (_CHECK_STOP()) {
+            delete[] types; types = nullptr;
+            delete[] ubs; ubs = nullptr;
+            delete[] lbs; lbs = nullptr;
+            delete[] objs; objs = nullptr;
+            throw timelimit_exception("Reached time limit.");
+        }
+    };
     
     // -------- actions ------- //
     size_t act_start = curr_col;
@@ -327,6 +340,7 @@ void cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, con
     curr_col += _i.m_opt;
 
     _ASSERT(!CPXnewcols(env, lp, _i.m_opt, objs, lbs, ubs, types, nullptr));
+    stopchk2();
 
     // --- action timestamps -- //
     size_t tact_start = curr_col;
@@ -341,6 +355,7 @@ void cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, con
     curr_col += _i.m_opt;
 
     _ASSERT(!CPXnewcols(env, lp, _i.m_opt, objs, lbs, ubs, types, nullptr));
+    stopchk2();
 
     resize_cpx_arrays(_i.n_opt);
     
@@ -357,6 +372,7 @@ void cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, con
     curr_col += _i.n_opt;
 
     _ASSERT(!CPXnewcols(env, lp, _i.n_opt, objs, lbs, ubs, types, nullptr));
+    stopchk2();
 
     // -- variable timestamps - //
     size_t tvar_start = curr_col;
@@ -371,6 +387,7 @@ void cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, con
     curr_col += _i.n_opt;
 
     _ASSERT(!CPXnewcols(env, lp, _i.n_opt, objs, lbs, ubs, types, nullptr));
+    stopchk2();
 
     // --- first archievers --- //
     size_t fa_start = curr_col;
@@ -387,6 +404,7 @@ void cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, con
         curr_col += _i.n_opt;
         _ASSERT(!CPXnewcols(env, lp, _i.n_opt, objs, lbs, ubs, types, nullptr));
         count++;
+        stopchk2();
     }
 
     delete[] types; types = nullptr;
@@ -420,6 +438,18 @@ void cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, con
     std::vector<int> nnz_c3(_i.n_opt);
     std::vector<double> rhs_c3(_i.n_opt);
 
+    auto stopchk3 = [&_i, &ind_c1, &val_c1, &ind_c3, &val_c3]() {
+        if (_CHECK_STOP()) {
+            for (size_t var_i = 0; var_i < _i.n_opt; var_i++) {
+                delete[] ind_c3[var_i]; ind_c3[var_i] = nullptr;
+                delete[] val_c3[var_i]; val_c3[var_i] = nullptr;
+            }
+            delete[] val_c1; val_c1 = nullptr;
+            delete[] ind_c1; ind_c1 = nullptr;
+            throw timelimit_exception("Reached time limit.");
+        }
+    };
+
     for (auto i : rem_var) {
         ind_c3[_i.var_opt_conv[i]] = new int[_i.m_opt + 1];
         val_c3[_i.var_opt_conv[i]] = new double[_i.m_opt + 1];
@@ -429,6 +459,7 @@ void cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, con
         val_c3[_i.var_opt_conv[i]][nnz_c3[_i.var_opt_conv[i]]] = 1;
         nnz_c3[_i.var_opt_conv[i]]++;
     }
+    stopchk3();
     
     const auto& rem_var_set = hplus::var_remaining(_i);
 
@@ -476,6 +507,7 @@ void cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, con
             val_c3[_i.var_opt_conv[var_i]][nnz_c3[_i.var_opt_conv[var_i]]] = -1;
             nnz_c3[_i.var_opt_conv[var_i]]++;
         }
+        stopchk3();
     }
 
     for (size_t var_i = 0; var_i < _i.n_opt; var_i++) _ASSERT(!CPXaddrows(env, lp, 0, 1, nnz_c3[var_i], &rhs_c3[var_i], &sensee, &begin, ind_c3[var_i], val_c3[var_i], nullptr, nullptr));
@@ -577,6 +609,8 @@ void store_imai_sol(CPXENVptr& env, CPXLPptr& lp, hplus::instance& _i, const hpl
 void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, const hplus::environment& _e, const logger& _l) {
     _PRINT_VERBOSE("Building rankooh's model.");
 
+    auto stopchk1 = []() { if (_CHECK_STOP()) throw timelimit_exception("Reached time limit."); };
+
     const auto& rem_var_set = hplus::var_remaining(_i);
     const auto& rem_var = rem_var_set.sparse();
     const auto& rem_act = hplus::act_remaining(_i).sparse();
@@ -601,7 +635,7 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
     std::vector<binary_set> cumulative_graph(_i.n, binary_set(_i.n));
     std::vector<triangle> triangles_list;
 
-    // TODO: (maybe) Implement using pq.hxx
+    // [ ]: (maybe) Implement using pq.hxx
     std::priority_queue<node, std::vector<node>, compare_node> nodes_queue;
     std::vector<size_t> degree_counter(_i.n, 0);
 
@@ -620,6 +654,7 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
             cumulative_graph[var_i] |= (_i.actions[act_i].eff & rem_var_set);
         }
     }
+    stopchk1();
 
     for (size_t node_i = 0; node_i < _i.n; node_i++)
         if (degree_counter[node_i] > 0)
@@ -698,6 +733,7 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
             _ASSERT(i_cnt == degree_counter[node_i]);
         }
         #endif
+        stopchk1();
 
     }
 
@@ -725,6 +761,16 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
 
     };
 
+    auto  stopchk2 = [&objs, &lbs, &ubs, &types]() {
+        if (_CHECK_STOP()) {
+            delete[] types; types = nullptr;
+            delete[] ubs; ubs = nullptr;
+            delete[] lbs; lbs = nullptr;
+            delete[] objs; objs = nullptr;
+            throw timelimit_exception("Reached time limit.");
+        }
+    };
+
     // -------- actions ------- //
     size_t act_start = curr_col;
     size_t count = 0;
@@ -739,6 +785,7 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
     curr_col += _i.m_opt;
 
     _ASSERT(!CPXnewcols(env, lp, _i.m_opt, objs, lbs, ubs, types, nullptr));
+    stopchk2();
 
     resize_cpx_arrays(_i.n_opt);
 
@@ -759,6 +806,8 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
         curr_col += _i.n_opt;
         _ASSERT(!CPXnewcols(env, lp, _i.n_opt, objs, lbs, ubs, types, nullptr));
         count++;
+        stopchk2();
+    
     }
 
     // ------- variables ------ //
@@ -775,6 +824,8 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
     curr_col += _i.n_opt;
 
     _ASSERT(!CPXnewcols(env, lp, _i.n_opt, objs, lbs, ubs, types, nullptr));
+    stopchk2();
+
 
     // vertex elimination graph edges
     size_t veg_edges_start = curr_col;
@@ -788,6 +839,8 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
         }
         _INTCHECK_ASSERT(count == _i.n_opt);
         _ASSERT(!CPXnewcols(env, lp, _i.n_opt, objs, lbs, ubs, types, nullptr));
+        stopchk2();
+    
     }
     curr_col += _i.n_opt * _i.n_opt;
 
@@ -813,6 +866,14 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
     const double rhs_0 = 0, rhs_1 = 1;
     const int begin = 0;
 
+    auto stopchk3 = [&ind, &val]() {
+        if (_CHECK_STOP()) {
+            delete[] val; val = nullptr;
+            delete[] ind; ind = nullptr;
+            throw timelimit_exception("Reached time limit.");
+        }
+    };
+
     for (auto var_i : rem_var) {
 
         nnz = 0;
@@ -825,6 +886,7 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
         }
 
         _ASSERT(!CPXaddrows(env, lp, 0, 1, nnz, &rhs_0, &sense_e, &begin, ind, val, nullptr, nullptr));
+        stopchk3();
 
     }
     
@@ -840,6 +902,7 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
                 }
             }
             _ASSERT(!CPXaddrows(env, lp, 0, 1, nnz, &rhs_0, &sense_l, &begin, ind, val, nullptr, nullptr));
+            stopchk3();
         }
     }
 
@@ -857,6 +920,7 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
             val_c5_c6_c7[1] = 1;
             _ASSERT(!CPXaddrows(env, lp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
         }
+        stopchk1();
     }
     
     for (auto act_i : rem_act) {
@@ -870,6 +934,7 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
                 val_c5_c6_c7[1] = 1;
                 _ASSERT(!CPXaddrows(env, lp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
             }
+            stopchk1();
         }
     }
     
@@ -879,6 +944,7 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
         ind_c5_c6_c7[1] = get_veg_idx(var_j, var_i);
         val_c5_c6_c7[1] = 1;
         _ASSERT(!CPXaddrows(env, lp, 0, 1, 2, &rhs_1, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
+        stopchk1();
     }
 
     for (auto trng : triangles_list) {
@@ -889,6 +955,7 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
         ind_c8[2] = get_veg_idx(trng.first, trng.third);
         val_c8[2] = -1;
         _ASSERT(!CPXaddrows(env, lp, 0, 1, 3, &rhs_1, &sense_l, &begin, ind_c8, val_c8, nullptr, nullptr));
+        stopchk1();
     }
 
     // _ASSERT(!CPXwriteprob(env, lp, (HPLUS_CPLEX_OUTPUT_DIR"/lp/"+_e.run_name+".lp").c_str(), "LP"));
@@ -991,18 +1058,18 @@ void store_rankooh_sol(CPXENVptr& env, CPXLPptr& lp, hplus::instance& _i, const 
 
 void cpx_build_dynamic_small(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, const hplus::environment& _e, const logger& _l) {
     _PRINT_VERBOSE("Building dynamic small model.");
-    // TODO: Building the small dynamic model
+    // [ ]: Building the small dynamic model
     todo(_l, "Building the small dynamic model");
 }
 
 void cpx_post_warmstart_dynamic_small(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, const hplus::environment& _e, const logger& _l) {
-    // TODO: Posting warmstart to the small dynamic model
+    // [ ]: Posting warmstart to the small dynamic model
     todo(_l, "Posting warmstart to the small dynamic model");
 }
 
 void store_dynamic_small_sol(CPXENVptr& env, CPXLPptr& lp, hplus::instance& _i, const hplus::environment& _e, const logger& _l) {
     _PRINT_VERBOSE("Storing the dynamic small solution.");
-    // TODO: Storing solution of the small dynamic model
+    // [ ]: Storing solution of the small dynamic model
     todo(_l, "Storing solution of the small dynamic model");
 }
 
@@ -1012,17 +1079,17 @@ void store_dynamic_small_sol(CPXENVptr& env, CPXLPptr& lp, hplus::instance& _i, 
 
 void cpx_build_dynamic_large(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, const hplus::environment& _e, const logger& _l) {
     _PRINT_VERBOSE("Building dynamic large model.");
-    // TODO: Building the large dynamic model
+    // [ ]: Building the large dynamic model
     todo(_l, "Building the large dynamic model");
 }
 
 void cpx_post_warmstart_dynamic_large(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, const hplus::environment& _e, const logger& _l) {
-    // TODO: Posting warmstart to the large dynamic model
+    // [ ]: Posting warmstart to the large dynamic model
     todo(_l, "Posting warmstart to the large dynamic model");
 }
 
 void store_dynamic_large_sol(CPXENVptr& env, CPXLPptr& lp, hplus::instance& _i, const hplus::environment& _e, const logger& _l) {
     _PRINT_VERBOSE("Storing the dynamic large solution.");
-    // TODO: Storing solution of the large dynamic model
+    // [ ]: Storing solution of the large dynamic model
     todo(_l, "Storing solution of the large dynamic model");
 }
