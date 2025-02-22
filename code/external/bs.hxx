@@ -10,10 +10,11 @@
 #define BS_H
 
 #ifndef _ASSERT
-#define _ASSERT(cond)                                                                                        \
-if (!(cond)) {                                                                                                \
+#define _ASSERT(cond) {                                                                                     \
+if (!(cond)) {                                                                                              \
     std::cerr << "Assert check failed at " << __func__ << "(): " << __FILE__ << ":"<< __LINE__ << "\n";     \
     exit(1);                                                                                                \
+}                                                                                                           \
 }
 #endif
 

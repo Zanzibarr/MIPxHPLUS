@@ -35,12 +35,10 @@ cmake <build_options> ..
 make <target_option>
 
 # to run
-./main <parameters>
+./main <input_file> <parameters>
 ```
 
-## Parameters
-
-### CMake flags
+## Build options (CMake parameters)
 
 - **-DVERBOSE=**\<verbose_option> : set the verbose option (default: 5)
   - = **0** : no output
@@ -58,7 +56,7 @@ make <target_option>
 - **-DCPLEX_DIR=**\<path_to_cplex_lib>: (abs path), specify a custom path to the CPLEX library (see the CMakeLists.txt to see which is the default one)
 - **-DCPLEX_INCLUDE=**\<path_to_cplex_headers>: (abs path), specify a custom path to the CPLEX headers (see the CMakeLists.txt to see which is the default one)
 
-### Make flags
+## Target options (Make parameters)
 
 - \<target_option> : specify the target build
   - _none_ : no flag added (default build)
@@ -68,8 +66,8 @@ make <target_option>
 
 ### Run options
 
-#### Code execution
-- TODO
-
-#### Logging
-- TODO
+See the help page:
+```shell
+# to view commands available
+./main --h
+```

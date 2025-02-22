@@ -44,7 +44,7 @@ void cpx_init(CPXENVptr& env, CPXLPptr& lp, const hplus::environment& _e, const 
     _ASSERT(!CPXsetdblparam(env, CPXPARAM_WorkMem, 4096));
     _ASSERT(!CPXsetintparam(env, CPXPARAM_MIP_Strategy_File, 3));
     // terminate condition
-    _ASSERT(!CPXsetterminate(env, &global_terminate));
+    _ASSERT(!CPXsetterminate(env, &cpx_terminate));
 }
 
 void cpx_close(CPXENVptr& env, CPXLPptr& lp) {
@@ -487,7 +487,7 @@ void cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, con
     delete[] val_c1; val_c1 = nullptr;
     delete[] ind_c1; ind_c1 = nullptr;
 
-    _ASSERT(!CPXwriteprob(env, lp, (HPLUS_CPLEX_OUTPUT_DIR"/lp/"+_e.run_name+".lp").c_str(), "LP"));
+    // _ASSERT(!CPXwriteprob(env, lp, (HPLUS_CPLEX_OUTPUT_DIR"/lp/"+_e.run_name+".lp").c_str(), "LP"));
 
 }
 
@@ -891,7 +891,7 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
         _ASSERT(!CPXaddrows(env, lp, 0, 1, 3, &rhs_1, &sense_l, &begin, ind_c8, val_c8, nullptr, nullptr));
     }
 
-    _ASSERT(!CPXwriteprob(env, lp, (HPLUS_CPLEX_OUTPUT_DIR"/lp/"+_e.run_name+".lp").c_str(), "LP"));
+    // _ASSERT(!CPXwriteprob(env, lp, (HPLUS_CPLEX_OUTPUT_DIR"/lp/"+_e.run_name+".lp").c_str(), "LP"));
 
 }
 

@@ -6,7 +6,8 @@
 
 # repository organization
 code/build/
-code/test/files/
+code/test/
+code/test/jobs*
 local/
 logs/
 results/

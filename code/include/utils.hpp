@@ -64,7 +64,7 @@
 #define HPLUS_INTCHECK 1                            // overwritten by cmake
 #endif
 
-extern volatile int global_terminate;
+extern volatile int cpx_terminate;
 
 // ##################################################################### //
 // #################### UTILS STRUCTS AND FUNCTIONS #################### //
@@ -135,10 +135,11 @@ static inline void pause(const std::string& _msg) {
 
 /** Define an assert function */
 #ifndef _ASSERT
-#define _ASSERT(_cond)                                                                                          \
-if (!(_cond)) {                                                                                                 \
-    std::cerr << "Assert check failed at " << __func__ << "(): " << __FILE__ << ":"<< __LINE__ << "\n";         \
-    exit(1);                                                                                                    \
+#define _ASSERT(cond) {                                                                                     \
+if (!(cond)) {                                                                                              \
+    std::cerr << "Assert check failed at " << __func__ << "(): " << __FILE__ << ":"<< __LINE__ << "\n";     \
+    exit(1);                                                                                                \
+}                                                                                                           \
 }
 #endif
 

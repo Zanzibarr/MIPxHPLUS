@@ -480,8 +480,7 @@ static inline void landmark_extraction(hplus::instance& _i, std::vector<binary_s
         }
     }
     _i.var_f |= _fl;
-    _i.act_f |= _al;
-    exit(1);    
+    _i.act_f |= _al; 
 }
 static inline void fadd_extraction(hplus::instance& _i, const std::vector<binary_set>& _lm, std::vector<binary_set>& _fadd, const logger& _l) {
     _PRINT_VERBOSE("Extracting first adders.");

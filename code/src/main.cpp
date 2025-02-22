@@ -7,7 +7,6 @@
  */
 
 #include <csignal>
-#include <thread>
 #include <sys/stat.h>
 #include <cplex.h>
 #include "args.hxx"
@@ -15,11 +14,11 @@
 #include "hplus_instance.hpp"
 #include "algorithms.hpp"
 
-volatile int global_terminate = 0;
+volatile int cpx_terminate = 0;
 
 void signal_callback_handler(const int signum) {
-    // global_terminate = 1; 
-    exit(1);
+    if (cpx_terminate) exit(1);
+    cpx_terminate = 1;
 }
 
 static inline void init(hplus::environment& _e) {
@@ -56,7 +55,7 @@ static inline void init(hplus::statistics &_s) {
 }
 
 static inline void parse_cli(const int& _argc, const char** _argv, hplus::environment& _e) {
-    args::ArgumentParser parser("TODO: HEADER.", "TODO: FOOTER.");
+    args::ArgumentParser parser("//TODO: HEADER.", "//TODO: FOOTER.");
     args::HelpFlag help(parser, "help", "Display the help menu", {"h", "help"});
     args::Positional<std::string> input_file(parser, "input_file", "Specify the input file (a .sas file provided by the FastDownward translator).");
     args::ValueFlag<std::string> algorithm(parser, "algorithm", "Specify the algorithm to use (rankooh, imai, dynamic-s, dynamic-l).", {"a", "alg"});
@@ -112,18 +111,6 @@ static inline void parse_cli(const int& _argc, const char** _argv, hplus::enviro
         _e.warm_start = false;
     }
 
-}
-
-void* time_limit_termination(void* args) {
-    hplus::environment* _e = (hplus::environment*)args;
-    while (_e->exec_s < exec_status::STOP_TL && _e->sol_s != solution_status::INFEAS) {
-        if (_e->timer.get_time() > _e->time_limit) {
-            raise(SIGINT);
-            return nullptr;
-        }
-        std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
-    return nullptr;
 }
 
 static inline void show_info(const hplus::instance& _i, const hplus::environment& _e, const logger& _l) {
@@ -265,7 +252,9 @@ static inline void run(hplus::instance& _i, hplus::environment& _e, hplus::stati
     else if (_e.alg == HPLUS_CLI_ALG_DYNAMIC_LARGE) cpx_build_dynamic_large(env, lp, _i, _e, _l);
 
     // time limit
-    if ((double)_e.time_limit > _e.timer.get_time()) _ASSERT(!CPXsetdblparam(env, CPXPARAM_TimeLimit, (double)_e.time_limit - _e.timer.get_time()));
+    if ((double)_e.time_limit > _e.timer.get_time()) {
+        _ASSERT(!CPXsetdblparam(env, CPXPARAM_TimeLimit, (double)_e.time_limit - _e.timer.get_time()));
+    } else return;
 
     if (_e.warm_start) {     // Post warm starto to CPLEX
 
@@ -358,13 +347,11 @@ int main(const int _argc, const char** _argv) {
     hplus::statistics stats; init(stats);
     parse_cli(_argc, _argv, env);
     logger log(env.run_name, env.log, HPLUS_LOG_DIR"/"+env.log_name);
-    pthread_t timer_thread; pthread_create(&timer_thread, nullptr, time_limit_termination, &env);
     if (hplus::create_instance(inst, env, stats, log)) {
         show_info(inst, env, log);
         run(inst, env, stats, log);
     }
     env.exec_s = exec_status::EXIT;
-    pthread_join(timer_thread, nullptr);
     end(inst, env, stats, log);
 
 }
