@@ -10,11 +10,11 @@
 #define INST_H
 
 #include "utils.hpp"
+
 #include "bs.hxx"
-#include "log.hxx"
-#include <thread>
 
 namespace hplus {
+
     /** Struct containing all necessary info for an action */
     typedef struct {
         binary_set pre, eff;
@@ -22,6 +22,7 @@ namespace hplus {
         unsigned int cost;
         std::string name;
     } action;
+
     /** Struct containing all necessary info for solving the delete free relaxation of the planning task */
     typedef struct {
         /** Domain */
@@ -42,6 +43,7 @@ namespace hplus {
         std::vector<size_t> var_opt_conv, act_opt_conv, fadd_checkpoint, act_cpxtoidx;
         std::vector<std::vector<size_t>> act_with_eff, act_with_pre;
     } instance;
+
     /** Struct containing the environment variables for the execution of the code */
     typedef struct {
         /** Execution/Solution status */
@@ -56,6 +58,7 @@ namespace hplus {
         unsigned int time_limit;
         time_keeper timer;
     } environment;
+    
     /** Time statistics */
     typedef struct {
         double parsing, optimization, heuristic, build, callback, execution, total;

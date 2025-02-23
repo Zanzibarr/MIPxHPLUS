@@ -7,9 +7,7 @@
  */
 
 #include "hplus_instance.hpp"
-#include "utils.hpp"
-#include "bs.hxx"
-#include "log.hxx"
+
 #include <algorithm>
 #include <fstream>
 
@@ -60,7 +58,6 @@ static inline void init(hplus::instance& _i) {
     };
 }
 static inline bool parse_inst_file(hplus::instance& _i, const hplus::environment& _e, hplus::statistics& _s, const logger& _l) {
-
     // ====================================================== //
     // ================== PARSING SAS FILE ================== //
     // ====================================================== //
@@ -231,7 +228,7 @@ static inline bool parse_inst_file(hplus::instance& _i, const hplus::environment
 
     if (_i.m == 0) for (size_t i = 0; i < _i.n; i++) if (tmp_istate[i] != tmp_goal[i] && tmp_goal[i] >= 0) {
         _s.parsing = _e.timer.get_time();
-        return false;        // no actions and goal isn't the starting point
+        return false;        // no actions and goal isn't the starting point -> infeasible
     }
 
     // ====================================================== //
@@ -321,12 +318,11 @@ static inline bool parse_inst_file(hplus::instance& _i, const hplus::environment
     
     _s.parsing = _e.timer.get_time();
 
-    bool is_infeasible = (
+    bool is_infeasible = (              // add here other fast feasibility checks
         _i.m == 0 && !_i.goal.empty()
     );
 
     return !is_infeasible;
-
 }
 static inline void init_instance_opt(hplus::instance& _i, const hplus::environment& _e) {
     _i.n_opt = _i.n;
@@ -363,6 +359,7 @@ bool hplus::create_instance(instance& _i, environment& _e, statistics& _s, const
 }
 
 binary_set hplus::var_remaining(const instance& _i) { return !_i.var_e; }
+
 binary_set hplus::act_remaining(const instance& _i) { return !_i.act_e; }
 
 void hplus::update_sol(instance& _i, const std::vector<size_t> _s, const unsigned int _c, const logger& _l) {
@@ -390,6 +387,7 @@ void hplus::update_sol(instance& _i, const std::vector<size_t> _s, const unsigne
     _l.print_info("Updated best solution - Cost: %10u.", _i.best_cost);
     #endif
 }
+
 void hplus::print_sol(const instance& _i, const logger& _l) {
     _l.print("Solution cost: %10u", _i.best_cost);
     for(auto act_i : _i.best_solution) _l.print("(%s)", _i.actions[act_i].name.c_str());

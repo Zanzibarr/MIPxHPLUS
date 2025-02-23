@@ -9,7 +9,10 @@
 #ifndef PQ_H
 #define PQ_H
 
+#include <vector>
+
 #ifndef _ASSERT
+#include <iostream>
 #define _ASSERT(cond) {                                                                                     \
 if (!(cond)) {                                                                                              \
     std::cerr << "Assert check failed at " << __func__ << "(): " << __FILE__ << ":"<< __LINE__ << "\n";     \
@@ -17,8 +20,6 @@ if (!(cond)) {                                                                  
 }                                                                                                           \
 }
 #endif
-
-#include <vector>
 
 template <typename score_type>
 class priority_queue {

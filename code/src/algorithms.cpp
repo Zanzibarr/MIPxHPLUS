@@ -1,28 +1,16 @@
-#include <cplex.h>
-#include <set>
-#include <algorithm>
-#include "algorithms.hpp"
-#include "utils.hpp"
+/**
+ * @file algorithms.cpp
+ * @brief Algorithms to solve the delete-free relaxation of the planning task
+ *
+ * @author Matteo Zanella <matteozanella2@gmail.com>
+ * Copyright 2025 Matteo Zanella
+ */
 
-bool check_feasibility(const hplus::instance& _i, hplus::environment& _e, const logger& _l) {
-    _PRINT_VERBOSE("Checking problem feasibility.");
-    binary_set state(_i.n);
-    // binary_set searcher for faster actions lookup
-    bs_searcher feasible_actions = bs_searcher(_i.n);
-    for (auto act_i : hplus::act_remaining(_i)) feasible_actions.add(act_i, _i.actions[act_i].pre);
-    while (!state.contains(_i.goal)) {
-        std::vector<size_t> candidates = feasible_actions.find_subsets(state);
-        if (candidates.empty()) {
-            _PRINT_VERBOSE("The problem is infeasible.");
-            _e.sol_s = solution_status::INFEAS;
-            return false;
-        }
-        size_t choice = candidates[0];//candidates[rand() % candidates.size()];
-        state |= _i.actions[choice].eff;
-        feasible_actions.remove(choice, _i.actions[choice].pre);
-    }
-    return true;
-}
+#include "algorithms.hpp"
+
+#include <algorithm>
+#include <random>
+#include <set>
 
 // ##################################################################### //
 // ############################ CPLEX UTILS ############################ //
@@ -220,7 +208,6 @@ static inline bool localsearch(const hplus::instance& _i, bool (*_h)(const hplus
 }
 
 void find_heuristic(hplus::instance& _i, hplus::environment& _e, const logger& _l) {
-
     std::vector<size_t> heur_solution;
     unsigned int heur_cost;
 
@@ -251,7 +238,6 @@ void find_heuristic(hplus::instance& _i, hplus::environment& _e, const logger& _
 
     hplus::update_sol(_i, heur_solution, heur_cost, _l);
     _e.sol_s = solution_status::FEAS;
-
 }
 
 // ##################################################################### //
@@ -520,11 +506,9 @@ void cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, con
     delete[] ind_c1; ind_c1 = nullptr;
 
     // _ASSERT(!CPXwriteprob(env, lp, (HPLUS_CPLEX_OUTPUT_DIR"/lp/"+_e.run_name+".lp").c_str(), "LP"));
-
 }
 
 void cpx_post_warmstart_imai(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, const hplus::environment& _e, const logger& _l) {
-
     _INTCHECK_ASSERT(_e.sol_s != solution_status::INFEAS && _e.sol_s != solution_status::NOTFOUND);
 
     const auto& rem_var = hplus::var_remaining(_i);
@@ -561,7 +545,6 @@ void cpx_post_warmstart_imai(CPXENVptr& env, CPXLPptr& lp, const hplus::instance
 
     delete[] cpx_sol_ind; cpx_sol_ind = nullptr;
     delete[] cpx_sol_val; cpx_sol_val = nullptr;
-
 }
 
 void store_imai_sol(CPXENVptr& env, CPXLPptr& lp, hplus::instance& _i, const hplus::environment& _e, const logger& _l) {
@@ -599,7 +582,6 @@ void store_imai_sol(CPXENVptr& env, CPXLPptr& lp, hplus::instance& _i, const hpl
             }
         ), _l
     );
-
 }
 
 // ##################################################################### //
@@ -959,11 +941,9 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
     }
 
     // _ASSERT(!CPXwriteprob(env, lp, (HPLUS_CPLEX_OUTPUT_DIR"/lp/"+_e.run_name+".lp").c_str(), "LP"));
-
 }
 
 void cpx_post_warmstart_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, const hplus::environment& _e, const logger& _l) {
-    
     _INTCHECK_ASSERT(_e.sol_s != solution_status::INFEAS && _e.sol_s != solution_status::NOTFOUND);
 
     const auto& remaining_variables = hplus::var_remaining(_i);
@@ -994,7 +974,6 @@ void cpx_post_warmstart_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::insta
     _ASSERT(!CPXaddmipstarts(env, lp, 1, nnz, &izero, cpx_sol_ind, cpx_sol_val, &effortlevel, nullptr));
     delete[] cpx_sol_ind; cpx_sol_ind = nullptr;
     delete[] cpx_sol_val; cpx_sol_val = nullptr;
-
 }
 
 void store_rankooh_sol(CPXENVptr& env, CPXLPptr& lp, hplus::instance& _i, const hplus::environment& _e, const logger& _l) {
@@ -1049,7 +1028,6 @@ void store_rankooh_sol(CPXENVptr& env, CPXLPptr& lp, hplus::instance& _i, const 
             }
         ), _l
     );
-
 }
 
 // ##################################################################### //

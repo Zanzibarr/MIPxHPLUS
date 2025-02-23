@@ -9,7 +9,11 @@
 #ifndef BS_H
 #define BS_H
 
+#include <vector>
+#include <string>
+
 #ifndef _ASSERT
+#include <iostream>
 #define _ASSERT(cond) {                                                                                     \
 if (!(cond)) {                                                                                              \
     std::cerr << "Assert check failed at " << __func__ << "(): " << __FILE__ << ":"<< __LINE__ << "\n";     \
@@ -17,9 +21,6 @@ if (!(cond)) {                                                                  
 }                                                                                                           \
 }
 #endif
-
-#include <vector>
-#include <string>
 
 class binary_set {
     public:

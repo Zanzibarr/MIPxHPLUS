@@ -9,7 +9,12 @@
 #ifndef LOG_H
 #define LOG_H
 
+#include <cstdarg>
+#include <string>
+#include <time.h>
+
 #ifndef _ASSERT
+#include <iostream>
 #define _ASSERT(cond) {                                                                                     \
 if (!(cond)) {                                                                                              \
     std::cerr << "Assert check failed at " << __func__ << "(): " << __FILE__ << ":"<< __LINE__ << "\n";     \
@@ -17,11 +22,6 @@ if (!(cond)) {                                                                  
 }                                                                                                           \
 }
 #endif
-
-#include <iostream>
-#include <string>
-#include <time.h>
-#include <cstdarg>
 
 #define LINE "------------------------------------------------------------"
 #define THICK_LINE "############################################################"

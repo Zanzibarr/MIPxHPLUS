@@ -13,16 +13,19 @@
 // ############################## IMPORTS ############################## //
 // ##################################################################### //
 
+#include <iostream>
 #include <climits>
 #include <string>
 #include <vector>
 #include <chrono>
-#include <random>
-#include <iostream>
 
 #include "log.hxx"
 
-#define CODE_VERSION "21/02/2025"
+// ##################################################################### //
+// ############################ CODE VERSION ########################### //
+// ##################################################################### //
+
+#define CODE_VERSION "23/02/2025"
 
 // ##################################################################### //
 // ######################### PATHS AND FOLDERS ######################### //
@@ -35,7 +38,7 @@
 #define HPLUS_CPLEX_OUTPUT_DIR HPLUS_HOME_DIR"/logs/cpxout"
 
 // ##################################################################### //
-// ########################## C.L.I. ARGUMENTS ######################### //
+// ########################## C.L.I. ALGORITHMS ######################## //
 // ##################################################################### //
 
 #define HPLUS_CLI_ALG_IMAI              "imai"
@@ -64,18 +67,22 @@
 #define HPLUS_INTCHECK 1                            // overwritten by cmake
 #endif
 
-extern volatile int global_terminate;
-
 // ##################################################################### //
 // #################### UTILS STRUCTS AND FUNCTIONS #################### //
 // ##################################################################### //
 
+/** Variable used to signal termination required (int cause cplex requires an int) */
+extern volatile int global_terminate;
+
 /** Time keeper for execution time monitoring */
-struct time_keeper {
-    std::chrono::steady_clock::time_point timer;
-    void start_timer() { this->timer = std::chrono::steady_clock::now(); }
-    double get_time() const { return ((double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - this->timer).count())/1000; }
+class time_keeper {
+    public:
+        double get_time() const { return ((double) std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - this->timer).count())/1000; }
+        time_keeper() { this->timer = std::chrono::steady_clock::now(); }
+    private:
+        std::chrono::steady_clock::time_point timer;
 };
+
 /** Solution status for solution monitoring */
 enum solution_status {
     OPT = 0,
@@ -83,6 +90,7 @@ enum solution_status {
     INFEAS = 2,
     NOTFOUND = 404
 };
+
 /** Execution status for execution monitoring */
 enum exec_status {
     START = 0,
@@ -94,6 +102,7 @@ enum exec_status {
     CPX_EXEC = 50,
     EXIT = 100
 };
+
 /** Split the string _str using _del as delimiter */
 static inline std::vector<std::string> split_string(const std::string& _str, char _del) {
     std::vector<std::string> tokens;
@@ -107,6 +116,7 @@ static inline std::vector<std::string> split_string(const std::string& _str, cha
     if (!tmp.empty()) tokens.push_back(tmp);
     return tokens;
 }
+
 /** Check if _str is an integer between from and to (inclusive) */
 static inline bool isint(const std::string& _str, const int _from = INT_MIN, const int _to = INT_MAX) {
     try {
@@ -116,10 +126,10 @@ static inline bool isint(const std::string& _str, const int _from = INT_MIN, con
 
 }
 
-/** Exits with error message due to missing implementation, prints through _log the message _msg formatted as error */
+/** (Debugging) Exits with error message due to missing implementation, prints through _log the message _msg formatted as error */
 static inline void todo(const logger& _log, const std::string& _msg) { _log.raise_error("%s: UNIMPLEMENTED.", _msg.c_str()); }
 
-/** Pauses the code execution until resuming, prints msg formatted as warning */
+/** (Debugging) Pauses the code execution until resuming, prints msg formatted as warning */
 static inline void pause(const std::string& _msg) {                      
     size_t i = 0;
     std::cout << _msg << "(1 to exit, 0 to continue): ";

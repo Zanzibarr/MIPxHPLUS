@@ -10,10 +10,8 @@
 #define ALGS_H
 
 #include <cplex.h>
-#include "utils.hpp"
-#include "hplus_instance.hpp"
 
-bool check_feasibility(const hplus::instance& _i, hplus::environment& _e, const logger& _l);
+#include "hplus_instance.hpp"
 
 // ====================================================== //
 // ===================== CPLEX UTILS ==================== //
