@@ -7,8 +7,8 @@ from pathlib import Path
 
 def main():
     if len(sys.argv) != 2 or sys.argv[1] in ["-h", "--h", "-help", "--help"]:
-        print("Usage: >> python3 run_jobs.py <batch_idx>.")
-        exit(1)
+        print(f"Usage: >> python3 {os.path.basename(__file__)} <batch_idx>.")
+        exit(0)
         
     idx = sys.argv[1]
     batch_folder = f"{Path(__file__).parent.parent}/jobs/batch_{idx}"

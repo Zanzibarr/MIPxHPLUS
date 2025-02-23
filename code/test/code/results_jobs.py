@@ -11,9 +11,13 @@ def move_file(fromfilepath:Path, todir:Path):
 def main():
     timelimit = 900
     runsum = {}
+    
+    if len(sys.argv) > 2 or (len(sys.argv) == 2 and sys.argv[1] in ["-h", "--h", "-help", "--help"]):
+        print(f"Usage: >> python3 {os.path.basename(__file__)} <path_to_run_results>.json.")
+        exit(0)
 
     run_name = "testrun"
-    if len(sys.argv) > 1: run_name = sys.argv[1]
+    if len(sys.argv) == 2: run_name = sys.argv[1]
 
     # verify inputs
     if input(f"Run name will be '{run_name}'\nInsert y if it's correct: ") != "y": exit(0)
@@ -49,11 +53,18 @@ def main():
         with open(filepath, "r") as f:
             content= f.read()
             
-        if "Code version:" not in content or int(content.partition("Verbose parameter:")[2].partition(".\n")[0]) < 10:
+        if "[ ERROR ]" not in content and ("Code version:" not in content or int(content.partition("Verbose parameter:")[2].partition(".\n")[0].strip()) < 10):
             print("Instances must be run with a logging parameter of 10 (or higher) for this code to be able to parse all results.")
+            print(filepath)
             exit(1)
             
-        instance_name = Path(content.partition("Input file: ")[2].partition(".\n")[0]).name.replace(".sas", "").replace("_deletefree", "")
+        if "Axiom layer is" in content:
+            instance_name = content.partition("RUN_NAME: ")[2].partition("\n")[0]
+        else:
+            instance_name = Path(content.partition("Input file: ")[2].partition(".\n")[0]).name
+            
+        instance_name = instance_name.replace(".sas", "").replace("_deletefree", "")
+
         runsum["results"][instance_name] = {
             "status"    : -1,
             "hcost"     : -1,
@@ -67,7 +78,7 @@ def main():
             "time"      : -1,
             "other"     : ""
         }
-        
+
         if "Axiom layer is" in content:
             runsum["results"][instance_name]["status"] = -2
         elif "[ ERROR ]" in content:
@@ -132,7 +143,7 @@ def main():
     runsum["stats"]["perc_found"] /= runsum["n_total"]
     runsum["stats"]["perc_opt"] /= runsum["n_total"]
     
-    with open(f"{save_logs_dir}/{run_name}.json", "w") as f:
+    with open(f"{save_logs_dir}/000_{run_name}.json", "w") as f:
         json.dump(runsum, f, indent=4)
     
 if __name__ == "__main__":

@@ -30,7 +30,7 @@ void hplus::print_stats(const statistics& _s, const logger& _l) {
 
 static inline void init(hplus::instance& _i) {
     _i = (hplus::instance){
-        .unary_costs = false,
+        .equal_costs = false,
         .n = 0,
         .m = 0,
         .n_opt = 0,
@@ -57,7 +57,7 @@ static inline void init(hplus::instance& _i) {
         .act_with_pre = std::vector<std::vector<size_t>>(0)
     };
 }
-static inline bool parse_inst_file(hplus::instance& _i, const hplus::environment& _e, hplus::statistics& _s, const logger& _l) {
+static inline bool parse_inst_file(hplus::instance& _i, hplus::environment& _e, hplus::statistics& _s, const logger& _l) {
     // ====================================================== //
     // ================== PARSING SAS FILE ================== //
     // ====================================================== //
@@ -83,7 +83,7 @@ static inline bool parse_inst_file(hplus::instance& _i, const hplus::environment
     if(line != "begin_metric") _l.raise_error("Corrupted file");
     std::getline(ifs, line);   // metric
     if(!isint(line, 0, 1)) _l.raise_error("Corrupted file");
-    _i.unary_costs = stoi(line) != 1;
+    _i.equal_costs = stoi(line) == 0;
     std::getline(ifs, line);   // end_metric
     if(line != "end_metric") _l.raise_error("Corrupted file");
 
@@ -160,6 +160,8 @@ static inline bool parse_inst_file(hplus::instance& _i, const hplus::environment
     if(line != "end_goal") _l.raise_error("Corrupted file");
 
     // * operator (actions) section
+    int checkcosts = -1;
+    bool equalcosts_check = true;
     _PRINT_WARN("Ignoring effect conditions.");
     std::getline(ifs, line);   // n_act
     if(!isint(line, 0)) _l.raise_error("Corrupted file");
@@ -211,7 +213,11 @@ static inline bool parse_inst_file(hplus::instance& _i, const hplus::environment
         std::getline(ifs, line);   // action cost
         if(!isint(line)) _l.raise_error("Corrupted file");
         unsigned int cost = 1;
-        if (!_i.unary_costs) cost = stoi(line);
+        if (!_i.equal_costs) {
+            cost = stoi(line);
+            if (checkcosts == -1) checkcosts = cost;
+            else if (checkcosts != cost) equalcosts_check = false;
+        }
         std::getline(ifs, line);   // end_operator
         if(line != "end_operator") _l.raise_error("Corrupted file");
         _i.actions[act_i] = (hplus::action){.cost=cost, .name=name};
@@ -221,6 +227,7 @@ static inline bool parse_inst_file(hplus::instance& _i, const hplus::environment
             if (act_eff[i] >= 0) tmp_act_eff[act_i].emplace_back(i, act_eff[i]);
         }
     }
+    _i.equal_costs = equalcosts_check;
 
     _PRINT_WARN("Ignoring axiom section.");
 
@@ -318,10 +325,18 @@ static inline bool parse_inst_file(hplus::instance& _i, const hplus::environment
     
     _s.parsing = _e.timer.get_time();
 
+    // ====================================================== //
+    // ================ OPTIMIZE ENVIRONMENT ================ //
+    // ====================================================== //
+    if (_i.equal_costs && _e.heur == "greedycost") {
+        _e.heur = "greedycxe";
+        _PRINT_WARN("Detected instance with equal costs actions, switching to 'greedycxe' heuristic.");
+    }
+
+    // return
     bool is_infeasible = (              // add here other fast feasibility checks
         _i.m == 0 && !_i.goal.empty()
     );
-
     return !is_infeasible;
 }
 static inline void init_instance_opt(hplus::instance& _i, const hplus::environment& _e) {

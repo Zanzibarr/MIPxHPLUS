@@ -144,7 +144,7 @@ static inline void show_info(const hplus::instance& _i, const hplus::environment
 
     _l.print(LINE);
 
-    _l.print("Metric:                                %20s.", (_i.unary_costs ? "unitary costs" : "integer costs"));
+    _l.print("Metric:                                %20s.", (_i.equal_costs ? (_i.actions[0].cost == 1 ? "unitary costs" : "constant costs") : "integer costs"));
     _l.print("# variables:                                     %10d.", _i.n);
     _l.print("# actions:                                       %10d.", _i.m);
     #if HPLUS_VERBOSE >= 100

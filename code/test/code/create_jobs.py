@@ -15,8 +15,8 @@ def clear_dir(dir: Path):
 def main():
     # verify input correctness
     if len(sys.argv) <= 1 or sys.argv[1] in ["-h", "--h", "-help", "--help"]:
-        print("Usage: >> python3 create_jobs.py <instances_folder> <all parameters to pass to the execution>.")
-        exit(1)
+        print(f"Usage: >> python3 {os.path.basename(__file__)} <instances_folder> <all parameters to pass to the execution>.")
+        exit(0)
         
     # read inputs
     instances_folder = os.path.abspath(sys.argv[1])

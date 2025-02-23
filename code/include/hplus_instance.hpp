@@ -26,7 +26,7 @@ namespace hplus {
     /** Struct containing all necessary info for solving the delete free relaxation of the planning task */
     typedef struct {
         /** Domain */
-        bool unary_costs;
+        bool equal_costs;
         size_t n, m, n_opt, m_opt;
         std::vector<size_t> var_ranges;
         std::vector<action> actions;

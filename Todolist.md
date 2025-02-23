@@ -1,8 +1,7 @@
-- [x] Fix time limit
-- [x] Prepare testing structure for cluster use
+# Todolist
+
 - [ ] Test correctness of Deletefree parsing
 - [x] Why some deletefree instances appear infeasible?
 - [ ] Implement dynamic-s and dynamic-l
 - [ ] Implement other heuristics
-- [x] Complete the Readme
 - [ ] Fix other TODOs (see in the code)

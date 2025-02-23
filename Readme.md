@@ -1,7 +1,10 @@
 # HPLUS THESIS
 ![C++](https://img.shields.io/badge/C%2B%2B-00599C?style=for-the-badge&logo=c%2B%2B&logoColor=white)
 
-### Latest update: 28/01/25  
+### Version: 1.0.0  
+_To see what I'm still working on, please refer to the [TodoList](Todolist.md)._  
+_Refer to the [Changelog](Changelog.md) for info about versions._  
+
 
 Using a MIP solver (CPLEX) to solve the delete free relaxation of a planning task.  
 
@@ -64,7 +67,7 @@ make <target_option>
   - **debug** : debugging flags added (debug build)
   - **clear** : removes all files inside the code/build folder
 
-### Run options
+## Run options
 
 See the help page:
 ```shell

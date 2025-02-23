@@ -103,6 +103,7 @@ static inline bool greedycost(const hplus::instance& _i, std::vector<size_t>& _s
         _c += _i.actions[choice].cost;
         state |= _i.actions[choice].eff;
         feasible_actions.remove(choice, _i.actions[choice].pre);
+        if (_CHECK_STOP()) throw timelimit_exception("Reached time limit.");
     }
     return true;
 }
@@ -140,6 +141,7 @@ static inline bool greedycxe(const hplus::instance& _i, std::vector<size_t>& _s,
         _c += _i.actions[choice].cost;
         state |= _i.actions[choice].eff;
         feasible_actions.remove(choice, _i.actions[choice].pre);
+        if (_CHECK_STOP()) throw timelimit_exception("Reached time limit.");
     }
     return true;
 }
@@ -159,6 +161,7 @@ static inline bool randheur(const hplus::instance& _i, std::vector<size_t>& _s, 
         _c += _i.actions[choice].cost;
         state |= _i.actions[choice].eff;
         feasible_actions.remove(choice, _i.actions[choice].pre);
+        if (_CHECK_STOP()) throw timelimit_exception("Reached time limit.");
     }
     return true;
 }
