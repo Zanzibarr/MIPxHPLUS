@@ -28,5 +28,6 @@ thesis/*.xmpi
 thesis/*.pdf
 
 # files
+.clang-format
 
 # other
