@@ -19,7 +19,7 @@ def main():
     run_results_file = os.path.abspath(sys.argv[1])
 
     if (
-        input(f"Run name will be '{run_results_file}'\nInsert y if it's correct: ")
+        input(f"Run to check will be '{run_results_file}'\nInsert y if it's correct: ")
         != "y"
     ):
         exit(0)
@@ -27,10 +27,15 @@ def main():
     with open(run_results_file, "r") as f:
         run_results = json.loads(f.read())
 
-    for file in os.listdir("../../../local/fast_downward_baseline"):
-        file_path = os.path.abspath(
-            os.path.join("../../../local/fast_downward_baseline", file)
-        )
+    baseline_path = os.path.abspath("../../../local/fast_downward_baseline")
+    if (
+        input(f"Fast downward baseline: {baseline_path}\nInsert y if it's correct: ")
+        != "y"
+    ):
+        exit(0)
+
+    for file in os.listdir(baseline_path):
+        file_path = os.path.join(baseline_path, file)
         with open(file_path, "r") as f:
             content = f.read()
 

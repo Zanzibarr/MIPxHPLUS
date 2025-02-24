@@ -26,7 +26,9 @@ HOW I DO VERSIONING:
 -->
 
 ## [1.0.1] - 2025/02/24
-<!-- ### :ballot_box_with_check: Fixed -->
+### :ballot_box_with_check: Fixed
+- Errors in cluster jobs scripts
+    - [~/code/test/code/*](code/test/code/)
 ### :heavy_exclamation_mark: Changed
 - Using return value of std::set::insert to check if element is actually added to a set
     - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)

@@ -52,18 +52,21 @@ def main():
     random.shuffle(instances_list)
     n_batches = (len(instances_list) // batch_size) + 1
 
+    code_dir = os.path.abspath("../..")
+
     # jobs
-    jobs_folder = os.path.abspath("/home/zanellamat/thesis_hplus/code/test/jobs")
-    jobs_outputs = os.path.abspath("/home/zanellamat/thesis_hplus/code/test/jobs_output")
+    jobs_folder = os.path.join(code_dir, "test/jobs")
+    jobs_outputs = os.path.join(code_dir, "test/jobs_output")
     os.makedirs(jobs_folder, exist_ok=True)
     os.makedirs(jobs_outputs, exist_ok=True)
 
-    exec_dir = os.path.abspath("/home/zanellamat/thesis_hplus/code/build")
+    exec_dir = os.path.join(code_dir, "build")
 
     print(f"Jobs folder: {jobs_folder}")
     print(f"Jobs output: {jobs_outputs}")
     print(f"Executable: {exec_dir}/main")
-    if (input("Check those paths.\nInsert y if it's all correct: ") != "y"): exit(0)
+    if input("Check those paths.\nInsert y if it's all correct: ") != "y":
+        exit(0)
 
     clear_dir(Path(jobs_outputs))
 

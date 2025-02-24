@@ -12,15 +12,12 @@ def move_file(fromfilepath: Path, todir: Path):
 
 
 def main():
-    timelimit = 900
     runsum = {}
 
     if len(sys.argv) > 2 or (
         len(sys.argv) == 2 and sys.argv[1] in ["-h", "--h", "-help", "--help"]
     ):
-        print(
-            f"Usage: >> python3 {os.path.basename(__file__)} <run_name>."
-        )
+        print(f"Usage: >> python3 {os.path.basename(__file__)} <run_name>.")
         exit(0)
 
     run_name = "testrun"
@@ -30,8 +27,6 @@ def main():
     # verify inputs
     if input(f"Run name will be '{run_name}'\nInsert y if it's correct: ") != "y":
         exit(0)
-
-    run_file = run_name + ".json"
 
     runsum["stats"] = {
         "avg_ptime": 0,
@@ -48,7 +43,7 @@ def main():
     runsum["other"] = ""
     runsum["results"] = {}
 
-    logsdir = f"/home/zanellamat/thesis_hplus/logs/AAA_output_logs"
+    logsdir = os.path.abspath("../../../logs/AAA_output_logs")
     save_logs_dir = Path(f"{Path(logsdir).parent}/saved_logs/{run_name}")
     if os.path.exists(save_logs_dir):
         print(f"Path {save_logs_dir} already exists.")
@@ -57,8 +52,8 @@ def main():
 
     print(f"Logs dir: {logsdir}")
     print(f"Saved logs dir: {save_logs_dir}")
-
-    if (input("Check those paths.\nInsert y if it's all correct: ") != "y"): exit(0)
+    if input("Check those paths.\nInsert y if it's all correct: ") != "y":
+        exit(0)
 
     n_good = 0
 
