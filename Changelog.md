@@ -27,8 +27,13 @@ HOW I DO VERSIONING:
 
 ## [1.0.1] - 2025/02/24
 <!-- ### :ballot_box_with_check: Fixed -->
-<!-- ### :heavy_exclamation_mark: Changed -->
-<!-- ### :heavy_plus_sign: Added -->
+### :heavy_exclamation_mark: Changed
+- Using return value of std::set::insert to check if element is actually added to a set
+    - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
+### :heavy_plus_sign: Added
+- Documentation for binary_set, bs_searcher and logger classes for future reuse
+    - [~/code/external/bs.hxx](code/external/bs.hxx)
+    - [~/code/external/log.hxx](code/external/log.hxx)
 ### :x: Removed
 - Unused private function in logger
     - [~/code/external/log.hxx](code/external/log.hxx)

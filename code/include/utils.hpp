@@ -176,13 +176,12 @@ public:
 
 /** Define an assert function */
 #ifndef _ASSERT
-	#define _ASSERT(cond)                                                                       \
-		{                                                                                       \
-			if (!(cond)) [[unlikely]] {                                                         \
-				std::cerr << "Assert check failed at " << __func__ << "(): " << __FILE__ << ":" \
-						  << __LINE__ << "\n";                                                  \
-				exit(1);                                                                        \
-			}                                                                                   \
+	#define _ASSERT(cond)                                                                                            \
+		{                                                                                                            \
+			if (!(cond)) [[unlikely]] {                                                                              \
+				std::cerr << "Assert check failed at " << __func__ << "(): " << __FILE__ << ":" << __LINE__ << "\n"; \
+				exit(1);                                                                                             \
+			}                                                                                                        \
 		}
 #endif
 

@@ -117,7 +117,7 @@ public:
 		return repr;
 	}
 
-protected:
+private:
 	int						n;	 //< size of arrays heap and position
 	int						cnt; //< number of elements in the queue
 	std::vector<int>		data;

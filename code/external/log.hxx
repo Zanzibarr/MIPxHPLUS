@@ -10,167 +10,163 @@
 #define LOG_H
 
 #include <cstdarg>
+#include <stdexcept>
 #include <string>
 #include <time.h>
-
-#ifndef _ASSERT
-	#include <iostream>
-	#define _ASSERT(cond)                                                                                            \
-		{                                                                                                            \
-			if (!(cond)) [[unlikely]] {                                                                              \
-				std::cerr << "Assert check failed at " << __func__ << "(): " << __FILE__ << ":" << __LINE__ << "\n"; \
-				exit(1);                                                                                             \
-			}                                                                                                        \
-		}
-#endif
 
 #define LINE "------------------------------------------------------------"
 #define THICK_LINE "############################################################"
 
+static inline void printf_logger(va_list& _valist, const char* _msg, bool _time, FILE* _out, FILE* _logfile) {
+	if (_time) {
+		time_t	  now = time(0);
+		struct tm tstruct;
+		char	  str_time[80];
+		tstruct = *localtime(&now);
+		strftime(str_time, sizeof(str_time), "%Y-%m-%d.%X", &tstruct);
+		fprintf(_out, "%s : ", str_time);
+		if (_logfile)
+			fprintf(_logfile, "%s : ", str_time);
+	}
+	if (_logfile) {
+		// Use one va_list for each vfprintf call
+		va_list ptr_copy;
+		va_copy(ptr_copy, _valist);
+		vfprintf(_logfile, _msg, ptr_copy);
+		va_end(ptr_copy);
+	}
+	vfprintf(_out, _msg, _valist);
+	fprintf(_out, "\n");
+	if (_logfile) {
+		fprintf(_logfile, "\n");
+		fclose(_logfile);
+	}
+	va_end(_valist);
+}
+
+/**
+ * @brief logger class for logging formatted output both on terminal and on log file
+ *
+ */
 class logger {
 public:
-	/** Create a new logger with title run _run_title. If _log_enabled is set to true, it will write (append mode) on the file found at the path _log_name
-	 * (created a new one if none found) */
-	explicit inline logger(const std::string& _run_title, bool _log_enabled, const std::string& _log_name)
+	/**
+	 * @brief Construct a new logger object
+	 *
+	 * @param _log_enabled Specify wether to log on a file too
+	 * @param _log_name Specify the path of the log file (writing on append mode: 'a')
+	 * @param _run_title Title of the run to be logged on the file (optional)
+	 *
+	 * @throw std::invalid_argument If any problem with opening the log file occurrs
+	 */
+	explicit inline logger(bool _log_enabled, const std::string& _log_name, const std::string& _run_title = "")
 		: log_file(_log_name), log_enabled(_log_enabled) {
-		if (log_enabled) {
+		if (this->log_enabled) {
 			FILE* file = fopen(this->log_file.c_str(), "a");
-			if (!file) {
-				std::cerr << "fopen() failed.\n";
-				exit(1);
-			}
-			fprintf(file, "\n%s\nRUN_NAME: %s\n%s\n", THICK_LINE, _run_title.c_str(), THICK_LINE);
+			if (!file)
+				throw std::invalid_argument("An error occurred while opening the file.");
+			if (_run_title != "")
+				fprintf(file, "\n%s\nRUN_NAME: %s\n%s\n", THICK_LINE, _run_title.c_str(), THICK_LINE);
 			fclose(file);
 		}
 	}
-	/** Writes a simple non-formatted message */
+
+	/**
+	 * @brief Writes a simple output (consider this as a printf function)
+	 *
+	 * @param _str Formatted string
+	 * @param ... Elements to be added to the formatted string
+	 *
+	 * @throw std::invalid_argument If any problem with opening the log file occurrs
+	 */
 	inline void print(const char* _str, ...) const {
-#if HPLUS_VERBOSE == 0
-		return;
-#endif
 		FILE* file = nullptr;
-		if (this->log_enabled)
+		if (this->log_enabled) {
 			file = fopen(this->log_file.c_str(), "a");
+			if (!file)
+				throw std::invalid_argument("An error occurred while opening the file.");
+		}
 		va_list ptr;
 		va_start(ptr, _str);
-		if (this->log_enabled) {
-			// Use one va_list for each vfprintf call
-			va_list ptr_copy;
-			va_copy(ptr_copy, ptr);
-			vfprintf(file, _str, ptr_copy);
-			va_end(ptr_copy);
-		}
-		vfprintf(stdout, _str, ptr);
-		fprintf(stdout, "\n");
-		if (this->log_enabled) {
-			fprintf(file, "\n");
-			fclose(file);
-		}
-		va_end(ptr);
+		printf_logger(ptr, _str, false, stdout, file);
 	}
-	/** Writes a info-type message */
+
+	/**
+	 * @brief Writes an info message (consider this as a printf function)
+	 *
+	 * @param _str Formatted string
+	 * @param ... Elements to be added to the formatted string
+	 *
+	 * @throw std::invalid_argument If any problem with opening the log file occurrs
+	 */
+
 	inline void print_info(const char* _str, ...) const {
 		FILE* file = nullptr;
-		if (this->log_enabled)
+		if (this->log_enabled) {
 			file = fopen(this->log_file.c_str(), "a");
+			if (!file)
+				throw std::invalid_argument("An error occurred while opening the file.");
+		}
 		va_list ptr;
 		va_start(ptr, _str);
 		// Print prefix
 		fprintf(stdout, "\033[92m\033[1m[ INFO ]\033[0m -- ");
-		if (this->log_enabled)
+		if (file)
 			fprintf(file, "[ INFO ] -- ");
-		time_t	  now = time(0);
-		struct tm tstruct;
-		char	  str_time[80];
-		tstruct = *localtime(&now);
-		strftime(str_time, sizeof(str_time), "%Y-%m-%d.%X", &tstruct);
-		fprintf(stdout, "%s : ", str_time);
-		if (this->log_enabled) {
-			fprintf(file, "%s : ", str_time);
-			// Use one va_list for each vfprintf call
-			va_list ptr_copy;
-			va_copy(ptr_copy, ptr);
-			vfprintf(file, _str, ptr_copy);
-			va_end(ptr_copy);
-		}
-		vfprintf(stdout, _str, ptr);
-		fprintf(stdout, "\n");
-		if (this->log_enabled) {
-			fprintf(file, "\n");
-			fclose(file);
-		}
-		va_end(ptr);
+		printf_logger(ptr, _str, true, stdout, file);
 	}
-	/** Writes a warning-type message */
+
+	/**
+	 * @brief Writes a warning message (consider this as a printf function)
+	 *
+	 * @param _str Formatted string
+	 * @param ... Elements to be added to the formatted string
+	 *
+	 * @throw std::invalid_argument If any problem with opening the log file occurrs
+	 */
 	inline void print_warn(const char* _str, ...) const {
 		FILE* file = nullptr;
-		if (this->log_enabled)
+		if (this->log_enabled) {
 			file = fopen(this->log_file.c_str(), "a");
+			if (!file)
+				throw std::invalid_argument("An error occurred while opening the file.");
+		}
 		va_list ptr;
 		va_start(ptr, _str);
 		// Print prefix
-		fprintf(stdout, "\033[93m\033[1m[ WARN ]\033[0m -- ");
-		if (this->log_enabled)
+		fprintf(stderr, "\033[93m\033[1m[ WARN ]\033[0m -- ");
+		if (file)
 			fprintf(file, "[ WARN ] -- ");
-		time_t	  now = time(0);
-		struct tm tstruct;
-		char	  str_time[80];
-		tstruct = *localtime(&now);
-		strftime(str_time, sizeof(str_time), "%Y-%m-%d.%X", &tstruct);
-		fprintf(stdout, "%s : ", str_time);
-		if (this->log_enabled) {
-			fprintf(file, "%s : ", str_time);
-			// Use one va_list for each vfprintf call
-			va_list ptr_copy;
-			va_copy(ptr_copy, ptr);
-			vfprintf(file, _str, ptr_copy);
-			va_end(ptr_copy);
-		}
-		vfprintf(stdout, _str, ptr);
-		fprintf(stdout, "\n");
-		if (this->log_enabled) {
-			fprintf(file, "\n");
-			fclose(file);
-		}
-		va_end(ptr);
+		printf_logger(ptr, _str, true, stderr, file);
 	}
-	/** Writes an error message and terminates the execution with status code 1 */
+
+	/**
+	 * @brief Writes an error message (consider this as a printf function) and terminates the execution of the code with exit(1)
+	 *
+	 * @param _str Formatted string
+	 * @param ... Elements to be added to the formatted string
+	 *
+	 * @throw std::invalid_argument If any problem with opening the log file occurrs
+	 */
 	inline void raise_error(const char* _str, ...) const {
 		FILE* file = nullptr;
-		if (this->log_enabled)
+		if (this->log_enabled) {
 			file = fopen(this->log_file.c_str(), "a");
+			if (!file)
+				throw std::invalid_argument("An error occurred while opening the file.");
+		}
 		va_list ptr;
 		va_start(ptr, _str);
 		// Print prefix to stderr for errors
 		fprintf(stderr, "\033[91m\033[1m[ ERROR ]\033[0m -- ");
-		if (this->log_enabled)
+		if (file)
 			fprintf(file, "[ ERROR ] -- ");
 		// Print timestamp
-		time_t	  now = time(0);
-		struct tm tstruct;
-		char	  str_time[80];
-		tstruct = *localtime(&now);
-		strftime(str_time, sizeof(str_time), "%Y-%m-%d.%X", &tstruct);
-		fprintf(stderr, "%s : ", str_time);
-		if (this->log_enabled) {
-			fprintf(file, "%s : ", str_time);
-			// Use one va_list for each vfprintf call
-			va_list ptr_copy;
-			va_copy(ptr_copy, ptr);
-			vfprintf(file, _str, ptr_copy);
-			va_end(ptr_copy);
-		}
-		vfprintf(stderr, _str, ptr);
-		fprintf(stderr, "\n");
-		if (this->log_enabled) {
-			fprintf(file, "\n");
-			fclose(file);
-		}
-		va_end(ptr);
+		printf_logger(ptr, _str, true, stderr, file);
 		exit(1);
 	}
 
-protected:
+private:
 	std::string log_file;
 	bool		log_enabled;
 };

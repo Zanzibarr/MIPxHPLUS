@@ -696,9 +696,9 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
 		for (auto var_i : _i.actions[act_i].pre& rem_var_set) {
 			for (auto var_j : eff_sparse)
 				if (var_i != var_j) [[likely]] {
-					size_t pre_size = graph[var_i].size();
-					graph[var_i].insert(var_j);
-					if (pre_size != graph[var_i].size()) {
+					const auto check = graph[var_i].insert(var_j);
+					// check.second is true if the element was actually inserted in the set
+					if (check.second) {
 						degree_counter[var_i] += 1;
 						degree_counter[var_j] += 1;
 					}
@@ -742,9 +742,9 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
 				for (auto q : graph[idx])
 					if (p != q) [[likely]] {
 						// add edge p - q
-						size_t pre_size = graph[p].size();
-						graph[p].insert(q);
-						if (pre_size != graph[p].size()) {
+						const auto check = graph[p].insert(q);
+						// check.second is true if the element was actually inserted in the set
+						if (check.second) {
 							degree_counter[p] += 1;
 							degree_counter[q] += 1;
 						}

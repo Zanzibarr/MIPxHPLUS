@@ -425,7 +425,7 @@ int main(const int _argc, const char** _argv) {
 	hplus::statistics stats;
 	init(stats);
 	parse_cli(_argc, _argv, env);
-	logger	  log(env.run_name, env.log, HPLUS_LOG_DIR "/" + env.log_name);
+	logger	  log(env.log, HPLUS_LOG_DIR "/" + env.log_name, env.run_name);
 	pthread_t timer_thread;
 	pthread_create(&timer_thread, nullptr, time_limit_termination, &env);
 	if (hplus::create_instance(inst, env, stats, log)) {

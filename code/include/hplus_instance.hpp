@@ -9,8 +9,13 @@
 #ifndef INST_H
 #define INST_H
 
-#include "bs.hxx"
 #include "utils.hpp"
+
+#if HPLUS_INTCHECK == 0
+	#define INTCHECK_BS false
+#endif
+
+#include "bs.hxx"
 
 namespace hplus {
 
