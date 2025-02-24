@@ -53,12 +53,17 @@ def main():
     n_batches = (len(instances_list) // batch_size) + 1
 
     # jobs
-    jobs_folder = f"{Path(__file__).parent.parent}/jobs"
-    jobs_outputs = f"{Path(__file__).parent.parent}/jobs_outputs"
+    jobs_folder = os.path.abspath("/home/zanellamat/thesis_hplus/code/test/jobs")
+    jobs_outputs = os.path.abspath("/home/zanellamat/thesis_hplus/code/test/jobs_output")
     os.makedirs(jobs_folder, exist_ok=True)
     os.makedirs(jobs_outputs, exist_ok=True)
 
-    exec_dir = f"{Path(__file__).parent.parent.parent}/code/build"
+    exec_dir = os.path.abspath("/home/zanellamat/thesis_hplus/code/build")
+
+    print(f"Jobs folder: {jobs_folder}")
+    print(f"Jobs output: {jobs_outputs}")
+    print(f"Executable: {exec_dir}/main")
+    if (input("Check those paths.\nInsert y if it's all correct: ") != "y"): exit(0)
 
     clear_dir(Path(jobs_outputs))
 
@@ -93,7 +98,7 @@ ulimit -v 16777216
 
 #####################
 
-{exec_dir}/main {inst_path} {execution_parameters} --t=900 --l={inst_name}.log --run={inst_name}
+{exec_dir}/./main {inst_path} {execution_parameters} --t=900 --l={inst_name}.log --run={inst_name}
 
 #####################
 

@@ -19,7 +19,7 @@ def main():
         len(sys.argv) == 2 and sys.argv[1] in ["-h", "--h", "-help", "--help"]
     ):
         print(
-            f"Usage: >> python3 {os.path.basename(__file__)} <path_to_run_results>.json."
+            f"Usage: >> python3 {os.path.basename(__file__)} <run_name>."
         )
         exit(0)
 
@@ -48,12 +48,17 @@ def main():
     runsum["other"] = ""
     runsum["results"] = {}
 
-    logsdir = f"{Path(__file__).parent.parent.parent.parent}/logs/AAA_output_logs"
+    logsdir = f"/home/zanellamat/thesis_hplus/logs/AAA_output_logs"
     save_logs_dir = Path(f"{Path(logsdir).parent}/saved_logs/{run_name}")
     if os.path.exists(save_logs_dir):
         print(f"Path {save_logs_dir} already exists.")
         exit(1)
     os.mkdir(save_logs_dir)
+
+    print(f"Logs dir: {logsdir}")
+    print(f"Saved logs dir: {save_logs_dir}")
+
+    if (input("Check those paths.\nInsert y if it's all correct: ") != "y"): exit(0)
 
     n_good = 0
 

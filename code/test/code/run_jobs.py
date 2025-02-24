@@ -13,7 +13,7 @@ def main():
         exit(0)
 
     idx = sys.argv[1]
-    batch_folder = f"{Path(__file__).parent.parent}/jobs/batch_{idx}"
+    batch_folder = f"/home/zanellamat/thesis_hplus/code/test/jobs/batch_{idx}"
 
     # verify inputs
     if (
