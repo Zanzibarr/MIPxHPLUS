@@ -31,7 +31,7 @@ class logger {
 public:
 	/** Create a new logger with title run _run_title. If _log_enabled is set to true, it will write (append mode) on the file found at the path _log_name
 	 * (created a new one if none found) */
-	inline logger(const std::string& _run_title, bool _log_enabled, const std::string& _log_name)
+	explicit inline logger(const std::string& _run_title, bool _log_enabled, const std::string& _log_name)
 		: log_file(_log_name), log_enabled(_log_enabled) {
 		if (log_enabled) {
 			FILE* file = fopen(this->log_file.c_str(), "a");

@@ -27,27 +27,27 @@ template <typename score_type>
 class priority_queue {
 public:
 	/** Construct a priority queue for the integer form 0 to _n - 1 */
-	constexpr priority_queue(int _n)
+	explicit inline priority_queue(int _n)
 		: n(_n), cnt(0), data(n), prior(n), position(n, -1) {}
 	/** Return the integer with minimal priority (throws exception if empty) */
 	[[nodiscard]]
-	constexpr int top() const {
+	inline int top() const {
 		_ASSERT(!is_empty());
 		return data[0];
 	}
 	/** Check whether the queue is empty */
 	[[nodiscard]]
-	constexpr bool is_empty() const { return (cnt == 0); }
+	inline bool is_empty() const { return (cnt == 0); }
 	/** Checks whether an integer j is in the queue */
 	[[nodiscard]]
-	constexpr bool has(int j) const { return (position[j] >= 0); }
+	inline bool has(int j) const { return (position[j] >= 0); }
 	/** Clear content */
-	constexpr void clear() {
+	inline void clear() {
 		std::fill(position.begin(), position.begin() + cnt, -1);
 		cnt = 0;
 	}
 	/** Restore heap structure */
-	constexpr void heapify() {
+	inline void heapify() {
 		int start = (cnt - 2) / 2;
 		while (start >= 0) {
 			int j = data[start];
@@ -61,7 +61,7 @@ public:
 		}
 	}
 	/** Insert integer j into the queue with a priority p */
-	constexpr void push(int j, score_type p, bool mantain_heap = true) {
+	inline void push(int j, score_type p, bool mantain_heap = true) {
 		_ASSERT((j >= 0) && (j < n));
 		_ASSERT(position[j] == -1);
 		prior[j] = p;
@@ -76,18 +76,18 @@ public:
 		position[j] = gap;
 	}
 	/** Removes the integer with minimal priority */
-	constexpr void pop() {
+	inline void pop() {
 		_ASSERT(!is_empty());
 		remove_at(0, true);
 	}
 	/** Removes integer j from the queue */
-	constexpr void remove(int j, bool mantain_heap = true) {
+	inline void remove(int j, bool mantain_heap = true) {
 		_ASSERT(position[j] >= 0);
 		remove_at(position[j], mantain_heap);
 		_ASSERT(position[j] == -1);
 	}
 	/** Changes the score of an integer j already in the queue to p */
-	constexpr void change(int j, score_type p, bool mantain_heap = true) {
+	inline void change(int j, score_type p, bool mantain_heap = true) {
 		_ASSERT(position[j] >= 0);
 		int gap = position[j];
 		if (mantain_heap) {
@@ -109,7 +109,7 @@ public:
 		prior[j] = p;
 	}
 	[[nodiscard]]
-	constexpr operator std::string() const {
+	inline operator std::string() const {
 		std::string repr = "";
 		for (int k = 0; k < cnt; k++) {
 			repr.append("\t").append(std::to_string(k)).append("\t").append(std::to_string(data[k])).append("\t").append(std::to_string(prior[data[k]])).append("\n");
@@ -127,7 +127,7 @@ protected:
 	 * Moves the gap up from the current position gap to the proper place for a priority of value p
 	 * The final position of the gap is stored in gap
 	 */
-	constexpr void sift_up(int& gap, score_type p) {
+	inline void sift_up(int& gap, score_type p) {
 		while (gap > 0) {
 			int parent = (gap - 1) / 2;
 			if (p < prior[data[parent]]) {
@@ -142,7 +142,7 @@ protected:
 	 * Moves the gap down from the current position gap
 	 * The final position of the gap is stored in gap
 	 */
-	constexpr void sift_down(int& gap, score_type p) {
+	inline void sift_down(int& gap, score_type p) {
 		int newgap;
 		int left;
 		int right;
@@ -173,7 +173,7 @@ protected:
 		}
 	}
 	/** Removes the integer in position gap */
-	constexpr void remove_at(int gap, bool mantain_heap) {
+	inline void remove_at(int gap, bool mantain_heap) {
 		int last = --cnt;
 		position[data[gap]] = -1;
 		if (gap == last)

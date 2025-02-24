@@ -82,17 +82,19 @@ struct time_keeper {
 										.count())) /
 			1'000;
 	}
-	inline time_keeper() { this->timer = std::chrono::steady_clock::now(); }
+	explicit inline time_keeper() { this->timer = std::chrono::steady_clock::now(); }
 
 private:
 	std::chrono::steady_clock::time_point timer;
 };
 
 /** Solution status for solution monitoring */
-enum solution_status { OPT = 0,
-					   FEAS = 1,
-					   INFEAS = 2,
-					   NOTFOUND = 404 };
+enum solution_status {
+	OPT = 0,
+	FEAS = 1,
+	INFEAS = 2,
+	NOTFOUND = 404
+};
 
 /** Execution status for execution monitoring */
 enum exec_status {
@@ -138,7 +140,7 @@ inline bool isint(const std::string& _str, const int _from = INT_MIN,
 
 /** (Debugging) Exits with error message due to missing implementation, prints through _log the
  * message _msg formatted as error */
-constexpr void todo(const logger& _log, const std::string& _msg) {
+inline void todo(const logger& _log, const std::string& _msg) {
 	_log.raise_error("%s: UNIMPLEMENTED.", _msg.c_str());
 }
 
@@ -156,7 +158,8 @@ private:
 	std::string msg;
 
 public:
-	inline timelimit_exception(const char* _m) : msg(_m) {}
+	inline timelimit_exception(const char* _m)
+		: msg(_m) {}
 	[[nodiscard]]
 	inline const char* what() const throw() { return msg.c_str(); }
 };

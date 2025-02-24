@@ -72,7 +72,9 @@ namespace args {
 	 * the value will be modifiable.
 	 */
 	template <typename Option>
-	auto get(Option& option_) -> decltype(option_.Get()) { return option_.Get(); }
+	auto get(Option& option_) -> decltype(option_.Get()) {
+		return option_.Get();
+	}
 
 	/** (INTERNAL) Count UTF-8 glyphs
 	 *
@@ -226,7 +228,8 @@ namespace args {
 	 */
 	class Error : public std::runtime_error {
 	public:
-		Error(const std::string& problem) : std::runtime_error(problem) {}
+		Error(const std::string& problem)
+			: std::runtime_error(problem) {}
 		virtual ~Error() {}
 	};
 
@@ -234,7 +237,8 @@ namespace args {
 	 */
 	class UsageError : public Error {
 	public:
-		UsageError(const std::string& problem) : Error(problem) {}
+		UsageError(const std::string& problem)
+			: Error(problem) {}
 		virtual ~UsageError() {}
 	};
 
@@ -242,7 +246,8 @@ namespace args {
 	 */
 	class ParseError : public Error {
 	public:
-		ParseError(const std::string& problem) : Error(problem) {}
+		ParseError(const std::string& problem)
+			: Error(problem) {}
 		virtual ~ParseError() {}
 	};
 
@@ -250,7 +255,8 @@ namespace args {
 	 */
 	class ValidationError : public Error {
 	public:
-		ValidationError(const std::string& problem) : Error(problem) {}
+		ValidationError(const std::string& problem)
+			: Error(problem) {}
 		virtual ~ValidationError() {}
 	};
 
@@ -258,7 +264,8 @@ namespace args {
 	 */
 	class RequiredError : public ValidationError {
 	public:
-		RequiredError(const std::string& problem) : ValidationError(problem) {}
+		RequiredError(const std::string& problem)
+			: ValidationError(problem) {}
 		virtual ~RequiredError() {}
 	};
 
@@ -266,7 +273,8 @@ namespace args {
 	 */
 	class MapError : public ParseError {
 	public:
-		MapError(const std::string& problem) : ParseError(problem) {}
+		MapError(const std::string& problem)
+			: ParseError(problem) {}
 		virtual ~MapError() {}
 	};
 
@@ -274,7 +282,8 @@ namespace args {
 	 */
 	class ExtraError : public ParseError {
 	public:
-		ExtraError(const std::string& problem) : ParseError(problem) {}
+		ExtraError(const std::string& problem)
+			: ParseError(problem) {}
 		virtual ~ExtraError() {}
 	};
 
@@ -282,7 +291,8 @@ namespace args {
 	 */
 	class Help : public Error {
 	public:
-		Help(const std::string& flag) : Error(flag) {}
+		Help(const std::string& flag)
+			: Error(flag) {}
 		virtual ~Help() {}
 	};
 
@@ -290,7 +300,8 @@ namespace args {
 	 */
 	class SubparserError : public Error {
 	public:
-		SubparserError() : Error("") {}
+		SubparserError()
+			: Error("") {}
 		virtual ~SubparserError() {}
 	};
 
@@ -298,7 +309,8 @@ namespace args {
 	 */
 	class Completion : public Error {
 	public:
-		Completion(const std::string& flag) : Error(flag) {}
+		Completion(const std::string& flag)
+			: Error(flag) {}
 		virtual ~Completion() {}
 	};
 #endif
@@ -309,9 +321,12 @@ namespace args {
 		const bool		  isShort;
 		const char		  shortFlag;
 		const std::string longFlag;
-		EitherFlag(const std::string& flag) : isShort(false), shortFlag(), longFlag(flag) {}
-		EitherFlag(const char* flag) : isShort(false), shortFlag(), longFlag(flag) {}
-		EitherFlag(const char flag) : isShort(true), shortFlag(flag), longFlag() {}
+		EitherFlag(const std::string& flag)
+			: isShort(false), shortFlag(), longFlag(flag) {}
+		EitherFlag(const char* flag)
+			: isShort(false), shortFlag(), longFlag(flag) {}
+		EitherFlag(const char flag)
+			: isShort(true), shortFlag(flag), longFlag() {}
 
 		/** Get just the long flags from an initializer list of EitherFlags
 		 */
@@ -373,7 +388,9 @@ namespace args {
 
 #ifdef ARGS_NOEXCEPT
 		/// Only for ARGS_NOEXCEPT
-		Error GetError() const noexcept { return shortFlags.empty() && longFlags.empty() ? Error::Usage : Error::None; }
+		Error GetError() const noexcept {
+			return shortFlags.empty() && longFlags.empty() ? Error::Usage : Error::None;
+		}
 #endif
 
 		/** Specify short and long flags separately as iterables
@@ -381,7 +398,8 @@ namespace args {
 		 * ex: `args::Matcher(shortFlags, longFlags)`
 		 */
 		template <typename Short, typename Long>
-		Matcher(Short&& shortIn, Long&& longIn) : Matcher(std::begin(shortIn), std::end(shortIn), std::begin(longIn), std::end(longIn)) {}
+		Matcher(Short&& shortIn, Long&& longIn)
+			: Matcher(std::begin(shortIn), std::end(shortIn), std::begin(longIn), std::end(longIn)) {}
 
 		/** Specify a mixed single initializer-list of both short and long flags
 		 *
@@ -395,23 +413,31 @@ namespace args {
 		 *     args::Matcher{'h', "help"}
 		 *     args::Matcher{"foo", 'f', 'F', "FoO"}
 		 */
-		Matcher(std::initializer_list<EitherFlag> in) : Matcher(EitherFlag::GetShort(in), EitherFlag::GetLong(in)) {}
+		Matcher(std::initializer_list<EitherFlag> in)
+			: Matcher(EitherFlag::GetShort(in), EitherFlag::GetLong(in)) {}
 
-		Matcher(Matcher&& other) noexcept : shortFlags(std::move(other.shortFlags)), longFlags(std::move(other.longFlags)) {}
+		Matcher(Matcher&& other) noexcept
+			: shortFlags(std::move(other.shortFlags)), longFlags(std::move(other.longFlags)) {}
 
 		~Matcher() {}
 
 		/** (INTERNAL) Check if there is a match of a short flag
 		 */
-		bool Match(const char flag) const { return shortFlags.find(flag) != shortFlags.end(); }
+		bool Match(const char flag) const {
+			return shortFlags.find(flag) != shortFlags.end();
+		}
 
 		/** (INTERNAL) Check if there is a match of a long flag
 		 */
-		bool Match(const std::string& flag) const { return longFlags.find(flag) != longFlags.end(); }
+		bool Match(const std::string& flag) const {
+			return longFlags.find(flag) != longFlags.end();
+		}
 
 		/** (INTERNAL) Check if there is a match of a flag
 		 */
-		bool Match(const EitherFlag& flag) const { return flag.isShort ? Match(flag.shortFlag) : Match(flag.longFlag); }
+		bool Match(const EitherFlag& flag) const {
+			return flag.isShort ? Match(flag.shortFlag) : Match(flag.longFlag);
+		}
 
 		/** (INTERNAL) Get all flag strings as a vector, with the prefixes embedded
 		 */
@@ -498,9 +524,13 @@ namespace args {
 		Hidden = HiddenFromUsage | HiddenFromDescription | HiddenFromCompletion,
 	};
 
-	inline Options operator|(Options lhs, Options rhs) { return static_cast<Options>(static_cast<int>(lhs) | static_cast<int>(rhs)); }
+	inline Options operator|(Options lhs, Options rhs) {
+		return static_cast<Options>(static_cast<int>(lhs) | static_cast<int>(rhs));
+	}
 
-	inline Options operator&(Options lhs, Options rhs) { return static_cast<Options>(static_cast<int>(lhs) & static_cast<int>(rhs)); }
+	inline Options operator&(Options lhs, Options rhs) {
+		return static_cast<Options>(static_cast<int>(lhs) & static_cast<int>(rhs));
+	}
 
 	class FlagBase;
 	class PositionalBase;
@@ -669,7 +699,8 @@ namespace args {
 		const size_t min;
 		const size_t max;
 
-		Nargs(size_t min_, size_t max_) : min{ min_ }, max{ max_ } {
+		Nargs(size_t min_, size_t max_)
+			: min{ min_ }, max{ max_ } {
 #ifndef ARGS_NOEXCEPT
 			if (max < min) {
 				throw UsageError("Nargs: max > min");
@@ -677,11 +708,16 @@ namespace args {
 #endif
 		}
 
-		Nargs(size_t num_) : min{ num_ }, max{ num_ } {}
+		Nargs(size_t num_)
+			: min{ num_ }, max{ num_ } {}
 
-		friend bool operator==(const Nargs& lhs, const Nargs& rhs) { return lhs.min == rhs.min && lhs.max == rhs.max; }
+		friend bool operator==(const Nargs& lhs, const Nargs& rhs) {
+			return lhs.min == rhs.min && lhs.max == rhs.max;
+		}
 
-		friend bool operator!=(const Nargs& lhs, const Nargs& rhs) { return !(lhs == rhs); }
+		friend bool operator!=(const Nargs& lhs, const Nargs& rhs) {
+			return !(lhs == rhs);
+		}
 	};
 
 	/** Base class for all match types
@@ -700,18 +736,27 @@ namespace args {
 #endif
 
 	public:
-		Base(const std::string& help_, Options options_ = {}) : options(options_), help(help_) {}
+		Base(const std::string& help_, Options options_ = {})
+			: options(options_), help(help_) {}
 		virtual ~Base() {}
 
-		Options GetOptions() const noexcept { return options; }
+		Options GetOptions() const noexcept {
+			return options;
+		}
 
-		bool IsRequired() const noexcept { return (GetOptions() & Options::Required) != Options::None; }
+		bool IsRequired() const noexcept {
+			return (GetOptions() & Options::Required) != Options::None;
+		}
 
-		virtual bool Matched() const noexcept { return matched; }
+		virtual bool Matched() const noexcept {
+			return matched;
+		}
 
 		virtual void Validate(const std::string&, const std::string&) const {}
 
-		operator bool() const noexcept { return Matched(); }
+		operator bool() const noexcept {
+			return Matched();
+		}
 
 		virtual std::vector<std::tuple<std::string, std::string, unsigned>> GetDescription(const HelpParams&, const unsigned indentLevel) const {
 			std::tuple<std::string, std::string, unsigned> description;
@@ -720,23 +765,41 @@ namespace args {
 			return { std::move(description) };
 		}
 
-		virtual std::vector<Command*> GetCommands() { return {}; }
+		virtual std::vector<Command*> GetCommands() {
+			return {};
+		}
 
-		virtual bool IsGroup() const { return false; }
+		virtual bool IsGroup() const {
+			return false;
+		}
 
-		virtual FlagBase* Match(const EitherFlag&) { return nullptr; }
+		virtual FlagBase* Match(const EitherFlag&) {
+			return nullptr;
+		}
 
-		virtual PositionalBase* GetNextPositional() { return nullptr; }
+		virtual PositionalBase* GetNextPositional() {
+			return nullptr;
+		}
 
-		virtual std::vector<FlagBase*> GetAllFlags() { return {}; }
+		virtual std::vector<FlagBase*> GetAllFlags() {
+			return {};
+		}
 
-		virtual bool HasFlag() const { return false; }
+		virtual bool HasFlag() const {
+			return false;
+		}
 
-		virtual bool HasPositional() const { return false; }
+		virtual bool HasPositional() const {
+			return false;
+		}
 
-		virtual bool HasCommand() const { return false; }
+		virtual bool HasCommand() const {
+			return false;
+		}
 
-		virtual std::vector<std::string> GetProgramLine(const HelpParams&) const { return {}; }
+		virtual std::vector<std::string> GetProgramLine(const HelpParams&) const {
+			return {};
+		}
 
 		/// Sets a kick-out value for building subparsers
 		void KickOut(bool kickout_) noexcept {
@@ -748,7 +811,9 @@ namespace args {
 		}
 
 		/// Gets the kick-out value for building subparsers
-		bool KickOut() const noexcept { return (options & Options::KickOut) != Options::None; }
+		bool KickOut() const noexcept {
+			return (options & Options::KickOut) != Options::None;
+		}
 
 		virtual void Reset() noexcept {
 			matched = false;
@@ -760,10 +825,14 @@ namespace args {
 
 #ifdef ARGS_NOEXCEPT
 		/// Only for ARGS_NOEXCEPT
-		virtual Error GetError() const { return error; }
+		virtual Error GetError() const {
+			return error;
+		}
 
 		/// Only for ARGS_NOEXCEPT
-		virtual std::string GetErrorMsg() const { return errorMsg; }
+		virtual std::string GetErrorMsg() const {
+			return errorMsg;
+		}
 #endif
 	};
 
@@ -796,7 +865,8 @@ namespace args {
 		}
 
 	public:
-		NamedBase(const std::string& name_, const std::string& help_, Options options_ = {}) : Base(help_, options_), name(name_) {}
+		NamedBase(const std::string& name_, const std::string& help_, Options options_ = {})
+			: Base(help_, options_), name(name_) {}
 		virtual ~NamedBase() {}
 
 		/** Sets default value string that will be added to argument description.
@@ -873,7 +943,9 @@ namespace args {
 		}
 
 		template <typename T>
-		typename std::enable_if<!IsConvertableToString<T>::value, std::string>::type ToString(const T&) { return {}; }
+		typename std::enable_if<!IsConvertableToString<T>::value, std::string>::type ToString(const T&) {
+			return {};
+		}
 
 		template <typename T>
 		std::vector<std::string> MapKeysToStrings(const T& map) {
@@ -946,9 +1018,13 @@ namespace args {
 			return nullptr;
 		}
 
-		virtual std::vector<FlagBase*> GetAllFlags() override { return { this }; }
+		virtual std::vector<FlagBase*> GetAllFlags() override {
+			return { this };
+		}
 
-		const Matcher& GetMatcher() const { return matcher; }
+		const Matcher& GetMatcher() const {
+			return matcher;
+		}
 
 		virtual void Validate(const std::string& shortPrefix, const std::string& longPrefix) const override {
 			if (!Matched() && IsRequired()) {
@@ -979,7 +1055,9 @@ namespace args {
 								  : params.proglineNonrequiredOpen + res + params.proglineNonrequiredClose };
 		}
 
-		virtual bool HasFlag() const override { return true; }
+		virtual bool HasFlag() const override {
+			return true;
+		}
 
 #ifdef ARGS_NOEXCEPT
 		/// Only for ARGS_NOEXCEPT
@@ -1064,7 +1142,8 @@ namespace args {
 		bool ready;
 
 	public:
-		PositionalBase(const std::string& name_, const std::string& help_, Options options_ = {}) : NamedBase(name_, help_, options_), ready(true) {}
+		PositionalBase(const std::string& name_, const std::string& help_, Options options_ = {})
+			: NamedBase(name_, help_, options_), ready(true) {}
 		virtual ~PositionalBase() {}
 
 		bool Ready() { return ready; }
@@ -1080,9 +1159,13 @@ namespace args {
 #endif
 		}
 
-		virtual PositionalBase* GetNextPositional() override { return Ready() ? this : nullptr; }
+		virtual PositionalBase* GetNextPositional() override {
+			return Ready() ? this : nullptr;
+		}
 
-		virtual bool HasPositional() const override { return true; }
+		virtual bool HasPositional() const override {
+			return true;
+		}
 
 		virtual std::vector<std::string> GetProgramLine(const HelpParams& params) const override {
 			return { IsRequired() ? params.proglineRequiredOpen + Name() + params.proglineRequiredClose
@@ -1335,7 +1418,8 @@ namespace args {
 	 */
 	class GlobalOptions : public Group {
 	public:
-		GlobalOptions(Group& base, Base& options_) : Group(base, {}, Group::Validators::DontCare, Options::Global) { Add(options_); }
+		GlobalOptions(Group& base, Base& options_)
+			: Group(base, {}, Group::Validators::DontCare, Options::Global) { Add(options_); }
 	};
 
 	/** Utility class for building subparsers with coroutines/callbacks.
@@ -1439,7 +1523,9 @@ namespace args {
 
 		Command() = default;
 
-		std::function<void(Subparser&)>& GetCoroutine() { return selectedCommand != nullptr ? selectedCommand->GetCoroutine() : parserCoroutine; }
+		std::function<void(Subparser&)>& GetCoroutine() {
+			return selectedCommand != nullptr ? selectedCommand->GetCoroutine() : parserCoroutine;
+		}
 
 		Command& SelectedCommand() {
 			Command* res = this;
@@ -1480,49 +1566,75 @@ namespace args {
 
 		/** The description that appears on the prog line after options
 		 */
-		const std::string& ProglinePostfix() const { return proglinePostfix; }
+		const std::string& ProglinePostfix() const {
+			return proglinePostfix;
+		}
 
 		/** The description that appears on the prog line after options
 		 */
-		void ProglinePostfix(const std::string& proglinePostfix_) { this->proglinePostfix = proglinePostfix_; }
+		void ProglinePostfix(const std::string& proglinePostfix_) {
+			this->proglinePostfix = proglinePostfix_;
+		}
 
 		/** The description that appears above options
 		 */
-		const std::string& Description() const { return description; }
+		const std::string& Description() const {
+			return description;
+		}
 		/** The description that appears above options
 		 */
 
-		void Description(const std::string& description_) { this->description = description_; }
+		void Description(const std::string& description_) {
+			this->description = description_;
+		}
 
 		/** The description that appears below options
 		 */
-		const std::string& Epilog() const { return epilog; }
+		const std::string& Epilog() const {
+			return epilog;
+		}
 
 		/** The description that appears below options
 		 */
-		void Epilog(const std::string& epilog_) { this->epilog = epilog_; }
+		void Epilog(const std::string& epilog_) {
+			this->epilog = epilog_;
+		}
 
 		/** The name of command
 		 */
-		const std::string& Name() const { return name; }
+		const std::string& Name() const {
+			return name;
+		}
 
 		/** The description of command
 		 */
-		const std::string& Help() const { return help; }
+		const std::string& Help() const {
+			return help;
+		}
 
 		/** If value is true, parser will fail if no command was parsed.
 		 *
 		 * Default: true.
 		 */
-		void RequireCommand(bool value) { commandIsRequired = value; }
+		void RequireCommand(bool value) {
+			commandIsRequired = value;
+		}
 
-		virtual bool IsGroup() const override { return false; }
+		virtual bool IsGroup() const override {
+			return false;
+		}
 
-		virtual bool Matched() const noexcept override { return Base::Matched(); }
+		virtual bool Matched() const noexcept override {
+			return Base::Matched();
+		}
 
-		operator bool() const noexcept { return Matched(); }
+		operator bool() const noexcept {
+			return Matched();
+		}
 
-		void Match() noexcept { matched = true; }
+		void Match() noexcept {
+			matched = true;
+		}
 
 		void SelectCommand(Command* c) noexcept {
 			selectedCommand = c;
@@ -1607,11 +1719,17 @@ namespace args {
 			return Matched() ? Group::GetNextPositional() : nullptr;
 		}
 
-		virtual bool HasFlag() const override { return subparserHasFlag || Group::HasFlag(); }
+		virtual bool HasFlag() const override {
+			return subparserHasFlag || Group::HasFlag();
+		}
 
-		virtual bool HasPositional() const override { return subparserHasPositional || Group::HasPositional(); }
+		virtual bool HasPositional() const override {
+			return subparserHasPositional || Group::HasPositional();
+		}
 
-		virtual bool HasCommand() const override { return true; }
+		virtual bool HasCommand() const override {
+			return true;
+		}
 
 		std::vector<std::string> GetCommandProgramLine(const HelpParams& params) const {
 			UpdateSubparserHelp(params);
@@ -1843,9 +1961,11 @@ namespace args {
 		bool			readCompletion = false;
 
 	protected:
-		enum class OptionType { LongFlag,
-								ShortFlag,
-								Positional };
+		enum class OptionType {
+			LongFlag,
+			ShortFlag,
+			Positional
+		};
 
 		OptionType ParseOption(const std::string& s, bool allowEmpty = false) {
 			if (s.find(longprefix) == 0 && (allowEmpty || s.length() > longprefix.length())) {
@@ -1912,8 +2032,7 @@ namespace args {
 				auto valueIt = it;
 				++valueIt;
 
-				while (valueIt != end && values.size() < nargs.max &&
-					   (values.size() < nargs.min || ParseOption(*valueIt) == OptionType::Positional)) {
+				while (valueIt != end && values.size() < nargs.max && (values.size() < nargs.min || ParseOption(*valueIt) == OptionType::Positional)) {
 					if (Complete(flag, valueIt, end)) {
 						it = end;
 						return "";
@@ -1933,8 +2052,7 @@ namespace args {
 				} else if (nargs.min == 1) {
 					return "Flag '" + arg + "' requires at least one argument but received none";
 				} else if (nargs.min != nargs.max) {
-					return "Flag '" + arg + "' requires at least " + std::to_string(nargs.min) + " arguments but received " +
-						std::to_string(values.size());
+					return "Flag '" + arg + "' requires at least " + std::to_string(nargs.min) + " arguments but received " + std::to_string(values.size());
 				} else {
 					return "Flag '" + arg + "' requires " + std::to_string(nargs.min) + " arguments but received " + std::to_string(values.size());
 				}
@@ -2292,14 +2410,20 @@ namespace args {
 
 		/** The program name for help generation
 		 */
-		const std::string& Prog() const { return helpParams.programName; }
+		const std::string& Prog() const {
+			return helpParams.programName;
+		}
 		/** The program name for help generation
 		 */
-		void Prog(const std::string& prog_) { this->helpParams.programName = prog_; }
+		void Prog(const std::string& prog_) {
+			this->helpParams.programName = prog_;
+		}
 
 		/** The prefix for long flags
 		 */
-		const std::string& LongPrefix() const { return longprefix; }
+		const std::string& LongPrefix() const {
+			return longprefix;
+		}
 		/** The prefix for long flags
 		 */
 		void LongPrefix(const std::string& longprefix_) {
@@ -2309,7 +2433,9 @@ namespace args {
 
 		/** The prefix for short flags
 		 */
-		const std::string& ShortPrefix() const { return shortprefix; }
+		const std::string& ShortPrefix() const {
+			return shortprefix;
+		}
 		/** The prefix for short flags
 		 */
 		void ShortPrefix(const std::string& shortprefix_) {
@@ -2319,7 +2445,9 @@ namespace args {
 
 		/** The separator for long flags
 		 */
-		const std::string& LongSeparator() const { return longseparator; }
+		const std::string& LongSeparator() const {
+			return longseparator;
+		}
 		/** The separator for long flags
 		 */
 		void LongSeparator(const std::string& longseparator_) {
@@ -2339,10 +2467,14 @@ namespace args {
 
 		/** The terminator that forcibly separates flags from positionals
 		 */
-		const std::string& Terminator() const { return terminator; }
+		const std::string& Terminator() const {
+			return terminator;
+		}
 		/** The terminator that forcibly separates flags from positionals
 		 */
-		void Terminator(const std::string& terminator_) { this->terminator = terminator_; }
+		void Terminator(const std::string& terminator_) {
+			this->terminator = terminator_;
+		}
 
 		/** Get the current argument separation parameters.
 		 *
@@ -2439,8 +2571,7 @@ namespace args {
 
 				auto infoit = std::begin(info);
 				// groupindent is on both sides of this inequality, and therefore can be removed
-				if ((helpParams.flagindent + flagssize + helpParams.gutter) > helpParams.helpindent || infoit == std::end(info) ||
-					helpParams.addNewlineBeforeDescription) {
+				if ((helpParams.flagindent + flagssize + helpParams.gutter) > helpParams.helpindent || infoit == std::end(info) || helpParams.addNewlineBeforeDescription) {
 					help_ << '\n';
 				} else {
 					// groupindent is on both sides of the minus sign, and therefore doesn't
@@ -2455,8 +2586,7 @@ namespace args {
 			if (hasoptions && hasarguments && helpParams.showTerminator) {
 				lastDescriptionIsNewline = false;
 				for (const auto& item :
-					 Wrap(std::string("\"") + terminator +
-							  "\" can be used to terminate flag options and force all following arguments to be treated as positional options",
+					 Wrap(std::string("\"") + terminator + "\" can be used to terminate flag options and force all following arguments to be treated as positional options",
 						  helpParams.width - helpParams.flagindent)) {
 					help_ << std::string(helpParams.flagindent, ' ') << item << '\n';
 				}
@@ -2512,7 +2642,9 @@ namespace args {
 		 * \return the iterator after the last parsed value.  Only useful for kick-out
 		 */
 		template <typename T>
-		auto ParseArgs(const T& args) -> decltype(std::begin(args)) { return ParseArgs(std::begin(args), std::end(args)); }
+		auto ParseArgs(const T& args) -> decltype(std::begin(args)) {
+			return ParseArgs(std::begin(args), std::end(args));
+		}
 
 		/** Convenience function to parse the CLI from argc and argv
 		 *
@@ -2530,7 +2662,9 @@ namespace args {
 		}
 
 		template <typename T>
-		bool ParseCLI(const T& args) { return ParseArgs(args) == std::end(args); }
+		bool ParseCLI(const T& args) {
+			return ParseArgs(args) == std::end(args);
+		}
 	};
 
 	inline Command::RaiiSubparser::RaiiSubparser(ArgumentParser& parser_, std::vector<std::string> args_)
@@ -2619,7 +2753,9 @@ namespace args {
 
 		/** Get whether this was matched
 		 */
-		bool Get() const noexcept { return Matched(); }
+		bool Get() const noexcept {
+			return Matched();
+		}
 	};
 
 	/** A flag class that simply counts the number of times it's matched
@@ -2780,27 +2916,39 @@ namespace args {
 
 		/** Get the value
 		 */
-		T& Get() noexcept { return value; }
+		T& Get() noexcept {
+			return value;
+		}
 
 		/** Get the value
 		 */
-		T& operator*() noexcept { return value; }
+		T& operator*() noexcept {
+			return value;
+		}
 
 		/** Get the value
 		 */
-		const T& operator*() const noexcept { return value; }
+		const T& operator*() const noexcept {
+			return value;
+		}
 
 		/** Get the value
 		 */
-		T* operator->() noexcept { return &value; }
+		T* operator->() noexcept {
+			return &value;
+		}
 
 		/** Get the value
 		 */
-		const T* operator->() const noexcept { return &value; }
+		const T* operator->() const noexcept {
+			return &value;
+		}
 
 		/** Get the default value
 		 */
-		const T& GetDefault() noexcept { return defaultValue; }
+		const T& GetDefault() noexcept {
+			return defaultValue;
+		}
 	};
 
 	/** An optional argument-accepting flag class
@@ -2895,35 +3043,57 @@ namespace args {
 			}
 		}
 
-		List<T>& Get() noexcept { return values; }
+		List<T>& Get() noexcept {
+			return values;
+		}
 
 		/** Get the value
 		 */
-		List<T>& operator*() noexcept { return values; }
+		List<T>& operator*() noexcept {
+			return values;
+		}
 
 		/** Get the values
 		 */
-		const List<T>& operator*() const noexcept { return values; }
+		const List<T>& operator*() const noexcept {
+			return values;
+		}
 
 		/** Get the values
 		 */
-		List<T>* operator->() noexcept { return &values; }
+		List<T>* operator->() noexcept {
+			return &values;
+		}
 
 		/** Get the values
 		 */
-		const List<T>* operator->() const noexcept { return &values; }
+		const List<T>* operator->() const noexcept {
+			return &values;
+		}
 
-		iterator begin() noexcept { return values.begin(); }
+		iterator begin() noexcept {
+			return values.begin();
+		}
 
-		const_iterator begin() const noexcept { return values.begin(); }
+		const_iterator begin() const noexcept {
+			return values.begin();
+		}
 
-		const_iterator cbegin() const noexcept { return values.cbegin(); }
+		const_iterator cbegin() const noexcept {
+			return values.cbegin();
+		}
 
-		iterator end() noexcept { return values.end(); }
+		iterator end() noexcept {
+			return values.end();
+		}
 
-		const_iterator end() const noexcept { return values.end(); }
+		const_iterator end() const noexcept {
+			return values.end();
+		}
 
-		const_iterator cend() const noexcept { return values.cend(); }
+		const_iterator cend() const noexcept {
+			return values.cend();
+		}
 
 		virtual void Reset() noexcept override {
 			FlagBase::Reset();
@@ -2993,25 +3163,37 @@ namespace args {
 
 		/** Get the values
 		 */
-		Container& Get() noexcept { return values; }
+		Container& Get() noexcept {
+			return values;
+		}
 
 		/** Get the value
 		 */
-		Container& operator*() noexcept { return values; }
+		Container& operator*() noexcept {
+			return values;
+		}
 
 		/** Get the values
 		 */
-		const Container& operator*() const noexcept { return values; }
+		const Container& operator*() const noexcept {
+			return values;
+		}
 
 		/** Get the values
 		 */
-		Container* operator->() noexcept { return &values; }
+		Container* operator->() noexcept {
+			return &values;
+		}
 
 		/** Get the values
 		 */
-		const Container* operator->() const noexcept { return &values; }
+		const Container* operator->() const noexcept {
+			return &values;
+		}
 
-		virtual std::string Name() const override { return name + std::string("..."); }
+		virtual std::string Name() const override {
+			return name + std::string("...");
+		}
 
 		virtual void Reset() noexcept override {
 			ValueFlagBase::Reset();
@@ -3027,17 +3209,29 @@ namespace args {
 			return me;
 		}
 
-		iterator begin() noexcept { return values.begin(); }
+		iterator begin() noexcept {
+			return values.begin();
+		}
 
-		const_iterator begin() const noexcept { return values.begin(); }
+		const_iterator begin() const noexcept {
+			return values.begin();
+		}
 
-		const_iterator cbegin() const noexcept { return values.cbegin(); }
+		const_iterator cbegin() const noexcept {
+			return values.cbegin();
+		}
 
-		iterator end() noexcept { return values.end(); }
+		iterator end() noexcept {
+			return values.end();
+		}
 
-		const_iterator end() const noexcept { return values.end(); }
+		const_iterator end() const noexcept {
+			return values.end();
+		}
 
-		const_iterator cend() const noexcept { return values.cend(); }
+		const_iterator cend() const noexcept {
+			return values.cend();
+		}
 	};
 
 	/** A mapping value flag class
@@ -3103,23 +3297,33 @@ namespace args {
 
 		/** Get the value
 		 */
-		T& Get() noexcept { return value; }
+		T& Get() noexcept {
+			return value;
+		}
 
 		/** Get the value
 		 */
-		T& operator*() noexcept { return value; }
+		T& operator*() noexcept {
+			return value;
+		}
 
 		/** Get the value
 		 */
-		const T& operator*() const noexcept { return value; }
+		const T& operator*() const noexcept {
+			return value;
+		}
 
 		/** Get the value
 		 */
-		T* operator->() noexcept { return &value; }
+		T* operator->() noexcept {
+			return &value;
+		}
 
 		/** Get the value
 		 */
-		const T* operator->() const noexcept { return &value; }
+		const T* operator->() const noexcept {
+			return &value;
+		}
 
 		virtual void Reset() noexcept override {
 			ValueFlagBase::Reset();
@@ -3199,25 +3403,37 @@ namespace args {
 
 		/** Get the value
 		 */
-		Container& Get() noexcept { return values; }
+		Container& Get() noexcept {
+			return values;
+		}
 
 		/** Get the value
 		 */
-		Container& operator*() noexcept { return values; }
+		Container& operator*() noexcept {
+			return values;
+		}
 
 		/** Get the values
 		 */
-		const Container& operator*() const noexcept { return values; }
+		const Container& operator*() const noexcept {
+			return values;
+		}
 
 		/** Get the values
 		 */
-		Container* operator->() noexcept { return &values; }
+		Container* operator->() noexcept {
+			return &values;
+		}
 
 		/** Get the values
 		 */
-		const Container* operator->() const noexcept { return &values; }
+		const Container* operator->() const noexcept {
+			return &values;
+		}
 
-		virtual std::string Name() const override { return name + std::string("..."); }
+		virtual std::string Name() const override {
+			return name + std::string("...");
+		}
 
 		virtual void Reset() noexcept override {
 			ValueFlagBase::Reset();
@@ -3233,17 +3449,29 @@ namespace args {
 			return me;
 		}
 
-		iterator begin() noexcept { return values.begin(); }
+		iterator begin() noexcept {
+			return values.begin();
+		}
 
-		const_iterator begin() const noexcept { return values.begin(); }
+		const_iterator begin() const noexcept {
+			return values.begin();
+		}
 
-		const_iterator cbegin() const noexcept { return values.cbegin(); }
+		const_iterator cbegin() const noexcept {
+			return values.cbegin();
+		}
 
-		iterator end() noexcept { return values.end(); }
+		iterator end() noexcept {
+			return values.end();
+		}
 
-		const_iterator end() const noexcept { return values.end(); }
+		const_iterator end() const noexcept {
+			return values.end();
+		}
 
-		const_iterator cend() const noexcept { return values.cend(); }
+		const_iterator cend() const noexcept {
+			return values.cend();
+		}
 	};
 
 	/** A positional argument class
@@ -3284,23 +3512,33 @@ namespace args {
 
 		/** Get the value
 		 */
-		T& Get() noexcept { return value; }
+		T& Get() noexcept {
+			return value;
+		}
 
 		/** Get the value
 		 */
-		T& operator*() noexcept { return value; }
+		T& operator*() noexcept {
+			return value;
+		}
 
 		/** Get the value
 		 */
-		const T& operator*() const noexcept { return value; }
+		const T& operator*() const noexcept {
+			return value;
+		}
 
 		/** Get the value
 		 */
-		T* operator->() noexcept { return &value; }
+		T* operator->() noexcept {
+			return &value;
+		}
 
 		/** Get the value
 		 */
-		const T* operator->() const noexcept { return &value; }
+		const T* operator->() const noexcept {
+			return &value;
+		}
 
 		virtual void Reset() noexcept override {
 			PositionalBase::Reset();
@@ -3361,27 +3599,39 @@ namespace args {
 			matched = true;
 		}
 
-		virtual std::string Name() const override { return name + std::string("..."); }
+		virtual std::string Name() const override {
+			return name + std::string("...");
+		}
 
 		/** Get the values
 		 */
-		Container& Get() noexcept { return values; }
+		Container& Get() noexcept {
+			return values;
+		}
 
 		/** Get the value
 		 */
-		Container& operator*() noexcept { return values; }
+		Container& operator*() noexcept {
+			return values;
+		}
 
 		/** Get the values
 		 */
-		const Container& operator*() const noexcept { return values; }
+		const Container& operator*() const noexcept {
+			return values;
+		}
 
 		/** Get the values
 		 */
-		Container* operator->() noexcept { return &values; }
+		Container* operator->() noexcept {
+			return &values;
+		}
 
 		/** Get the values
 		 */
-		const Container* operator->() const noexcept { return &values; }
+		const Container* operator->() const noexcept {
+			return &values;
+		}
 
 		virtual void Reset() noexcept override {
 			PositionalBase::Reset();
@@ -3397,17 +3647,29 @@ namespace args {
 			return me;
 		}
 
-		iterator begin() noexcept { return values.begin(); }
+		iterator begin() noexcept {
+			return values.begin();
+		}
 
-		const_iterator begin() const noexcept { return values.begin(); }
+		const_iterator begin() const noexcept {
+			return values.begin();
+		}
 
-		const_iterator cbegin() const noexcept { return values.cbegin(); }
+		const_iterator cbegin() const noexcept {
+			return values.cbegin();
+		}
 
-		iterator end() noexcept { return values.end(); }
+		iterator end() noexcept {
+			return values.end();
+		}
 
-		const_iterator end() const noexcept { return values.end(); }
+		const_iterator end() const noexcept {
+			return values.end();
+		}
 
-		const_iterator cend() const noexcept { return values.cend(); }
+		const_iterator cend() const noexcept {
+			return values.cend();
+		}
 	};
 
 	/** A positional argument mapping class
@@ -3466,23 +3728,33 @@ namespace args {
 
 		/** Get the value
 		 */
-		T& Get() noexcept { return value; }
+		T& Get() noexcept {
+			return value;
+		}
 
 		/** Get the value
 		 */
-		T& operator*() noexcept { return value; }
+		T& operator*() noexcept {
+			return value;
+		}
 
 		/** Get the value
 		 */
-		const T& operator*() const noexcept { return value; }
+		const T& operator*() const noexcept {
+			return value;
+		}
 
 		/** Get the value
 		 */
-		T* operator->() noexcept { return &value; }
+		T* operator->() noexcept {
+			return &value;
+		}
 
 		/** Get the value
 		 */
-		const T* operator->() const noexcept { return &value; }
+		const T* operator->() const noexcept {
+			return &value;
+		}
 
 		virtual void Reset() noexcept override {
 			PositionalBase::Reset();
@@ -3562,25 +3834,37 @@ namespace args {
 
 		/** Get the value
 		 */
-		Container& Get() noexcept { return values; }
+		Container& Get() noexcept {
+			return values;
+		}
 
 		/** Get the value
 		 */
-		Container& operator*() noexcept { return values; }
+		Container& operator*() noexcept {
+			return values;
+		}
 
 		/** Get the values
 		 */
-		const Container& operator*() const noexcept { return values; }
+		const Container& operator*() const noexcept {
+			return values;
+		}
 
 		/** Get the values
 		 */
-		Container* operator->() noexcept { return &values; }
+		Container* operator->() noexcept {
+			return &values;
+		}
 
 		/** Get the values
 		 */
-		const Container* operator->() const noexcept { return &values; }
+		const Container* operator->() const noexcept {
+			return &values;
+		}
 
-		virtual std::string Name() const override { return name + std::string("..."); }
+		virtual std::string Name() const override {
+			return name + std::string("...");
+		}
 
 		virtual void Reset() noexcept override {
 			PositionalBase::Reset();
@@ -3596,17 +3880,29 @@ namespace args {
 			return me;
 		}
 
-		iterator begin() noexcept { return values.begin(); }
+		iterator begin() noexcept {
+			return values.begin();
+		}
 
-		const_iterator begin() const noexcept { return values.begin(); }
+		const_iterator begin() const noexcept {
+			return values.begin();
+		}
 
-		const_iterator cbegin() const noexcept { return values.cbegin(); }
+		const_iterator cbegin() const noexcept {
+			return values.cbegin();
+		}
 
-		iterator end() noexcept { return values.end(); }
+		iterator end() noexcept {
+			return values.end();
+		}
 
-		const_iterator end() const noexcept { return values.end(); }
+		const_iterator end() const noexcept {
+			return values.end();
+		}
 
-		const_iterator cend() const noexcept { return values.cend(); }
+		const_iterator cend() const noexcept {
+			return values.cend();
+		}
 	};
 }
 

@@ -35,7 +35,6 @@ HOW I DO VERSIONING:
 ### :curly_loop: Other
 - Automatic code formatting with clang-format (cpp) and black-formatter (python)
 - Start using attributes ([[nodiscard]], [[likely]], [[unlikely]])
-- Proper static, inline, constexpr usage
 
 ## [1.0.0] - 2025/02/23
 

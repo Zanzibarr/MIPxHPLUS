@@ -24,8 +24,7 @@ static inline void signal_callback_handler(const int signum) {
 
 static inline void* time_limit_termination(void* args) {
 	hplus::environment* _e = (hplus::environment*)args;
-	while (_e->exec_s < exec_status::STOP_TL &&
-		   _e->sol_s != solution_status::INFEAS) {
+	while (_e->exec_s < exec_status::STOP_TL && _e->sol_s != solution_status::INFEAS) {
 		if (_e->timer.get_time() > _e->time_limit) [[unlikely]] {
 			raise(SIGINT);
 			return nullptr;
@@ -147,9 +146,7 @@ static inline void parse_cli(const int& _argc, const char** _argv,
 	}
 	if (runname)
 		_e.run_name = args::get(runname);
-	if (_e.alg != HPLUS_CLI_ALG_IMAI && _e.alg != HPLUS_CLI_ALG_RANKOOH &&
-		_e.alg != HPLUS_CLI_ALG_DYNAMIC_LARGE &&
-		_e.alg != HPLUS_CLI_ALG_DYNAMIC_SMALL) {
+	if (_e.alg != HPLUS_CLI_ALG_IMAI && _e.alg != HPLUS_CLI_ALG_RANKOOH && _e.alg != HPLUS_CLI_ALG_DYNAMIC_LARGE && _e.alg != HPLUS_CLI_ALG_DYNAMIC_SMALL) {
 		_e.warm_start = false;
 		_e.using_cplex = false;
 	}
@@ -228,9 +225,7 @@ static inline void run(hplus::instance& _i, hplus::environment& _e,
 	_PRINT_VERBOSE("Executing the chosen algorithms.");
 
 	try {
-		if (_e.alg != HPLUS_CLI_ALG_IMAI && _e.alg != HPLUS_CLI_ALG_RANKOOH &&
-			_e.alg != HPLUS_CLI_ALG_DYNAMIC_SMALL &&
-			_e.alg != HPLUS_CLI_ALG_DYNAMIC_LARGE && _e.alg != HPLUS_CLI_ALG_HEUR)
+		if (_e.alg != HPLUS_CLI_ALG_IMAI && _e.alg != HPLUS_CLI_ALG_RANKOOH && _e.alg != HPLUS_CLI_ALG_DYNAMIC_SMALL && _e.alg != HPLUS_CLI_ALG_DYNAMIC_LARGE && _e.alg != HPLUS_CLI_ALG_HEUR)
 			_l.raise_error(
 				"The algorithm specified (%s) is not on the list of possible "
 				"algorithms... Please read the Readme.md for instructions.",
@@ -263,14 +258,9 @@ static inline void run(hplus::instance& _i, hplus::environment& _e,
 		// ~~~~~~~~~~~~~~ HEURISTIC ~~~~~~~~~~~~~~ //
 
 		if (_e.heur != "none" || _e.alg == HPLUS_CLI_ALG_HEUR) {
-			if (_e.heur != "greedycost" && _e.heur != "greedycxe" &&
-				_e.heur != "rand" && _e.heur != "randr" && _e.heur != "hmax" &&
-				_e.heur != "hadd" && _e.heur != "relax") {
+			if (_e.heur != "greedycost" && _e.heur != "greedycxe" && _e.heur != "rand" && _e.heur != "randr" && _e.heur != "hmax" && _e.heur != "hadd" && _e.heur != "relax") {
 				const auto& heur = split_string(_e.heur, '-');
-				if (heur.size() != 2 || heur[0] != "local" ||
-					(heur[1] != "greedycost" && heur[1] != "greedycxe" &&
-					 heur[1] != "rand" && heur[1] != "randr" && heur[1] != "hmax" &&
-					 heur[1] != "hadd" && heur[1] != "relax"))
+				if (heur.size() != 2 || heur[0] != "local" || (heur[1] != "greedycost" && heur[1] != "greedycxe" && heur[1] != "rand" && heur[1] != "randr" && heur[1] != "hmax" && heur[1] != "hadd" && heur[1] != "relax"))
 					_l.raise_error(
 						"The heuristic specified (%s) is not on the list of possible "
 						"heuristics... Please read the Readme.md for instructions.",
@@ -324,8 +314,7 @@ static inline void run(hplus::instance& _i, hplus::environment& _e,
 		// time limit
 		if (static_cast<double>(_e.time_limit) > _e.timer.get_time()) {
 			_ASSERT(!CPXsetdblparam(env, CPXPARAM_TimeLimit,
-									static_cast<double>(_e.time_limit) -
-										_e.timer.get_time()));
+									static_cast<double>(_e.time_limit) - _e.timer.get_time()));
 		} else
 			return;
 

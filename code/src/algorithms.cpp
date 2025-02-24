@@ -112,8 +112,8 @@ static inline bool greedycost(const hplus::instance& _i, std::vector<size_t>& _s
 [[nodiscard]]
 static inline bool greedycxe(const hplus::instance& _i, std::vector<size_t>& _s, unsigned int& _c, const logger& _l) {
 	_PRINT_VERBOSE("Running greedycxe algorithm.");
-	binary_set state(_i.n);
-	const auto var_rem = hplus::var_remaining(_i);
+	binary_set	state(_i.n);
+	const auto& var_rem = hplus::var_remaining(_i);
 	_c = 0;
 	// greedy choice
 	auto find_best_act = [&_i, &state, &var_rem](const std::vector<size_t>& _candidates) {
