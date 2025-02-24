@@ -16,7 +16,7 @@
 	#include <iostream>
 	#define _ASSERT(cond)                                                                                            \
 		{                                                                                                            \
-			if (!(cond)) {                                                                                           \
+			if (!(cond)) [[unlikely]] {                                                                              \
 				std::cerr << "Assert check failed at " << __func__ << "(): " << __FILE__ << ":" << __LINE__ << "\n"; \
 				exit(1);                                                                                             \
 			}                                                                                                        \
@@ -25,37 +25,40 @@
 
 class binary_set {
 public:
-	inline binary_set()
+	constexpr binary_set()
 		: capacity(0) {}
 	/** Construct a binary set for the domain of integer from 0 to _n (set _f to true to default the set to full) */
-	inline binary_set(size_t _n, bool _f = false)
+	explicit constexpr binary_set(size_t _n, bool _f = false)
 		: capacity(_n) {
 		this->set = std::vector<unsigned char>((this->capacity + 7) / 8, _f ? static_cast<unsigned char>(~0u) : 0);
 		if (_f && this->capacity % 8 != 0 && this->capacity != 0)
 			this->set[this->set.size() - 1] &= (1u << this->capacity % 8) - 1; // mask for the bits outside the size
 	}
 	/** Copy constructor */
-	inline binary_set(const binary_set& _bs)
-		: capacity(_bs.capacity), set(_bs.set) {}
+	constexpr binary_set(const binary_set& _bs)
+		: capacity(_bs.capacity) {
+		this->set = std::vector<unsigned char>(_bs.set);
+	}
 	/** Add element _e to the set (if already present does nothing) */
-	inline void add(size_t _e) {
+	constexpr void add(size_t _e) {
 		_ASSERT(_e < this->capacity);
 		this->set[_e / 8] |= (1 << _e % 8);
 	}
 	/** Remove element _e from the set (if not present does nothing) */
-	inline void remove(size_t _e) {
+	constexpr void remove(size_t _e) {
 		_ASSERT(_e < this->capacity);
 		this->set[_e / 8] &= ~(1 << _e % 8);
 	}
 	/** Remove all elements from the set */
-	inline void clear() { this->set = std::vector<unsigned char>((this->capacity + 7) / 8, 0); }
+	constexpr void clear() { this->set = std::vector<unsigned char>((this->capacity + 7) / 8, 0); }
 	/** Add all elements to the set */
-	inline void fill() {
+	constexpr void fill() {
 		this->set = std::vector<unsigned char>((this->capacity + 7) / 8, static_cast<unsigned char>(~0u));
 		if (this->capacity % 8 != 0 && this->capacity != 0)
 			this->set[this->set.size() - 1] &= (1u << this->capacity % 8) - 1; // mask for the bits outside the size
 	}
 	/** Compute intersection of this and _bs sets and returns it */
+	[[nodiscard]]
 	inline binary_set operator&(const binary_set& _bs) const {
 		_ASSERT(this->capacity == _bs.capacity && this->capacity != 0 && _bs.capacity != 0);
 		binary_set new_bs(*this);
@@ -64,13 +67,13 @@ public:
 		return new_bs;
 	}
 	/** Compute intersection of this and _bs sets and stores it in this set - returns itself */
-	inline binary_set operator&=(const binary_set& _bs) {
+	constexpr void operator&=(const binary_set& _bs) {
 		_ASSERT(this->capacity == _bs.capacity && this->capacity != 0 && _bs.capacity != 0);
 		for (size_t i = 0; i < this->set.size(); i++)
 			this->set[i] &= _bs.set[i];
-		return *this;
 	}
 	/** Compute the union of this and _bs sets and returns it */
+	[[nodiscard]]
 	inline binary_set operator|(const binary_set& _bs) const {
 		_ASSERT(this->capacity == _bs.capacity && this->capacity != 0 && _bs.capacity != 0);
 		binary_set new_bs(*this);
@@ -79,13 +82,13 @@ public:
 		return new_bs;
 	}
 	/** Compute the union of this and _bs sets and stores it in this set - returns itself */
-	inline binary_set operator|=(const binary_set& _bs) {
+	constexpr void operator|=(const binary_set& _bs) {
 		_ASSERT(this->capacity == _bs.capacity && this->capacity != 0 && _bs.capacity != 0);
 		for (size_t i = 0; i < this->set.size(); i++)
 			this->set[i] |= _bs.set[i];
-		return *this;
 	}
 	/** Compute the set difference of this and _bs sets and returns it */
+	[[nodiscard]]
 	inline binary_set operator-(const binary_set& _bs) const {
 		_ASSERT(this->capacity == _bs.capacity && this->capacity != 0 && _bs.capacity != 0);
 		binary_set new_bs(*this);
@@ -94,13 +97,13 @@ public:
 		return new_bs;
 	}
 	/** Compute the set difference of this and _bs sets and stores it in this set - returns itself */
-	inline binary_set operator-=(const binary_set& _bs) {
+	constexpr void operator-=(const binary_set& _bs) {
 		_ASSERT(this->capacity == _bs.capacity && this->capacity != 0 && _bs.capacity != 0);
 		for (size_t i = 0; i < this->set.size(); i++)
 			this->set[i] &= ~_bs.set[i];
-		return *this;
 	}
 	/** Compute the complementary of this set and returns it */
+	[[nodiscard]]
 	inline binary_set operator!() const {
 		binary_set new_bs(this->capacity);
 		for (size_t i = 0; i < this->set.size(); i++)
@@ -110,26 +113,32 @@ public:
 		return new_bs;
 	}
 	/** Check if _e is in the set */
-	inline bool operator[](size_t _e) const {
+	[[nodiscard]]
+	constexpr bool operator[](size_t _e) const {
 		_ASSERT(_e < this->capacity);
 		return this->set[_e / 8] & (1 << _e % 8);
 	}
 	/** Returns the capacity of the set */
-	inline size_t size() const { return this->capacity; }
+	[[nodiscard]]
+	constexpr size_t size() const { return this->capacity; }
 	/** Tells wether the set is empty or not */
-	inline bool empty() const { return (*this) == binary_set(this->capacity); }
+	[[nodiscard]]
+	constexpr bool empty() const { return (*this) == binary_set(this->capacity); }
 	/** Confront this and _bs sets */
-	inline bool operator==(const binary_set& _bs) const {
+	[[nodiscard]]
+	constexpr bool operator==(const binary_set& _bs) const {
 		_ASSERT(this->capacity == _bs.capacity && this->capacity != 0 && _bs.capacity != 0);
-		size_t i;
+		size_t i = 0;
 		for (i = 0; i < this->set.size() && this->set[i] == _bs.set[i]; i++)
 			;
 		return i == this->set.size();
 	}
 	/** Confront this and _bs sets */
-	inline bool operator!=(const binary_set& _bs) const { return !((*this) == _bs); }
+	[[nodiscard]]
+	constexpr bool operator!=(const binary_set& _bs) const { return !((*this) == _bs); }
 	/** Checks if this and _bs have a non-empty intersection */
-	inline bool intersects(const binary_set& _bs) const {
+	[[nodiscard]]
+	constexpr bool intersects(const binary_set& _bs) const {
 		_ASSERT(this->capacity == _bs.capacity && this->capacity != 0 && _bs.capacity != 0);
 		size_t i = 0;
 		for (i = 0; i < this->set.size() && !(this->set[i] & _bs.set[i]); i++)
@@ -137,7 +146,8 @@ public:
 		return i != this->set.size();
 	}
 	/** Check if this set contains _bs */
-	inline bool contains(const binary_set& _bs) const {
+	[[nodiscard]]
+	constexpr bool contains(const binary_set& _bs) const {
 		_ASSERT(this->capacity == _bs.capacity && this->capacity != 0 && _bs.capacity != 0);
 		size_t i = 0;
 		for (i = 0; i < this->set.size() && !(~this->set[i] & _bs.set[i]); i++)
@@ -145,45 +155,49 @@ public:
 		return i == this->set.size();
 	}
 	/** Get the sparse version of the set (by default this will be sorted) */
+	[[nodiscard]]
 	inline std::vector<size_t> sparse() const {
 		std::vector<size_t> sparse;
 		sparse.reserve(this->capacity);
-		for (auto p : *this)
-			sparse.push_back(p);
+		std::copy(this->begin(), this->end(), std::back_inserter(sparse));
 		return sparse;
 	}
 	/** Get the string representation of the set */
+	[[nodiscard]]
 	inline operator std::string() const {
-		std::string str = "[";
+		std::string repr = "[";
 		for (size_t i = 0; i < this->capacity; i++)
-			str.append((*this)[i] ? "X" : " ");
-		str.append("]");
-		return str;
+			repr.append((*this)[i] ? "X" : " ");
+		repr.append("]");
+		return repr;
 	}
 	class iterator {
 	public:
-		inline iterator(const binary_set* _bs, size_t _s)
+		constexpr iterator(const binary_set* _bs, size_t _s)
 			: bs(_bs), c(_s) {
 			if (this->c < this->bs->size() && !(*this->bs)[this->c])
 				++(*this);
 		}
-		inline iterator& operator++() {
+		constexpr void operator++() {
 			do {
 				++this->c;
 			} while (this->c < this->bs->size() && !(*this->bs)[this->c]);
-			return *this;
 		}
-		inline size_t operator*() const { return this->c; }
-		inline bool	  operator!=(const iterator& _it) const { return this->c != _it.c; }
+		[[nodiscard]]
+		constexpr size_t operator*() const { return this->c; }
+		[[nodiscard]]
+		constexpr bool operator!=(const iterator& _it) const { return this->c != _it.c; }
 
 	protected:
 		const binary_set* bs;
 		size_t			  c;
 	};
 	/** begin iterator */
-	inline iterator begin() const { return iterator(this, 0); }
+	[[nodiscard]]
+	constexpr iterator begin() const { return iterator(this, 0); }
 	/** end iterator */
-	inline iterator end() const { return iterator(this, this->capacity); }
+	[[nodiscard]]
+	constexpr iterator end() const { return iterator(this, this->capacity); }
 
 private:
 	size_t					   capacity;
@@ -202,8 +216,8 @@ private:
 class bs_searcher {
 public:
 	/** Construct a binary subset searcher for binary set or size _c */
-	inline bs_searcher(size_t _c)
-		: root(new treenode()), capacity(_c) {}
+	explicit inline bs_searcher(size_t _c) : root(new treenode()), capacity(_c) {}
+	// TODO: Add copy constructor and operator=
 	/** Add to the search a new binary set _bs and assign to it value _v */
 	inline void add(size_t _v, const binary_set& _bs) {
 		_ASSERT(this->capacity == _bs.size());
@@ -267,6 +281,7 @@ public:
 		}
 	}
 	/** Find all binary subsets of _bs among the one added in the search. @returns a std::vector<size_t> with all the keys of the binary subsets found */
+	[[nodiscard]]
 	inline std::vector<size_t> find_subsets(const binary_set& _bs) const {
 		std::deque<treenode*> open_nodes;
 		open_nodes.push_back(this->root);

@@ -72,9 +72,7 @@ namespace args {
 	 * the value will be modifiable.
 	 */
 	template <typename Option>
-	auto get(Option& option_) -> decltype(option_.Get()) {
-		return option_.Get();
-	}
+	auto get(Option& option_) -> decltype(option_.Get()) { return option_.Get(); }
 
 	/** (INTERNAL) Count UTF-8 glyphs
 	 *
@@ -106,7 +104,8 @@ namespace args {
 	 * \return the vector of lines
 	 */
 	template <typename It>
-	inline std::vector<std::string> Wrap(It begin, It end, const std::string::size_type width, std::string::size_type firstlinewidth = 0, std::string::size_type firstlineindent = 0) {
+	inline std::vector<std::string> Wrap(It begin, It end, const std::string::size_type width, std::string::size_type firstlinewidth = 0,
+										 std::string::size_type firstlineindent = 0) {
 		std::vector<std::string> output;
 		std::string				 line(firstlineindent, ' ');
 		bool					 empty = true;
@@ -227,8 +226,7 @@ namespace args {
 	 */
 	class Error : public std::runtime_error {
 	public:
-		Error(const std::string& problem)
-			: std::runtime_error(problem) {}
+		Error(const std::string& problem) : std::runtime_error(problem) {}
 		virtual ~Error() {}
 	};
 
@@ -236,8 +234,7 @@ namespace args {
 	 */
 	class UsageError : public Error {
 	public:
-		UsageError(const std::string& problem)
-			: Error(problem) {}
+		UsageError(const std::string& problem) : Error(problem) {}
 		virtual ~UsageError() {}
 	};
 
@@ -245,8 +242,7 @@ namespace args {
 	 */
 	class ParseError : public Error {
 	public:
-		ParseError(const std::string& problem)
-			: Error(problem) {}
+		ParseError(const std::string& problem) : Error(problem) {}
 		virtual ~ParseError() {}
 	};
 
@@ -254,8 +250,7 @@ namespace args {
 	 */
 	class ValidationError : public Error {
 	public:
-		ValidationError(const std::string& problem)
-			: Error(problem) {}
+		ValidationError(const std::string& problem) : Error(problem) {}
 		virtual ~ValidationError() {}
 	};
 
@@ -263,8 +258,7 @@ namespace args {
 	 */
 	class RequiredError : public ValidationError {
 	public:
-		RequiredError(const std::string& problem)
-			: ValidationError(problem) {}
+		RequiredError(const std::string& problem) : ValidationError(problem) {}
 		virtual ~RequiredError() {}
 	};
 
@@ -272,8 +266,7 @@ namespace args {
 	 */
 	class MapError : public ParseError {
 	public:
-		MapError(const std::string& problem)
-			: ParseError(problem) {}
+		MapError(const std::string& problem) : ParseError(problem) {}
 		virtual ~MapError() {}
 	};
 
@@ -281,8 +274,7 @@ namespace args {
 	 */
 	class ExtraError : public ParseError {
 	public:
-		ExtraError(const std::string& problem)
-			: ParseError(problem) {}
+		ExtraError(const std::string& problem) : ParseError(problem) {}
 		virtual ~ExtraError() {}
 	};
 
@@ -290,8 +282,7 @@ namespace args {
 	 */
 	class Help : public Error {
 	public:
-		Help(const std::string& flag)
-			: Error(flag) {}
+		Help(const std::string& flag) : Error(flag) {}
 		virtual ~Help() {}
 	};
 
@@ -299,8 +290,7 @@ namespace args {
 	 */
 	class SubparserError : public Error {
 	public:
-		SubparserError()
-			: Error("") {}
+		SubparserError() : Error("") {}
 		virtual ~SubparserError() {}
 	};
 
@@ -308,8 +298,7 @@ namespace args {
 	 */
 	class Completion : public Error {
 	public:
-		Completion(const std::string& flag)
-			: Error(flag) {}
+		Completion(const std::string& flag) : Error(flag) {}
 		virtual ~Completion() {}
 	};
 #endif
@@ -320,12 +309,9 @@ namespace args {
 		const bool		  isShort;
 		const char		  shortFlag;
 		const std::string longFlag;
-		EitherFlag(const std::string& flag)
-			: isShort(false), shortFlag(), longFlag(flag) {}
-		EitherFlag(const char* flag)
-			: isShort(false), shortFlag(), longFlag(flag) {}
-		EitherFlag(const char flag)
-			: isShort(true), shortFlag(flag), longFlag() {}
+		EitherFlag(const std::string& flag) : isShort(false), shortFlag(), longFlag(flag) {}
+		EitherFlag(const char* flag) : isShort(false), shortFlag(), longFlag(flag) {}
+		EitherFlag(const char flag) : isShort(true), shortFlag(flag), longFlag() {}
 
 		/** Get just the long flags from an initializer list of EitherFlags
 		 */
@@ -353,7 +339,9 @@ namespace args {
 
 		std::string str() const { return isShort ? std::string(1, shortFlag) : longFlag; }
 
-		std::string str(const std::string& shortPrefix, const std::string& longPrefix) const { return isShort ? shortPrefix + std::string(1, shortFlag) : longPrefix + longFlag; }
+		std::string str(const std::string& shortPrefix, const std::string& longPrefix) const {
+			return isShort ? shortPrefix + std::string(1, shortFlag) : longPrefix + longFlag;
+		}
 	};
 
 	/** A class of "matchers", specifying short and flags that can possibly be
@@ -370,7 +358,8 @@ namespace args {
 	public:
 		/** Specify short and long flags separately as iterators
 		 *
-		 * ex: `args::Matcher(shortFlags.begin(), shortFlags.end(), longFlags.begin(), longFlags.end())`
+		 * ex: `args::Matcher(shortFlags.begin(), shortFlags.end(), longFlags.begin(),
+		 * longFlags.end())`
 		 */
 		template <typename ShortIt, typename LongIt>
 		Matcher(ShortIt shortFlagsStart, ShortIt shortFlagsEnd, LongIt longFlagsStart, LongIt longFlagsEnd)
@@ -392,8 +381,7 @@ namespace args {
 		 * ex: `args::Matcher(shortFlags, longFlags)`
 		 */
 		template <typename Short, typename Long>
-		Matcher(Short&& shortIn, Long&& longIn)
-			: Matcher(std::begin(shortIn), std::end(shortIn), std::begin(longIn), std::end(longIn)) {}
+		Matcher(Short&& shortIn, Long&& longIn) : Matcher(std::begin(shortIn), std::end(shortIn), std::begin(longIn), std::end(longIn)) {}
 
 		/** Specify a mixed single initializer-list of both short and long flags
 		 *
@@ -407,11 +395,9 @@ namespace args {
 		 *     args::Matcher{'h', "help"}
 		 *     args::Matcher{"foo", 'f', 'F', "FoO"}
 		 */
-		Matcher(std::initializer_list<EitherFlag> in)
-			: Matcher(EitherFlag::GetShort(in), EitherFlag::GetLong(in)) {}
+		Matcher(std::initializer_list<EitherFlag> in) : Matcher(EitherFlag::GetShort(in), EitherFlag::GetLong(in)) {}
 
-		Matcher(Matcher&& other) noexcept
-			: shortFlags(std::move(other.shortFlags)), longFlags(std::move(other.longFlags)) {}
+		Matcher(Matcher&& other) noexcept : shortFlags(std::move(other.shortFlags)), longFlags(std::move(other.longFlags)) {}
 
 		~Matcher() {}
 
@@ -512,13 +498,9 @@ namespace args {
 		Hidden = HiddenFromUsage | HiddenFromDescription | HiddenFromCompletion,
 	};
 
-	inline Options operator|(Options lhs, Options rhs) {
-		return static_cast<Options>(static_cast<int>(lhs) | static_cast<int>(rhs));
-	}
+	inline Options operator|(Options lhs, Options rhs) { return static_cast<Options>(static_cast<int>(lhs) | static_cast<int>(rhs)); }
 
-	inline Options operator&(Options lhs, Options rhs) {
-		return static_cast<Options>(static_cast<int>(lhs) & static_cast<int>(rhs));
-	}
+	inline Options operator&(Options lhs, Options rhs) { return static_cast<Options>(static_cast<int>(lhs) & static_cast<int>(rhs)); }
 
 	class FlagBase;
 	class PositionalBase;
@@ -687,8 +669,7 @@ namespace args {
 		const size_t min;
 		const size_t max;
 
-		Nargs(size_t min_, size_t max_)
-			: min{ min_ }, max{ max_ } {
+		Nargs(size_t min_, size_t max_) : min{ min_ }, max{ max_ } {
 #ifndef ARGS_NOEXCEPT
 			if (max < min) {
 				throw UsageError("Nargs: max > min");
@@ -696,8 +677,7 @@ namespace args {
 #endif
 		}
 
-		Nargs(size_t num_)
-			: min{ num_ }, max{ num_ } {}
+		Nargs(size_t num_) : min{ num_ }, max{ num_ } {}
 
 		friend bool operator==(const Nargs& lhs, const Nargs& rhs) { return lhs.min == rhs.min && lhs.max == rhs.max; }
 
@@ -720,8 +700,7 @@ namespace args {
 #endif
 
 	public:
-		Base(const std::string& help_, Options options_ = {})
-			: options(options_), help(help_) {}
+		Base(const std::string& help_, Options options_ = {}) : options(options_), help(help_) {}
 		virtual ~Base() {}
 
 		Options GetOptions() const noexcept { return options; }
@@ -805,7 +784,8 @@ namespace args {
 
 		virtual std::string GetNameString(const HelpParams&) const { return Name(); }
 
-		void AddDescriptionPostfix(std::string& dest, const bool isManual, const std::string& manual, bool isGenerated, const std::string& generated, const std::string& str) const {
+		void AddDescriptionPostfix(std::string& dest, const bool isManual, const std::string& manual, bool isGenerated, const std::string& generated,
+								   const std::string& str) const {
 			if (isManual && !manual.empty()) {
 				dest += str;
 				dest += manual;
@@ -816,8 +796,7 @@ namespace args {
 		}
 
 	public:
-		NamedBase(const std::string& name_, const std::string& help_, Options options_ = {})
-			: Base(help_, options_), name(name_) {}
+		NamedBase(const std::string& name_, const std::string& help_, Options options_ = {}) : Base(help_, options_), name(name_) {}
 		virtual ~NamedBase() {}
 
 		/** Sets default value string that will be added to argument description.
@@ -842,17 +821,21 @@ namespace args {
 
 		/** Gets choices strings that will be added to argument description.
 		 */
-		std::vector<std::string> HelpChoices(const HelpParams& params) const { return choicesStringManual ? choicesStrings : GetChoicesStrings(params); }
+		std::vector<std::string> HelpChoices(const HelpParams& params) const {
+			return choicesStringManual ? choicesStrings : GetChoicesStrings(params);
+		}
 
-		virtual std::vector<std::tuple<std::string, std::string, unsigned>> GetDescription(const HelpParams& params, const unsigned indentLevel) const override {
+		virtual std::vector<std::tuple<std::string, std::string, unsigned>> GetDescription(const HelpParams& params,
+																						   const unsigned	 indentLevel) const override {
 			std::tuple<std::string, std::string, unsigned> description;
 			std::get<0>(description) = GetNameString(params);
 			std::get<1>(description) = help;
 			std::get<2>(description) = indentLevel;
 
-			AddDescriptionPostfix(std::get<1>(description), choicesStringManual, detail::Join(choicesStrings, ", "), params.addChoices, detail::Join(GetChoicesStrings(params), ", "),
-				params.choiceString);
-			AddDescriptionPostfix(std::get<1>(description), defaultStringManual, defaultString, params.addDefault, GetDefaultString(params), params.defaultString);
+			AddDescriptionPostfix(std::get<1>(description), choicesStringManual, detail::Join(choicesStrings, ", "), params.addChoices,
+								  detail::Join(GetChoicesStrings(params), ", "), params.choiceString);
+			AddDescriptionPostfix(std::get<1>(description), defaultStringManual, defaultString, params.addDefault, GetDefaultString(params),
+								  params.defaultString);
 
 			return { std::move(description) };
 		}
@@ -890,9 +873,7 @@ namespace args {
 		}
 
 		template <typename T>
-		typename std::enable_if<!IsConvertableToString<T>::value, std::string>::type ToString(const T&) {
-			return {};
-		}
+		typename std::enable_if<!IsConvertableToString<T>::value, std::string>::type ToString(const T&) { return {}; }
 
 		template <typename T>
 		std::vector<std::string> MapKeysToStrings(const T& map) {
@@ -994,7 +975,8 @@ namespace args {
 				res += params.proglineValueOpen + postfix + params.proglineValueClose;
 			}
 
-			return { IsRequired() ? params.proglineRequiredOpen + res + params.proglineRequiredClose : params.proglineNonrequiredOpen + res + params.proglineNonrequiredClose };
+			return { IsRequired() ? params.proglineRequiredOpen + res + params.proglineRequiredClose
+								  : params.proglineNonrequiredOpen + res + params.proglineNonrequiredClose };
 		}
 
 		virtual bool HasFlag() const override { return true; }
@@ -1082,8 +1064,7 @@ namespace args {
 		bool ready;
 
 	public:
-		PositionalBase(const std::string& name_, const std::string& help_, Options options_ = {})
-			: NamedBase(name_, help_, options_), ready(true) {}
+		PositionalBase(const std::string& name_, const std::string& help_, Options options_ = {}) : NamedBase(name_, help_, options_), ready(true) {}
 		virtual ~PositionalBase() {}
 
 		bool Ready() { return ready; }
@@ -1104,7 +1085,8 @@ namespace args {
 		virtual bool HasPositional() const override { return true; }
 
 		virtual std::vector<std::string> GetProgramLine(const HelpParams& params) const override {
-			return { IsRequired() ? params.proglineRequiredOpen + Name() + params.proglineRequiredClose : params.proglineNonrequiredOpen + Name() + params.proglineNonrequiredClose };
+			return { IsRequired() ? params.proglineRequiredOpen + Name() + params.proglineRequiredClose
+								  : params.proglineNonrequiredOpen + Name() + params.proglineNonrequiredClose };
 		}
 
 		virtual void Validate(const std::string&, const std::string&) const override {
@@ -1143,7 +1125,8 @@ namespace args {
 			static bool AllOrNone(const Group& group) { return (All(group) || None(group)); }
 
 			static bool AllChildGroups(const Group& group) {
-				return std::none_of(std::begin(group.Children()), std::end(group.Children()), [](const Base* child) -> bool { return child->IsGroup() && !child->Matched(); });
+				return std::none_of(std::begin(group.Children()), std::end(group.Children()),
+									[](const Base* child) -> bool { return child->IsGroup() && !child->Matched(); });
 			}
 
 			static bool DontCare(const Group&) { return true; }
@@ -1153,10 +1136,12 @@ namespace args {
 			static bool None(const Group& group) { return group.MatchedChildren() == 0; }
 		};
 		/// If help is empty, this group will not be printed in help output
-		Group(const std::string& help_ = std::string(), const std::function<bool(const Group&)>& validator_ = Validators::DontCare, Options options_ = {})
+		Group(const std::string& help_ = std::string(), const std::function<bool(const Group&)>& validator_ = Validators::DontCare,
+			  Options options_ = {})
 			: Base(help_, options_), validator(validator_) {}
 		/// If help is empty, this group will not be printed in help output
-		Group(Group& group_, const std::string& help_ = std::string(), const std::function<bool(const Group&)>& validator_ = Validators::DontCare, Options options_ = {})
+		Group(Group& group_, const std::string& help_ = std::string(), const std::function<bool(const Group&)>& validator_ = Validators::DontCare,
+			  Options options_ = {})
 			: Base(help_, options_), validator(validator_) {
 			group_.Add(*this);
 		}
@@ -1240,7 +1225,8 @@ namespace args {
 		 */
 		std::vector<Base*>::size_type MatchedChildren() const {
 			// Cast to avoid warnings from -Wsign-conversion
-			return static_cast<std::vector<Base*>::size_type>(std::count_if(std::begin(Children()), std::end(Children()), [](const Base* child) { return child->Matched(); }));
+			return static_cast<std::vector<Base*>::size_type>(
+				std::count_if(std::begin(Children()), std::end(Children()), [](const Base* child) { return child->Matched(); }));
 		}
 
 		/** Whether or not this group matches validation
@@ -1253,7 +1239,8 @@ namespace args {
 
 		/** Get all the child descriptions for help generation
 		 */
-		virtual std::vector<std::tuple<std::string, std::string, unsigned>> GetDescription(const HelpParams& params, const unsigned int indent) const override {
+		virtual std::vector<std::tuple<std::string, std::string, unsigned>> GetDescription(const HelpParams&  params,
+																						   const unsigned int indent) const override {
 			std::vector<std::tuple<std::string, std::string, unsigned int>> descriptions;
 
 			// Push that group description on the back if not empty
@@ -1269,7 +1256,8 @@ namespace args {
 				}
 
 				auto groupDescriptions = child->GetDescription(params, indent + addindent);
-				descriptions.insert(std::end(descriptions), std::make_move_iterator(std::begin(groupDescriptions)), std::make_move_iterator(std::end(groupDescriptions)));
+				descriptions.insert(std::end(descriptions), std::make_move_iterator(std::begin(groupDescriptions)),
+									std::make_move_iterator(std::end(groupDescriptions)));
 			}
 			return descriptions;
 		}
@@ -1347,8 +1335,7 @@ namespace args {
 	 */
 	class GlobalOptions : public Group {
 	public:
-		GlobalOptions(Group& base, Base& options_)
-			: Group(base, {}, Group::Validators::DontCare, Options::Global) { Add(options_); }
+		GlobalOptions(Group& base, Base& options_) : Group(base, {}, Group::Validators::DontCare, Options::Global) { Add(options_); }
 	};
 
 	/** Utility class for building subparsers with coroutines/callbacks.
@@ -1478,8 +1465,7 @@ namespace args {
 #ifndef ARGS_NOEXCEPT
 				try {
 					parserCoroutine(coro.Parser());
-				} catch (args::SubparserError&) {
-				}
+				} catch (args::SubparserError&) {}
 #else
 				parserCoroutine(coro.Parser());
 #endif
@@ -1694,7 +1680,8 @@ namespace args {
 			return { this };
 		}
 
-		virtual std::vector<std::tuple<std::string, std::string, unsigned>> GetDescription(const HelpParams& params, const unsigned int indent) const override {
+		virtual std::vector<std::tuple<std::string, std::string, unsigned>> GetDescription(const HelpParams&  params,
+																						   const unsigned int indent) const override {
 			std::vector<std::tuple<std::string, std::string, unsigned>> descriptions;
 			unsigned													addindent = 0;
 
@@ -1738,7 +1725,8 @@ namespace args {
 				}
 
 				auto groupDescriptions = child->GetDescription(params, indent + addindent);
-				descriptions.insert(std::end(descriptions), std::make_move_iterator(std::begin(groupDescriptions)), std::make_move_iterator(std::end(groupDescriptions)));
+				descriptions.insert(std::end(descriptions), std::make_move_iterator(std::begin(groupDescriptions)),
+									std::make_move_iterator(std::end(groupDescriptions)));
 			}
 
 			for (auto childDescription : subparserDescription) {
@@ -1855,11 +1843,9 @@ namespace args {
 		bool			readCompletion = false;
 
 	protected:
-		enum class OptionType {
-			LongFlag,
-			ShortFlag,
-			Positional
-		};
+		enum class OptionType { LongFlag,
+								ShortFlag,
+								Positional };
 
 		OptionType ParseOption(const std::string& s, bool allowEmpty = false) {
 			if (s.find(longprefix) == 0 && (allowEmpty || s.length() > longprefix.length())) {
@@ -1898,12 +1884,14 @@ namespace args {
 		 * \param[in, out] it The iterator to first value. It will point to the last value
 		 * \param end The end iterator
 		 * \param joinedArg Joined value (e.g. bar in --foo=bar)
-		 * \param canDiscardJoined If true joined value can be parsed as flag not as a value (as in -abcd)
+		 * \param canDiscardJoined If true joined value can be parsed as flag not as a value (as in
+		 * -abcd)
 		 * \param[out] values The vector to store parsed arg's values
 		 */
 		template <typename It>
-		std::string ParseArgsValues(FlagBase& flag, const std::string& arg, It& it, It end, const bool allowSeparate, const bool allowJoined, const bool hasJoined,
-			const std::string& joinedArg, const bool canDiscardJoined, std::vector<std::string>& values) {
+		std::string ParseArgsValues(FlagBase& flag, const std::string& arg, It& it, It end, const bool allowSeparate, const bool allowJoined,
+									const bool hasJoined, const std::string& joinedArg, const bool canDiscardJoined,
+									std::vector<std::string>& values) {
 			values.clear();
 
 			Nargs nargs = flag.NumberOfArguments();
@@ -1924,7 +1912,8 @@ namespace args {
 				auto valueIt = it;
 				++valueIt;
 
-				while (valueIt != end && values.size() < nargs.max && (values.size() < nargs.min || ParseOption(*valueIt) == OptionType::Positional)) {
+				while (valueIt != end && values.size() < nargs.max &&
+					   (values.size() < nargs.min || ParseOption(*valueIt) == OptionType::Positional)) {
 					if (Complete(flag, valueIt, end)) {
 						it = end;
 						return "";
@@ -1944,7 +1933,8 @@ namespace args {
 				} else if (nargs.min == 1) {
 					return "Flag '" + arg + "' requires at least one argument but received none";
 				} else if (nargs.min != nargs.max) {
-					return "Flag '" + arg + "' requires at least " + std::to_string(nargs.min) + " arguments but received " + std::to_string(values.size());
+					return "Flag '" + arg + "' requires at least " + std::to_string(nargs.min) + " arguments but received " +
+						std::to_string(values.size());
 				} else {
 					return "Flag '" + arg + "' requires " + std::to_string(nargs.min) + " arguments but received " + std::to_string(values.size());
 				}
@@ -1965,7 +1955,8 @@ namespace args {
 
 			if (auto flag = Match(arg)) {
 				std::vector<std::string> values;
-				const std::string		 errorMessage = ParseArgsValues(*flag, arg, it, end, allowSeparateLongValue, allowJoinedLongValue, separator != argchunk.npos, joined, false, values);
+				const std::string		 errorMessage = ParseArgsValues(*flag, arg, it, end, allowSeparateLongValue, allowJoinedLongValue,
+																		separator != argchunk.npos, joined, false, values);
 				if (!errorMessage.empty()) {
 #ifndef ARGS_NOEXCEPT
 					throw ParseError(errorMessage);
@@ -2008,8 +1999,8 @@ namespace args {
 				if (auto flag = Match(arg)) {
 					const std::string		 value(argit + 1, std::end(argchunk));
 					std::vector<std::string> values;
-					const std::string		 errorMessage =
-						ParseArgsValues(*flag, std::string(1, arg), it, end, allowSeparateShortValue, allowJoinedShortValue, !value.empty(), value, !value.empty(), values);
+					const std::string		 errorMessage = ParseArgsValues(*flag, std::string(1, arg), it, end, allowSeparateShortValue,
+																			allowJoinedShortValue, !value.empty(), value, !value.empty(), values);
 
 					if (!errorMessage.empty()) {
 #ifndef ARGS_NOEXCEPT
@@ -2357,7 +2348,8 @@ namespace args {
 		 *
 		 * See SetArgumentSeparations for details on what each one means.
 		 */
-		void GetArgumentSeparations(bool& allowJoinedShortValue_, bool& allowJoinedLongValue_, bool& allowSeparateShortValue_, bool& allowSeparateLongValue_) const {
+		void GetArgumentSeparations(bool& allowJoinedShortValue_, bool& allowJoinedLongValue_, bool& allowSeparateShortValue_,
+									bool& allowSeparateLongValue_) const {
 			allowJoinedShortValue_ = this->allowJoinedShortValue;
 			allowJoinedLongValue_ = this->allowJoinedLongValue;
 			allowSeparateShortValue_ = this->allowSeparateShortValue;
@@ -2366,14 +2358,17 @@ namespace args {
 
 		/** Change allowed option separation.
 		 *
-		 * \param allowJoinedShortValue_ Allow a short flag that accepts an argument to be passed its argument immediately next to it (ie. in the same argv field)
-		 * \param allowJoinedLongValue_ Allow a long flag that accepts an argument to be passed its argument separated by the longseparator (ie. in the same argv
-		 * field)
-		 * \param allowSeparateShortValue_ Allow a short flag that accepts an argument to be passed its argument separated by whitespace (ie. in the next argv
-		 * field)
-		 * \param allowSeparateLongValue_ Allow a long flag that accepts an argument to be passed its argument separated by whitespace (ie. in the next argv field)
+		 * \param allowJoinedShortValue_ Allow a short flag that accepts an argument to be passed
+		 * its argument immediately next to it (ie. in the same argv field)
+		 * \param allowJoinedLongValue_ Allow a long flag that accepts an argument to be passed its
+		 * argument separated by the longseparator (ie. in the same argv field)
+		 * \param allowSeparateShortValue_ Allow a short flag that accepts an argument to be passed
+		 * its argument separated by whitespace (ie. in the next argv field)
+		 * \param allowSeparateLongValue_ Allow a long flag that accepts an argument to be passed
+		 * its argument separated by whitespace (ie. in the next argv field)
 		 */
-		void SetArgumentSeparations(const bool allowJoinedShortValue_, const bool allowJoinedLongValue_, const bool allowSeparateShortValue_, const bool allowSeparateLongValue_) {
+		void SetArgumentSeparations(const bool allowJoinedShortValue_, const bool allowJoinedLongValue_, const bool allowSeparateShortValue_,
+									const bool allowSeparateLongValue_) {
 			this->allowJoinedShortValue = allowJoinedShortValue_;
 			this->allowJoinedLongValue = allowJoinedLongValue_;
 			this->allowSeparateShortValue = allowSeparateShortValue_;
@@ -2401,7 +2396,8 @@ namespace args {
 			prognameline.insert(prognameline.end(), commandProgLine.begin(), commandProgLine.end());
 
 			const auto proglines =
-				Wrap(prognameline.begin(), prognameline.end(), helpParams.width - (helpParams.progindent + helpParams.progtailindent), helpParams.width - helpParams.progindent);
+				Wrap(prognameline.begin(), prognameline.end(), helpParams.width - (helpParams.progindent + helpParams.progtailindent),
+					 helpParams.width - helpParams.progindent);
 			auto progit = std::begin(proglines);
 			if (progit != std::end(proglines)) {
 				help_ << std::string(helpParams.progindent, ' ') << *progit << '\n';
@@ -2443,10 +2439,12 @@ namespace args {
 
 				auto infoit = std::begin(info);
 				// groupindent is on both sides of this inequality, and therefore can be removed
-				if ((helpParams.flagindent + flagssize + helpParams.gutter) > helpParams.helpindent || infoit == std::end(info) || helpParams.addNewlineBeforeDescription) {
+				if ((helpParams.flagindent + flagssize + helpParams.gutter) > helpParams.helpindent || infoit == std::end(info) ||
+					helpParams.addNewlineBeforeDescription) {
 					help_ << '\n';
 				} else {
-					// groupindent is on both sides of the minus sign, and therefore doesn't actually need to be in here
+					// groupindent is on both sides of the minus sign, and therefore doesn't
+					// actually need to be in here
 					help_ << std::string(helpParams.helpindent - (helpParams.flagindent + flagssize), ' ') << *infoit << '\n';
 					++infoit;
 				}
@@ -2457,8 +2455,9 @@ namespace args {
 			if (hasoptions && hasarguments && helpParams.showTerminator) {
 				lastDescriptionIsNewline = false;
 				for (const auto& item :
-					Wrap(std::string("\"") + terminator + "\" can be used to terminate flag options and force all following arguments to be treated as positional options",
-						helpParams.width - helpParams.flagindent)) {
+					 Wrap(std::string("\"") + terminator +
+							  "\" can be used to terminate flag options and force all following arguments to be treated as positional options",
+						  helpParams.width - helpParams.flagindent)) {
 					help_ << std::string(helpParams.flagindent, ' ') << item << '\n';
 				}
 			}
@@ -2519,7 +2518,8 @@ namespace args {
 		 *
 		 * Just assigns the program name and vectorizes arguments for passing into ParseArgs()
 		 *
-		 * \return whether or not all arguments were parsed.  This works for detecting kick-out, but is generally useless as it can't do anything with it.
+		 * \return whether or not all arguments were parsed.  This works for detecting kick-out, but
+		 * is generally useless as it can't do anything with it.
 		 */
 		bool ParseCLI(const int argc, const char* const* argv) {
 			if (Prog().empty()) {
@@ -2630,7 +2630,8 @@ namespace args {
 		int		  count;
 
 	public:
-		CounterFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, const int startcount_ = 0, Options options_ = {})
+		CounterFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, const int startcount_ = 0,
+					Options options_ = {})
 			: Flag(group_, name_, help_, std::move(matcher_), options_), startcount(startcount_), count(startcount_) {}
 
 		virtual ~CounterFlag() {}
@@ -2665,19 +2666,21 @@ namespace args {
 		Nargs												 nargs;
 
 	public:
-		ActionFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, Nargs nargs_, std::function<void(const std::vector<std::string>&)> action_,
-			Options options_ = {})
+		ActionFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, Nargs nargs_,
+				   std::function<void(const std::vector<std::string>&)> action_, Options options_ = {})
 			: FlagBase(name_, help_, std::move(matcher_), options_), action(std::move(action_)), nargs(nargs_) {
 			group_.Add(*this);
 		}
 
-		ActionFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, std::function<void(const std::string&)> action_, Options options_ = {})
+		ActionFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_,
+				   std::function<void(const std::string&)> action_, Options options_ = {})
 			: FlagBase(name_, help_, std::move(matcher_), options_), nargs(1) {
 			group_.Add(*this);
 			action = [action_](const std::vector<std::string>& a) { return action_(a.at(0)); };
 		}
 
-		ActionFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, std::function<void()> action_, Options options_ = {})
+		ActionFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, std::function<void()> action_,
+				   Options options_ = {})
 			: FlagBase(name_, help_, std::move(matcher_), options_), nargs(0) {
 			group_.Add(*this);
 			action = [action_](const std::vector<std::string>&) { return action_(); };
@@ -2696,7 +2699,8 @@ namespace args {
 	 */
 	struct ValueReader {
 		template <typename T>
-		typename std::enable_if<!std::is_assignable<T, std::string>::value, bool>::type operator()(const std::string& name, const std::string& value, T& destination) {
+		typename std::enable_if<!std::is_assignable<T, std::string>::value, bool>::type operator()(const std::string& name, const std::string& value,
+																								   T& destination) {
 			std::istringstream ss(value);
 			bool			   failed = !(ss >> destination);
 
@@ -2718,7 +2722,8 @@ namespace args {
 		}
 
 		template <typename T>
-		typename std::enable_if<std::is_assignable<T, std::string>::value, bool>::type operator()(const std::string&, const std::string& value, T& destination) {
+		typename std::enable_if<std::is_assignable<T, std::string>::value, bool>::type operator()(const std::string&, const std::string& value,
+																								  T& destination) {
 			destination = value;
 			return true;
 		}
@@ -2727,8 +2732,8 @@ namespace args {
 	/** An argument-accepting flag class
 	 *
 	 * \tparam T the type to extract the argument as
-	 * \tparam Reader The functor type used to read the argument, taking the name, value, and destination reference with operator(), and returning a bool (if
-	 * ARGS_NOEXCEPT is defined)
+	 * \tparam Reader The functor type used to read the argument, taking the name, value, and
+	 * destination reference with operator(), and returning a bool (if ARGS_NOEXCEPT is defined)
 	 */
 	template <typename T, typename Reader = ValueReader>
 	class ValueFlag : public ValueFlagBase {
@@ -2747,7 +2752,8 @@ namespace args {
 			group_.Add(*this);
 		}
 
-		ValueFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, const T& defaultValue_ = T(), const bool extraError_ = false)
+		ValueFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, const T& defaultValue_ = T(),
+				  const bool extraError_ = false)
 			: ValueFlag(group_, name_, help_, std::move(matcher_), defaultValue_, extraError_ ? Options::Single : Options::None) {}
 
 		ValueFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, Options options_)
@@ -2800,8 +2806,8 @@ namespace args {
 	/** An optional argument-accepting flag class
 	 *
 	 * \tparam T the type to extract the argument as
-	 * \tparam Reader The functor type used to read the argument, taking the name, value, and destination reference with operator(), and returning a bool (if
-	 * ARGS_NOEXCEPT is defined)
+	 * \tparam Reader The functor type used to read the argument, taking the name, value, and
+	 * destination reference with operator(), and returning a bool (if ARGS_NOEXCEPT is defined)
 	 */
 	template <typename T, typename Reader = ValueReader>
 	class ImplicitValueFlag : public ValueFlag<T, Reader> {
@@ -2809,11 +2815,12 @@ namespace args {
 		T implicitValue;
 
 	public:
-		ImplicitValueFlag(
-			Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, const T& implicitValue_, const T& defaultValue_ = T(), Options options_ = {})
+		ImplicitValueFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, const T& implicitValue_,
+						  const T& defaultValue_ = T(), Options options_ = {})
 			: ValueFlag<T, Reader>(group_, name_, help_, std::move(matcher_), defaultValue_, options_), implicitValue(implicitValue_) {}
 
-		ImplicitValueFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, const T& defaultValue_ = T(), Options options_ = {})
+		ImplicitValueFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, const T& defaultValue_ = T(),
+						  Options options_ = {})
 			: ValueFlag<T, Reader>(group_, name_, help_, std::move(matcher_), defaultValue_, options_), implicitValue(defaultValue_) {}
 
 		ImplicitValueFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, Options options_)
@@ -2836,8 +2843,8 @@ namespace args {
 	 *
 	 * \tparam T the type to extract the argument as
 	 * \tparam List the list type that houses the values
-	 * \tparam Reader The functor type used to read the argument, taking the name, value, and destination reference with operator(), and returning a bool (if
-	 * ARGS_NOEXCEPT is defined)
+	 * \tparam Reader The functor type used to read the argument, taking the name, value, and
+	 * destination reference with operator(), and returning a bool (if ARGS_NOEXCEPT is defined)
 	 */
 	template <typename T, template <typename...> class List = detail::vector, typename Reader = ValueReader>
 	class NargsValueFlag : public FlagBase {
@@ -2862,7 +2869,8 @@ namespace args {
 		typedef std::reverse_iterator<iterator>		  reverse_iterator;
 		typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
-		NargsValueFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, Nargs nargs_, const List<T>& defaultValues_ = {}, Options options_ = {})
+		NargsValueFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, Nargs nargs_,
+					   const List<T>& defaultValues_ = {}, Options options_ = {})
 			: FlagBase(name_, help_, std::move(matcher_), options_), values(defaultValues_), defaultValues(defaultValues_), nargs(nargs_) {
 			group_.Add(*this);
 		}
@@ -2936,8 +2944,8 @@ namespace args {
 	 *
 	 * \tparam T the type to extract the argument as
 	 * \tparam List the list type that houses the values
-	 * \tparam Reader The functor type used to read the argument, taking the name, value, and destination reference with operator(), and returning a bool (if
-	 * ARGS_NOEXCEPT is defined)
+	 * \tparam Reader The functor type used to read the argument, taking the name, value, and
+	 * destination reference with operator(), and returning a bool (if ARGS_NOEXCEPT is defined)
 	 */
 	template <typename T, template <typename...> class List = detail::vector, typename Reader = ValueReader>
 	class ValueFlagList : public ValueFlagBase {
@@ -2961,7 +2969,8 @@ namespace args {
 		typedef std::reverse_iterator<iterator>		  reverse_iterator;
 		typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
-		ValueFlagList(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, const Container& defaultValues_ = Container(), Options options_ = {})
+		ValueFlagList(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_,
+					  const Container& defaultValues_ = Container(), Options options_ = {})
 			: ValueFlagBase(name_, help_, std::move(matcher_), options_), values(defaultValues_), defaultValues(defaultValues_) {
 			group_.Add(*this);
 		}
@@ -3035,8 +3044,8 @@ namespace args {
 	 *
 	 * \tparam K the type to extract the argument as
 	 * \tparam T the type to store the result as
-	 * \tparam Reader The functor type used to read the argument, taking the name, value, and destination reference with operator(), and returning a bool (if
-	 * ARGS_NOEXCEPT is defined)
+	 * \tparam Reader The functor type used to read the argument, taking the name, value, and
+	 * destination reference with operator(), and returning a bool (if ARGS_NOEXCEPT is defined)
 	 * \tparam Map The Map type.  Should operate like std::map or std::unordered_map
 	 */
 	template <typename K, typename T, typename Reader = ValueReader, template <typename...> class Map = detail::unordered_map>
@@ -3051,13 +3060,14 @@ namespace args {
 		virtual std::vector<std::string> GetChoicesStrings(const HelpParams&) const override { return detail::MapKeysToStrings(map); }
 
 	public:
-		MapFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, const Map<K, T>& map_, const T& defaultValue_, Options options_)
+		MapFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, const Map<K, T>& map_, const T& defaultValue_,
+				Options options_)
 			: ValueFlagBase(name_, help_, std::move(matcher_), options_), map(map_), value(defaultValue_), defaultValue(defaultValue_) {
 			group_.Add(*this);
 		}
 
-		MapFlag(
-			Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, const Map<K, T>& map_, const T& defaultValue_ = T(), const bool extraError_ = false)
+		MapFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, const Map<K, T>& map_,
+				const T& defaultValue_ = T(), const bool extraError_ = false)
 			: MapFlag(group_, name_, help_, std::move(matcher_), map_, defaultValue_, extraError_ ? Options::Single : Options::None) {}
 
 		MapFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, const Map<K, T>& map_, Options options_)
@@ -3122,11 +3132,12 @@ namespace args {
 	 * \tparam K the type to extract the argument as
 	 * \tparam T the type to store the result as
 	 * \tparam List the list type that houses the values
-	 * \tparam Reader The functor type used to read the argument, taking the name, value, and destination reference with operator(), and returning a bool (if
-	 * ARGS_NOEXCEPT is defined)
+	 * \tparam Reader The functor type used to read the argument, taking the name, value, and
+	 * destination reference with operator(), and returning a bool (if ARGS_NOEXCEPT is defined)
 	 * \tparam Map The Map type.  Should operate like std::map or std::unordered_map
 	 */
-	template <typename K, typename T, template <typename...> class List = detail::vector, typename Reader = ValueReader, template <typename...> class Map = detail::unordered_map>
+	template <typename K, typename T, template <typename...> class List = detail::vector, typename Reader = ValueReader,
+			  template <typename...> class Map = detail::unordered_map>
 	class MapFlagList : public ValueFlagBase {
 	private:
 		using Container = List<T>;
@@ -3152,7 +3163,8 @@ namespace args {
 		typedef std::reverse_iterator<iterator>		  reverse_iterator;
 		typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
-		MapFlagList(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, const Map<K, T>& map_, const Container& defaultValues_ = Container())
+		MapFlagList(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, const Map<K, T>& map_,
+					const Container& defaultValues_ = Container())
 			: ValueFlagBase(name_, help_, std::move(matcher_)), map(map_), values(defaultValues_), defaultValues(defaultValues_) {
 			group_.Add(*this);
 		}
@@ -3237,8 +3249,8 @@ namespace args {
 	/** A positional argument class
 	 *
 	 * \tparam T the type to extract the argument as
-	 * \tparam Reader The functor type used to read the argument, taking the name, value, and destination reference with operator(), and returning a bool (if
-	 * ARGS_NOEXCEPT is defined)
+	 * \tparam Reader The functor type used to read the argument, taking the name, value, and
+	 * destination reference with operator(), and returning a bool (if ARGS_NOEXCEPT is defined)
 	 */
 	template <typename T, typename Reader = ValueReader>
 	class Positional : public PositionalBase {
@@ -3300,8 +3312,8 @@ namespace args {
 	 *
 	 * \tparam T the type to extract the argument as
 	 * \tparam List the list type that houses the values
-	 * \tparam Reader The functor type used to read the argument, taking the name, value, and destination reference with operator(), and returning a bool (if
-	 * ARGS_NOEXCEPT is defined)
+	 * \tparam Reader The functor type used to read the argument, taking the name, value, and
+	 * destination reference with operator(), and returning a bool (if ARGS_NOEXCEPT is defined)
 	 */
 	template <typename T, template <typename...> class List = detail::vector, typename Reader = ValueReader>
 	class PositionalList : public PositionalBase {
@@ -3325,7 +3337,8 @@ namespace args {
 		typedef std::reverse_iterator<iterator>		  reverse_iterator;
 		typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
-		PositionalList(Group& group_, const std::string& name_, const std::string& help_, const Container& defaultValues_ = Container(), Options options_ = {})
+		PositionalList(Group& group_, const std::string& name_, const std::string& help_, const Container& defaultValues_ = Container(),
+					   Options options_ = {})
 			: PositionalBase(name_, help_, options_), values(defaultValues_), defaultValues(defaultValues_) {
 			group_.Add(*this);
 		}
@@ -3401,8 +3414,8 @@ namespace args {
 	 *
 	 * \tparam K the type to extract the argument as
 	 * \tparam T the type to store the result as
-	 * \tparam Reader The functor type used to read the argument, taking the name, value, and destination reference with operator(), and returning a bool (if
-	 * ARGS_NOEXCEPT is defined)
+	 * \tparam Reader The functor type used to read the argument, taking the name, value, and
+	 * destination reference with operator(), and returning a bool (if ARGS_NOEXCEPT is defined)
 	 * \tparam Map The Map type.  Should operate like std::map or std::unordered_map
 	 */
 	template <typename K, typename T, typename Reader = ValueReader, template <typename...> class Map = detail::unordered_map>
@@ -3417,7 +3430,8 @@ namespace args {
 		virtual std::vector<std::string> GetChoicesStrings(const HelpParams&) const override { return detail::MapKeysToStrings(map); }
 
 	public:
-		MapPositional(Group& group_, const std::string& name_, const std::string& help_, const Map<K, T>& map_, const T& defaultValue_ = T(), Options options_ = {})
+		MapPositional(Group& group_, const std::string& name_, const std::string& help_, const Map<K, T>& map_, const T& defaultValue_ = T(),
+					  Options options_ = {})
 			: PositionalBase(name_, help_, options_), map(map_), value(defaultValue_), defaultValue(defaultValue_) {
 			group_.Add(*this);
 		}
@@ -3481,11 +3495,12 @@ namespace args {
 	 * \tparam K the type to extract the argument as
 	 * \tparam T the type to store the result as
 	 * \tparam List the list type that houses the values
-	 * \tparam Reader The functor type used to read the argument, taking the name, value, and destination reference with operator(), and returning a bool (if
-	 * ARGS_NOEXCEPT is defined)
+	 * \tparam Reader The functor type used to read the argument, taking the name, value, and
+	 * destination reference with operator(), and returning a bool (if ARGS_NOEXCEPT is defined)
 	 * \tparam Map The Map type.  Should operate like std::map or std::unordered_map
 	 */
-	template <typename K, typename T, template <typename...> class List = detail::vector, typename Reader = ValueReader, template <typename...> class Map = detail::unordered_map>
+	template <typename K, typename T, template <typename...> class List = detail::vector, typename Reader = ValueReader,
+			  template <typename...> class Map = detail::unordered_map>
 	class MapPositionalList : public PositionalBase {
 	private:
 		using Container = List<T>;
@@ -3512,8 +3527,8 @@ namespace args {
 		typedef std::reverse_iterator<iterator>		  reverse_iterator;
 		typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
-		MapPositionalList(
-			Group& group_, const std::string& name_, const std::string& help_, const Map<K, T>& map_, const Container& defaultValues_ = Container(), Options options_ = {})
+		MapPositionalList(Group& group_, const std::string& name_, const std::string& help_, const Map<K, T>& map_,
+						  const Container& defaultValues_ = Container(), Options options_ = {})
 			: PositionalBase(name_, help_, options_), map(map_), values(defaultValues_), defaultValues(defaultValues_) {
 			group_.Add(*this);
 		}

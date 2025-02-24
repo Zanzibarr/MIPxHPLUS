@@ -1,9 +1,11 @@
 # ONLY FOR CLUSTER USE
 import sys
+
 sys.dont_write_bytecode = True
 
 import os, random, shutil
 from pathlib import Path
+
 
 def clear_dir(dir: Path):
     for item in dir.iterdir():
@@ -12,44 +14,61 @@ def clear_dir(dir: Path):
         elif item.is_dir():
             shutil.rmtree(item)
 
+
 def main():
     # verify input correctness
     if len(sys.argv) <= 1 or sys.argv[1] in ["-h", "--h", "-help", "--help"]:
-        print(f"Usage: >> python3 {os.path.basename(__file__)} <instances_folder> <all parameters to pass to the execution>.")
+        print(
+            f"Usage: >> python3 {os.path.basename(__file__)} <instances_folder> <all parameters to pass to the execution>."
+        )
         exit(0)
-        
+
     # read inputs
     instances_folder = os.path.abspath(sys.argv[1])
     execution_parameters = " ".join(sys.argv[2:])
-    example_parameters = execution_parameters+" --t=900 --l=<instance_name>.log --run=<instance_name>"
+    example_parameters = (
+        execution_parameters + " --t=900 --l=<instance_name>.log --run=<instance_name>"
+    )
 
     # verify inputs
-    if input(f"The instances will be taken from the folder {instances_folder}\nInsert y if it's correct: ") != "y": exit(0)
-    if input(f"The execution will have the following structure:\n>> ./main <instance> {example_parameters}\nInsert y if it's correct: ") != "y": exit(0)
-        
+    if (
+        input(
+            f"The instances will be taken from the folder {instances_folder}\nInsert y if it's correct: "
+        )
+        != "y"
+    ):
+        exit(0)
+    if (
+        input(
+            f"The execution will have the following structure:\n>> ./main <instance> {example_parameters}\nInsert y if it's correct: "
+        )
+        != "y"
+    ):
+        exit(0)
+
     # organize batches
     batch_size = 1000
     instances_list = os.listdir(instances_folder)
     random.shuffle(instances_list)
-    n_batches = (len(instances_list)//batch_size)+1
+    n_batches = (len(instances_list) // batch_size) + 1
 
     # jobs
     jobs_folder = f"{Path(__file__).parent.parent}/jobs"
     jobs_outputs = f"{Path(__file__).parent.parent}/jobs_outputs"
     os.makedirs(jobs_folder, exist_ok=True)
     os.makedirs(jobs_outputs, exist_ok=True)
-    
+
     exec_dir = f"{Path(__file__).parent.parent.parent}/code/build"
-    
+
     clear_dir(Path(jobs_outputs))
 
     for i in range(n_batches):
         batch_path = f"{jobs_folder}/batch_{i}"
         os.makedirs(batch_path, exist_ok=True)
         clear_dir(Path(batch_path))
-        
+
         batch_start = i * batch_size
-        
+
         for j in range(min(batch_size, len(instances_list) - batch_start)):
             idx = batch_start + j
             inst = instances_list[idx]
@@ -83,6 +102,7 @@ sudo cpupower frequency-set -g powersave"""
 
             with open(job, "w") as f:
                 f.write(job_content)
-        
+
+
 if __name__ == "__main__":
     main()

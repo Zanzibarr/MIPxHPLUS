@@ -9,9 +9,8 @@
 #ifndef INST_H
 #define INST_H
 
-#include "utils.hpp"
-
 #include "bs.hxx"
+#include "utils.hpp"
 
 namespace hplus {
 
@@ -73,10 +72,13 @@ namespace hplus {
 	void print_stats(const statistics& _s, const logger& _l);
 	/** Create the instance _i from the file found at the path _f @returns false if it detects that the problem is infeasible (no assumptions can be made if it
 	 * returns true) */
+	[[nodiscard]]
 	bool create_instance(instance& _i, environment& _e, statistics& _s, const logger& _l);
 	/** Get the remaining variables (the ones not eliminated by an eventual optimization of the instance) of the instance _i */
+	[[nodiscard]]
 	binary_set var_remaining(const instance& _i);
 	/** Get the remaining actions (the ones not eliminated by an eventual optimization of the instance) of the instance _i */
+	[[nodiscard]]
 	binary_set act_remaining(const instance& _i);
 	/** Update the best solution of _i with a new solution _s (with cost _c): if the solution is not better, the solution won't be updated */
 	void update_sol(instance& _i, const std::vector<size_t> _s, const unsigned int _c, const logger& _l);

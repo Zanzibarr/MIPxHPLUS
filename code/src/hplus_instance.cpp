@@ -7,7 +7,6 @@
  */
 
 #include "hplus_instance.hpp"
-
 #include <algorithm>
 #include <fstream>
 
@@ -30,31 +29,33 @@ void hplus::print_stats(const statistics& _s, const logger& _l) {
 
 static inline void init(hplus::instance& _i) {
 	_i = (hplus::instance){ .equal_costs = false,
-		.n = 0,
-		.m = 0,
-		.n_opt = 0,
-		.m_opt = 0,
-		.var_ranges = std::vector<size_t>(0),
-		.actions = std::vector<hplus::action>(0),
-		.goal = binary_set(),
-		.best_solution = std::vector<size_t>(0),
-		.best_cost = UINT_MAX,
-		.var_e = binary_set(),
-		.var_f = binary_set(),
-		.act_e = binary_set(),
-		.act_f = binary_set(),
-		.fadd_e = std::vector<binary_set>(0),
-		.fadd_f = std::vector<binary_set>(0),
-		.var_t = std::vector<int>(0),
-		.act_t = std::vector<int>(0),
-		.act_inv = std::vector<std::vector<size_t>>(0),
-		.var_opt_conv = std::vector<size_t>(0),
-		.act_opt_conv = std::vector<size_t>(0),
-		.fadd_checkpoint = std::vector<size_t>(0),
-		.act_cpxtoidx = std::vector<size_t>(0),
-		.act_with_eff = std::vector<std::vector<size_t>>(0),
-		.act_with_pre = std::vector<std::vector<size_t>>(0) };
+							.n = 0,
+							.m = 0,
+							.n_opt = 0,
+							.m_opt = 0,
+							.var_ranges = std::vector<size_t>(0),
+							.actions = std::vector<hplus::action>(0),
+							.goal = binary_set(),
+							.best_solution = std::vector<size_t>(0),
+							.best_cost = UINT_MAX,
+							.var_e = binary_set(),
+							.var_f = binary_set(),
+							.act_e = binary_set(),
+							.act_f = binary_set(),
+							.fadd_e = std::vector<binary_set>(0),
+							.fadd_f = std::vector<binary_set>(0),
+							.var_t = std::vector<int>(0),
+							.act_t = std::vector<int>(0),
+							.act_inv = std::vector<std::vector<size_t>>(0),
+							.var_opt_conv = std::vector<size_t>(0),
+							.act_opt_conv = std::vector<size_t>(0),
+							.fadd_checkpoint = std::vector<size_t>(0),
+							.act_cpxtoidx = std::vector<size_t>(0),
+							.act_with_eff = std::vector<std::vector<size_t>>(0),
+							.act_with_pre = std::vector<std::vector<size_t>>(0) };
 }
+
+[[nodiscard]]
 static inline bool parse_inst_file(hplus::instance& _i, hplus::environment& _e, hplus::statistics& _s, const logger& _l) {
 	// ====================================================== //
 	// ================== PARSING SAS FILE ================== //
@@ -70,31 +71,31 @@ static inline bool parse_inst_file(hplus::instance& _i, hplus::environment& _e, 
 
 	// * version section
 	std::getline(ifs, line); // begin_version
-	if (line != "begin_version")
+	if (line != "begin_version") [[unlikely]]
 		_l.raise_error("Corrupted file");
 	std::getline(ifs, line); // version_number (ignored)
-	if (!isint(line))
+	if (!isint(line)) [[unlikely]]
 		_l.raise_error("Corrupted file");
 	std::getline(ifs, line); // end_version
-	if (line != "end_version")
+	if (line != "end_version") [[unlikely]]
 		_l.raise_error("Corrupted file");
 
 	// * metric section
 	std::getline(ifs, line); // begin_metric
-	if (line != "begin_metric")
+	if (line != "begin_metric") [[unlikely]]
 		_l.raise_error("Corrupted file");
 	std::getline(ifs, line); // metric
-	if (!isint(line, 0, 1))
+	if (!isint(line, 0, 1)) [[unlikely]]
 		_l.raise_error("Corrupted file");
 	_i.equal_costs = stoi(line) == 0;
 	std::getline(ifs, line); // end_metric
-	if (line != "end_metric")
+	if (line != "end_metric") [[unlikely]]
 		_l.raise_error("Corrupted file");
 
 	// * variables section
 	_PRINT_WARN("Ignoring axiom layers.");
 	std::getline(ifs, line); // _i.n
-	if (!isint(line, 0))
+	if (!isint(line, 0)) [[unlikely]]
 		_l.raise_error("Corrupted file");
 	size_t nvar = stoi(line);
 	_i.n = nvar;
@@ -102,64 +103,64 @@ static inline bool parse_inst_file(hplus::instance& _i, hplus::environment& _e, 
 	for (size_t var_i = 0; var_i < _i.n; var_i++) {
 		// process each variable
 		std::getline(ifs, line); // begin_variable
-		if (line != "begin_variable")
+		if (line != "begin_variable") [[unlikely]]
 			_l.raise_error("Corrupted file");
 		std::getline(ifs, line); // variable name (ignored)
 		std::getline(ifs, line); // axiom layer (ignored)
-		if (line != "-1")
+		if (line != "-1") [[unlikely]]
 			_l.raise_error("Axiom layer is not -1, this software is not made for this instance.");
 		std::getline(ifs, line); // range of variable
-		if (!isint(line, 0))
+		if (!isint(line, 0)) [[unlikely]]
 			_l.raise_error("Corrupted file");
 		size_t range = stoi(line);
 		_i.var_ranges[var_i] = range;
 		for (size_t j = 0; j < range; j++)
 			std::getline(ifs, line); // name for variable value (ignored)
 		std::getline(ifs, line);	 // end_variable
-		if (line != "end_variable")
+		if (line != "end_variable") [[unlikely]]
 			_l.raise_error("Corrupted file");
 	}
 
 	// * mutex section (ignored)
 	_PRINT_WARN("Ignoring mutex section.");
 	std::getline(ifs, line); // number of mutex groups
-	if (!isint(line, 0))
+	if (!isint(line, 0)) [[unlikely]]
 		_l.raise_error("Corrupted file");
 	size_t nmgroups = stoi(line);
 	for (size_t i = 0; i < nmgroups; i++) {
 		std::getline(ifs, line); // begin_mutex_group
-		if (line != "begin_mutex_group")
+		if (line != "begin_mutex_group") [[unlikely]]
 			_l.raise_error("Corrupted file");
 		while (line != "end_mutex_group") {
 			std::getline(ifs, line); // reach end_mutex_group (ignore all content)
-			if (line == "begin_state")
+			if (line == "begin_state") [[unlikely]]
 				_l.raise_error("Corrupted file");
 		}
 	}
 
 	// * initial state section
 	std::getline(ifs, line); // begin_state
-	if (line != "begin_state")
+	if (line != "begin_state") [[unlikely]]
 		_l.raise_error("Corrupted file");
 	std::vector<int> tmp_istate(_i.n);
 	for (size_t var_i = 0; var_i < _i.n; var_i++) {
 		std::getline(ifs, line); // initial value of var_i
-		if (!isint(line, 0, _i.var_ranges[var_i] - 1))
+		if (!isint(line, 0, _i.var_ranges[var_i] - 1)) [[unlikely]]
 			_l.raise_error("Corrupted file");
 		size_t val = stoi(line);
 		tmp_istate[var_i] = val;
 	}
 	std::getline(ifs, line); // end_state
-	if (line != "end_state")
+	if (line != "end_state") [[unlikely]]
 		_l.raise_error("Corrupted file");
 
 	// * goal state section
 	std::getline(ifs, line); // begin_goal
-	if (line != "begin_goal")
+	if (line != "begin_goal") [[unlikely]]
 		_l.raise_error("Corrupted file");
 	std::vector<int> tmp_goal(_i.n, -1);
 	std::getline(ifs, line); // number of goals
-	if (!isint(line, 0, _i.n))
+	if (!isint(line, 0, _i.n)) [[unlikely]]
 		_l.raise_error("Corrupted file");
 	size_t ngoals = stoi(line);
 	for (size_t _ = 0; _ < ngoals; _++) {
@@ -167,18 +168,18 @@ static inline bool parse_inst_file(hplus::instance& _i, hplus::environment& _e, 
 		std::vector<std::string> tokens;
 		std::getline(ifs, line); // pair 'variable goal'
 		tokens = split_string(line, ' ');
-		if (tokens.size() != 2)
+		if (tokens.size() != 2) [[unlikely]]
 			_l.raise_error("Corrupted file");
-		if (!isint(tokens[0], 0, _i.n - 1))
+		if (!isint(tokens[0], 0, _i.n - 1)) [[unlikely]]
 			_l.raise_error("Corrupted file"); // variable index
 		size_t var = stoi(tokens[0]);
-		if (!isint(tokens[1], 0, _i.var_ranges[var] - 1))
+		if (!isint(tokens[1], 0, _i.var_ranges[var] - 1)) [[unlikely]]
 			_l.raise_error("Corrupted file"); // variable goal
 		size_t value = stoi(tokens[1]);
 		tmp_goal[var] = value;
 	}
 	std::getline(ifs, line); // end_goal
-	if (line != "end_goal")
+	if (line != "end_goal") [[unlikely]]
 		_l.raise_error("Corrupted file");
 
 	// * operator (actions) section
@@ -186,7 +187,7 @@ static inline bool parse_inst_file(hplus::instance& _i, hplus::environment& _e, 
 	bool equalcosts_check = true;
 	_PRINT_WARN("Ignoring effect conditions.");
 	std::getline(ifs, line); // n_act
-	if (!isint(line, 0))
+	if (!isint(line, 0)) [[unlikely]]
 		_l.raise_error("Corrupted file");
 	_i.m = stoi(line);
 	_i.actions = std::vector<hplus::action>(_i.m);
@@ -194,13 +195,13 @@ static inline bool parse_inst_file(hplus::instance& _i, hplus::environment& _e, 
 	for (size_t act_i = 0; act_i < _i.m; act_i++) {
 		// process each action
 		std::getline(ifs, line); // begin_operator
-		if (line != "begin_operator")
+		if (line != "begin_operator") [[unlikely]]
 			_l.raise_error("Corrupted file");
 		std::getline(ifs, line); // symbolic action name
 		std::string		 name = line;
 		std::vector<int> act_pre(_i.n, -1);
 		std::getline(ifs, line); // number of prevail conditions
-		if (!isint(line, 0, _i.n))
+		if (!isint(line, 0, _i.n)) [[unlikely]]
 			_l.raise_error("Corrupted file");
 		size_t n_pre = stoi(line);
 		for (size_t pre_i = 0; pre_i < n_pre; pre_i++) {
@@ -208,18 +209,18 @@ static inline bool parse_inst_file(hplus::instance& _i, hplus::environment& _e, 
 			std::vector<std::string> tokens;
 			std::getline(ifs, line); // pair 'variable value'
 			tokens = split_string(line, ' ');
-			if (tokens.size() != 2)
+			if (tokens.size() != 2) [[unlikely]]
 				_l.raise_error("Corrupted file");
-			if (!isint(tokens[0], 0, _i.n - 1))
+			if (!isint(tokens[0], 0, _i.n - 1)) [[unlikely]]
 				_l.raise_error("Corrupted file"); // variable index
 			size_t var = stoi(tokens[0]);
-			if (!isint(tokens[1], 0, _i.var_ranges[var] - 1))
+			if (!isint(tokens[1], 0, _i.var_ranges[var] - 1)) [[unlikely]]
 				_l.raise_error("Corrupted file"); // variable value
 			size_t value = stoi(tokens[1]);
 			act_pre[var] = value;
 		}
 		std::getline(ifs, line); // number of effects
-		if (!isint(line, 0))
+		if (!isint(line, 0)) [[unlikely]]
 			_l.raise_error("Corrupted file");
 		size_t			 n_eff = stoi(line);
 		std::vector<int> act_eff(_i.n, -1);
@@ -228,17 +229,18 @@ static inline bool parse_inst_file(hplus::instance& _i, hplus::environment& _e, 
 			std::getline(ifs, line); // effect line
 			std::vector<std::string> tokens;
 			tokens = split_string(line, ' ');
-			if (tokens.size() != 4)
+			if (tokens.size() != 4) [[unlikely]]
 				_l.raise_error("This program won't handle effect conditions."); // not expecting effect conditions
-			if (!isint(tokens[0], 0, 0))
+			if (!isint(tokens[0], 0, 0)) [[unlikely]]
 				_l.raise_error("This program won't handle effect conditions."); // number of effect conditions (ignored and check to be 0)
-			if (!isint(tokens[1], 0, _i.n - 1))
+			if (!isint(tokens[1], 0, _i.n - 1)) [[unlikely]]
 				_l.raise_error("Corrupted file"); // variable affected by the action
 			size_t var = stoi(tokens[1]);
-			if (!isint(tokens[2], -1, _i.var_ranges[var] - 1))
+			[[unlikely]]
+			if (!isint(tokens[2], -1, _i.var_ranges[var] - 1)) [[unlikely]]
 				_l.raise_error("Corrupted file"); // precondition of the variable
 			int pre_val = stoi(tokens[2]);
-			if (!isint(tokens[3], 0, _i.var_ranges[var] - 1))
+			if (!isint(tokens[3], 0, _i.var_ranges[var] - 1)) [[unlikely]]
 				_l.raise_error("Corrupted file"); // effect of the variable
 			size_t eff_val = stoi(tokens[3]);
 			if (pre_val >= 0)
@@ -246,7 +248,7 @@ static inline bool parse_inst_file(hplus::instance& _i, hplus::environment& _e, 
 			act_eff[var] = eff_val;
 		}
 		std::getline(ifs, line); // action cost
-		if (!isint(line))
+		if (!isint(line)) [[unlikely]]
 			_l.raise_error("Corrupted file");
 		unsigned int cost = 1;
 		if (!_i.equal_costs) {
@@ -257,7 +259,7 @@ static inline bool parse_inst_file(hplus::instance& _i, hplus::environment& _e, 
 				equalcosts_check = false;
 		}
 		std::getline(ifs, line); // end_operator
-		if (line != "end_operator")
+		if (line != "end_operator") [[unlikely]]
 			_l.raise_error("Corrupted file");
 		_i.actions[act_i] = (hplus::action){ .cost = cost, .name = name };
 
@@ -402,6 +404,7 @@ static inline bool parse_inst_file(hplus::instance& _i, hplus::environment& _e, 
 		_i.m == 0 && !_i.goal.empty());
 	return !is_infeasible;
 }
+
 static inline void init_instance_opt(hplus::instance& _i, const hplus::environment& _e) {
 	_i.n_opt = _i.n;
 	_i.m_opt = _i.m;
@@ -429,6 +432,7 @@ static inline void init_instance_opt(hplus::instance& _i, const hplus::environme
 	for (size_t idx = 0; idx < _i.m; idx++)
 		_i.act_cpxtoidx[idx] = idx;
 }
+
 bool hplus::create_instance(instance& _i, environment& _e, statistics& _s, const logger& _l) {
 	init(_i);
 	if (!parse_inst_file(_i, _e, _s, _l)) {
@@ -549,7 +553,7 @@ static inline void landmark_extraction(hplus::instance& _i, std::vector<binary_s
 				}
 			}
 		}
-		if (_CHECK_STOP())
+		if (_CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
 	}
 
@@ -578,12 +582,13 @@ static inline void landmark_extraction(hplus::instance& _i, std::vector<binary_s
 					_al.add(cand_act);
 			}
 		}
-		if (_CHECK_STOP())
+		if (_CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
 	}
 	_i.var_f |= _fl;
 	_i.act_f |= _al;
 }
+
 static inline void fadd_extraction(hplus::instance& _i, const std::vector<binary_set>& _lm, std::vector<binary_set>& _fadd, const logger& _l) {
 	_PRINT_VERBOSE("Extracting first adders.");
 
@@ -605,12 +610,13 @@ static inline void fadd_extraction(hplus::instance& _i, const std::vector<binary
 				f_lm_a.add(i);
 		// _fadd[a] := { p in add(a) s.t. p is not a fact landmark for a }
 		_fadd[act_i] |= (_i.actions[act_i].eff & !f_lm_a);
-		if (_CHECK_STOP())
+		if (_CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
 	}
 	for (size_t act_i = 0; act_i < _i.m; act_i++)
 		_i.fadd_e[act_i] |= (_i.actions[act_i].eff & !_fadd[act_i]);
 }
+
 static inline void relevance_analysis(hplus::instance& _i, binary_set& _fl, std::vector<binary_set>& _fadd, const logger& _l) {
 	_PRINT_VERBOSE("Relevance analysis.");
 
@@ -624,7 +630,7 @@ static inline void relevance_analysis(hplus::instance& _i, binary_set& _fl, std:
 			relevant_actions.add(act_i);
 		}
 	}
-	if (_CHECK_STOP())
+	if (_CHECK_STOP()) [[unlikely]]
 		throw timelimit_exception("Reached time limit.");
 
 	// list of actions yet to check
@@ -644,10 +650,9 @@ static inline void relevance_analysis(hplus::instance& _i, binary_set& _fl, std:
 				new_act = true;
 			}
 		}
-		auto it =
-			std::set_difference(cand_actions_sparse.begin(), cand_actions_sparse.end(), new_relevant_actions.begin(), new_relevant_actions.end(), cand_actions_sparse.begin());
+		auto it = std::set_difference(cand_actions_sparse.begin(), cand_actions_sparse.end(), new_relevant_actions.begin(), new_relevant_actions.end(), cand_actions_sparse.begin());
 		cand_actions_sparse.resize(it - cand_actions_sparse.begin());
-		if (_CHECK_STOP())
+		if (_CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
 	}
 	relevant_variables |= _i.goal;
@@ -656,6 +661,7 @@ static inline void relevance_analysis(hplus::instance& _i, binary_set& _fl, std:
 	_i.var_e |= (!relevant_variables - _fl);
 	_i.act_e |= !relevant_actions;
 }
+
 static inline void dominated_actions_elimination(hplus::instance& _i, std::vector<binary_set>& _lm, std::vector<binary_set>& _fadd, const logger& _l) {
 	_PRINT_VERBOSE("Extracting dominated actions.");
 
@@ -670,7 +676,7 @@ static inline void dominated_actions_elimination(hplus::instance& _i, std::vecto
 			if (_lm[var_i][var_j] || _lm[var_i][_i.n])
 				var_flm_sparse[var_i].push_back(var_j);
 		}
-		if (_CHECK_STOP())
+		if (_CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
 	}
 
@@ -681,7 +687,7 @@ static inline void dominated_actions_elimination(hplus::instance& _i, std::vecto
 				for (auto i : var_flm_sparse[var_i])
 					act_flm[act_i].add(i);
 			}
-		if (_CHECK_STOP())
+		if (_CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
 	}
 
@@ -697,17 +703,18 @@ static inline void dominated_actions_elimination(hplus::instance& _i, std::vecto
 	for (auto dominant_act : rem_act)
 		if (!dominated_actions[dominant_act]) {
 			for (auto dominated_act : candidates.find_subsets(_fadd[dominant_act])) {
-				if (_i.act_f[dominated_act] || dominant_act == dominated_act || _i.actions[dominant_act].cost > _i.actions[dominated_act].cost || !act_flm[dominated_act].contains(_i.actions[dominant_act].pre))
+				if (_i.act_f[dominated_act] || dominant_act == dominated_act || _i.actions[dominant_act].cost > _i.actions[dominated_act].cost || !act_flm[dominated_act].contains(_i.actions[dominant_act].pre)) [[likely]]
 					continue;
 
 				dominated_actions.add(dominated_act);
 				_i.act_e.add(dominated_act);
 				candidates.remove(dominated_act, _fadd[dominated_act]);
 			}
-			if (_CHECK_STOP())
+			if (_CHECK_STOP()) [[unlikely]]
 				throw timelimit_exception("Reached time limit.");
 		}
 }
+
 static inline void immediate_action_application(hplus::instance& _i, const hplus::environment& _e, binary_set& _al, const logger& _l) {
 	_PRINT_VERBOSE("Immediate action application.");
 
@@ -724,7 +731,7 @@ static inline void immediate_action_application(hplus::instance& _i, const hplus
 			const auto& pre = _i.actions[act_i].pre & hplus::var_remaining(_i);
 			const auto& eff = _i.actions[act_i].eff & hplus::var_remaining(_i);
 
-			if (current_state.contains(pre) && (_al[act_i] || _i.actions[act_i].cost == 0)) {
+			if (current_state.contains(pre) && (_al[act_i] || _i.actions[act_i].cost == 0)) [[unlikely]] {
 				actions_left.remove(act_i);
 				_i.act_f.add(act_i);
 				if (_e.alg == HPLUS_CLI_ALG_IMAI)
@@ -744,10 +751,11 @@ static inline void immediate_action_application(hplus::instance& _i, const hplus
 				found_next_action = true;
 			}
 		}
-		if (_CHECK_STOP())
+		if (_CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
 	}
 }
+
 static inline void inverse_actions_extraction(hplus::instance& _i, const logger& _l) {
 	_PRINT_VERBOSE("Extracting inverse actions.");
 
@@ -762,17 +770,18 @@ static inline void inverse_actions_extraction(hplus::instance& _i, const logger&
 		const auto& pre = _i.actions[act_i].pre;
 		const auto& eff = _i.actions[act_i].eff;
 		for (auto act_j : subset_finder.find_subsets(pre)) {
-			if (_i.actions[act_j].pre.contains(eff)) {
+			if (_i.actions[act_j].pre.contains(eff)) [[unlikely]] {
 				if (!_i.act_f[act_i])
 					_i.act_inv[act_i].push_back(act_j);
 				if (!_i.act_f[act_j])
 					_i.act_inv[act_j].push_back(act_i);
 			}
 		}
-		if (_CHECK_STOP())
+		if (_CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
 	}
 }
+
 static inline void finish_opt(hplus::instance& _i) {
 	size_t count = 0;
 	for (auto var_i : hplus::var_remaining(_i))
@@ -791,6 +800,7 @@ static inline void finish_opt(hplus::instance& _i) {
 	_INTCHECK_ASSERT(!_i.var_f.intersects(_i.var_e));
 	_INTCHECK_ASSERT(!_i.act_f.intersects(_i.act_e));
 }
+
 void hplus::instance_optimization(instance& _i, const environment& _e, const logger& _l) {
 	auto landmarks = std::vector<binary_set>(_i.n, binary_set(_i.n + 1));
 	auto fact_landmarks = binary_set(_i.n);

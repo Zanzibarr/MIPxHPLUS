@@ -13,19 +13,18 @@
 // ############################ CODE VERSION ########################### //
 // ##################################################################### //
 
-#define CODE_VERSION "1.0.0"
+#define CODE_VERSION "1.0.1"
 
 // ##################################################################### //
 // ############################## IMPORTS ############################## //
 // ##################################################################### //
 
+#include "log.hxx"
 #include <chrono>
 #include <climits>
 #include <iostream>
 #include <string>
 #include <vector>
-
-#include "log.hxx"
 
 // ##################################################################### //
 // ######################### PATHS AND FOLDERS ######################### //
@@ -76,8 +75,12 @@ extern volatile int global_terminate;
 
 /** Time keeper for execution time monitoring */
 struct time_keeper {
+	[[nodiscard]]
 	inline double get_time() const {
-		return (static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - this->timer).count())) / 1'000;
+		return (static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(
+										std::chrono::steady_clock::now() - this->timer)
+										.count())) /
+			1'000;
 	}
 	inline time_keeper() { this->timer = std::chrono::steady_clock::now(); }
 
@@ -86,12 +89,10 @@ private:
 };
 
 /** Solution status for solution monitoring */
-enum solution_status {
-	OPT = 0,
-	FEAS = 1,
-	INFEAS = 2,
-	NOTFOUND = 404
-};
+enum solution_status { OPT = 0,
+					   FEAS = 1,
+					   INFEAS = 2,
+					   NOTFOUND = 404 };
 
 /** Execution status for execution monitoring */
 enum exec_status {
@@ -106,7 +107,8 @@ enum exec_status {
 };
 
 /** Split the string _str using _del as delimiter */
-static inline std::vector<std::string> split_string(const std::string& _str, char _del) {
+[[nodiscard]]
+inline std::vector<std::string> split_string(const std::string& _str, char _del) {
 	std::vector<std::string> tokens;
 	std::string				 tmp;
 	for (int i = 0; i < _str.length(); i++) {
@@ -123,7 +125,9 @@ static inline std::vector<std::string> split_string(const std::string& _str, cha
 }
 
 /** Check if _str is an integer between from and to (inclusive) */
-static inline bool isint(const std::string& _str, const int _from = INT_MIN, const int _to = INT_MAX) {
+[[nodiscard]]
+inline bool isint(const std::string& _str, const int _from = INT_MIN,
+				  const int _to = INT_MAX) {
 	try {
 		int num = stoi(_str);
 		return num >= _from && num <= _to;
@@ -132,13 +136,14 @@ static inline bool isint(const std::string& _str, const int _from = INT_MIN, con
 	}
 }
 
-/** (Debugging) Exits with error message due to missing implementation, prints through _log the message _msg formatted as error */
-static inline void todo(const logger& _log, const std::string& _msg) {
+/** (Debugging) Exits with error message due to missing implementation, prints through _log the
+ * message _msg formatted as error */
+constexpr void todo(const logger& _log, const std::string& _msg) {
 	_log.raise_error("%s: UNIMPLEMENTED.", _msg.c_str());
 }
 
 /** (Debugging) Pauses the code execution until resuming, prints msg formatted as warning */
-static inline void pause(const std::string& _msg) {
+inline void pause(const std::string& _msg) {
 	size_t i = 0;
 	std::cout << _msg << "(1 to exit, 0 to continue): ";
 	std::cin >> i;
@@ -151,8 +156,8 @@ private:
 	std::string msg;
 
 public:
-	inline timelimit_exception(const char* _m)
-		: msg(_m) {}
+	inline timelimit_exception(const char* _m) : msg(_m) {}
+	[[nodiscard]]
 	inline const char* what() const throw() { return msg.c_str(); }
 };
 
@@ -168,37 +173,32 @@ public:
 
 /** Define an assert function */
 #ifndef _ASSERT
-	#define _ASSERT(cond)                                                                                            \
-		{                                                                                                            \
-			if (!(cond)) {                                                                                           \
-				std::cerr << "Assert check failed at " << __func__ << "(): " << __FILE__ << ":" << __LINE__ << "\n"; \
-				exit(1);                                                                                             \
-			}                                                                                                        \
+	#define _ASSERT(cond)                                                                       \
+		{                                                                                       \
+			if (!(cond)) [[unlikely]] {                                                         \
+				std::cerr << "Assert check failed at " << __func__ << "(): " << __FILE__ << ":" \
+						  << __LINE__ << "\n";                                                  \
+				exit(1);                                                                        \
+			}                                                                                   \
 		}
 #endif
 
 /** Print a warning message only if the warn flag is set */
 #if HPLUS_WARN
-	#define _PRINT_WARN(_msg)    \
-		{                        \
-			_l.print_warn(_msg); \
-		}
+	#define _PRINT_WARN(_msg) \
+		{ _l.print_warn(_msg); }
 #else
 	#define _PRINT_WARN(_msg) \
-		{                     \
-		}
+		{}
 #endif
 
 /** Print info message only with the right verbose settings */
 #if HPLUS_VERBOSE >= 10
-	#define _PRINT_INFO(_msg)    \
-		{                        \
-			_l.print_info(_msg); \
-		}
+	#define _PRINT_INFO(_msg) \
+		{ _l.print_info(_msg); }
 #else
 	#define _PRINT_INFO(_msg) \
-		{                     \
-		}
+		{}
 #endif
 
 /** Print info message only with the right verbose settings */
@@ -206,8 +206,7 @@ public:
 	#define _PRINT_DEBUG(_msg) _PRINT_INFO(_msg)
 #else
 	#define _PRINT_DEBUG(_msg) \
-		{                      \
-		}
+		{}
 #endif
 
 /** Print info message only with the right verbose settings */
@@ -215,20 +214,16 @@ public:
 	#define _PRINT_VERBOSE(_msg) _PRINT_INFO(_msg)
 #else
 	#define _PRINT_VERBOSE(_msg) \
-		{                        \
-		}
+		{}
 #endif
 
 /** Asserts to be made only if integrity checks flag is set */
 #if HPLUS_INTCHECK
 	#define _INTCHECK_ASSERT(_cond) \
-		{                           \
-			_ASSERT(_cond);         \
-		}
+		{ _ASSERT(_cond); }
 #else
 	#define _INTCHECK_ASSERT(_cond) \
-		{                           \
-		}
+		{}
 #endif
 
 #endif /* UTILS_H */

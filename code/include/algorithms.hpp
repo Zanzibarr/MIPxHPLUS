@@ -9,9 +9,8 @@
 #ifndef ALGS_H
 #define ALGS_H
 
-#include <cplex.h>
-
 #include "hplus_instance.hpp"
+#include <cplex.h>
 
 // ====================================================== //
 // ===================== CPLEX UTILS ==================== //
@@ -21,6 +20,7 @@ void cpx_init(CPXENVptr& env, CPXLPptr& lp, const hplus::environment& _e, const 
 
 void cpx_close(CPXENVptr& env, CPXLPptr& lp);
 
+[[nodiscard]]
 bool parse_cpx_status(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, hplus::environment& _e, const logger& _l);
 
 // ====================================================== //

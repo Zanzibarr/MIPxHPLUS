@@ -7,7 +7,6 @@
  */
 
 #include "algorithms.hpp"
-
 #include <algorithm>
 #include <random>
 #include <set>
@@ -73,6 +72,7 @@ bool parse_cpx_status(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, h
 // ############################# HEURISTICS ############################ //
 // ##################################################################### //
 
+[[nodiscard]]
 static inline bool greedycost(const hplus::instance& _i, std::vector<size_t>& _s, unsigned int& _c, const logger& _l) {
 	_PRINT_VERBOSE("Running greedycost algorithm.");
 	binary_set state(_i.n);
@@ -82,7 +82,7 @@ static inline bool greedycost(const hplus::instance& _i, std::vector<size_t>& _s
 		int	   best_act = -1;
 		double best_cost = INFINITY;
 		for (auto act_i : _candidates) {
-			if (_i.actions[act_i].cost < best_cost) {
+			if (_i.actions[act_i].cost < best_cost) [[unlikely]] {
 				best_act = act_i;
 				best_cost = _i.actions[act_i].cost;
 			}
@@ -96,19 +96,20 @@ static inline bool greedycost(const hplus::instance& _i, std::vector<size_t>& _s
 		feasible_actions.add(act_i, _i.actions[act_i].pre);
 	while (!state.contains(_i.goal)) {
 		const auto& candidates = feasible_actions.find_subsets(state);
-		if (candidates.empty())
+		if (candidates.empty()) [[unlikely]]
 			return false;
 		size_t choice = find_best_act(candidates);
 		_s.push_back(choice);
 		_c += _i.actions[choice].cost;
 		state |= _i.actions[choice].eff;
 		feasible_actions.remove(choice, _i.actions[choice].pre);
-		if (_CHECK_STOP())
+		if (_CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
 	}
 	return true;
 }
 
+[[nodiscard]]
 static inline bool greedycxe(const hplus::instance& _i, std::vector<size_t>& _s, unsigned int& _c, const logger& _l) {
 	_PRINT_VERBOSE("Running greedycxe algorithm.");
 	binary_set state(_i.n);
@@ -126,7 +127,7 @@ static inline bool greedycxe(const hplus::instance& _i, std::vector<size_t>& _s,
 			if (neff == 0)
 				continue;
 			double cxe = static_cast<double>(_i.actions[act_i].cost) / neff;
-			if (cxe < best_cxe) {
+			if (cxe < best_cxe) [[unlikely]] {
 				best_act = act_i;
 				best_cxe = _i.actions[act_i].cost;
 			}
@@ -140,19 +141,20 @@ static inline bool greedycxe(const hplus::instance& _i, std::vector<size_t>& _s,
 		feasible_actions.add(act_i, _i.actions[act_i].pre);
 	while (!state.contains(_i.goal)) {
 		const auto& candidates = feasible_actions.find_subsets(state);
-		if (candidates.empty())
+		if (candidates.empty()) [[unlikely]]
 			return false;
 		size_t choice = find_best_act(candidates);
 		_s.push_back(choice);
 		_c += _i.actions[choice].cost;
 		state |= _i.actions[choice].eff;
 		feasible_actions.remove(choice, _i.actions[choice].pre);
-		if (_CHECK_STOP())
+		if (_CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
 	}
 	return true;
 }
 
+[[nodiscard]]
 static inline bool randheur(const hplus::instance& _i, std::vector<size_t>& _s, unsigned int& _c, const logger& _l) {
 	_PRINT_VERBOSE("Running rand algorithm.");
 	binary_set state(_i.n);
@@ -163,19 +165,20 @@ static inline bool randheur(const hplus::instance& _i, std::vector<size_t>& _s, 
 		feasible_actions.add(act_i, _i.actions[act_i].pre);
 	while (!state.contains(_i.goal)) {
 		const auto& candidates = feasible_actions.find_subsets(state);
-		if (candidates.empty())
+		if (candidates.empty()) [[unlikely]]
 			return false;
 		size_t choice = candidates[rand() % candidates.size()];
 		_s.push_back(choice);
 		_c += _i.actions[choice].cost;
 		state |= _i.actions[choice].eff;
 		feasible_actions.remove(choice, _i.actions[choice].pre);
-		if (_CHECK_STOP())
+		if (_CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
 	}
 	return true;
 }
 
+[[nodiscard]]
 static inline bool randr(const hplus::instance& _i, std::vector<size_t>& _s, unsigned int& _c, const logger& _l) {
 	_PRINT_VERBOSE("Running randr algorithm.");
 	// [ ]: (maybe) Choose on CLI
@@ -191,7 +194,7 @@ static inline bool randr(const hplus::instance& _i, std::vector<size_t>& _s, uns
 	size_t		 best_sol = 0;
 	unsigned int best_cost = random_costs[0];
 	for (size_t i = 1; i < repetitions; i++)
-		if (random_costs[i] < best_cost) {
+		if (random_costs[i] < best_cost) [[unlikely]] {
 			best_sol = i;
 			best_cost = random_costs[i];
 		}
@@ -200,26 +203,30 @@ static inline bool randr(const hplus::instance& _i, std::vector<size_t>& _s, uns
 	return true;
 }
 
+[[nodiscard]]
 static inline bool hmax(const hplus::instance& _i, std::vector<size_t>& _s, unsigned int& _c, const logger& _l) {
 	_PRINT_VERBOSE("Running hmax algorithm.");
 	// [ ]: hmax heuristic
 	return false;
 }
 
+[[nodiscard]]
 static inline bool hadd(const hplus::instance& _i, std::vector<size_t>& _s, unsigned int& _c, const logger& _l) {
 	_PRINT_VERBOSE("Running hadd algorithm.");
 	// [ ]: hadd heuristic
 	return false;
 }
 
+[[nodiscard]]
 static inline bool relax(const hplus::instance& _i, std::vector<size_t>& _s, unsigned int& _c, const logger& _l) {
 	_PRINT_VERBOSE("Running relax algorithm.");
 	// [ ]: Solve linear relaxation and apply random walk
 	return false;
 }
 
+[[nodiscard]]
 static inline bool localsearch(const hplus::instance& _i, bool (*_h)(const hplus::instance& _i, std::vector<size_t>& _s, unsigned int& _c, const logger& _l),
-	std::vector<size_t>& _s, unsigned int& _c, const logger& _l) {
+							   std::vector<size_t>& _s, unsigned int& _c, const logger& _l) {
 	_PRINT_VERBOSE("Running local-search algorithm.");
 	if (!_h(_i, _s, _c, _l))
 		return false;
@@ -266,7 +273,7 @@ void find_heuristic(hplus::instance& _i, hplus::environment& _e, const logger& _
 	else
 		_l.raise_error("The heuristic specified (%s) is not on the list of possible "
 					   "heuristics... Please read the Readme.md for instructions.",
-			_e.heur.c_str());
+					   _e.heur.c_str());
 
 	if (!found) {
 		_PRINT_VERBOSE("Storing infeasibility of solution.");
@@ -286,7 +293,7 @@ void cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, con
 	_PRINT_VERBOSE("Building imai's model.");
 
 	auto stopchk1 = []() {
-		if (_CHECK_STOP())
+		if (_CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
 	};
 
@@ -310,7 +317,7 @@ void cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, con
 			for (auto act : _i.actions) {
 				if (act.cost == 0)
 					n_act_zerocost++;
-				else if (act.cost < min_act_cost)
+				else if (act.cost < min_act_cost) [[unlikely]]
 					min_act_cost = act.cost;
 			}
 			int nsteps = _i.best_cost / min_act_cost + n_act_zerocost;
@@ -349,7 +356,7 @@ void cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, con
 	};
 
 	auto stopchk2 = [&objs, &lbs, &ubs, &types]() {
-		if (_CHECK_STOP()) {
+		if (_CHECK_STOP()) [[unlikely]] {
 			delete[] types;
 			types = nullptr;
 			delete[] ubs;
@@ -478,7 +485,7 @@ void cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, con
 	std::vector<double>	 rhs_c3(_i.n_opt);
 
 	auto stopchk3 = [&_i, &ind_c1, &val_c1, &ind_c3, &val_c3]() {
-		if (_CHECK_STOP()) {
+		if (_CHECK_STOP()) [[unlikely]] {
 			for (size_t var_i = 0; var_i < _i.n_opt; var_i++) {
 				delete[] ind_c3[var_i];
 				ind_c3[var_i] = nullptr;
@@ -649,7 +656,7 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
 	_PRINT_VERBOSE("Building rankooh's model.");
 
 	auto stopchk1 = []() {
-		if (_CHECK_STOP())
+		if (_CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
 	};
 
@@ -688,7 +695,7 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
 		auto eff_sparse = (_i.actions[act_i].eff & rem_var_set).sparse();
 		for (auto var_i : _i.actions[act_i].pre& rem_var_set) {
 			for (auto var_j : eff_sparse)
-				if (var_i != var_j) {
+				if (var_i != var_j) [[likely]] {
 					size_t pre_size = graph[var_i].size();
 					graph[var_i].insert(var_j);
 					if (pre_size != graph[var_i].size()) {
@@ -702,7 +709,7 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
 	stopchk1();
 
 	for (size_t node_i = 0; node_i < _i.n; node_i++)
-		if (degree_counter[node_i] > 0)
+		if (degree_counter[node_i] > 0) [[likely]]
 			nodes_queue.emplace(node_i, degree_counter[node_i]);
 
 	// finding minimum degree node
@@ -720,7 +727,7 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
 	// G_i (min degree heuristics)
 	for (auto _ : rem_var) {
 		int idx = find_min(nodes_queue);
-		if (idx == -1)
+		if (idx == -1) [[unlikely]]
 			break;
 
 		// graph structure:
@@ -733,7 +740,7 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
 		for (auto p : rem_var)
 			if (graph[p].find(idx) != graph[p].end()) {
 				for (auto q : graph[idx])
-					if (p != q) {
+					if (p != q) [[likely]] {
 						// add edge p - q
 						size_t pre_size = graph[p].size();
 						graph[p].insert(q);
@@ -753,7 +760,7 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
 
 				// update triangles list
 				for (auto q : graph[idx])
-					if (p != q)
+					if (p != q) [[likely]]
 						triangles_list.emplace_back(p, idx, q);
 			}
 
@@ -813,7 +820,7 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
 	};
 
 	auto stopchk2 = [&objs, &lbs, &ubs, &types]() {
-		if (_CHECK_STOP()) {
+		if (_CHECK_STOP()) [[unlikely]] {
 			delete[] types;
 			types = nullptr;
 			delete[] ubs;
@@ -923,7 +930,7 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
 	const int	 begin = 0;
 
 	auto stopchk3 = [&ind, &val]() {
-		if (_CHECK_STOP()) {
+		if (_CHECK_STOP()) [[unlikely]] {
 			delete[] val;
 			val = nullptr;
 			delete[] ind;
@@ -952,7 +959,7 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
 			ind[nnz] = get_var_idx(var_j);
 			val[nnz++] = -1;
 			for (auto act_i : _i.act_with_eff[var_i]) {
-				if (_i.actions[act_i].pre[var_j]) {
+				if (_i.actions[act_i].pre[var_j]) [[unlikely]] {
 					ind[nnz] = get_fa_idx(act_i, var_i);
 					val[nnz++] = 1;
 				}
