@@ -7,7 +7,7 @@
 # repository organization
 code/build/
 code/test/jobs/
-code/test/jobs_outputs/
+code/test/jobs_output/
 local/
 logs/
 results/
