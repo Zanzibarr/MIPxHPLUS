@@ -51,10 +51,8 @@ namespace {
 		constexpr std::string_view reset_bold = "\033[22m";
 	} // namespace colors
 
-	// Format prefix based on log level
 	inline std::pair<std::string, std::string> format_prefix(log_level level, bool include_time) {
 		std::string terminal_prefix, file_prefix;
-
 		switch (level) {
 			case log_level::info:
 				terminal_prefix = std::string(colors::info) + "[ INFO ] " +
@@ -75,7 +73,6 @@ namespace {
 				// No prefix for regular print
 				break;
 		}
-
 		if (include_time) {
 			const std::string time_str = get_current_time() + " : ";
 			if (!terminal_prefix.empty()) {
@@ -86,27 +83,21 @@ namespace {
 				file_prefix = time_str;
 			}
 		}
-
 		return { terminal_prefix, file_prefix };
 	}
 
 	std::string format_string(const char* format, ...) {
 		va_list arg_list;
-
 		va_start(arg_list, format);
-
 		int size_s = std::vsnprintf(nullptr, 0, format, arg_list) + 1;
 		if (size_s <= 0) {
 			va_end(arg_list);
 			throw std::runtime_error("error during formatting");
 		}
-
 		auto size = static_cast<size_t>(size_s);
 		auto buf = std::make_unique<char[]>(size);
 		std::vsnprintf(buf.get(), size, format, arg_list);
-
 		va_end(arg_list);
-
 		return { buf.get(), buf.get() + size - 1 };
 	}
 } // anonymous namespace
@@ -127,14 +118,11 @@ public:
 	 */
 	explicit logger(bool log_enabled, std::string_view log_name, std::string_view run_title = "")
 		: log_file_path_(log_name), log_enabled_(log_enabled) {
-
 		if (log_enabled_) {
 			try {
 				std::ofstream file(log_file_path_, std::ios::app);
-				if (!file) {
+				if (!file)
 					throw std::runtime_error("Failed to open log file: " + std::string(log_name));
-				}
-
 				if (!run_title.empty()) {
 					file << '\n'
 						 << THICK_LINE << "\nRUN_NAME: " << run_title << '\n'
@@ -197,7 +185,7 @@ public:
 	[[noreturn]]
 	void raise_error(const char* format, Args&&... args) const {
 		log_message(log_level::error, true, format, std::forward<Args>(args)...);
-		std::cerr << colors::reset; // reset color before exit
+		std::cerr << colors::reset;
 		std::exit(1);
 	}
 
@@ -211,40 +199,24 @@ private:
 	template <typename... Args>
 	void log_message(log_level level, bool include_time, const char* format, Args&&... args) const {
 		try {
-			// Format the message
 			std::string message = format_string(format, std::forward<Args>(args)...);
-
-			// Get prefix based on log level
 			auto [terminal_prefix, file_prefix] = format_prefix(level, include_time);
-
-			// Output streams based on message type
 			std::ostream& out_stream = (level == log_level::warning || level == log_level::error)
 				? std::cerr
 				: std::cout;
-
-			// Write to terminal
 			out_stream << terminal_prefix << message << "\n";
-
-			// Write to file if enabled
 			if (log_enabled_) {
 				std::ofstream file(log_file_path_, std::ios::app);
-				if (!file) {
+				if (!file)
 					throw std::runtime_error("Failed to open log file for writing");
-				}
 				file << file_prefix << message << "\n";
 			}
-
-			// reset colors for terminal
-			if (level != log_level::print) {
+			if (level != log_level::print)
 				std::cout << colors::reset;
-			}
-
 		} catch (const std::exception& e) {
-			// Handle formatting or file errors
 			std::cerr << "logger error: " << e.what() << "\n";
-			if (level == log_level::error) {
-				std::exit(1); // Still exit on error level
-			}
+			if (level == log_level::error)
+				std::exit(1);
 		}
 	}
 };

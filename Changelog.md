@@ -32,7 +32,7 @@ HOW I DO VERSIONING:
 - Logs with errors appear in results json file with an empty string as name
     - [~/code/test/code/results_jobs.py](code/test/code/results_jobs.py)
 - Test scripts modify files or folders before the user confirmed correctness of all paths
-    - [~/code/test/code/](code/test/code)
+    - [~/code/test/code/*](code/test/code)
 - Update best solution didn't perform check on the solution if integrity checks are off (integrity of the solution should always be checked)
     - [~/code/src/hplus_instance.cpp](code/src/hplus_instance.cpp)
 ### :heavy_exclamation_mark: Changed
@@ -45,7 +45,8 @@ HOW I DO VERSIONING:
 - Instances with errors in results json file now show last 5 lines of logs file (for better error understanding)
     - [~/code/test/code/results_jobs.py](code/test/code/results_jobs.py)
 <!-- ### :x: Removed -->
-<!-- ### :curly_loop: Other -->
+### :curly_loop: Other
+- Better readability in nested if and for loops
 
 ## [1.0.1] - 2025/02/24
 

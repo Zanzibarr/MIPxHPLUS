@@ -66,7 +66,7 @@ static inline bool parse_inst_file(hplus::instance& _i, hplus::environment& _e, 
 	std::ifstream ifs(_e.input_file.c_str(), std::ifstream::in);
 	_ASSERT_LOG(_l, ifs.good());
 
-	_s.parsing = _e.time_limit - _e.timer.get_time();
+	_s.parsing = static_cast<double>(_e.time_limit) - _e.timer.get_time();
 	std::string line;
 
 	// * version section
@@ -276,12 +276,14 @@ static inline bool parse_inst_file(hplus::instance& _i, hplus::environment& _e, 
 
 	ifs.close();
 
-	if (_i.m == 0)
-		for (size_t i = 0; i < _i.n; i++)
+	if (_i.m == 0) {
+		for (size_t i = 0; i < _i.n; i++) {
 			if (tmp_istate[i] != tmp_goal[i] && tmp_goal[i] >= 0) {
 				_s.parsing = _e.timer.get_time();
 				return false; // no actions and goal isn't the starting point -> infeasible
 			}
+		}
+	}
 
 	// ====================================================== //
 	// ================== BINARY EXPANSION ================== //
@@ -289,14 +291,15 @@ static inline bool parse_inst_file(hplus::instance& _i, hplus::environment& _e, 
 
 	std::vector<size_t> var_active_state(_i.n, -1);
 	auto				is_deletefree = [&_i, &tmp_act_eff, &var_active_state]() {
-		   for (auto r : _i.var_ranges)
+		   for (auto r : _i.var_ranges) {
 			   if (r != 2)
 				   return false;
+		   }
 		   for (auto act_eff : tmp_act_eff) {
-			   for (auto pair : act_eff) {
-				   if (var_active_state[pair.first] == -1)
-					   var_active_state[pair.first] = pair.second;
-				   else if (var_active_state[pair.first] != pair.second)
+			   for (auto [var, val] : act_eff) {
+				   if (var_active_state[var] == -1)
+					   var_active_state[var] = val;
+				   else if (var_active_state[var] != val)
 					   return false;
 			   }
 		   }
@@ -315,11 +318,12 @@ static inline bool parse_inst_file(hplus::instance& _i, hplus::environment& _e, 
 		}
 		for (size_t act_i = 0; act_i < _i.m; act_i++) {
 			binary_set act_pre(_i.n), act_eff(_i.n);
-			for (auto pair : tmp_act_pre[act_i])
-				if (var_active_state[pair.first] == pair.second)
-					act_pre.add(pair.first);
-			for (auto pair : tmp_act_eff[act_i])
-				act_eff.add(pair.first);
+			for (auto [var, val] : tmp_act_pre[act_i]) {
+				if (var_active_state[var] == val)
+					act_pre.add(var);
+			}
+			for (auto [var, val] : tmp_act_eff[act_i])
+				act_eff.add(var);
 			_i.actions[act_i].pre = act_pre;
 			_i.actions[act_i].pre_sparse = act_pre.sparse();
 			_i.actions[act_i].eff = act_eff;
@@ -344,10 +348,10 @@ static inline bool parse_inst_file(hplus::instance& _i, hplus::environment& _e, 
 		_i.n = n_exp;
 		for (size_t i = 0; i < _i.m; i++) {
 			binary_set act_pre(_i.n), act_eff(_i.n);
-			for (auto pair : tmp_act_pre[i])
-				act_pre.add(offsets[pair.first] + pair.second);
-			for (auto pair : tmp_act_eff[i])
-				act_eff.add(offsets[pair.first] + pair.second);
+			for (auto [var, val] : tmp_act_pre[i])
+				act_pre.add(offsets[var] + val);
+			for (auto [var, val] : tmp_act_eff[i])
+				act_eff.add(offsets[var] + val);
 			_i.actions[i].pre = act_pre;
 			_i.actions[i].pre_sparse = act_pre.sparse();
 			_i.actions[i].eff = act_eff;
@@ -371,18 +375,21 @@ static inline bool parse_inst_file(hplus::instance& _i, hplus::environment& _e, 
 	}
 	_i.n = n_opt;
 	binary_set goal_opt(_i.n);
-	for (auto var : _i.goal)
+	for (auto var : _i.goal) {
 		if (!istate[var])
 			goal_opt.add(var - istate_offsets[var]);
+	}
 	_i.goal = goal_opt;
 	for (size_t i = 0; i < _i.m; i++) {
 		binary_set act_pre(_i.n), act_eff(_i.n);
-		for (auto var : _i.actions[i].pre_sparse)
+		for (auto var : _i.actions[i].pre_sparse) {
 			if (!istate[var])
 				act_pre.add(var - istate_offsets[var]);
-		for (auto var : _i.actions[i].eff_sparse)
+		}
+		for (auto var : _i.actions[i].eff_sparse) {
 			if (!istate[var])
 				act_eff.add(var - istate_offsets[var]);
+		}
 		_i.actions[i].pre = act_pre;
 		_i.actions[i].pre_sparse = act_pre.sparse();
 		_i.actions[i].eff = act_eff;
@@ -496,17 +503,19 @@ static inline void landmark_extraction(hplus::instance& _i, std::vector<binary_s
 	binary_set s_set(_i.n);
 
 	std::deque<size_t> actions_queue;
-	for (size_t act_i = 0; act_i < _i.m; act_i++)
+	for (size_t act_i = 0; act_i < _i.m; act_i++) {
 		if (s_set.contains(_i.actions[act_i].pre))
 			actions_queue.push_back(act_i);
+	}
 
 	// list of actions that have as precondition variable p
 	std::vector<std::vector<size_t>> act_with_pre(_i.n);
 	for (size_t var_i = 0; var_i < _i.n; var_i++) {
 		act_with_pre[var_i].reserve(_i.m);
-		for (size_t act_i = 0; act_i < _i.m; act_i++)
+		for (size_t act_i = 0; act_i < _i.m; act_i++) {
 			if (_i.actions[act_i].pre[var_i])
 				act_with_pre[var_i].push_back(act_i);
+		}
 	}
 
 	while (!actions_queue.empty()) {
@@ -547,9 +556,10 @@ static inline void landmark_extraction(hplus::instance& _i, std::vector<binary_s
 				// equal to the set for variable var_i -> we can skip the check
 				if (_lm[var_i][_i.n] || x != _lm[var_i]) {
 					_lm[var_i] = x;
-					for (auto act_i : act_with_pre[var_i])
+					for (auto act_i : act_with_pre[var_i]) {
 						if (s_set.contains(_i.actions[act_i].pre) && std::find(actions_queue.begin(), actions_queue.end(), act_i) == actions_queue.end())
 							actions_queue.push_back(act_i);
+					}
 				}
 			}
 		}
@@ -561,9 +571,10 @@ static inline void landmark_extraction(hplus::instance& _i, std::vector<binary_s
 	std::vector<std::vector<size_t>> act_with_eff(_i.n);
 	for (auto var_i : !_fl) {
 		act_with_eff[var_i].reserve(_i.m);
-		for (size_t act_i = 0; act_i < _i.m; act_i++)
+		for (size_t act_i = 0; act_i < _i.m; act_i++) {
 			if (_i.actions[act_i].eff[var_i])
 				act_with_eff[var_i].push_back(act_i);
+		}
 	}
 
 	// popolate _fl and _al sets
@@ -596,18 +607,20 @@ static inline void fadd_extraction(hplus::instance& _i, const std::vector<binary
 	std::vector<std::vector<size_t>> var_flm_sparse(_i.n);
 	for (size_t var_i = 0; var_i < _i.n; var_i++) {
 		var_flm_sparse[var_i].reserve(_i.n);
-		for (size_t var_j = 0; var_j < _i.n; var_j++)
+		for (size_t var_j = 0; var_j < _i.n; var_j++) {
 			if (_lm[var_i][var_j] || _lm[var_i][_i.n])
 				var_flm_sparse[var_i].push_back(var_j);
+		}
 	}
 
 	// compute the set of first adders
 	for (size_t act_i = 0; act_i < _i.m; act_i++) {
 		// f_lm_a is the set of fact landmarks of action act_i
 		binary_set f_lm_a(_i.n);
-		for (auto var_i : _i.actions[act_i].pre)
+		for (auto var_i : _i.actions[act_i].pre) {
 			for (auto i : var_flm_sparse[var_i])
 				f_lm_a.add(i);
+		}
 		// _fadd[a] := { p in add(a) s.t. p is not a fact landmark for a }
 		_fadd[act_i] |= (_i.actions[act_i].eff & !f_lm_a);
 		if (_CHECK_STOP()) [[unlikely]]
@@ -682,11 +695,12 @@ static inline void dominated_actions_elimination(hplus::instance& _i, std::vecto
 
 	// compute the landmarks for each action remaining
 	for (size_t act_i = 0; act_i < _i.m; act_i++) {
-		for (auto var_i : _i.actions[act_i].pre_sparse)
+		for (auto var_i : _i.actions[act_i].pre_sparse) {
 			if (hplus::var_remaining(_i)[var_i]) {
 				for (auto i : var_flm_sparse[var_i])
 					act_flm[act_i].add(i);
 			}
+		}
 		if (_CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
 	}
@@ -700,7 +714,7 @@ static inline void dominated_actions_elimination(hplus::instance& _i, std::vecto
 
 	// find all dominated actions and eliminate them
 	const auto& rem_act = hplus::act_remaining(_i).sparse();
-	for (auto dominant_act : rem_act)
+	for (auto dominant_act : rem_act) {
 		if (!dominated_actions[dominant_act]) {
 			for (auto dominated_act : candidates.find_subsets(_fadd[dominant_act])) {
 				if (_i.act_f[dominated_act] || dominant_act == dominated_act || _i.actions[dominant_act].cost > _i.actions[dominated_act].cost || !act_flm[dominated_act].contains(_i.actions[dominant_act].pre)) [[likely]]
@@ -713,6 +727,7 @@ static inline void dominated_actions_elimination(hplus::instance& _i, std::vecto
 			if (_CHECK_STOP()) [[unlikely]]
 				throw timelimit_exception("Reached time limit.");
 		}
+	}
 }
 
 static inline void immediate_action_application(hplus::instance& _i, const hplus::environment& _e, binary_set& _al, const logger& _l) {
@@ -737,7 +752,7 @@ static inline void immediate_action_application(hplus::instance& _i, const hplus
 				if (_e.alg == HPLUS_CLI_ALG_IMAI)
 					_i.act_t[act_i] = counter;
 				_i.var_f |= pre;
-				for (auto var_i : eff)
+				for (auto var_i : eff) {
 					if (!current_state[var_i]) {
 						_i.var_f.add(var_i);
 						if (_e.alg == HPLUS_CLI_ALG_IMAI)
@@ -746,6 +761,7 @@ static inline void immediate_action_application(hplus::instance& _i, const hplus
 						for (auto act_j : actions_left)
 							_i.fadd_e[act_j].add(var_i);
 					}
+				}
 				current_state |= eff;
 				counter++;
 				found_next_action = true;

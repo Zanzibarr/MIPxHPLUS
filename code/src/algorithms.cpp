@@ -121,9 +121,10 @@ static inline bool greedycxe(const hplus::instance& _i, std::vector<size_t>& _s,
 		double best_cxe = INFINITY;
 		for (auto act_i : _candidates) {
 			int neff = 0;
-			for (auto var_i : _i.actions[act_i].eff_sparse)
+			for (auto var_i : _i.actions[act_i].eff_sparse) {
 				if (!state[var_i] && var_rem[var_i])
 					neff++;
+			}
 			if (neff == 0)
 				continue;
 			double cxe = static_cast<double>(_i.actions[act_i].cost) / neff;
@@ -193,11 +194,12 @@ static inline bool randr(const hplus::instance& _i, std::vector<size_t>& _s, uns
 	}
 	size_t		 best_sol = 0;
 	unsigned int best_cost = random_costs[0];
-	for (size_t i = 1; i < repetitions; i++)
+	for (size_t i = 1; i < repetitions; i++) {
 		if (random_costs[i] < best_cost) [[unlikely]] {
 			best_sol = i;
 			best_cost = random_costs[i];
 		}
+	}
 	_s = random_solution[best_sol];
 	_c = best_cost;
 	return true;
@@ -373,7 +375,7 @@ void cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, con
 	size_t act_start = curr_col;
 	size_t count = 0;
 	for (auto act_i : rem_act) {
-		objs[count] = _i.actions[act_i].cost;
+		objs[count] = static_cast<double>(_i.actions[act_i].cost);
 		lbs[count] = _i.act_f[act_i] ? 1 : 0;
 		ubs[count] = 1;
 		types[count++] = 'B';
@@ -524,11 +526,12 @@ void cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, con
 			val_c1[1] = -1;
 			int nnz0 = 2;
 			// (section 4.6 of Imai's paper)
-			for (size_t i = 0; i < inverse_actions.size(); i++)
+			for (size_t i = 0; i < inverse_actions.size(); i++) {
 				if (_i.actions[inverse_actions[i]].eff[var_i]) {
 					ind_c1[nnz0] = get_fa_idx(inverse_actions[i], var_i);
 					val_c1[nnz0++] = 1;
 				}
+			}
 			_ASSERT_LOG(_l, !CPXaddrows(env, lp, 0, 1, nnz0, &rhs_c1_2_4, &sensel, &begin, ind_c1, val_c1, nullptr, nullptr));
 			// constraint 4: t_vj <= t_a, vj in pre(a)
 			ind_c2_4[0] = get_tvar_idx(var_i);
@@ -575,8 +578,7 @@ void cpx_build_imai(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, con
 	delete[] ind_c1;
 	ind_c1 = nullptr;
 
-	// _ASSERT_LOG(_l, !CPXwriteprob(env, lp,
-	// (HPLUS_CPLEX_OUTPUT_DIR"/lp/"+_e.run_name+".lp").c_str(), "LP"));
+	// _ASSERT_LOG(_l, !CPXwriteprob(env, lp, (HPLUS_CPLEX_OUTPUT_DIR "/lp/" + _e.run_name + ".lp").c_str(), "LP"));
 }
 
 void cpx_post_warmstart_imai(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, const hplus::environment& _e, const logger& _l) {
@@ -601,7 +603,7 @@ void cpx_post_warmstart_imai(CPXENVptr& env, CPXLPptr& lp, const hplus::instance
 		cpx_sol_ind[nnz] = _i.m_opt + _i.act_opt_conv[act_i];
 		cpx_sol_val[nnz++] = timestamp;
 		timestamp++;
-		for (auto var_i : _i.actions[act_i].eff_sparse)
+		for (auto var_i : _i.actions[act_i].eff_sparse) {
 			if (rem_var[var_i] && !state[var_i]) {
 				cpx_sol_ind[nnz] = 2 * _i.m_opt + _i.var_opt_conv[var_i];
 				cpx_sol_val[nnz++] = 1;
@@ -611,6 +613,7 @@ void cpx_post_warmstart_imai(CPXENVptr& env, CPXLPptr& lp, const hplus::instance
 				cpx_sol_val[nnz++] = 1;
 				state.add(var_i);
 			}
+		}
 	}
 
 	_ASSERT_LOG(_l, !CPXaddmipstarts(env, lp, 1, nnz, &izero, cpx_sol_ind, cpx_sol_val, &effortlevel, nullptr));
@@ -631,9 +634,10 @@ void store_imai_sol(CPXENVptr& env, CPXLPptr& lp, hplus::instance& _i, const hpl
 
 	// convert to std collections for easier parsing
 	std::vector<std::pair<double, size_t>> cpx_result;
-	for (size_t i = 0; i < _i.m_opt; i++)
+	for (size_t i = 0; i < _i.m_opt; i++) {
 		if (plan[i] > HPLUS_CPX_INT_ROUNDING)
 			cpx_result.emplace_back(plan[_i.m_opt + i], i);
+	}
 	delete[] plan;
 	plan = nullptr;
 
@@ -694,7 +698,7 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
 	for (auto act_i : rem_act) {
 		auto eff_sparse = (_i.actions[act_i].eff & rem_var_set).sparse();
 		for (auto var_i : _i.actions[act_i].pre& rem_var_set) {
-			for (auto var_j : eff_sparse)
+			for (auto var_j : eff_sparse) {
 				if (var_i != var_j) [[likely]] {
 					const auto check = graph[var_i].insert(var_j);
 					// check.second is true if the element was actually inserted in the set
@@ -703,14 +707,16 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
 						degree_counter[var_j] += 1;
 					}
 				}
+			}
 			cumulative_graph[var_i] |= (_i.actions[act_i].eff & rem_var_set);
 		}
 	}
 	stopchk1();
 
-	for (size_t node_i = 0; node_i < _i.n; node_i++)
+	for (size_t node_i = 0; node_i < _i.n; node_i++) {
 		if (degree_counter[node_i] > 0) [[likely]]
 			nodes_queue.emplace(node_i, degree_counter[node_i]);
+	}
 
 	// finding minimum degree node
 	auto find_min = [&_i, &degree_counter](std::priority_queue<node, std::vector<node>, compare_node>& nodes_queue) {
@@ -737,9 +743,9 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
 
 		std::set<size_t> new_nodes;
 
-		for (auto p : rem_var)
+		for (auto p : rem_var) {
 			if (graph[p].find(idx) != graph[p].end()) {
-				for (auto q : graph[idx])
+				for (auto q : graph[idx]) {
 					if (p != q) [[likely]] {
 						// add edge p - q
 						const auto check = graph[p].insert(q);
@@ -752,6 +758,7 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
 						// update the overall graph
 						cumulative_graph[p].add(q);
 					}
+				}
 
 				// remove the edge p - idx
 				graph[p].erase(idx);
@@ -759,10 +766,12 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
 				new_nodes.insert(p);
 
 				// update triangles list
-				for (auto q : graph[idx])
+				for (auto q : graph[idx]) {
 					if (p != q) [[likely]]
 						triangles_list.emplace_back(p, idx, q);
+				}
 			}
+		}
 
 		// remove the edge idx - q
 		for (auto q : graph[idx]) {
@@ -773,9 +782,10 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
 		degree_counter[idx] = 0;
 
 		// Update the priority queue
-		for (auto node : new_nodes)
+		for (auto node : new_nodes) {
 			if (degree_counter[node] > 0)
 				nodes_queue.emplace(node, degree_counter[node]);
+		}
 
 #if HPLUS_INTCHECK // care: this takes HUGE amount of time
 		for (size_t node_i = 0; node_i < _i.n; node_i++) {
@@ -837,7 +847,7 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
 	size_t act_start = curr_col;
 	size_t count = 0;
 	for (auto act_i : rem_act) {
-		objs[count] = _i.actions[act_i].cost;
+		objs[count] = static_cast<double>(_i.actions[act_i].cost);
 		lbs[count] = _i.act_f[act_i] ? 1 : 0;
 		ubs[count] = 1;
 		types[count++] = 'B';
@@ -978,7 +988,7 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
 	double val_c5_c6_c7[2], val_c8[3];
 
 	for (auto act_i : rem_act) {
-		for (auto var_i : _i.actions[act_i].eff)
+		for (auto var_i : _i.actions[act_i].eff) {
 			if (rem_var_set[var_i]) {
 				ind_c5_c6_c7[0] = get_act_idx(act_i);
 				val_c5_c6_c7[0] = -1;
@@ -986,15 +996,16 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
 				val_c5_c6_c7[1] = 1;
 				_ASSERT_LOG(_l, !CPXaddrows(env, lp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
 			}
+		}
 		stopchk1();
 	}
 
 	for (auto act_i : rem_act) {
 		const auto& pre = _i.actions[act_i].pre_sparse;
 		const auto& eff = _i.actions[act_i].eff_sparse;
-		for (auto var_i : pre)
+		for (auto var_i : pre) {
 			if (rem_var_set[var_i]) {
-				for (auto var_j : eff)
+				for (auto var_j : eff) {
 					if (rem_var_set[var_j]) {
 						ind_c5_c6_c7[0] = get_veg_idx(var_i, var_j);
 						val_c5_c6_c7[0] = -1;
@@ -1002,11 +1013,13 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
 						val_c5_c6_c7[1] = 1;
 						_ASSERT_LOG(_l, !CPXaddrows(env, lp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
 					}
+				}
 				stopchk1();
 			}
+		}
 	}
 
-	for (auto var_i : rem_var)
+	for (auto var_i : rem_var) {
 		for (auto var_j : cumulative_graph[var_i]) {
 			ind_c5_c6_c7[0] = get_veg_idx(var_i, var_j);
 			val_c5_c6_c7[0] = 1;
@@ -1015,20 +1028,20 @@ void cpx_build_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, 
 			_ASSERT_LOG(_l, !CPXaddrows(env, lp, 0, 1, 2, &rhs_1, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
 			stopchk1();
 		}
+	}
 
-	for (auto trng : triangles_list) {
-		ind_c8[0] = get_veg_idx(trng.first, trng.second);
+	for (auto [a, b, c] : triangles_list) {
+		ind_c8[0] = get_veg_idx(a, b);
 		val_c8[0] = 1;
-		ind_c8[1] = get_veg_idx(trng.second, trng.third);
+		ind_c8[1] = get_veg_idx(b, c);
 		val_c8[1] = 1;
-		ind_c8[2] = get_veg_idx(trng.first, trng.third);
+		ind_c8[2] = get_veg_idx(a, c);
 		val_c8[2] = -1;
 		_ASSERT_LOG(_l, !CPXaddrows(env, lp, 0, 1, 3, &rhs_1, &sense_l, &begin, ind_c8, val_c8, nullptr, nullptr));
 		stopchk1();
 	}
 
-	// _ASSERT_LOG(_l, !CPXwriteprob(env, lp,
-	// (HPLUS_CPLEX_OUTPUT_DIR"/lp/"+_e.run_name+".lp").c_str(), "LP"));
+	// _ASSERT_LOG(_l, !CPXwriteprob(env, lp, (HPLUS_CPLEX_OUTPUT_DIR "/lp/" + _e.run_name + ".lp").c_str(), "LP"));
 }
 
 void cpx_post_warmstart_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& _i, const hplus::environment& _e, const logger& _l) {
@@ -1050,7 +1063,7 @@ void cpx_post_warmstart_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::insta
 	for (auto act_i : warm_start) {
 		cpx_sol_ind[nnz] = _i.act_opt_conv[act_i];
 		cpx_sol_val[nnz++] = 1;
-		for (auto var_i : _i.actions[act_i].eff_sparse)
+		for (auto var_i : _i.actions[act_i].eff_sparse) {
 			if (remaining_variables[var_i] && !state[var_i]) {
 				cpx_sol_ind[nnz] = _i.m_opt + _i.m_opt * _i.n_opt + _i.var_opt_conv[var_i];
 				cpx_sol_val[nnz++] = 1;
@@ -1058,6 +1071,7 @@ void cpx_post_warmstart_rankooh(CPXENVptr& env, CPXLPptr& lp, const hplus::insta
 				cpx_sol_val[nnz++] = 1;
 				state.add(var_i);
 			}
+		}
 	}
 
 	_ASSERT_LOG(_l, !CPXaddmipstarts(env, lp, 1, nnz, &izero, cpx_sol_ind, cpx_sol_val, &effortlevel, nullptr));
@@ -1091,9 +1105,10 @@ void store_rankooh_sol(CPXENVptr& env, CPXLPptr& lp, hplus::instance& _i, const 
 	// convert to std collections for easier parsing
 	std::vector<size_t> cpx_result;
 	cpx_result.reserve(_i.m_opt);
-	for (size_t i = 0; i < _i.m_opt; i++)
+	for (size_t i = 0; i < _i.m_opt; i++) {
 		if (plan[i] > HPLUS_CPX_INT_ROUNDING)
 			cpx_result.push_back(_i.act_cpxtoidx[i]);
+	}
 	delete[] plan;
 	plan = nullptr;
 

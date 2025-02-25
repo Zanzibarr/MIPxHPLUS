@@ -61,9 +61,8 @@ public:
 		set_.resize((capacity_ + 7) / 8, fill ? static_cast<unsigned char>(~0u) : 0);
 
 		// Set appropriate bits in last byte if capacity is not a multiple of 8
-		if (fill && capacity_ % 8 != 0 && capacity_ != 0) {
+		if (fill && capacity_ % 8 != 0 && capacity_ != 0)
 			set_[set_.size() - 1] &= static_cast<unsigned char>((1u << (capacity_ % 8)) - 1);
-		}
 	}
 
 	/**
@@ -79,9 +78,8 @@ public:
 	bool add(size_t element) {
 		validate_element(element);
 
-		if (contains(element)) {
+		if (contains(element))
 			return false;
-		}
 
 		set_[element / 8] |= (1u << (element % 8));
 		return true;
@@ -100,9 +98,8 @@ public:
 	bool remove(size_t element) {
 		validate_element(element);
 
-		if (!contains(element)) {
+		if (!contains(element))
 			return false;
-		}
 
 		set_[element / 8] &= ~(1u << (element % 8));
 		return true;
@@ -122,9 +119,8 @@ public:
 		std::fill(set_.begin(), set_.end(), static_cast<unsigned char>(~0u));
 
 		// Set appropriate bits in last byte if capacity is not a multiple of 8
-		if (capacity_ % 8 != 0 && capacity_ != 0) {
+		if (capacity_ % 8 != 0 && capacity_ != 0)
 			set_[set_.size() - 1] &= static_cast<unsigned char>((1u << (capacity_ % 8)) - 1);
-		}
 	}
 
 	/**
@@ -191,9 +187,8 @@ public:
 		std::vector<size_t> result;
 		result.reserve(capacity_); // Worst case, but avoids reallocations
 
-		for (auto element : *this) {
+		for (auto element : *this)
 			result.push_back(element);
-		}
 
 		return result;
 	}
@@ -208,9 +203,8 @@ public:
 		std::string repr = "[";
 		repr.reserve(capacity_ + 2); // [X...X]
 
-		for (size_t i = 0; i < capacity_; i++) {
+		for (size_t i = 0; i < capacity_; i++)
 			repr.push_back(contains(i) ? 'X' : ' ');
-		}
 
 		repr.push_back(']');
 		return repr;
@@ -231,9 +225,8 @@ public:
 		validate_same_capacity(other);
 
 		binary_set result(*this);
-		for (size_t i = 0; i < set_.size(); i++) {
+		for (size_t i = 0; i < set_.size(); i++)
 			result.set_[i] &= other.set_[i];
-		}
 
 		return result;
 	}
@@ -249,9 +242,8 @@ public:
 	binary_set& operator&=(const binary_set& other) {
 		validate_same_capacity(other);
 
-		for (size_t i = 0; i < set_.size(); i++) {
+		for (size_t i = 0; i < set_.size(); i++)
 			set_[i] &= other.set_[i];
-		}
 
 		return *this;
 	}
@@ -269,9 +261,8 @@ public:
 		validate_same_capacity(other);
 
 		binary_set result(*this);
-		for (size_t i = 0; i < set_.size(); i++) {
+		for (size_t i = 0; i < set_.size(); i++)
 			result.set_[i] |= other.set_[i];
-		}
 
 		return result;
 	}
@@ -287,9 +278,8 @@ public:
 	binary_set& operator|=(const binary_set& other) {
 		validate_same_capacity(other);
 
-		for (size_t i = 0; i < set_.size(); i++) {
+		for (size_t i = 0; i < set_.size(); i++)
 			set_[i] |= other.set_[i];
-		}
 
 		return *this;
 	}
@@ -307,9 +297,8 @@ public:
 		validate_same_capacity(other);
 
 		binary_set result(*this);
-		for (size_t i = 0; i < set_.size(); i++) {
+		for (size_t i = 0; i < set_.size(); i++)
 			result.set_[i] &= ~other.set_[i];
-		}
 
 		return result;
 	}
@@ -325,9 +314,8 @@ public:
 	binary_set& operator-=(const binary_set& other) {
 		validate_same_capacity(other);
 
-		for (size_t i = 0; i < set_.size(); i++) {
+		for (size_t i = 0; i < set_.size(); i++)
 			set_[i] &= ~other.set_[i];
-		}
 
 		return *this;
 	}
@@ -341,14 +329,12 @@ public:
 	binary_set operator!() const {
 		binary_set result(capacity_);
 
-		for (size_t i = 0; i < set_.size(); i++) {
+		for (size_t i = 0; i < set_.size(); i++)
 			result.set_[i] = ~set_[i];
-		}
 
 		// Mask extra bits in the last byte if needed
-		if (capacity_ % 8 != 0 && capacity_ != 0) {
+		if (capacity_ % 8 != 0 && capacity_ != 0)
 			result.set_[set_.size() - 1] &= static_cast<unsigned char>((1u << (capacity_ % 8)) - 1);
-		}
 
 		return result;
 	}
@@ -417,9 +403,8 @@ public:
 
 		for (size_t i = 0; i < set_.size(); i++) {
 			// If there's any bit in other that's not in this set, other is not a subset
-			if ((~set_[i] & other.set_[i]) != 0) {
+			if ((~set_[i] & other.set_[i]) != 0)
 				return false;
-			}
 		}
 
 		return true;
@@ -457,9 +442,8 @@ public:
 		iterator(const binary_set* bs, size_t pos) noexcept
 			: bs_(bs), current_pos_(pos) {
 			// Advance to first set element if starting position is not set
-			if (current_pos_ < bs_->capacity() && !bs_->contains(current_pos_)) {
+			if (current_pos_ < bs_->capacity() && !bs_->contains(current_pos_))
 				++(*this);
-			}
 		}
 
 		iterator& operator++() {
@@ -542,14 +526,6 @@ public:
 	explicit bs_searcher(size_t capacity)
 		: root_(std::make_unique<treenode>()), capacity_(capacity) {}
 
-	// Ensure proper cleanup with move semantics
-	bs_searcher(bs_searcher&& other) noexcept = default;
-	bs_searcher& operator=(bs_searcher&& other) noexcept = default;
-
-	// Disallow copying (tree is complex to copy)
-	bs_searcher(const bs_searcher&) = delete;
-	bs_searcher& operator=(const bs_searcher&) = delete;
-
 	/**
 	 * @brief Add a binary_set to the search tree
 	 *
@@ -565,14 +541,12 @@ public:
 
 		for (size_t i = 0; i < bs.capacity(); i++) {
 			if (bs[i]) {
-				if (!leaf->right) {
+				if (!leaf->right)
 					leaf->right = std::make_unique<treenode>();
-				}
 				leaf = leaf->right.get();
 			} else {
-				if (!leaf->left) {
+				if (!leaf->left)
 					leaf->left = std::make_unique<treenode>();
-				}
 				leaf = leaf->left.get();
 			}
 		}
@@ -629,9 +603,8 @@ public:
 		}
 
 		// If we didn't reach a node or value isn't in the leaf, the element wasn't in the tree
-		if (!node || !remove_value(node->values, value)) {
+		if (!node || !remove_value(node->values, value))
 			return false;
-		}
 
 		// Prune empty branches by walking back up the path
 		for (auto it = path.rbegin(); it != path.rend(); ++it) {
@@ -646,9 +619,8 @@ public:
 					current_node->right.reset();
 
 				// Only reset if it's not the root node
-				if (parent_ptr != &root_ || (parent_ptr == &root_ && current_node != root_.get())) {
+				if (parent_ptr != &root_ || (parent_ptr == &root_ && current_node != root_.get()))
 					parent_ptr->reset();
-				}
 			}
 		}
 
@@ -668,9 +640,8 @@ public:
 		validate_capacity(bs);
 
 		std::deque<treenode*> open_nodes;
-		if (root_) {
+		if (root_)
 			open_nodes.push_back(root_.get());
-		}
 
 		for (size_t i = 0; i < bs.capacity() && !open_nodes.empty(); i++) {
 			size_t level_size = open_nodes.size();
@@ -681,25 +652,21 @@ public:
 
 				if (bs[i]) {
 					// If element is in the queried set, we can follow both paths
-					if (node->left) {
+					if (node->left)
 						open_nodes.push_back(node->left.get());
-					}
-					if (node->right) {
+					if (node->right)
 						open_nodes.push_back(node->right.get());
-					}
 				} else {
 					// If element is not in the queried set, we can only follow the left path (0)
-					if (node->left) {
+					if (node->left)
 						open_nodes.push_back(node->left.get());
-					}
 				}
 			}
 		}
 
 		std::vector<size_t> result;
-		for (auto node : open_nodes) {
+		for (auto node : open_nodes)
 			result.insert(result.end(), node->values.begin(), node->values.end());
-		}
 
 		return result;
 	}
@@ -710,11 +677,10 @@ private:
 
 	// Helper method for validation
 	void validate_capacity(const binary_set& bs) const {
-		if constexpr (INTCHECK_BS) {
-			if (capacity_ != bs.capacity()) {
-				throw std::invalid_argument("The binary_set has an unexpected capacity.");
-			}
-		}
+#if INTCHECK_BS
+		if (capacity_ != bs.capacity())
+			throw std::invalid_argument("The binary_set has an unexpected capacity.");
+#endif
 	}
 };
 

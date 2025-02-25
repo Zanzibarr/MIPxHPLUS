@@ -67,10 +67,8 @@ public:
 		prior[j] = p;
 		// put gap at last position
 		int gap = cnt++;
-		if (mantain_heap) {
-			// move gap down to the proper position
+		if (mantain_heap) // move gap down to the proper position
 			sift_up(gap, p);
-		}
 		// fill gap with new element
 		data[gap] = j;
 		position[j] = gap;
@@ -111,9 +109,8 @@ public:
 	[[nodiscard]]
 	inline operator std::string() const {
 		std::string repr = "";
-		for (int k = 0; k < cnt; k++) {
+		for (int k = 0; k < cnt; k++)
 			repr.append("\t").append(std::to_string(k)).append("\t").append(std::to_string(data[k])).append("\t").append(std::to_string(prior[data[k]])).append("\n");
-		}
 		return repr;
 	}
 

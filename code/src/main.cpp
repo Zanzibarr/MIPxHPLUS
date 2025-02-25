@@ -25,7 +25,7 @@ static inline void signal_callback_handler(const int signum) {
 static inline void* time_limit_termination(void* args) {
 	hplus::environment* _e = (hplus::environment*)args;
 	while (_e->exec_s < exec_status::STOP_TL && _e->sol_s != solution_status::INFEAS) {
-		if (_e->timer.get_time() > _e->time_limit) [[unlikely]] {
+		if (_e->timer.get_time() > static_cast<double>(_e->time_limit)) [[unlikely]] {
 			raise(SIGINT);
 			return nullptr;
 		}
@@ -244,7 +244,7 @@ static inline void run(hplus::instance& _i, hplus::environment& _e,
 			_PRINT_INFO("Problem simplification.");
 			_e.exec_s = exec_status::PROBLEM_SIMPL;
 
-			_s.optimization = _e.time_limit - _e.timer.get_time();
+			_s.optimization = static_cast<double>(_e.time_limit) - _e.timer.get_time();
 			double start_time = _e.timer.get_time();
 
 			hplus::instance_optimization(_i, _e, _l);
@@ -270,7 +270,7 @@ static inline void run(hplus::instance& _i, hplus::environment& _e,
 			_PRINT_INFO("Calculating heuristic solution.");
 			_e.exec_s = exec_status::HEURISTIC;
 
-			_s.heuristic = _e.time_limit - _e.timer.get_time();
+			_s.heuristic = static_cast<double>(_e.time_limit) - _e.timer.get_time();
 			double start_time = _e.timer.get_time();
 
 			find_heuristic(_i, _e, _l);
@@ -292,7 +292,7 @@ static inline void run(hplus::instance& _i, hplus::environment& _e,
 		_PRINT_INFO("Building model.");
 		_e.exec_s = exec_status::MODEL_BUILD;
 
-		_s.build = _e.time_limit - _e.timer.get_time();
+		_s.build = static_cast<double>(_e.time_limit) - _e.timer.get_time();
 		double start_time = _e.timer.get_time();
 
 		CPXENVptr env = nullptr;
@@ -312,9 +312,9 @@ static inline void run(hplus::instance& _i, hplus::environment& _e,
 		stopchk();
 
 		// time limit
-		if (static_cast<double>(_e.time_limit) > _e.timer.get_time()) {
+		if (static_cast<double>(_e.time_limit) > _e.timer.get_time())
 			_ASSERT_LOG(_l, !CPXsetdblparam(env, CPXPARAM_TimeLimit, static_cast<double>(_e.time_limit) - _e.timer.get_time()));
-		} else
+		else
 			return;
 
 		if (_e.warm_start) { // Post warm starto to CPLEX
@@ -338,7 +338,7 @@ static inline void run(hplus::instance& _i, hplus::environment& _e,
 		_PRINT_INFO("Running CPLEX.");
 		_e.exec_s = exec_status::CPX_EXEC;
 
-		_s.execution = _e.time_limit - _e.timer.get_time();
+		_s.execution = static_cast<double>(_e.time_limit) - _e.timer.get_time();
 		start_time = _e.timer.get_time();
 
 		_ASSERT_LOG(_l, !CPXmipopt(env, lp));
@@ -366,7 +366,7 @@ static inline void run(hplus::instance& _i, hplus::environment& _e,
 
 static inline void end(const hplus::instance& _i, hplus::environment& _e,
 					   hplus::statistics& _s, const logger& _l) {
-	if (_e.timer.get_time() >= _e.time_limit) {
+	if (_e.timer.get_time() >= static_cast<double>(_e.time_limit)) {
 		switch (_e.exec_s) {
 			case exec_status::START:
 				_l.print("Reached time limit before the program could read the instance "
