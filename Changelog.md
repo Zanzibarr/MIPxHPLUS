@@ -29,17 +29,17 @@ HOW I DO VERSIONING:
 
 ### :ballot_box_with_check: Fixed
 - Errors not showing in log file
-- Logs with errors compare in results json file with an empty string as name
+- Logs with errors appear in results json file with an empty string as name
     - [~/code/test/code/results_jobs.py](code/test/code/results_jobs.py)
-- Test scripts don't modify files or folders until the user agreed to all paths
+- Test scripts modify files or folders before the user confirmed correctness of all paths
     - [~/code/test/code/](code/test/code)
-- Update best solution didn't perform check on the solution if integrity checks are off (integrity of the solution should be always checked)
+- Update best solution didn't perform check on the solution if integrity checks are off (integrity of the solution should always be checked)
     - [~/code/src/hplus_instance.cpp](code/src/hplus_instance.cpp)
 ### :heavy_exclamation_mark: Changed
-- Log output line now is monocromatic
+- Log output line is now monocromatic
     - [~/code/external/log.hxx](code/external/log.hxx)
 ### :heavy_plus_sign: Added
-- Instances with errors in results json file now show last 5 lines of logs file
+- Instances with errors in results json file now show last 5 lines of logs file (for better error understanding)
     - [~/code/test/code/results_jobs.py](code/test/code/results_jobs.py)
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
