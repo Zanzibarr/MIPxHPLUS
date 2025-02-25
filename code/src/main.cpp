@@ -313,8 +313,7 @@ static inline void run(hplus::instance& _i, hplus::environment& _e,
 
 		// time limit
 		if (static_cast<double>(_e.time_limit) > _e.timer.get_time()) {
-			_ASSERT(!CPXsetdblparam(env, CPXPARAM_TimeLimit,
-									static_cast<double>(_e.time_limit) - _e.timer.get_time()));
+			_ASSERT_LOG(_l, !CPXsetdblparam(env, CPXPARAM_TimeLimit, static_cast<double>(_e.time_limit) - _e.timer.get_time()));
 		} else
 			return;
 
@@ -342,7 +341,7 @@ static inline void run(hplus::instance& _i, hplus::environment& _e,
 		_s.execution = _e.time_limit - _e.timer.get_time();
 		start_time = _e.timer.get_time();
 
-		_ASSERT(!CPXmipopt(env, lp));
+		_ASSERT_LOG(_l, !CPXmipopt(env, lp));
 
 		if (parse_cpx_status(env, lp, _i, _e,
 							 _l)) { // If CPLEX has found a solution

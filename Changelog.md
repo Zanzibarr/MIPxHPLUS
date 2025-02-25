@@ -25,9 +25,23 @@ HOW I DO VERSIONING:
 ### :curly_loop: Other
 -->
 
-## [1.0.1] - 2025/02/24
+## [1.0.2] - 2025/02/25
+
 ### :ballot_box_with_check: Fixed
-- Errors in cluster jobs scripts
+- Errors not showing in log file
+- Logs with errors compare in results json file with an empty string as name
+    - [~/code/test/code/results_jobs.py](code/test/code/results_jobs.py)
+<!-- ### :heavy_exclamation_mark: Changed -->
+### :heavy_plus_sign: Added
+- Instances with errors in results json file now show last 5 lines of logs file
+    - [~/code/test/code/results_jobs.py](code/test/code/results_jobs.py)
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+
+## [1.0.1] - 2025/02/24
+
+### :ballot_box_with_check: Fixed
+- Errors in paths int cluster jobs scripts
     - [~/code/test/code/*](code/test/code/)
 ### :heavy_exclamation_mark: Changed
 - Using return value of std::set::insert to check if element is actually added to a set

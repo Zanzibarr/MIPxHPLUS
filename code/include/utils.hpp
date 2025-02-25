@@ -13,7 +13,7 @@
 // ############################ CODE VERSION ########################### //
 // ##################################################################### //
 
-#define CODE_VERSION "1.0.1"
+#define CODE_VERSION "1.0.2"
 
 // ##################################################################### //
 // ############################## IMPORTS ############################## //
@@ -22,6 +22,7 @@
 #include "log.hxx"
 #include <chrono>
 #include <climits>
+#include <format>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -176,12 +177,22 @@ public:
 
 /** Define an assert function */
 #ifndef _ASSERT
-	#define _ASSERT(cond)                                                                                            \
+	#define _ASSERT(_cond)                                                                                           \
 		{                                                                                                            \
-			if (!(cond)) [[unlikely]] {                                                                              \
+			if (!(_cond)) [[unlikely]] {                                                                             \
 				std::cerr << "Assert check failed at " << __func__ << "(): " << __FILE__ << ":" << __LINE__ << "\n"; \
 				exit(1);                                                                                             \
 			}                                                                                                        \
+		}
+#endif
+
+#ifndef _ASSERT_LOG
+	#define _ASSERT_LOG(_log, _cond)                                                                                \
+		{                                                                                                           \
+			if (!(_cond)) [[unlikely]] {                                                                            \
+				std::string msg = std::format("Assert check failed at {}() {}:{}\n", __func__, __FILE__, __LINE__); \
+				_log.raise_error(msg.c_str());                                                                      \
+			}                                                                                                       \
 		}
 #endif
 
@@ -223,8 +234,12 @@ public:
 #if HPLUS_INTCHECK
 	#define _INTCHECK_ASSERT(_cond) \
 		{ _ASSERT(_cond); }
+	#define _INTCHECK_ASSERT_LOG(_log, _cond) \
+		{ _ASSERT_LOG(_log, _cond); }
 #else
 	#define _INTCHECK_ASSERT(_cond) \
+		{}
+	#define _INTCHECK_ASSERT_LOG(_log, _cond) \
 		{}
 #endif
 

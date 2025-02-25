@@ -64,7 +64,7 @@ static inline bool parse_inst_file(hplus::instance& _i, hplus::environment& _e, 
 	_PRINT_INFO("Parsing SAS file.");
 
 	std::ifstream ifs(_e.input_file.c_str(), std::ifstream::in);
-	_ASSERT(ifs.good());
+	_ASSERT_LOG(_l, ifs.good());
 
 	_s.parsing = _e.time_limit - _e.timer.get_time();
 	std::string line;
@@ -457,18 +457,18 @@ binary_set hplus::act_remaining(const instance& _i) {
 void hplus::update_sol(instance& _i, const std::vector<size_t> _s, const unsigned int _c, const logger& _l) {
 	auto		 dbcheck = binary_set(_i.m);
 	unsigned int costcheck = 0;
-	_INTCHECK_ASSERT(_s.size() <= _i.m); // check that there aren't more actions that there exists
+	_INTCHECK_ASSERT_LOG(_l, _s.size() <= _i.m); // check that there aren't more actions that there exists
 	binary_set feas_checker(_i.n);
 	for (auto act_i : _s) {
-		_INTCHECK_ASSERT(act_i < _i.m);	   // check that the solution only contains existing actions
-		_INTCHECK_ASSERT(!dbcheck[act_i]); // check that there are no duplicates
+		_INTCHECK_ASSERT_LOG(_l, act_i < _i.m);	   // check that the solution only contains existing actions
+		_INTCHECK_ASSERT_LOG(_l, !dbcheck[act_i]); // check that there are no duplicates
 		dbcheck.add(act_i);
-		_INTCHECK_ASSERT(feas_checker.contains(_i.actions[act_i].pre)); // check if the preconditions are respected at each step
+		_INTCHECK_ASSERT_LOG(_l, feas_checker.contains(_i.actions[act_i].pre)); // check if the preconditions are respected at each step
 		feas_checker |= _i.actions[act_i].eff;
 		costcheck += _i.actions[act_i].cost;
 	}
-	_INTCHECK_ASSERT(feas_checker.contains(_i.goal)); // check if the solution leads to the goal state
-	_INTCHECK_ASSERT(costcheck == _c);				  // check if the cost is the declared one
+	_INTCHECK_ASSERT_LOG(_l, feas_checker.contains(_i.goal)); // check if the solution leads to the goal state
+	_INTCHECK_ASSERT_LOG(_l, costcheck == _c);				  // check if the cost is the declared one
 
 	if (_c >= _i.best_cost)
 		return;
@@ -782,7 +782,7 @@ static inline void inverse_actions_extraction(hplus::instance& _i, const logger&
 	}
 }
 
-static inline void finish_opt(hplus::instance& _i) {
+static inline void finish_opt(hplus::instance& _i, const logger& _l) {
 	size_t count = 0;
 	for (auto var_i : hplus::var_remaining(_i))
 		_i.var_opt_conv[var_i] = count++;
@@ -797,8 +797,8 @@ static inline void finish_opt(hplus::instance& _i) {
 	_i.fadd_checkpoint = std::vector<size_t>(_i.m_opt);
 	for (size_t act_i = 0; act_i < _i.m_opt; act_i++)
 		_i.fadd_checkpoint[act_i] = act_i * _i.n_opt;
-	_INTCHECK_ASSERT(!_i.var_f.intersects(_i.var_e));
-	_INTCHECK_ASSERT(!_i.act_f.intersects(_i.act_e));
+	_INTCHECK_ASSERT_LOG(_l, !_i.var_f.intersects(_i.var_e));
+	_INTCHECK_ASSERT_LOG(_l, !_i.act_f.intersects(_i.act_e));
 }
 
 void hplus::instance_optimization(instance& _i, const environment& _e, const logger& _l) {
@@ -812,7 +812,7 @@ void hplus::instance_optimization(instance& _i, const environment& _e, const log
 	dominated_actions_elimination(_i, landmarks, fadd, _l);
 	immediate_action_application(_i, _e, act_landmarks, _l);
 	inverse_actions_extraction(_i, _l);
-	finish_opt(_i);
+	finish_opt(_i, _l);
 }
 
 void hplus::prepare_faster_actsearch(instance& _i, const logger& _l) {
