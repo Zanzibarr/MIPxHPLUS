@@ -10,6 +10,7 @@
 #define LOG_HXX
 
 #include <chrono>
+#include <cstdarg>
 #include <fstream>
 #include <iomanip>
 #include <iostream>

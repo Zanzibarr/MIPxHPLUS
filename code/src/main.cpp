@@ -312,9 +312,9 @@ static inline void run(hplus::instance& _i, hplus::environment& _e,
 		stopchk();
 
 		// time limit
-		if (static_cast<double>(_e.time_limit) > _e.timer.get_time())
+		if (static_cast<double>(_e.time_limit) > _e.timer.get_time()) {
 			_ASSERT_LOG(_l, !CPXsetdblparam(env, CPXPARAM_TimeLimit, static_cast<double>(_e.time_limit) - _e.timer.get_time()));
-		else
+		} else
 			return;
 
 		if (_e.warm_start) { // Post warm starto to CPLEX
