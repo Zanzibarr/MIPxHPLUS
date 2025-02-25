@@ -31,6 +31,8 @@ HOW I DO VERSIONING:
 - Errors not showing in log file
 - Logs with errors compare in results json file with an empty string as name
     - [~/code/test/code/results_jobs.py](code/test/code/results_jobs.py)
+- Test scripts don't modify files or folders until the user agreed to all paths
+    - [~/code/test/code/](code/test/code)
 <!-- ### :heavy_exclamation_mark: Changed -->
 ### :heavy_plus_sign: Added
 - Instances with errors in results json file now show last 5 lines of logs file

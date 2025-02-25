@@ -57,8 +57,6 @@ def main():
     # jobs
     jobs_folder = os.path.join(code_dir, "test/jobs")
     jobs_outputs = os.path.join(code_dir, "test/jobs_output")
-    os.makedirs(jobs_folder, exist_ok=True)
-    os.makedirs(jobs_outputs, exist_ok=True)
 
     exec_dir = os.path.join(code_dir, "build")
 
@@ -68,6 +66,8 @@ def main():
     if input("Check those paths.\nInsert y if it's all correct: ") != "y":
         exit(0)
 
+    os.makedirs(jobs_folder, exist_ok=True)
+    os.makedirs(jobs_outputs, exist_ok=True)
     clear_dir(Path(jobs_outputs))
 
     for i in range(n_batches):

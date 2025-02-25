@@ -28,6 +28,12 @@ def main():
     if input(f"Run name will be '{run_name}'\nInsert y if it's correct: ") != "y":
         exit(0)
 
+    logsdir = os.path.abspath("../../../logs/AAA_output_logs")
+    save_logs_dir = Path(f"{Path(logsdir).parent}/saved_logs/{run_name}")
+    if os.path.exists(save_logs_dir):
+        print(f"Path {save_logs_dir} already exists.")
+        exit(1)
+
     runsum["stats"] = {
         "avg_ptime": 0,
         "avg_stime": 0,
@@ -42,12 +48,6 @@ def main():
     runsum["n_total"] = 0
     runsum["other"] = ""
     runsum["results"] = {}
-
-    logsdir = os.path.abspath("../../../logs/AAA_output_logs")
-    save_logs_dir = Path(f"{Path(logsdir).parent}/saved_logs/{run_name}")
-    if os.path.exists(save_logs_dir):
-        print(f"Path {save_logs_dir} already exists.")
-        exit(1)
     os.mkdir(save_logs_dir)
 
     print(f"Logs dir: {logsdir}")

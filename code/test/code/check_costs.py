@@ -24,15 +24,15 @@ def main():
     ):
         exit(0)
 
-    with open(run_results_file, "r") as f:
-        run_results = json.loads(f.read())
-
     baseline_path = os.path.abspath("../../../local/fast_downward_baseline")
     if (
         input(f"Fast downward baseline: {baseline_path}\nInsert y if it's correct: ")
         != "y"
     ):
         exit(0)
+
+    with open(run_results_file, "r") as f:
+        run_results = json.loads(f.read())
 
     for file in os.listdir(baseline_path):
         file_path = os.path.join(baseline_path, file)
