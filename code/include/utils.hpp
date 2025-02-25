@@ -113,13 +113,13 @@ enum exec_status {
 inline std::vector<std::string> split_string(const std::string& _str, char _del) {
 	std::vector<std::string> tokens;
 	std::string				 tmp;
-	for (int i = 0; i < _str.length(); i++) {
-		if (_str[i] == _del) {
+	for (auto c : _str) {
+		if (c == _del) {
 			if (!tmp.empty())
 				tokens.push_back(tmp);
 			tmp = "";
 		} else
-			tmp += _str[i];
+			tmp += c;
 	}
 	if (!tmp.empty())
 		tokens.push_back(tmp);

@@ -62,27 +62,12 @@ def main():
         with open(filepath, "r") as f:
             content = f.read()
 
-        if "[ ERROR ]" not in content and (
-            "Code version:" not in content
-            or int(
-                content.partition("Verbose parameter:")[2].partition(".\n")[0].strip()
-            )
-            < 10
-        ):
-            print(
-                "Instances must be run with a logging parameter of 10 (or higher) for this code to be able to parse all results."
-            )
-            print(filepath)
-            exit(1)
-
-        if "Axiom layer is" in content:
-            instance_name = content.partition("RUN_NAME: ")[2].partition("\n")[0]
-        else:
-            instance_name = Path(
-                content.partition("Input file: ")[2].partition(".\n")[0]
-            ).name
-
-        instance_name = instance_name.replace(".sas", "").replace("_deletefree", "")
+        instance_name = (
+            content.partition("RUN_NAME: ")[2]
+            .partition("\n")[0]
+            .replace(".sas", "")
+            .replace("_deletefree", "")
+        )
 
         runsum["results"][instance_name] = {
             "status": -1,
@@ -102,6 +87,9 @@ def main():
             runsum["results"][instance_name]["status"] = -2
         elif "[ ERROR ]" in content:
             runsum["results"][instance_name]["status"] = -1
+            runsum["results"][instance_name]["other"] = "\n".join(
+                content.splitlines()[-5:]
+            )
         elif "The problem is infeasible." in content:
             runsum["stats"]["perc_found"] += 1
             runsum["stats"]["perc_opt"] += 1
@@ -117,6 +105,9 @@ def main():
             runsum["results"][instance_name]["status"] = 0
         else:
             runsum["results"][instance_name]["status"] = -1
+            runsum["results"][instance_name]["other"] = "\n".join(
+                content.splitlines()[-5:]
+            )
 
         if runsum["results"][instance_name]["status"] > -2:
             runsum["n_total"] += 1
