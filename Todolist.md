@@ -1,7 +1,5 @@
 # Todolist
 
-- [ ] Test correctness of Deletefree parsing
-- [x] Why some deletefree instances appear infeasible?
-- [ ] Implement dynamic-s and dynamic-l
 - [ ] Implement other heuristics
+- [ ] Implement dynamic-s and dynamic-l
 - [ ] Fix other TODOs (see in the code)

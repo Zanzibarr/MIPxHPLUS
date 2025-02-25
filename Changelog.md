@@ -38,6 +38,9 @@ HOW I DO VERSIONING:
 ### :heavy_exclamation_mark: Changed
 - Log output line is now monocromatic
     - [~/code/external/log.hxx](code/external/log.hxx)
+- Modernized logger, binary_set and bs_searcher
+    - [~/code/external/bs.hxx](code/external/bs.hxx)
+    - [~/code/external/log.hxx](code/external/log.hxx)
 ### :heavy_plus_sign: Added
 - Instances with errors in results json file now show last 5 lines of logs file (for better error understanding)
     - [~/code/test/code/results_jobs.py](code/test/code/results_jobs.py)

@@ -1,177 +1,252 @@
 /**
  * @file log.hpp
- * @brief Logger with formatted output
+ * @brief logger with formatted output using modern C++ features
  *
  * @author Matteo Zanella <matteozanella2@gmail.com>
  * Copyright 2025 Matteo Zanella
  */
 
-#ifndef LOG_H
-#define LOG_H
+#ifndef LOG_HXX
+#define LOG_HXX
 
-#include <cstdarg>
+#include <chrono>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+#include <memory>
+#include <optional>
+#include <sstream>
 #include <stdexcept>
 #include <string>
-#include <time.h>
+#include <string_view>
 
 #define LINE "------------------------------------------------------------"
 #define THICK_LINE "############################################################"
 
-static inline void printf_logger(va_list& _valist, const char* _msg, bool _time, FILE* _out, FILE* _logfile) {
-	if (_time) {
-		time_t	  now = time(0);
-		struct tm tstruct;
-		char	  str_time[80];
-		tstruct = *localtime(&now);
-		strftime(str_time, sizeof(str_time), "%Y-%m-%d.%X", &tstruct);
-		fprintf(_out, "%s : ", str_time);
-		if (_logfile)
-			fprintf(_logfile, "%s : ", str_time);
+namespace {
+
+	// Enum for log level types
+	enum class log_level {
+		print,
+		info,
+		warning,
+		error
+	};
+
+	// Get formatted current time
+	inline std::string get_current_time() {
+		const auto		  now = std::chrono::system_clock::now();
+		const auto		  time_t = std::chrono::system_clock::to_time_t(now);
+		std::stringstream ss;
+		ss << std::put_time(std::localtime(&time_t), "%Y-%m-%d.%X");
+		return ss.str();
 	}
-	if (_logfile) {
-		// Use one va_list for each vfprintf call
-		va_list ptr_copy;
-		va_copy(ptr_copy, _valist);
-		vfprintf(_logfile, _msg, ptr_copy);
-		va_end(ptr_copy);
+
+	// ANSI color codes
+	namespace colors {
+		constexpr std::string_view reset = "\033[0m";
+		constexpr std::string_view info = "\033[38;5;68m\033[1m";
+		constexpr std::string_view warn = "\033[38;5;215m\033[1m";
+		constexpr std::string_view error = "\033[91m\033[1m";
+		constexpr std::string_view reset_bold = "\033[22m";
+	} // namespace colors
+
+	// Format prefix based on log level
+	inline std::pair<std::string, std::string> format_prefix(log_level level, bool include_time) {
+		std::string terminal_prefix, file_prefix;
+
+		switch (level) {
+			case log_level::info:
+				terminal_prefix = std::string(colors::info) + "[ INFO ] " +
+					std::string(colors::reset_bold) + "-- ";
+				file_prefix = "[ INFO ] -- ";
+				break;
+			case log_level::warning:
+				terminal_prefix = std::string(colors::warn) + "[ WARN ] " +
+					std::string(colors::reset_bold) + "-- ";
+				file_prefix = "[ WARN ] -- ";
+				break;
+			case log_level::error:
+				terminal_prefix = std::string(colors::error) + "[ ERROR ] " +
+					std::string(colors::reset_bold) + "-- ";
+				file_prefix = "[ ERROR ] -- ";
+				break;
+			default:
+				// No prefix for regular print
+				break;
+		}
+
+		if (include_time) {
+			const std::string time_str = get_current_time() + " : ";
+			if (!terminal_prefix.empty()) {
+				terminal_prefix = terminal_prefix + time_str;
+				file_prefix = file_prefix + time_str;
+			} else {
+				terminal_prefix = time_str;
+				file_prefix = time_str;
+			}
+		}
+
+		return { terminal_prefix, file_prefix };
 	}
-	vfprintf(_out, _msg, _valist);
-	fprintf(_out, "\n");
-	if (_logfile) {
-		fprintf(_logfile, "\n");
-		fclose(_logfile);
+
+	std::string format_string(const char* format, ...) {
+		va_list arg_list;
+
+		va_start(arg_list, format);
+
+		int size_s = std::vsnprintf(nullptr, 0, format, arg_list) + 1;
+		if (size_s <= 0) {
+			va_end(arg_list);
+			throw std::runtime_error("error during formatting");
+		}
+
+		auto size = static_cast<size_t>(size_s);
+		auto buf = std::make_unique<char[]>(size);
+		std::vsnprintf(buf.get(), size, format, arg_list);
+
+		va_end(arg_list);
+
+		return { buf.get(), buf.get() + size - 1 };
 	}
-	va_end(_valist);
-}
+} // anonymous namespace
 
 /**
- * @brief logger class for logging formatted output both on terminal and on log file
- *
+ * @brief Modern logger class for formatted output on terminal and log file
  */
 class logger {
 public:
 	/**
 	 * @brief Construct a new logger object
 	 *
-	 * @param _log_enabled Specify wether to log on a file too
-	 * @param _log_name Specify the path of the log file (writing on append mode: 'a')
-	 * @param _run_title Title of the run to be logged on the file (optional)
+	 * @param log_enabled Specify whether to log to a file
+	 * @param log_name Path of the log file (writing in append mode)
+	 * @param run_title Optional title for the current logging session
 	 *
-	 * @throw std::invalid_argument If any problem with opening the log file occurrs
+	 * @throw std::runtime_error If any problem with opening the log file occurs
 	 */
-	explicit inline logger(bool _log_enabled, const std::string& _log_name, const std::string& _run_title = "")
-		: log_file(_log_name), log_enabled(_log_enabled) {
-		if (this->log_enabled) {
-			FILE* file = fopen(this->log_file.c_str(), "a");
-			if (!file)
-				throw std::invalid_argument("An error occurred while opening the file.");
-			if (_run_title != "")
-				fprintf(file, "\n%s\nRUN_NAME: %s\n%s\n", THICK_LINE, _run_title.c_str(), THICK_LINE);
-			fclose(file);
+	explicit logger(bool log_enabled, std::string_view log_name, std::string_view run_title = "")
+		: log_file_path_(log_name), log_enabled_(log_enabled) {
+
+		if (log_enabled_) {
+			try {
+				std::ofstream file(log_file_path_, std::ios::app);
+				if (!file) {
+					throw std::runtime_error("Failed to open log file: " + std::string(log_name));
+				}
+
+				if (!run_title.empty()) {
+					file << '\n'
+						 << THICK_LINE << "\nRUN_NAME: " << run_title << '\n'
+						 << THICK_LINE << '\n';
+				}
+			} catch (const std::exception& e) {
+				throw std::runtime_error(std::string("logger initialization error: ") + e.what());
+			}
 		}
 	}
 
 	/**
-	 * @brief Writes a simple output (consider this as a printf function)
+	 * @brief Writes a simple output (like printf)
 	 *
-	 * @param _str Formatted string
-	 * @param ... Elements to be added to the formatted string
+	 * @param format Formatted string
+	 * @param args Elements to be added to the formatted string
 	 *
-	 * @throw std::invalid_argument If any problem with opening the log file occurrs
+	 * @throw std::runtime_error If any problem with the log file occurs
 	 */
-	inline void print(const char* _str, ...) const {
-		FILE* file = nullptr;
-		if (this->log_enabled) {
-			file = fopen(this->log_file.c_str(), "a");
-			if (!file)
-				throw std::invalid_argument("An error occurred while opening the file.");
-		}
-		va_list ptr;
-		va_start(ptr, _str);
-		printf_logger(ptr, _str, false, stdout, file);
+	template <typename... Args>
+	void print(const char* format, Args&&... args) const {
+		log_message(log_level::print, false, format, std::forward<Args>(args)...);
 	}
 
 	/**
-	 * @brief Writes an info message (consider this as a printf function)
+	 * @brief Writes an info message with timestamp
 	 *
-	 * @param _str Formatted string
-	 * @param ... Elements to be added to the formatted string
+	 * @param format Formatted string
+	 * @param args Elements to be added to the formatted string
 	 *
-	 * @throw std::invalid_argument If any problem with opening the log file occurrs
+	 * @throw std::runtime_error If any problem with the log file occurs
 	 */
-
-	inline void print_info(const char* _str, ...) const {
-		FILE* file = nullptr;
-		if (this->log_enabled) {
-			file = fopen(this->log_file.c_str(), "a");
-			if (!file)
-				throw std::invalid_argument("An error occurred while opening the file.");
-		}
-		va_list ptr;
-		va_start(ptr, _str);
-		// Print prefix
-		fprintf(stdout, "\033[38;5;68m\033[1m[ INFO ] \033[22m-- ");
-		if (file)
-			fprintf(file, "[ INFO ] -- ");
-		printf_logger(ptr, _str, true, stdout, file);
-		fprintf(stdout, "\033[0m");
+	template <typename... Args>
+	void print_info(const char* format, Args&&... args) const {
+		log_message(log_level::info, true, format, std::forward<Args>(args)...);
 	}
 
 	/**
-	 * @brief Writes a warning message (consider this as a printf function)
+	 * @brief Writes a warning message with timestamp
 	 *
-	 * @param _str Formatted string
-	 * @param ... Elements to be added to the formatted string
+	 * @param format Formatted string
+	 * @param args Elements to be added to the formatted string
 	 *
-	 * @throw std::invalid_argument If any problem with opening the log file occurrs
+	 * @throw std::runtime_error If any problem with the log file occurs
 	 */
-	inline void print_warn(const char* _str, ...) const {
-		FILE* file = nullptr;
-		if (this->log_enabled) {
-			file = fopen(this->log_file.c_str(), "a");
-			if (!file)
-				throw std::invalid_argument("An error occurred while opening the file.");
-		}
-		va_list ptr;
-		va_start(ptr, _str);
-		// Print prefix
-		fprintf(stderr, "\033[38;5;215m\033[1m[ WARN ] \033[22m-- ");
-		if (file)
-			fprintf(file, "[ WARN ] -- ");
-		printf_logger(ptr, _str, true, stderr, file);
-		fprintf(stdout, "\033[0m");
+	template <typename... Args>
+	void print_warn(const char* format, Args&&... args) const {
+		log_message(log_level::warning, true, format, std::forward<Args>(args)...);
 	}
 
 	/**
-	 * @brief Writes an error message (consider this as a printf function) and terminates the execution of the code with exit(1)
+	 * @brief Writes an error message with timestamp and terminates execution
 	 *
-	 * @param _str Formatted string
-	 * @param ... Elements to be added to the formatted string
+	 * @param format Formatted string
+	 * @param args Elements to be added to the formatted string
 	 *
-	 * @throw std::invalid_argument If any problem with opening the log file occurrs
+	 * @throw std::runtime_error If any problem with the log file occurs
 	 */
-	inline void raise_error(const char* _str, ...) const {
-		FILE* file = nullptr;
-		if (this->log_enabled) {
-			file = fopen(this->log_file.c_str(), "a");
-			if (!file)
-				throw std::invalid_argument("An error occurred while opening the file.");
-		}
-		va_list ptr;
-		va_start(ptr, _str);
-		// Print prefix to stderr for errors
-		fprintf(stderr, "\033[91m\033[1m[ ERROR ] \033[22m-- ");
-		if (file)
-			fprintf(file, "[ ERROR ] -- ");
-		// Print timestamp
-		printf_logger(ptr, _str, true, stderr, file);
-		fprintf(stdout, "\033[0m");
-		exit(1);
+	template <typename... Args>
+	[[noreturn]]
+	void raise_error(const char* format, Args&&... args) const {
+		log_message(log_level::error, true, format, std::forward<Args>(args)...);
+		std::cerr << colors::reset; // reset color before exit
+		std::exit(1);
 	}
 
 private:
-	std::string log_file;
-	bool		log_enabled;
+	std::string log_file_path_;
+	bool		log_enabled_;
+
+	/**
+	 * @brief Internal implementation for logging messages
+	 */
+	template <typename... Args>
+	void log_message(log_level level, bool include_time, const char* format, Args&&... args) const {
+		try {
+			// Format the message
+			std::string message = format_string(format, std::forward<Args>(args)...);
+
+			// Get prefix based on log level
+			auto [terminal_prefix, file_prefix] = format_prefix(level, include_time);
+
+			// Output streams based on message type
+			std::ostream& out_stream = (level == log_level::warning || level == log_level::error)
+				? std::cerr
+				: std::cout;
+
+			// Write to terminal
+			out_stream << terminal_prefix << message << "\n";
+
+			// Write to file if enabled
+			if (log_enabled_) {
+				std::ofstream file(log_file_path_, std::ios::app);
+				if (!file) {
+					throw std::runtime_error("Failed to open log file for writing");
+				}
+				file << file_prefix << message << "\n";
+			}
+
+			// reset colors for terminal
+			if (level != log_level::print) {
+				std::cout << colors::reset;
+			}
+
+		} catch (const std::exception& e) {
+			// Handle formatting or file errors
+			std::cerr << "logger error: " << e.what() << "\n";
+			if (level == log_level::error) {
+				std::exit(1); // Still exit on error level
+			}
+		}
+	}
 };
 
-#endif /* LOG_H */
+#endif /* LOG_HXX */
