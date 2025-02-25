@@ -457,18 +457,18 @@ binary_set hplus::act_remaining(const instance& _i) {
 void hplus::update_sol(instance& _i, const std::vector<size_t> _s, const unsigned int _c, const logger& _l) {
 	auto		 dbcheck = binary_set(_i.m);
 	unsigned int costcheck = 0;
-	_INTCHECK_ASSERT_LOG(_l, _s.size() <= _i.m); // check that there aren't more actions that there exists
+	_ASSERT_LOG(_l, _s.size() <= _i.m); // check that there aren't more actions that there exists
 	binary_set feas_checker(_i.n);
 	for (auto act_i : _s) {
-		_INTCHECK_ASSERT_LOG(_l, act_i < _i.m);	   // check that the solution only contains existing actions
-		_INTCHECK_ASSERT_LOG(_l, !dbcheck[act_i]); // check that there are no duplicates
+		_ASSERT_LOG(_l, act_i < _i.m);	  // check that the solution only contains existing actions
+		_ASSERT_LOG(_l, !dbcheck[act_i]); // check that there are no duplicates
 		dbcheck.add(act_i);
-		_INTCHECK_ASSERT_LOG(_l, feas_checker.contains(_i.actions[act_i].pre)); // check if the preconditions are respected at each step
+		_ASSERT_LOG(_l, feas_checker.contains(_i.actions[act_i].pre)); // check if the preconditions are respected at each step
 		feas_checker |= _i.actions[act_i].eff;
 		costcheck += _i.actions[act_i].cost;
 	}
-	_INTCHECK_ASSERT_LOG(_l, feas_checker.contains(_i.goal)); // check if the solution leads to the goal state
-	_INTCHECK_ASSERT_LOG(_l, costcheck == _c);				  // check if the cost is the declared one
+	_ASSERT_LOG(_l, feas_checker.contains(_i.goal)); // check if the solution leads to the goal state
+	_ASSERT_LOG(_l, costcheck == _c);				 // check if the cost is the declared one
 
 	if (_c >= _i.best_cost)
 		return;

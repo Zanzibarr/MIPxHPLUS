@@ -90,7 +90,7 @@ private:
 };
 
 /** Solution status for solution monitoring */
-enum solution_status {
+enum class solution_status {
 	OPT = 0,
 	FEAS = 1,
 	INFEAS = 2,
@@ -98,7 +98,7 @@ enum solution_status {
 };
 
 /** Execution status for execution monitoring */
-enum exec_status {
+enum class exec_status {
 	START = 0,
 	READ_INPUT = 1,
 	PROBLEM_SIMPL = 10,
@@ -186,15 +186,13 @@ public:
 		}
 #endif
 
-#ifndef _ASSERT_LOG
-	#define _ASSERT_LOG(_log, _cond)                                                                                \
-		{                                                                                                           \
-			if (!(_cond)) [[unlikely]] {                                                                            \
-				std::string msg = std::format("Assert check failed at {}() {}:{}\n", __func__, __FILE__, __LINE__); \
-				_log.raise_error(msg.c_str());                                                                      \
-			}                                                                                                       \
-		}
-#endif
+#define _ASSERT_LOG(_log, _cond)                                                                                \
+	{                                                                                                           \
+		if (!(_cond)) [[unlikely]] {                                                                            \
+			std::string msg = std::format("Assert check failed at {}() {}:{}\n", __func__, __FILE__, __LINE__); \
+			_log.raise_error(msg.c_str());                                                                      \
+		}                                                                                                       \
+	}
 
 /** Print a warning message only if the warn flag is set */
 #if HPLUS_WARN

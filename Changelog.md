@@ -33,7 +33,11 @@ HOW I DO VERSIONING:
     - [~/code/test/code/results_jobs.py](code/test/code/results_jobs.py)
 - Test scripts don't modify files or folders until the user agreed to all paths
     - [~/code/test/code/](code/test/code)
-<!-- ### :heavy_exclamation_mark: Changed -->
+- Update best solution didn't perform check on the solution if integrity checks are off (integrity of the solution should be always checked)
+    - [~/code/src/hplus_instance.cpp](code/src/hplus_instance.cpp)
+### :heavy_exclamation_mark: Changed
+- Log output line now is monocromatic
+    - [~/code/external/log.hxx](code/external/log.hxx)
 ### :heavy_plus_sign: Added
 - Instances with errors in results json file now show last 5 lines of logs file
     - [~/code/test/code/results_jobs.py](code/test/code/results_jobs.py)

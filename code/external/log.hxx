@@ -110,10 +110,11 @@ public:
 		va_list ptr;
 		va_start(ptr, _str);
 		// Print prefix
-		fprintf(stdout, "\033[92m\033[1m[ INFO ]\033[0m -- ");
+		fprintf(stdout, "\033[38;5;68m\033[1m[ INFO ] \033[22m-- ");
 		if (file)
 			fprintf(file, "[ INFO ] -- ");
 		printf_logger(ptr, _str, true, stdout, file);
+		fprintf(stdout, "\033[0m");
 	}
 
 	/**
@@ -134,10 +135,11 @@ public:
 		va_list ptr;
 		va_start(ptr, _str);
 		// Print prefix
-		fprintf(stderr, "\033[93m\033[1m[ WARN ]\033[0m -- ");
+		fprintf(stderr, "\033[38;5;215m\033[1m[ WARN ] \033[22m-- ");
 		if (file)
 			fprintf(file, "[ WARN ] -- ");
 		printf_logger(ptr, _str, true, stderr, file);
+		fprintf(stdout, "\033[0m");
 	}
 
 	/**
@@ -158,11 +160,12 @@ public:
 		va_list ptr;
 		va_start(ptr, _str);
 		// Print prefix to stderr for errors
-		fprintf(stderr, "\033[91m\033[1m[ ERROR ]\033[0m -- ");
+		fprintf(stderr, "\033[91m\033[1m[ ERROR ] \033[22m-- ");
 		if (file)
 			fprintf(file, "[ ERROR ] -- ");
 		// Print timestamp
 		printf_logger(ptr, _str, true, stderr, file);
+		fprintf(stdout, "\033[0m");
 		exit(1);
 	}
 
