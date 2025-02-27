@@ -23,9 +23,9 @@ static inline void signal_callback_handler(const int signum) {
 }
 
 static inline void* time_limit_termination(void* args) {
-	hplus::environment* _e = (hplus::environment*)args;
-	while (_e->exec_s < exec_status::STOP_TL && _e->sol_s != solution_status::INFEAS) {
-		if (_e->timer.get_time() > static_cast<double>(_e->time_limit)) [[unlikely]] {
+	hplus::environment* env = (hplus::environment*)args;
+	while (env->exec_s < exec_status::STOP_TL && env->sol_s != solution_status::INFEAS) {
+		if (env->timer.get_time() > static_cast<double>(env->time_limit)) [[unlikely]] {
 			raise(SIGINT);
 			return nullptr;
 		}
@@ -34,36 +34,36 @@ static inline void* time_limit_termination(void* args) {
 	return nullptr;
 }
 
-static inline void init(hplus::environment& _e) {
-	_e = (hplus::environment){ .exec_s = exec_status::START,
-							   .sol_s = solution_status::NOTFOUND,
-							   .input_file = "N/A",
-							   .log_name = HPLUS_LOG_DIR "/hplus_log.log",
-							   .run_name = "DEFAULT RUN NAME",
-							   .alg = "rankooh",
-							   .heur = "greedycxe",
-							   .log = false,
-							   .problem_opt = true,
-							   .warm_start = true,
-							   .imai_tight_bounds = true,
-							   .using_cplex = true,
-							   .time_limit = 60,
-							   .timer = time_keeper() };
+static inline void init(hplus::environment& env) {
+	env = (hplus::environment){ .exec_s = exec_status::START,
+								.sol_s = solution_status::NOTFOUND,
+								.input_file = "N/A",
+								.log_name = HPLUS_LOG_DIR "/hplus_log.log",
+								.run_name = "DEFAULT RUN NAME",
+								.alg = "rankooh",
+								.heur = "greedycxe",
+								.log = false,
+								.problem_opt = true,
+								.warm_start = true,
+								.imai_tight_bounds = true,
+								.using_cplex = true,
+								.time_limit = 60,
+								.timer = time_keeper() };
 }
 
-static inline void init(hplus::statistics& _s) {
-	_s = (hplus::statistics){ .parsing = 0,
-							  .optimization = 0,
-							  .heuristic = 0,
-							  .build = 0,
-							  .callback = 0,
-							  .execution = 0,
-							  .total = 0 };
-	pthread_mutex_init(&_s.callback_time_mutex, nullptr);
+static inline void init(hplus::statistics& stats) {
+	stats = (hplus::statistics){ .parsing = 0,
+								 .optimization = 0,
+								 .heuristic = 0,
+								 .build = 0,
+								 .callback = 0,
+								 .execution = 0,
+								 .total = 0 };
+	pthread_mutex_init(&stats.callback_time_mutex, nullptr);
 }
 
-static inline void parse_cli(const int& _argc, const char** _argv,
-							 hplus::environment& _e) {
+static inline void parse_cli(const int& argc, const char** argv,
+							 hplus::environment& env) {
 	args::ArgumentParser		  parser("//[ ]: HEADER.", "//[ ]: FOOTER.");
 	args::HelpFlag				  help(parser, "help", "Display the help menu", { "h", "help" });
 	args::Positional<std::string> input_file(
@@ -107,7 +107,7 @@ static inline void parse_cli(const int& _argc, const char** _argv,
 		{ "run" });
 
 	try {
-		parser.ParseCLI(_argc, _argv);
+		parser.ParseCLI(argc, argv);
 	} catch (const args::Help&) {
 		std::cout << parser;
 		exit(0);
@@ -121,298 +121,298 @@ static inline void parse_cli(const int& _argc, const char** _argv,
 		std::cerr << "MISSING INPUT FILE.\n";
 		exit(1);
 	} else
-		_e.input_file = args::get(input_file);
+		env.input_file = args::get(input_file);
 	struct stat buffer{};
-	if (stat((_e.input_file).c_str(), &buffer) != 0) {
+	if (stat((env.input_file).c_str(), &buffer) != 0) {
 		std::cerr << "Failed to open input file.\n";
 		exit(1);
 	}
 	if (algorithm)
-		_e.alg = args::get(algorithm);
-	_e.problem_opt = !no_optimization;
-	_e.imai_tight_bounds = !no_tightbounds;
+		env.alg = args::get(algorithm);
+	env.problem_opt = !no_optimization;
+	env.imai_tight_bounds = !no_tightbounds;
 	if (heur)
-		_e.heur = args::get(heur);
-	_e.warm_start = !no_warmstart;
+		env.heur = args::get(heur);
+	env.warm_start = !no_warmstart;
 	if (timelimit) {
 		int tl = args::get(timelimit);
 		if (tl < 0)
-			_ACK_REQ("Time limit is negative: setting time limit to UINT_MAX");
-		_e.time_limit = (tl < 0) ? UINT_MAX : tl;
+			_ACK_REQ("Time limit is negative: setting time limit to max");
+		env.time_limit = (tl < 0) ? std::numeric_limits<unsigned int>::max() : tl;
 	}
 	if (logname) {
-		_e.log = true;
-		_e.log_name = args::get(logname);
+		env.log = true;
+		env.log_name = args::get(logname);
 	}
 	if (runname)
-		_e.run_name = args::get(runname);
-	if (_e.alg != HPLUS_CLI_ALG_IMAI && _e.alg != HPLUS_CLI_ALG_RANKOOH && _e.alg != HPLUS_CLI_ALG_DYNAMIC_LARGE && _e.alg != HPLUS_CLI_ALG_DYNAMIC_SMALL) {
-		_e.warm_start = false;
-		_e.using_cplex = false;
+		env.run_name = args::get(runname);
+	if (env.alg != HPLUS_CLI_ALG_IMAI && env.alg != HPLUS_CLI_ALG_RANKOOH && env.alg != HPLUS_CLI_ALG_DYNAMIC_LARGE && env.alg != HPLUS_CLI_ALG_DYNAMIC_SMALL) {
+		env.warm_start = false;
+		env.using_cplex = false;
 	}
-	if (_e.warm_start && _e.heur == "none") {
+	if (env.warm_start && env.heur == "none") {
 		_ACK_REQ("Warm start has been activated but heuristic has been disabled: "
 				 "disabling warm start");
-		_e.warm_start = false;
+		env.warm_start = false;
 	}
 }
 
-static inline void show_info(const hplus::instance&	   _i,
-							 const hplus::environment& _e, const logger& _l) {
-	_PRINT_VERBOSE("Showing info about the execution.");
+static inline void show_info(const hplus::instance&	   inst,
+							 const hplus::environment& env, const logger& log) {
+	_PRINT_VERBOSE(log, "Showing info about the execution.");
 #if HPLUS_VERBOSE <= 1
 	return;
 #endif
 
-	_l.print(LINE);
+	log.print(LINE);
 
 	std::time_t time =
 		std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-	_l.print("%sCode version: %s.\n%s", std::ctime(&time), CODE_VERSION, LINE);
-	_l.print("Input file: %s.", _e.input_file.c_str());
-	if (_e.log && !_e.log_name.empty())
-		_l.print("Log name:               %35s.", _e.log_name.c_str());
-	if (!_e.run_name.empty())
-		_l.print("Run name:                              %20s.",
-				 _e.run_name.c_str());
-	_l.print("Verbose parameter:                               %10d.",
-			 HPLUS_VERBOSE);
-	_l.print("Warnings parameter:                              %10d.",
-			 HPLUS_WARN);
-	_l.print("Integrity checks parameter:                      %10d.",
-			 HPLUS_INTCHECK);
+	log.print("%sCode version: %s.\n%s", std::ctime(&time), CODE_VERSION, LINE);
+	log.print("Input file: %s.", env.input_file.c_str());
+	if (env.log && !env.log_name.empty())
+		log.print("Log name:               %35s.", env.log_name.c_str());
+	if (!env.run_name.empty())
+		log.print("Run name:                              %20s.",
+				  env.run_name.c_str());
+	log.print("Verbose parameter:                               %10d.",
+			  HPLUS_VERBOSE);
+	log.print("Warnings parameter:                              %10d.",
+			  HPLUS_WARN);
+	log.print("Integrity checks parameter:                      %10d.",
+			  HPLUS_INTCHECK);
 
-	_l.print(LINE);
+	log.print(LINE);
 
-	_l.print("Metric:                                %20s.",
-			 (_i.equal_costs
-				  ? (_i.actions[0].cost == 1 ? "unitary costs" : "constant costs")
-				  : "integer costs"));
-	_l.print("# variables:                                     %10d.", _i.n);
-	_l.print("# actions:                                       %10d.", _i.m);
+	log.print("Metric:                                %20s.",
+			  (inst.equal_costs
+				   ? (inst.actions[0].cost == 1 ? "unitary costs" : "constant costs")
+				   : "integer costs"));
+	log.print("# variables:                                     %10d.", inst.n);
+	log.print("# actions:                                       %10d.", inst.m);
 #if HPLUS_VERBOSE >= 100
-	_l.print("Goal state:  %s.", std::string(_i.goal).c_str());
+	log.print("Goal state:  %s.", std::string(inst.goal).c_str());
 #endif
 
-	_l.print(LINE);
+	log.print(LINE);
 
 #if HPLUS_INTCHECK
-	_l.print(
+	log.print(
 		"\e[1m!!  Integrity checks enabled (execution might be slower)  !!\e[0m");
-	_l.print(LINE);
+	log.print(LINE);
 #endif
 
-	_l.print("Algorithm:                                       %10s.",
-			 _e.alg.c_str());
-	_l.print("Problem simplification:                          %10s.",
-			 _e.problem_opt ? "Y" : "N");
-	if (_e.alg == HPLUS_CLI_ALG_IMAI)
-		_l.print("Tighter bounds on variable timestamps:           %10s.",
-				 _e.imai_tight_bounds ? "Y" : "N");
-	if (_e.heur != "none")
-		_l.print("Heuristic:                                       %10s.",
-				 _e.heur.c_str());
-	if (_e.using_cplex)
-		_l.print("Warm start:                                      %10s.",
-				 _e.warm_start ? "Y" : "N");
-	_l.print("Time limit:                                     %10us.",
-			 _e.time_limit);
-	_l.print(LINE);
+	log.print("Algorithm:                                       %10s.",
+			  env.alg.c_str());
+	log.print("Problem simplification:                          %10s.",
+			  env.problem_opt ? "Y" : "N");
+	if (env.alg == HPLUS_CLI_ALG_IMAI)
+		log.print("Tighter bounds on variable timestamps:           %10s.",
+				  env.imai_tight_bounds ? "Y" : "N");
+	if (env.heur != "none")
+		log.print("Heuristic:                                       %10s.",
+				  env.heur.c_str());
+	if (env.using_cplex)
+		log.print("Warm start:                                      %10s.",
+				  env.warm_start ? "Y" : "N");
+	log.print("Time limit:                                     %10us.",
+			  env.time_limit);
+	log.print(LINE);
 }
 
-static inline void run(hplus::instance& _i, hplus::environment& _e,
-					   hplus::statistics& _s, const logger& _l) {
-	_PRINT_VERBOSE("Executing the chosen algorithms.");
+static inline void run(hplus::instance& inst, hplus::environment& env,
+					   hplus::statistics& stats, const logger& log) {
+	_PRINT_VERBOSE(log, "Executing the chosen algorithms.");
 
 	try {
-		if (_e.alg != HPLUS_CLI_ALG_IMAI && _e.alg != HPLUS_CLI_ALG_RANKOOH && _e.alg != HPLUS_CLI_ALG_DYNAMIC_SMALL && _e.alg != HPLUS_CLI_ALG_DYNAMIC_LARGE && _e.alg != HPLUS_CLI_ALG_HEUR)
-			_l.raise_error(
+		if (env.alg != HPLUS_CLI_ALG_IMAI && env.alg != HPLUS_CLI_ALG_RANKOOH && env.alg != HPLUS_CLI_ALG_DYNAMIC_SMALL && env.alg != HPLUS_CLI_ALG_DYNAMIC_LARGE && env.alg != HPLUS_CLI_ALG_HEUR)
+			log.raise_error(
 				"The algorithm specified (%s) is not on the list of possible "
 				"algorithms... Please read the Readme.md for instructions.",
-				_e.alg.c_str());
+				env.alg.c_str());
 
-		auto stopchk = [&_e]() {
+		auto stopchk = [&env]() {
 			if (_CHECK_STOP()) {
-				_e.exec_s = exec_status::STOP_TL;
+				env.exec_s = exec_status::STOP_TL;
 				throw timelimit_exception("Reached time limit.");
 			}
 		};
 
 		// ~~~~~~~~ PROBLEM SIMPLIFICATION ~~~~~~~ //
 
-		if (_e.problem_opt) {
-			_PRINT_INFO("Problem simplification.");
-			_e.exec_s = exec_status::PROBLEM_SIMPL;
+		if (env.problem_opt) {
+			_PRINT_INFO(log, "Problem simplification.");
+			env.exec_s = exec_status::PROBLEM_SIMPL;
 
-			_s.optimization = static_cast<double>(_e.time_limit) - _e.timer.get_time();
-			double start_time = _e.timer.get_time();
+			stats.optimization = static_cast<double>(env.time_limit) - env.timer.get_time();
+			double start_time = env.timer.get_time();
 
-			hplus::instance_optimization(_i, _e, _l);
+			hplus::instance_optimization(inst, env, log);
 
-			_s.optimization = _e.timer.get_time() - start_time;
+			stats.optimization = env.timer.get_time() - start_time;
 		}
 		stopchk();
 
-		hplus::prepare_faster_actsearch(_i, _l);
+		hplus::prepare_faster_actsearch(inst, log);
 
 		// ~~~~~~~~~~~~~~ HEURISTIC ~~~~~~~~~~~~~~ //
 
-		if (_e.heur != "none" || _e.alg == HPLUS_CLI_ALG_HEUR) {
-			if (_e.heur != "greedycost" && _e.heur != "greedycxe" && _e.heur != "rand" && _e.heur != "randr" && _e.heur != "hmax" && _e.heur != "hadd" && _e.heur != "relax") {
-				const auto& heur = split_string(_e.heur, '-');
+		if (env.heur != "none" || env.alg == HPLUS_CLI_ALG_HEUR) {
+			if (env.heur != "greedycost" && env.heur != "greedycxe" && env.heur != "rand" && env.heur != "randr" && env.heur != "hmax" && env.heur != "hadd" && env.heur != "relax") {
+				const auto& heur = split_string(env.heur, '-');
 				if (heur.size() != 2 || heur[0] != "local" || (heur[1] != "greedycost" && heur[1] != "greedycxe" && heur[1] != "rand" && heur[1] != "randr" && heur[1] != "hmax" && heur[1] != "hadd" && heur[1] != "relax"))
-					_l.raise_error(
+					log.raise_error(
 						"The heuristic specified (%s) is not on the list of possible "
 						"heuristics... Please read the Readme.md for instructions.",
-						_e.heur.c_str());
+						env.heur.c_str());
 			}
 
-			_PRINT_INFO("Calculating heuristic solution.");
-			_e.exec_s = exec_status::HEURISTIC;
+			_PRINT_INFO(log, "Calculating heuristic solution.");
+			env.exec_s = exec_status::HEURISTIC;
 
-			_s.heuristic = static_cast<double>(_e.time_limit) - _e.timer.get_time();
-			double start_time = _e.timer.get_time();
+			stats.heuristic = static_cast<double>(env.time_limit) - env.timer.get_time();
+			double start_time = env.timer.get_time();
 
-			find_heuristic(_i, _e, _l);
+			find_heuristic(inst, env, log);
 
-			_s.heuristic = _e.timer.get_time() - start_time;
+			stats.heuristic = env.timer.get_time() - start_time;
 		}
 		stopchk();
 
-		if (_e.sol_s == solution_status::INFEAS)
+		if (env.sol_s == solution_status::INFEAS)
 			return;
 
-		if (_e.alg == HPLUS_CLI_ALG_HEUR) {
-			_e.exec_s = exec_status::STOP_TL;
+		if (env.alg == HPLUS_CLI_ALG_HEUR) {
+			env.exec_s = exec_status::STOP_TL;
 			return;
 		}
 
 		// ~~~~~~~~~~~~ MODEL BUILDING ~~~~~~~~~~~ //
 
-		_PRINT_INFO("Building model.");
-		_e.exec_s = exec_status::MODEL_BUILD;
+		_PRINT_INFO(log, "Building model.");
+		env.exec_s = exec_status::MODEL_BUILD;
 
-		_s.build = static_cast<double>(_e.time_limit) - _e.timer.get_time();
-		double start_time = _e.timer.get_time();
+		stats.build = static_cast<double>(env.time_limit) - env.timer.get_time();
+		double start_time = env.timer.get_time();
 
-		CPXENVptr env = nullptr;
-		CPXLPptr  lp = nullptr;
+		CPXENVptr cpxenv = nullptr;
+		CPXLPptr  cpxlp = nullptr;
 
-		cpx_init(env, lp, _e, _l);
+		cpx_init(cpxenv, cpxlp, env, log);
 		stopchk();
 
-		if (_e.alg == HPLUS_CLI_ALG_IMAI)
-			cpx_build_imai(env, lp, _i, _e, _l);
-		else if (_e.alg == HPLUS_CLI_ALG_RANKOOH)
-			cpx_build_rankooh(env, lp, _i, _e, _l);
-		else if (_e.alg == HPLUS_CLI_ALG_DYNAMIC_SMALL)
-			cpx_build_dynamic_small(env, lp, _i, _e, _l);
-		else if (_e.alg == HPLUS_CLI_ALG_DYNAMIC_LARGE)
-			cpx_build_dynamic_large(env, lp, _i, _e, _l);
+		if (env.alg == HPLUS_CLI_ALG_IMAI)
+			cpx_build_imai(cpxenv, cpxlp, inst, env, log);
+		else if (env.alg == HPLUS_CLI_ALG_RANKOOH)
+			cpx_build_rankooh(cpxenv, cpxlp, inst, env, log);
+		else if (env.alg == HPLUS_CLI_ALG_DYNAMIC_SMALL)
+			cpx_build_dynamic_small(cpxenv, cpxlp, inst, env, log);
+		else if (env.alg == HPLUS_CLI_ALG_DYNAMIC_LARGE)
+			cpx_build_dynamic_large(cpxenv, cpxlp, inst, env, log);
 		stopchk();
 
 		// time limit
-		if (static_cast<double>(_e.time_limit) > _e.timer.get_time()) {
-			_ASSERT_LOG(_l, !CPXsetdblparam(env, CPXPARAM_TimeLimit, static_cast<double>(_e.time_limit) - _e.timer.get_time()));
+		if (static_cast<double>(env.time_limit) > env.timer.get_time()) {
+			_ASSERT_LOG(log, !CPXsetdblparam(cpxenv, CPXPARAM_TimeLimit, static_cast<double>(env.time_limit) - env.timer.get_time()));
 		} else
-			return;
+			throw timelimit_exception("Reached the time limit");
 
-		if (_e.warm_start) { // Post warm starto to CPLEX
+		if (env.warm_start) { // Post warm starto to CPLEX
 
-			_PRINT_INFO("Posting warm start.");
+			_PRINT_INFO(log, "Posting warm start.");
 
-			if (_e.alg == HPLUS_CLI_ALG_IMAI)
-				cpx_post_warmstart_imai(env, lp, _i, _e, _l);
-			else if (_e.alg == HPLUS_CLI_ALG_RANKOOH)
-				cpx_post_warmstart_rankooh(env, lp, _i, _e, _l);
-			else if (_e.alg == HPLUS_CLI_ALG_DYNAMIC_SMALL)
-				cpx_post_warmstart_dynamic_small(env, lp, _i, _e, _l);
-			else if (_e.alg == HPLUS_CLI_ALG_DYNAMIC_LARGE)
-				cpx_post_warmstart_dynamic_large(env, lp, _i, _e, _l);
+			if (env.alg == HPLUS_CLI_ALG_IMAI)
+				cpx_post_warmstart_imai(cpxenv, cpxlp, inst, env, log);
+			else if (env.alg == HPLUS_CLI_ALG_RANKOOH)
+				cpx_post_warmstart_rankooh(cpxenv, cpxlp, inst, env, log);
+			else if (env.alg == HPLUS_CLI_ALG_DYNAMIC_SMALL)
+				cpx_post_warmstart_dynamic_small(cpxenv, cpxlp, inst, env, log);
+			else if (env.alg == HPLUS_CLI_ALG_DYNAMIC_LARGE)
+				cpx_post_warmstart_dynamic_large(cpxenv, cpxlp, inst, env, log);
 		}
 
-		_s.build = _e.timer.get_time() - start_time;
+		stats.build = env.timer.get_time() - start_time;
 
 		// ~~~~~~~~~~~ MODEL EXECUTION ~~~~~~~~~~~ //
 
-		_PRINT_INFO("Running CPLEX.");
-		_e.exec_s = exec_status::CPX_EXEC;
+		_PRINT_INFO(log, "Running CPLEX.");
+		env.exec_s = exec_status::CPX_EXEC;
 
-		_s.execution = static_cast<double>(_e.time_limit) - _e.timer.get_time();
-		start_time = _e.timer.get_time();
+		stats.execution = static_cast<double>(env.time_limit) - env.timer.get_time();
+		start_time = env.timer.get_time();
 
-		_ASSERT_LOG(_l, !CPXmipopt(env, lp));
+		_ASSERT_LOG(log, !CPXmipopt(cpxenv, cpxlp));
 
-		if (parse_cpx_status(env, lp, _i, _e,
-							 _l)) { // If CPLEX has found a solution
-			if (_e.alg == HPLUS_CLI_ALG_IMAI)
-				store_imai_sol(env, lp, _i, _e, _l);
-			else if (_e.alg == HPLUS_CLI_ALG_RANKOOH)
-				store_rankooh_sol(env, lp, _i, _e, _l);
-			else if (_e.alg == HPLUS_CLI_ALG_DYNAMIC_SMALL)
-				store_dynamic_small_sol(env, lp, _i, _e, _l);
-			else if (_e.alg == HPLUS_CLI_ALG_DYNAMIC_LARGE)
-				store_dynamic_large_sol(env, lp, _i, _e, _l);
+		if (parse_cpx_status(cpxenv, cpxlp, inst, env,
+							 log)) { // If CPLEX has found a solution
+			if (env.alg == HPLUS_CLI_ALG_IMAI)
+				store_imai_sol(cpxenv, cpxlp, inst, env, log);
+			else if (env.alg == HPLUS_CLI_ALG_RANKOOH)
+				store_rankooh_sol(cpxenv, cpxlp, inst, env, log);
+			else if (env.alg == HPLUS_CLI_ALG_DYNAMIC_SMALL)
+				store_dynamic_small_sol(cpxenv, cpxlp, inst, env, log);
+			else if (env.alg == HPLUS_CLI_ALG_DYNAMIC_LARGE)
+				store_dynamic_large_sol(cpxenv, cpxlp, inst, env, log);
 		}
 
-		cpx_close(env, lp);
+		cpx_close(cpxenv, cpxlp);
 
-		_s.execution = _e.timer.get_time() - start_time;
+		stats.execution = env.timer.get_time() - start_time;
 
 	} catch (timelimit_exception& e) {
 		return;
 	}
 }
 
-static inline void end(const hplus::instance& _i, hplus::environment& _e,
-					   hplus::statistics& _s, const logger& _l) {
-	if (_e.timer.get_time() >= static_cast<double>(_e.time_limit)) {
-		switch (_e.exec_s) {
+static inline void end(const hplus::instance& inst, hplus::environment& env,
+					   hplus::statistics& stats, const logger& log) {
+	if (env.timer.get_time() >= static_cast<double>(env.time_limit)) {
+		switch (env.exec_s) {
 			case exec_status::START:
-				_l.print("Reached time limit before the program could read the instance "
-						 "file.");
+				log.print("Reached time limit before the program could read the instance "
+						  "file.");
 				break;
 			case exec_status::READ_INPUT:
-				_l.print("Reached time limit while parsing the instance file.");
+				log.print("Reached time limit while parsing the instance file.");
 				break;
 			case exec_status::PROBLEM_SIMPL:
-				_l.print("Reached time limit while simplificating the problem.");
+				log.print("Reached time limit while simplificating the problem.");
 				break;
 			case exec_status::HEURISTIC:
-				_l.print("Reached time limit while calculating an heuristic solution.");
+				log.print("Reached time limit while calculating an heuristic solution.");
 				break;
 			case exec_status::MODEL_BUILD:
-				_l.print("Reached time limit while building the model.");
+				log.print("Reached time limit while building the model.");
 				break;
 			case exec_status::CPX_EXEC:
-				_l.print("Reached time limit during CPLEX's execution.");
+				log.print("Reached time limit during CPLEX's execution.");
 				break;
 			default:
 				break;
 		}
 	}
 
-	_e.exec_s = exec_status::EXIT;
+	env.exec_s = exec_status::EXIT;
 
-	switch (_e.sol_s) {
+	switch (env.sol_s) {
 		case solution_status::INFEAS:
-			_l.print("The problem is infeasible.");
+			log.print("The problem is infeasible.");
 			break;
 		case solution_status::NOTFOUND:
-			_l.print("No solution found.");
+			log.print("No solution found.");
 			break;
 		case solution_status::FEAS:
-			_l.print("The solution has not been proven optimal.");
+			log.print("The solution has not been proven optimal.");
 		default:
-			hplus::print_sol(_i, _l);
+			hplus::print_sol(inst, log);
 			break;
 	}
 
-	_s.total = _e.timer.get_time();
-	hplus::print_stats(_s, _l);
+	stats.total = env.timer.get_time();
+	hplus::print_stats(stats, log);
 }
 
-int main(const int _argc, const char** _argv) {
+int main(const int argc, const char** argv) {
 	signal(SIGINT, signal_callback_handler);
 	struct termios t;
 	tcgetattr(STDIN_FILENO, &t);
@@ -423,7 +423,7 @@ int main(const int _argc, const char** _argv) {
 	init(env);
 	hplus::statistics stats;
 	init(stats);
-	parse_cli(_argc, _argv, env);
+	parse_cli(argc, argv, env);
 	logger	  log(env.log, HPLUS_LOG_DIR "/" + env.log_name, env.run_name);
 	pthread_t timer_thread;
 	pthread_create(&timer_thread, nullptr, time_limit_termination, &env);

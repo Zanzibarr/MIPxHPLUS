@@ -200,14 +200,12 @@ public:
 	 */
 	[[nodiscard]]
 	explicit operator std::string() const {
-		std::string repr = "[";
-		repr.reserve(capacity_ + 2); // [X...X]
-
+		std::stringstream repr;
+		repr << "[";
 		for (size_t i = 0; i < capacity_; i++)
-			repr.push_back(contains(i) ? 'X' : ' ');
-
-		repr.push_back(']');
-		return repr;
+			repr << (contains(i) ? "X" : " ");
+		repr << "]";
+		return repr.str();
 	}
 
 	// Set operations

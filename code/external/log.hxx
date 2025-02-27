@@ -87,19 +87,22 @@ namespace {
 		return { terminal_prefix, file_prefix };
 	}
 
-	std::string format_string(const char* format, ...) {
-		va_list arg_list;
-		va_start(arg_list, format);
-		int size_s = std::vsnprintf(nullptr, 0, format, arg_list) + 1;
-		if (size_s <= 0) {
-			va_end(arg_list);
-			throw std::runtime_error("error during formatting");
-		}
+	std::string format_string(const char* format, va_list args) {
+		// Make a copy of the va_list to avoid potential corruption
+		va_list args_copy;
+		va_copy(args_copy, args);
+
+		// Get required buffer size
+		int size_s = std::vsnprintf(nullptr, 0, format, args_copy) + 1;
+		va_end(args_copy);
+
+		if (size_s <= 0)
+			throw std::runtime_error("Error during formatting");
+
 		auto size = static_cast<size_t>(size_s);
 		auto buf = std::make_unique<char[]>(size);
-		std::vsnprintf(buf.get(), size, format, arg_list);
-		va_end(arg_list);
-		return { buf.get(), buf.get() + size - 1 };
+		std::vsnprintf(buf.get(), size, format, args);
+		return std::string(buf.get(), size - 1);
 	}
 } // anonymous namespace
 
@@ -121,14 +124,16 @@ public:
 		: log_file_path_(log_name), log_enabled_(log_enabled) {
 		if (log_enabled_) {
 			try {
-				std::ofstream file(log_file_path_, std::ios::app);
-				if (!file)
+				std::ofstream file(log_file_path_.c_str(), std::ios::app);
+				if (!file.is_open())
 					throw std::runtime_error("Failed to open log file: " + std::string(log_name));
+
 				if (!run_title.empty()) {
 					file << '\n'
 						 << THICK_LINE << "\nRUN_NAME: " << run_title << '\n'
 						 << THICK_LINE << '\n';
 				}
+				file.close();
 			} catch (const std::exception& e) {
 				throw std::runtime_error(std::string("logger initialization error: ") + e.what());
 			}
@@ -139,53 +144,61 @@ public:
 	 * @brief Writes a simple output (like printf)
 	 *
 	 * @param format Formatted string
-	 * @param args Elements to be added to the formatted string
+	 * @param ... Elements to be added to the formatted string
 	 *
 	 * @throw std::runtime_error If any problem with the log file occurs
 	 */
-	template <typename... Args>
-	void print(const char* format, Args&&... args) const {
-		log_message(log_level::print, false, format, std::forward<Args>(args)...);
+	void print(const char* format, ...) const {
+		va_list args;
+		va_start(args, format);
+		log_message(log_level::print, false, format, args);
+		va_end(args);
 	}
 
 	/**
 	 * @brief Writes an info message with timestamp
 	 *
 	 * @param format Formatted string
-	 * @param args Elements to be added to the formatted string
+	 * @param ... Elements to be added to the formatted string
 	 *
 	 * @throw std::runtime_error If any problem with the log file occurs
 	 */
-	template <typename... Args>
-	void print_info(const char* format, Args&&... args) const {
-		log_message(log_level::info, true, format, std::forward<Args>(args)...);
+	void print_info(const char* format, ...) const {
+		va_list args;
+		va_start(args, format);
+		log_message(log_level::info, true, format, args);
+		va_end(args);
 	}
 
 	/**
 	 * @brief Writes a warning message with timestamp
 	 *
 	 * @param format Formatted string
-	 * @param args Elements to be added to the formatted string
+	 * @param ... Elements to be added to the formatted string
 	 *
 	 * @throw std::runtime_error If any problem with the log file occurs
 	 */
-	template <typename... Args>
-	void print_warn(const char* format, Args&&... args) const {
-		log_message(log_level::warning, true, format, std::forward<Args>(args)...);
+	void print_warn(const char* format, ...) const {
+		va_list args;
+		va_start(args, format);
+		log_message(log_level::warning, true, format, args);
+		va_end(args);
 	}
 
 	/**
 	 * @brief Writes an error message with timestamp and terminates execution
 	 *
 	 * @param format Formatted string
-	 * @param args Elements to be added to the formatted string
+	 * @param ... Elements to be added to the formatted string
 	 *
 	 * @throw std::runtime_error If any problem with the log file occurs
 	 */
-	template <typename... Args>
 	[[noreturn]]
-	void raise_error(const char* format, Args&&... args) const {
-		log_message(log_level::error, true, format, std::forward<Args>(args)...);
+	void raise_error(const char* format, ...) const {
+		va_list args;
+		va_start(args, format);
+		log_message(log_level::error, true, format, args);
+		va_end(args);
 		std::cerr << colors::reset;
 		std::exit(1);
 	}
@@ -197,25 +210,30 @@ private:
 	/**
 	 * @brief Internal implementation for logging messages
 	 */
-	template <typename... Args>
-	void log_message(log_level level, bool include_time, const char* format, Args&&... args) const {
+	void log_message(log_level level, bool include_time, const char* format, va_list args) const {
 		try {
-			std::string message = format_string(format, std::forward<Args>(args)...);
+			std::string message = format_string(format, args);
 			auto [terminal_prefix, file_prefix] = format_prefix(level, include_time);
+
 			std::ostream& out_stream = (level == log_level::warning || level == log_level::error)
 				? std::cerr
 				: std::cout;
-			out_stream << terminal_prefix << message << "\n";
+			out_stream << terminal_prefix << message << std::endl;
+
 			if (log_enabled_) {
-				std::ofstream file(log_file_path_, std::ios::app);
-				if (!file)
-					throw std::runtime_error("Failed to open log file for writing");
-				file << file_prefix << message << "\n";
+				std::ofstream file(log_file_path_.c_str(), std::ios::app);
+				if (!file.is_open())
+					throw std::runtime_error("Failed to open log file for writing: " + log_file_path_);
+
+				file << file_prefix << message << std::endl;
+				file.close();
 			}
+
 			if (level != log_level::print)
-				std::cout << colors::reset;
+				out_stream << colors::reset;
+
 		} catch (const std::exception& e) {
-			std::cerr << "logger error: " << e.what() << "\n";
+			std::cerr << "logger error: " << e.what() << std::endl;
 			if (level == log_level::error)
 				std::exit(1);
 		}

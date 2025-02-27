@@ -25,8 +25,24 @@ HOW I DO VERSIONING:
 ### :curly_loop: Other
 -->
 
-## [1.0.2] - 2025/02/25
+## [1.1.0] - 2025/02/27
+### :ballot_box_with_check: Fixed
+- Logger formatting function didn't work properly
+    - [~/code/external/log.hxx](code/external/log.hxx)
+### :heavy_exclamation_mark: Changed
+- Using std::stringstream to build string representations of pq and bs and formatting assertion error message for logger
+    - [~/code/external/bs.hxx](code/external/bs.hxx)
+    - [~/code/external/pq.hxx](code/external/pq.hxx)
+    - [~/code/include/utils.hpp](code/include/utils.hpp)
+### :heavy_plus_sign: Added
+- hadd, hmax and relax heuristics
+    - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
+<!-- ### :x: Removed -->
+### :curly_loop: Other
+- Little bit of code refactoring
 
+
+## [1.0.2] - 2025/02/25
 ### :ballot_box_with_check: Fixed
 - Errors not showing in log file
 - Logs with errors appear in results json file with an empty string as name
@@ -48,8 +64,8 @@ HOW I DO VERSIONING:
 ### :curly_loop: Other
 - Better readability in nested if and for loops
 
-## [1.0.1] - 2025/02/24
 
+## [1.0.1] - 2025/02/24
 ### :ballot_box_with_check: Fixed
 - Errors in paths int cluster jobs scripts
     - [~/code/test/code/*](code/test/code/)
@@ -67,8 +83,8 @@ HOW I DO VERSIONING:
 - Automatic code formatting with clang-format (cpp) and black-formatter (python)
 - Start using attributes ([[nodiscard]], [[likely]], [[unlikely]])
 
-## [1.0.0] - 2025/02/23
 
+## [1.0.0] - 2025/02/23
 ### :ballot_box_with_check: Fixed
 - Help function in test scripts is now resistant to scripts name changing
     - [~/code/test/code/*](code/test/code/)

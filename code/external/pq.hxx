@@ -26,18 +26,18 @@
 template <typename score_type>
 class priority_queue {
 public:
-	/** Construct a priority queue for the integer form 0 to _n - 1 */
-	explicit inline priority_queue(int _n)
-		: n(_n), cnt(0), data(n), prior(n), position(n, -1) {}
+	/** Construct a priority queue for the integer form 0 to n - 1 */
+	explicit inline priority_queue(int n)
+		: n(n), cnt(0), data(n), prior(n), position(n, -1) {}
 	/** Return the integer with minimal priority (throws exception if empty) */
 	[[nodiscard]]
 	inline int top() const {
-		_ASSERT(!is_empty());
+		_ASSERT(!empty());
 		return data[0];
 	}
 	/** Check whether the queue is empty */
 	[[nodiscard]]
-	inline bool is_empty() const { return (cnt == 0); }
+	inline bool empty() const { return (cnt == 0); }
 	/** Checks whether an integer j is in the queue */
 	[[nodiscard]]
 	inline bool has(int j) const { return (position[j] >= 0); }
@@ -75,7 +75,7 @@ public:
 	}
 	/** Removes the integer with minimal priority */
 	inline void pop() {
-		_ASSERT(!is_empty());
+		_ASSERT(!empty());
 		remove_at(0, true);
 	}
 	/** Removes integer j from the queue */
@@ -108,10 +108,10 @@ public:
 	}
 	[[nodiscard]]
 	inline operator std::string() const {
-		std::string repr = "";
+		std::stringstream repr;
 		for (int k = 0; k < cnt; k++)
-			repr.append("\t").append(std::to_string(k)).append("\t").append(std::to_string(data[k])).append("\t").append(std::to_string(prior[data[k]])).append("\n");
-		return repr;
+			repr << "\t" << std::to_string(k) << "\t" << std::to_string(data[k]) << "\t" << std::to_string(prior[data[k]]) << "\n";
+		return repr.str();
 	}
 
 private:

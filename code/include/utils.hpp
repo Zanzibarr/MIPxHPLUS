@@ -13,7 +13,7 @@
 // ############################ CODE VERSION ########################### //
 // ##################################################################### //
 
-#define CODE_VERSION "1.0.2"
+#define CODE_VERSION "1.1.0"
 
 // ##################################################################### //
 // ############################## IMPORTS ############################## //
@@ -22,7 +22,6 @@
 #include "log.hxx"
 #include <chrono>
 #include <climits>
-#include <format>
 #include <iostream>
 #include <string>
 #include <vector>
@@ -109,13 +108,13 @@ enum class exec_status {
 	EXIT = 100
 };
 
-/** Split the string _str using _del as delimiter */
+/** Split the string str using del as delimiter */
 [[nodiscard]]
-inline std::vector<std::string> split_string(const std::string& _str, char _del) {
+inline std::vector<std::string> split_string(const std::string& str, char del) {
 	std::vector<std::string> tokens;
 	std::string				 tmp;
-	for (auto c : _str) {
-		if (c == _del) {
+	for (auto c : str) {
+		if (c == del) {
 			if (!tmp.empty())
 				tokens.push_back(tmp);
 			tmp = "";
@@ -127,28 +126,29 @@ inline std::vector<std::string> split_string(const std::string& _str, char _del)
 	return tokens;
 }
 
-/** Check if _str is an integer between from and to (inclusive) */
+/** Check if str is an integer between from and to (inclusive) */
 [[nodiscard]]
-inline bool isint(const std::string& _str, const int _from = INT_MIN,
-				  const int _to = INT_MAX) {
+inline bool isint(const std::string& str, const int from = std::numeric_limits<int>::min(),
+				  const int to = std::numeric_limits<int>::max()) {
 	try {
-		int num = stoi(_str);
-		return num >= _from && num <= _to;
+		int num = stoi(str);
+		return num >= from && num <= to;
 	} catch (std::invalid_argument&) {
 		return false;
 	}
 }
 
-/** (Debugging) Exits with error message due to missing implementation, prints through _log the
- * message _msg formatted as error */
-inline void todo(const logger& _log, const std::string& _msg) {
-	_log.raise_error("%s: UNIMPLEMENTED.", _msg.c_str());
+/** (Debugging) Exits with error message due to missing implementation, prints through log the
+ * message msg formatted as error */
+[[noreturn]]
+inline void todo(const logger& log, const std::string& msg) {
+	log.raise_error("%s: UNIMPLEMENTED.", msg.c_str());
 }
 
 /** (Debugging) Pauses the code execution until resuming, prints msg formatted as warning */
-inline void pause(const std::string& _msg) {
+inline void pause(const std::string& msg) {
 	size_t i = 0;
-	std::cout << _msg << "(1 to exit, 0 to continue): ";
+	std::cout << msg << "(1 to exit, 0 to continue): ";
 	std::cin >> i;
 	if (i > 0)
 		exit(1);
@@ -159,8 +159,8 @@ private:
 	std::string msg;
 
 public:
-	inline timelimit_exception(const char* _m)
-		: msg(_m) {}
+	inline timelimit_exception(const char* msg)
+		: msg(msg) {}
 	[[nodiscard]]
 	inline const char* what() const throw() { return msg.c_str(); }
 };
@@ -177,67 +177,68 @@ public:
 
 /** Define an assert function */
 #ifndef _ASSERT
-	#define _ASSERT(_cond)                                                                                           \
+	#define _ASSERT(cond)                                                                                            \
 		{                                                                                                            \
-			if (!(_cond)) [[unlikely]] {                                                                             \
+			if (!(cond)) [[unlikely]] {                                                                              \
 				std::cerr << "Assert check failed at " << __func__ << "(): " << __FILE__ << ":" << __LINE__ << "\n"; \
 				exit(1);                                                                                             \
 			}                                                                                                        \
 		}
 #endif
 
-#define _ASSERT_LOG(_log, _cond)                                                                                \
-	{                                                                                                           \
-		if (!(_cond)) [[unlikely]] {                                                                            \
-			std::string msg = std::format("Assert check failed at {}() {}:{}\n", __func__, __FILE__, __LINE__); \
-			_log.raise_error(msg.c_str());                                                                      \
-		}                                                                                                       \
+#define _ASSERT_LOG(log, cond)                                                                            \
+	{                                                                                                     \
+		if (!(cond)) [[unlikely]] {                                                                       \
+			std::stringstream msg;                                                                        \
+			msg << "Assert check failed at " << __func__ << "() " << __FILE__ << ":" << __LINE__ << "\n"; \
+			log.raise_error(msg.str().c_str());                                                           \
+		}                                                                                                 \
 	}
 
 /** Print a warning message only if the warn flag is set */
 #if HPLUS_WARN
-	#define _PRINT_WARN(_msg) \
-		{ _l.print_warn(_msg); }
+	#define _PRINT_WARN(log, msg) \
+		{ log.print_warn(msg); }
 #else
-	#define _PRINT_WARN(_msg) \
+	#define _PRINT_WARN(log, msg) \
 		{}
 #endif
 
 /** Print info message only with the right verbose settings */
 #if HPLUS_VERBOSE >= 10
-	#define _PRINT_INFO(_msg) \
-		{ _l.print_info(_msg); }
+	#define _PRINT_INFO(log, msg) \
+		{ log.print_info(msg); }
 #else
-	#define _PRINT_INFO(_msg) \
+	#define _PRINT_INFO(log, msg) \
 		{}
 #endif
 
 /** Print info message only with the right verbose settings */
 #if HPLUS_VERBOSE >= 20
-	#define _PRINT_DEBUG(_msg) _PRINT_INFO(_msg)
+	#define _PRINT_DEBUG(log, msg) _PRINT_INFO(log, msg)
 #else
-	#define _PRINT_DEBUG(_msg) \
+	#define _PRINT_DEBUG(log, msg) \
 		{}
 #endif
 
 /** Print info message only with the right verbose settings */
 #if HPLUS_VERBOSE >= 100
-	#define _PRINT_VERBOSE(_msg) _PRINT_INFO(_msg)
+	#define _PRINT_VERBOSE(log, msg) _PRINT_INFO(log, msg)
 #else
-	#define _PRINT_VERBOSE(_msg) \
+	#define _PRINT_VERBOSE(log, msg) \
 		{}
 #endif
 
 /** Asserts to be made only if integrity checks flag is set */
 #if HPLUS_INTCHECK
-	#define _INTCHECK_ASSERT(_cond) \
-		{ _ASSERT(_cond); }
-	#define _INTCHECK_ASSERT_LOG(_log, _cond) \
-		{ _ASSERT_LOG(_log, _cond); }
+	#define _INTCHECK_ASSERT(cond) \
+		{ _ASSERT(cond); }
+	#define _INTCHECK_ASSERT_LOG(log, cond) \
+		{ _ASSERT_LOG(log, cond); }
 #else
-	#define _INTCHECK_ASSERT(_cond) \
+	#define _INTCHECK_ASSERT(cond) \
 		{}
-	#define _INTCHECK_ASSERT_LOG(_log, _cond) \
+	#define _INTCHECK_ASSERT_LOG(log, cond) \
 		{}
 #endif
 

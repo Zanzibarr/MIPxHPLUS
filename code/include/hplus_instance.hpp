@@ -19,6 +19,11 @@
 
 namespace hplus {
 
+	typedef struct {
+		std::vector<size_t> plan;
+		unsigned int		cost;
+	} solution;
+
 	/** Struct containing all necessary info for an action */
 	typedef struct {
 		binary_set			pre, eff;
@@ -35,9 +40,8 @@ namespace hplus {
 		std::vector<size_t> var_ranges;
 		std::vector<action> actions;
 		/** Instance */
-		binary_set			goal;
-		std::vector<size_t> best_solution;
-		unsigned int		best_cost;
+		binary_set goal;
+		solution   best_sol;
 		/** Optimization variables */
 		binary_set						 var_e, var_f, act_e, act_f;
 		std::vector<binary_set>			 fadd_e, fadd_f;
@@ -73,26 +77,26 @@ namespace hplus {
 	// ################### READ/WRITE OF HPLUS STRUCTURES ################## //
 	// ##################################################################### //
 
-	/** Print the time statistics _s */
-	void print_stats(const statistics& _s, const logger& _l);
-	/** Create the instance _i from the file found at the path _f @returns false if it detects that the problem is infeasible (no assumptions can be made if it
+	/** Print the time statistics stats */
+	void print_stats(const statistics& stats, const logger& log);
+	/** Create the instance inst from the file stored in the environment @returns false if it detects that the problem is infeasible (no assumptions can be made if it
 	 * returns true) */
 	[[nodiscard]]
-	bool create_instance(instance& _i, environment& _e, statistics& _s, const logger& _l);
-	/** Get the remaining variables (the ones not eliminated by an eventual optimization of the instance) of the instance _i */
+	bool create_instance(instance& inst, environment& env, statistics& stats, const logger& log);
+	/** Get the remaining variables (the ones not eliminated by an eventual optimization of the instance) of the instance inst */
 	[[nodiscard]]
-	binary_set var_remaining(const instance& _i);
-	/** Get the remaining actions (the ones not eliminated by an eventual optimization of the instance) of the instance _i */
+	binary_set var_remaining(const instance& inst);
+	/** Get the remaining actions (the ones not eliminated by an eventual optimization of the instance) of the instance inst */
 	[[nodiscard]]
-	binary_set act_remaining(const instance& _i);
-	/** Update the best solution of _i with a new solution _s (with cost _c): if the solution is not better, the solution won't be updated */
-	void update_sol(instance& _i, const std::vector<size_t> _s, const unsigned int _c, const logger& _l);
-	/** Print the best solution of instance _i */
-	void print_sol(const instance& _i, const logger& _l);
-	/** Perform instance optimization to _i using flags stored in the _e environment */
-	void instance_optimization(instance& _i, const environment& _e, const logger& _l);
-	/** Prepare helper data structure for faster action lookup on instance _i */
-	void prepare_faster_actsearch(instance& _i, const logger& _l);
+	binary_set act_remaining(const instance& inst);
+	/** Update the best solution of inst with a new solution sol (with cost cost): if the solution is not better, the solution won't be updated */
+	void update_sol(instance& inst, const solution& sol, const logger& log);
+	/** Print the best solution of instance inst */
+	void print_sol(const instance& inst, const logger& log);
+	/** Perform instance optimization to inst using flags stored in the env environment */
+	void instance_optimization(instance& inst, const environment& env, const logger& log);
+	/** Prepare helper data structure for faster action lookup on instance inst */
+	void prepare_faster_actsearch(instance& inst, const logger& log);
 
 } // namespace hplus
 

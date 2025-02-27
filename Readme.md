@@ -1,7 +1,7 @@
 # HPLUS THESIS
 ![C++](https://img.shields.io/badge/C%2B%2B-00599C?style=for-the-badge&logo=c%2B%2B&logoColor=white)
 
-### Version: 1.0.2  
+### Version: 1.1.0  
 _To see what I'm still working on, please refer to the [TodoList](Todolist.md)._  
 _Refer to the [Changelog](Changelog.md) for info about versions._  
 
