@@ -8,8 +8,8 @@ _To see info about this project, please refer to the [Readme](Readme.md)._
 <!--
 HOW I DO VERSIONING:
 - Increase x.. whenever I have a groundbreaking update to the code
-- Increase .x. whenever I have effective user experience changes or important "invisible" changes to the code execution (es major optimization of a method)
-- Increase ..x whenever I change somthing that won't affect much user experience (small visual changes on the output fall in this category)
+- Increase .x. whenever a new feature has been properly tested
+- Increase ..x for testing or developing new features / fixing bugs
 
 - Increasing a digit implies the reset of all following ones to 0 
 -->
@@ -25,7 +25,7 @@ HOW I DO VERSIONING:
 ### :curly_loop: Other
 -->
 
-## [1.1.0] - 2025/02/27
+## [1.0.3] - 2025/02/27
 ### :ballot_box_with_check: Fixed
 - Logger formatting function didn't work properly
     - [~/code/external/log.hxx](code/external/log.hxx)
