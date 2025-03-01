@@ -83,6 +83,8 @@ static inline void greedycost(hplus::instance& inst, hplus::environment& env, co
 		size_t best_act = 0;
 		double best_cost = std::numeric_limits<double>::infinity();
 		for (auto act_i : candidates) {
+			if (inst.actions[act_i].cost == 0)
+				return std::pair<bool, size_t>(true, act_i);
 			if (inst.actions[act_i].cost >= best_cost)
 				continue;
 
@@ -134,6 +136,8 @@ static inline void greedycxe(hplus::instance& inst, hplus::environment& env, con
 		bool   found = false;
 		double best_cxe = std::numeric_limits<double>::infinity();
 		for (auto act_i : candidates) {
+			if (inst.actions[act_i].cost == 0)
+				return std::pair<bool, size_t>(true, act_i);
 			int neff = 0;
 			for (auto var_i : inst.actions[act_i].eff_sparse) {
 				if (!state[var_i])
@@ -303,31 +307,28 @@ static inline void init_htype(const hplus::instance& inst, const bs_searcher& fe
 [[nodiscard]]
 static inline bool htype(const hplus::instance& inst, hplus::solution& sol, const logger& log, double (*h_eqtype)(double, double)) {
 
-	auto find_best_act = [&inst, &h_eqtype](const std::vector<size_t>& candidates, const std::vector<double>& values) {
+	auto find_best_act = [&inst, &h_eqtype](const std::vector<size_t>& candidates, const std::vector<double>& values, const binary_set& state) {
 		size_t choice = 0;
 		bool   found = false;
-		double best_act_cost = std::numeric_limits<double>::infinity();
+		double best_cxwe = std::numeric_limits<double>::infinity();
 		for (auto act_i : candidates) {
-
-			// FIXME: Find correct way to do this
-#if true
-			double act_cost = evaluate_htype_state(inst.actions[act_i].eff_sparse, values, h_eqtype);
-#else
-			double act_weight = 0;
-			for (auto p : inst.actions[act_i].eff_sparse) {
-				if (!state[p])
-					act_weight = h_eqtype(act_weight, 1.0 / values[p] + .01); // +.01 to avoid it being 0 (0-cost actions)
+			if (inst.actions[act_i].cost == 0)
+				return std::pair<bool, size_t>(true, act_i);
+			int weighted_neff = 0, neff = 0;
+			for (auto var_i : inst.actions[act_i].eff_sparse) {
+				if (!state[var_i]) {
+					weighted_neff += values[var_i];
+					neff++;
+				}
 			}
-			if (act_weight == 0) // no new effects, skip variable
+			if (neff == 0) // if no new effects, this action won't change the state... if no action changes the state this problem is infeasible
 				continue;
-			double act_cost = static_cast<double>(inst.actions[act_i].cost) / act_weight;
-#endif
-
-			if (act_cost >= best_act_cost)
+			double cxwe = (weighted_neff == 0 ? std::numeric_limits<double>::infinity() : static_cast<double>(inst.actions[act_i].cost) / weighted_neff); // if weighted_neff is 0 this means that all effects can be archieved with 0 cost actions, while this action is not a 0 cost one... -> we don't want this action
+			if (cxwe >= best_cxwe)																														  // if all actions have weighted_neff at 0, the best_cwe is never updated... however, if all actions have weighted_neff at 0, there must be an action with cost 0 among the candidate ones, hence we are not pruning feasible solution with >= insthead of > here.
 				continue;
 
 			choice = act_i;
-			best_act_cost = act_cost;
+			best_cxwe = cxwe;
 			found = true;
 		}
 		return std::pair<bool, size_t>(found, choice);
@@ -356,7 +357,7 @@ static inline bool htype(const hplus::instance& inst, hplus::solution& sol, cons
 		if (candidates.empty()) [[unlikely]]
 			return false;
 
-		const auto& [found, choice] = find_best_act(candidates, values);
+		const auto& [found, choice] = find_best_act(candidates, values, state);
 		if (!found) [[unlikely]]
 			return false;
 

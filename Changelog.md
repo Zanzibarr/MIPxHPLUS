@@ -38,6 +38,8 @@ HOW I DO VERSIONING:
 - Better isint() function
     - [~/code/include/utils.hpp](code/include/utils.hpp)
 - Instance optimization now removes deleted facts from all effects and precondition
+- New version of hmax and hadd
+    - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
 <!-- ### :heavy_plus_sign: Added -->
 <!-- ### :x: Removed -->
 ### :curly_loop: Other
