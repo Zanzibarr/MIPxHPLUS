@@ -9,8 +9,8 @@
 #ifndef PQ_H
 #define PQ_H
 
-#include <string>
-#include <vector>
+#include <string> // For std::string
+#include <vector> // For std::vector
 
 #ifndef _ASSERT
 	#include <iostream>
@@ -108,10 +108,10 @@ public:
 	}
 	[[nodiscard]]
 	inline operator std::string() const {
-		std::stringstream repr;
+		std::string repr;
 		for (int k = 0; k < cnt; k++)
-			repr << "\t" << std::to_string(k) << "\t" << std::to_string(data[k]) << "\t" << std::to_string(prior[data[k]]) << "\n";
-		return repr.str();
+			repr.append("\t").append(std::to_string(k)).append("\t").append(std::to_string(data[k])).append("\t").append(std::to_string(prior[data[k]])).append("\n");
+		return repr;
 	}
 
 private:

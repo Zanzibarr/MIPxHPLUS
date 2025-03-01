@@ -31,7 +31,9 @@ HOW I DO VERSIONING:
 - Script for reading results from logs only read the first heuristic solution found (in randr, we need to read the last one)
     - [~/code/test/code/results_jobs.py](code/test/code/results_jobs.py)
 - Removed unused imports
-    - [~/code/external/bs.hxx](code/external/bs.hxx)
+    - [~/code/*](code/)
+- List of remaining variables and actions are calculated on each request, even if after optimization the return is always the same
+    - [~/code/src/hplus_instance.cpp](code/src/hplus_instance.cpp)
 ### :heavy_exclamation_mark: Changed
 - Better isint() function
     - [~/code/include/utils.hpp](code/include/utils.hpp)

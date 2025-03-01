@@ -7,11 +7,12 @@
  */
 
 #include "algorithms.hpp"
-#include "pq.hxx"
-#include <algorithm>
-#include <queue>
-#include <random>
-#include <set>
+#include "pq.hxx"	 // For priority_queue
+#include <algorithm> // For std::sort, std::transform
+#include <numeric>	 // For std::accumulate
+#include <queue>	 // For std::priority_queue (// TODO remove when substituted with priority_queue)
+#include <random>	 // For random number generators
+#include <set>		 // For std::set
 
 // ##################################################################### //
 // ############################ CPLEX UTILS ############################ //
@@ -82,10 +83,11 @@ static inline void greedycost(hplus::instance& inst, hplus::environment& env, co
 		size_t best_act = 0;
 		double best_cost = std::numeric_limits<double>::infinity();
 		for (auto act_i : candidates) {
-			if (inst.actions[act_i].cost < best_cost) {
-				best_act = act_i;
-				best_cost = inst.actions[act_i].cost;
-			}
+			if (inst.actions[act_i].cost >= best_cost)
+				continue;
+
+			best_act = act_i;
+			best_cost = inst.actions[act_i].cost;
 		}
 		return std::pair<bool, size_t>(true, best_act);
 	};
@@ -107,15 +109,14 @@ static inline void greedycost(hplus::instance& inst, hplus::environment& env, co
 			env.sol_s = solution_status::INFEAS;
 			return;
 		}
-		const auto& [found, choice] = find_best_act(candidates);
-		// if (!found) [[unlikely]] {
-		// 	env.sol_s = solution_status::INFEAS;
-		// 	return;
-		// }
+
+		const auto& [_, choice] = find_best_act(candidates);
+
 		heur_sol.plan.push_back(choice);
 		heur_sol.cost += inst.actions[choice].cost;
 		state |= inst.actions[choice].eff;
 		feasible_actions.remove(choice, inst.actions[choice].pre);
+
 		if (_CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
 	}
@@ -141,11 +142,12 @@ static inline void greedycxe(hplus::instance& inst, hplus::environment& env, con
 			if (neff == 0)
 				continue;
 			double cxe = static_cast<double>(inst.actions[act_i].cost) / neff;
-			if (cxe < best_cxe) {
-				found = true;
-				best_act = act_i;
-				best_cxe = inst.actions[act_i].cost;
-			}
+			if (cxe >= best_cxe)
+				continue;
+
+			found = true;
+			best_act = act_i;
+			best_cxe = inst.actions[act_i].cost;
 		}
 		return std::pair<bool, size_t>(found, best_act);
 	};
@@ -167,15 +169,18 @@ static inline void greedycxe(hplus::instance& inst, hplus::environment& env, con
 			env.sol_s = solution_status::INFEAS;
 			return;
 		}
+
 		const auto& [found, choice] = find_best_act(candidates, state);
 		if (!found) [[unlikely]] {
 			env.sol_s = solution_status::INFEAS;
 			return;
 		}
+
 		heur_sol.plan.push_back(choice);
 		heur_sol.cost += inst.actions[choice].cost;
 		state |= inst.actions[choice].eff;
 		feasible_actions.remove(choice, inst.actions[choice].pre);
+
 		if (_CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
 	}
@@ -209,15 +214,14 @@ static inline void randheur(hplus::instance& inst, hplus::environment& env, cons
 			env.sol_s = solution_status::INFEAS;
 			return;
 		}
-		const auto& [found, choice] = find_best_act(candidates);
-		// if (!found) [[unlikely]] {
-		// 	env.sol_s = solution_status::INFEAS;
-		// 	return;
-		// }
+
+		const auto& [_, choice] = find_best_act(candidates);
+
 		heur_sol.plan.push_back(choice);
 		heur_sol.cost += inst.actions[choice].cost;
 		state |= inst.actions[choice].eff;
 		feasible_actions.remove(choice, inst.actions[choice].pre);
+
 		if (_CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
 	}
@@ -278,19 +282,8 @@ static inline void update_htype_values(const hplus::instance& inst, const binary
 	}
 }
 
-[[nodiscard]]
-static inline bool htype(const hplus::instance& inst, hplus::solution& sol, const logger& log, double (*h_eqtype)(double, double)) {
-	std::vector<double> values(inst.n, std::numeric_limits<double>::infinity());
-	binary_set			state(inst.n), used_actions(inst.m);
-
-	// binary_set searcher for faster actions lookup
-	bs_searcher feasible_actions = bs_searcher(inst.n);
-	for (auto act_i : hplus::act_remaining(inst))
-		feasible_actions.add(act_i, inst.actions[act_i].pre);
-
-	// initialize values and priority queue (needs to be done manually since here the initial state will always be empty)
-	priority_queue<double> pq(inst.n);
-	for (auto act_i : feasible_actions.find_subsets(state)) {
+static inline void init_htype(const hplus::instance& inst, const bs_searcher& feasible_actions, std::vector<double>& values, priority_queue<double>& pq, double (*h_eqtype)(double, double), const logger& log) {
+	for (auto act_i : feasible_actions.find_subsets(binary_set(inst.n))) {
 		// preconditions of these variables are already met -> hmax/hadd (act.pre) = 0 -> need only the cost of the action to set the hmax/hadd of the effects
 		double cost = static_cast<double>(inst.actions[act_i].cost);
 		for (auto p : inst.actions[act_i].eff_sparse) {
@@ -304,13 +297,19 @@ static inline bool htype(const hplus::instance& inst, hplus::solution& sol, cons
 				pq.push(p, cost);
 		}
 	}
-	update_htype_values(inst, used_actions, state, values, pq, h_eqtype, log);
+	update_htype_values(inst, binary_set(inst.m), binary_set(inst.n), values, pq, h_eqtype, log);
+}
 
-	auto find_best_act = [&inst, &used_actions, &state, &values, &pq, &h_eqtype, &log](const std::vector<size_t>& candidates) {
+[[nodiscard]]
+static inline bool htype(const hplus::instance& inst, hplus::solution& sol, const logger& log, double (*h_eqtype)(double, double)) {
+
+	auto find_best_act = [&inst, &h_eqtype](const std::vector<size_t>& candidates, const std::vector<double>& values) {
 		size_t choice = 0;
 		bool   found = false;
 		double best_act_cost = std::numeric_limits<double>::infinity();
 		for (auto act_i : candidates) {
+
+			// FIXME: Find correct way to do this
 #if true
 			double act_cost = evaluate_htype_state(inst.actions[act_i].eff_sparse, values, h_eqtype);
 #else
@@ -323,34 +322,52 @@ static inline bool htype(const hplus::instance& inst, hplus::solution& sol, cons
 				continue;
 			double act_cost = static_cast<double>(inst.actions[act_i].cost) / act_weight;
 #endif
-			if (act_cost < best_act_cost) {
-				choice = act_i;
-				best_act_cost = act_cost;
-				found = true;
-			}
+
+			if (act_cost >= best_act_cost)
+				continue;
+
+			choice = act_i;
+			best_act_cost = act_cost;
+			found = true;
 		}
-		update_htype_values(inst, used_actions, inst.actions[choice].eff - state, values, pq, h_eqtype, log);
 		return std::pair<bool, size_t>(found, choice);
 	};
 
+	// Reset solution (just to be sure)
 	sol.plan.clear();
 	sol.plan.reserve(inst.m_opt);
 	sol.cost = 0;
+
+	// Initialize helpers
+	std::vector<double>	   values(inst.n, std::numeric_limits<double>::infinity());
+	binary_set			   state(inst.n), used_actions(inst.m);
+	priority_queue<double> pq(inst.n);
+
+	// binary_set searcher for faster actions lookup
+	bs_searcher feasible_actions = bs_searcher(inst.n);
+	for (auto act_i : hplus::act_remaining(inst))
+		feasible_actions.add(act_i, inst.actions[act_i].pre);
+
+	// initialize values and priority queue (needs to be done manually since here the initial state will always be empty)
+	init_htype(inst, feasible_actions, values, pq, h_eqtype, log);
 
 	while (!state.contains(inst.goal)) {
 		const auto& candidates = feasible_actions.find_subsets(state);
 		if (candidates.empty()) [[unlikely]]
 			return false;
 
-		const auto& [found, choice] = find_best_act(candidates);
+		const auto& [found, choice] = find_best_act(candidates, values);
 		if (!found) [[unlikely]]
 			return false;
 
 		used_actions.add(choice);
+		update_htype_values(inst, used_actions, inst.actions[choice].eff - state, values, pq, h_eqtype, log);
+
 		sol.plan.push_back(choice);
 		sol.cost += inst.actions[choice].cost;
 		state |= inst.actions[choice].eff;
 		feasible_actions.remove(choice, inst.actions[choice].pre);
+
 		if (_CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
 	}
@@ -433,7 +450,6 @@ static inline bool random_walk(const hplus::instance& inst, hplus::solution& sol
 			return false;
 
 		const auto& [found, choice] = find_best_act(candidates);
-
 		if (!found) [[unlikely]]
 			return false;
 
@@ -441,6 +457,7 @@ static inline bool random_walk(const hplus::instance& inst, hplus::solution& sol
 		sol.cost += inst.actions[choice].cost;
 		state |= inst.actions[choice].eff;
 		feasible_actions.remove(choice, inst.actions[choice].pre);
+
 		if (_CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
 	}

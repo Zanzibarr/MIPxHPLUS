@@ -9,17 +9,14 @@
 #ifndef LOG_HXX
 #define LOG_HXX
 
-#include <chrono>
-#include <cstdarg>
-#include <fstream>
-#include <iomanip>
-#include <iostream>
-#include <memory>
-#include <optional>
-#include <sstream>
-#include <stdexcept>
-#include <string>
-#include <string_view>
+#include <cstdarg>	   // For va_list and related functions
+#include <ctime>	   // For time functions
+#include <fstream>	   // For file operations
+#include <iostream>	   // For console output
+#include <memory>	   // For std::make_unique
+#include <stdexcept>   // For std::runtime_error
+#include <string>	   // For std::string
+#include <string_view> // For std::string_view
 
 #define LINE "------------------------------------------------------------"
 #define THICK_LINE "############################################################"
@@ -34,13 +31,16 @@ namespace {
 		error
 	};
 
-	// Get formatted current time
+	// Get formatted current time using C time functions
 	inline std::string get_current_time() {
-		const auto		  now = std::chrono::system_clock::now();
-		const auto		  time_t = std::chrono::system_clock::to_time_t(now);
-		std::stringstream ss;
-		ss << std::put_time(std::localtime(&time_t), "%Y-%m-%d.%X");
-		return ss.str();
+		const auto time_now = std::time(nullptr);
+
+		char	  buffer[26];
+		struct tm timeinfo;
+		localtime_r(&time_now, &timeinfo);
+
+		strftime(buffer, sizeof(buffer), "%Y-%m-%d.%X", &timeinfo);
+		return std::string(buffer);
 	}
 
 	// ANSI color codes

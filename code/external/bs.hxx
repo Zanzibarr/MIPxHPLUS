@@ -13,10 +13,10 @@
 	#define INTCHECK_BS true
 #endif
 
-#include <deque>
-#include <memory>
-#include <stdexcept>
-#include <vector>
+#include <deque>	 // For std::deque
+#include <stdexcept> // For std::invalid_argument, std::domain_error, std::out_of_range
+#include <string>	 // For std::string
+#include <vector>	 // For std::vector
 
 /**
  * @brief binary_set class for compact binary sets.

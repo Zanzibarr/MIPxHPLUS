@@ -7,8 +7,8 @@
  */
 
 #include "hplus_instance.hpp"
-#include <algorithm>
-#include <fstream>
+#include <algorithm> // For std::find, std::set_difference
+#include <fstream>	 // For std::ifstream
 
 void hplus::print_stats(const statistics& stats, const logger& log) {
 #if HPLUS_VERBOSE < 5
@@ -47,6 +47,8 @@ static inline void init(hplus::instance& inst) {
 		.var_t = std::vector<int>(0),
 		.act_t = std::vector<int>(0),
 		.act_inv = std::vector<std::vector<size_t>>(0),
+		.var_rem = std::vector<size_t>(0),
+		.act_rem = std::vector<size_t>(0),
 		.var_opt_conv = std::vector<size_t>(0),
 		.act_opt_conv = std::vector<size_t>(0),
 		.fadd_checkpoint = std::vector<size_t>(0),
@@ -427,6 +429,8 @@ static inline void init_instance_opt(hplus::instance& inst, const hplus::environ
 	if (env.alg == HPLUS_CLI_ALG_IMAI || env.heur == "relax")
 		inst.act_t = std::vector<int>(inst.m, -1);
 	inst.act_inv = std::vector<std::vector<size_t>>(inst.m, std::vector<size_t>());
+	inst.var_rem = (!inst.var_e).sparse();
+	inst.act_rem = (!inst.act_e).sparse();
 	inst.var_opt_conv = std::vector<size_t>(inst.n);
 	for (size_t idx = 0; idx < inst.n; idx++)
 		inst.var_opt_conv[idx] = idx;
@@ -454,12 +458,12 @@ bool hplus::create_instance(instance& inst, environment& env, statistics& stats,
 	return true;
 }
 
-std::vector<size_t> hplus::var_remaining(const instance& inst) {
-	return (!inst.var_e).sparse();
+const std::vector<size_t>& hplus::var_remaining(const instance& inst) {
+	return inst.var_rem;
 }
 
-std::vector<size_t> hplus::act_remaining(const instance& inst) {
-	return (!inst.act_e).sparse();
+const std::vector<size_t>& hplus::act_remaining(const instance& inst) {
+	return inst.act_rem;
 }
 
 void hplus::update_sol(instance& inst, const solution& sol, const logger& log) {
@@ -684,7 +688,7 @@ static inline void relevance_analysis(hplus::instance& inst, binary_set& fact_la
 static inline void dominated_actions_elimination(hplus::instance& inst, std::vector<binary_set>& landmarks, std::vector<binary_set>& first_adders, const logger& log) {
 	_PRINT_VERBOSE(log, "Extracting dominated actions.");
 
-	const auto&						 rem_var = hplus::var_remaining(inst);
+	const auto&						 rem_var = (!inst.var_e).sparse();
 	auto							 act_flm = std::vector<binary_set>(inst.m, binary_set(inst.n));
 	std::vector<std::vector<size_t>> var_flm_sparse(inst.n);
 
@@ -710,7 +714,7 @@ static inline void dominated_actions_elimination(hplus::instance& inst, std::vec
 	}
 
 	// find efficently all actions that satisfy point 1) of Proposition 4 of in Imai's Paper
-	const auto& rem_act = hplus::act_remaining(inst);
+	const auto& rem_act = (!inst.act_e).sparse();
 	bs_searcher candidates = bs_searcher(inst.n);
 	for (auto act_i : rem_act)
 		candidates.add(act_i, first_adders[act_i]);
@@ -739,7 +743,7 @@ static inline void immediate_action_application(hplus::instance& inst, const hpl
 	_PRINT_VERBOSE(log, "Immediate action application.");
 
 	binary_set	current_state(inst.n), used_actions(inst.m);
-	const auto& rem_act = hplus::act_remaining(inst);
+	const auto& rem_act = (!inst.act_e).sparse();
 
 	// keep looking until no more actions can be applied
 	int	 counter = 0;
@@ -751,8 +755,8 @@ static inline void immediate_action_application(hplus::instance& inst, const hpl
 			if (used_actions[act_i])
 				continue;
 
-			const auto& pre = inst.actions[act_i].pre; // & hplus::var_remaining(inst);
-			const auto& eff = inst.actions[act_i].eff; // & hplus::var_remaining(inst);
+			const auto& pre = inst.actions[act_i].pre;
+			const auto& eff = inst.actions[act_i].eff;
 
 			if (!current_state.contains(pre) || !(act_landmarks[act_i] || inst.actions[act_i].cost == 0)) [[likely]]
 				continue;
@@ -788,7 +792,7 @@ static inline void inverse_actions_extraction(hplus::instance& inst, const logge
 	bs_searcher subset_finder = bs_searcher(inst.n);
 
 	// find efficiently all actions that satisfy point 2) of the Definition 1 in section 4.6 of Imai's paper
-	const auto& rem_act = hplus::act_remaining(inst);
+	const auto& rem_act = (!inst.act_e).sparse();
 	for (auto act_i : rem_act)
 		subset_finder.add(act_i, inst.actions[act_i].eff);
 
@@ -811,6 +815,8 @@ static inline void inverse_actions_extraction(hplus::instance& inst, const logge
 
 static inline void finish_opt(hplus::instance& inst, const logger& log) {
 	size_t count = 0;
+	inst.var_rem = (!inst.var_e).sparse();
+	inst.act_rem = (!inst.act_e).sparse();
 	for (auto var_i : hplus::var_remaining(inst))
 		inst.var_opt_conv[var_i] = count++;
 	inst.n_opt = count;

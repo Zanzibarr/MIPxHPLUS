@@ -10,7 +10,7 @@
 #define ALGS_H
 
 #include "hplus_instance.hpp"
-#include <cplex.h>
+#include <cplex.h> // For CPLEX C API
 
 // ====================================================== //
 // ===================== CPLEX UTILS ==================== //

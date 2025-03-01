@@ -19,12 +19,11 @@
 // ############################## IMPORTS ############################## //
 // ##################################################################### //
 
-#include "log.hxx"
-#include <chrono>
-#include <climits>
-#include <iostream>
-#include <string>
-#include <vector>
+#include "log.hxx"	// For logger
+#include <chrono>	// For std::chrono
+#include <iostream> // For console output
+#include <string>	// For std::string
+#include <vector>	// For std::vector
 
 // ##################################################################### //
 // ######################### PATHS AND FOLDERS ######################### //
@@ -208,13 +207,18 @@ public:
 		}
 #endif
 
-#define _ASSERT_LOG(log, cond)                                                                            \
-	{                                                                                                     \
-		if (!(cond)) [[unlikely]] {                                                                       \
-			std::stringstream msg;                                                                        \
-			msg << "Assert check failed at " << __func__ << "() " << __FILE__ << ":" << __LINE__ << "\n"; \
-			log.raise_error(msg.str().c_str());                                                           \
-		}                                                                                                 \
+#define _ASSERT_LOG(log, cond)                           \
+	{                                                    \
+		if (!(cond)) [[unlikely]] {                      \
+			std::string msg = "Assert check failed at "; \
+			msg += __func__;                             \
+			msg += "() ";                                \
+			msg += __FILE__;                             \
+			msg += ":";                                  \
+			msg += std::to_string(__LINE__);             \
+			msg += "\n";                                 \
+			log.raise_error("%s", msg.c_str());          \
+		}                                                \
 	}
 
 /** Print a warning message only if the warn flag is set */

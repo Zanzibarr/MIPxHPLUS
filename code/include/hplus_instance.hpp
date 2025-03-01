@@ -15,7 +15,7 @@
 	#define INTCHECK_BS false
 #endif
 
-#include "bs.hxx"
+#include "bs.hxx" // For binary_set
 
 namespace hplus {
 
@@ -48,6 +48,7 @@ namespace hplus {
 		std::vector<int>				 var_t, act_t;
 		std::vector<std::vector<size_t>> act_inv;
 		/** Optimization helpers */
+		std::vector<size_t>				 var_rem, act_rem;
 		std::vector<size_t>				 var_opt_conv, act_opt_conv, fadd_checkpoint, act_cpxtoidx;
 		std::vector<std::vector<size_t>> act_with_eff, act_with_pre;
 	} instance;
@@ -85,10 +86,10 @@ namespace hplus {
 	bool create_instance(instance& inst, environment& env, statistics& stats, const logger& log);
 	/** Get the remaining variables (the ones not eliminated by an eventual optimization of the instance) of the instance inst */
 	[[nodiscard]]
-	std::vector<size_t> var_remaining(const instance& inst);
+	const std::vector<size_t>& var_remaining(const instance& inst);
 	/** Get the remaining actions (the ones not eliminated by an eventual optimization of the instance) of the instance inst */
 	[[nodiscard]]
-	std::vector<size_t> act_remaining(const instance& inst);
+	const std::vector<size_t>& act_remaining(const instance& inst);
 	/** Update the best solution of inst with a new solution sol (with cost cost): if the solution is not better, the solution won't be updated */
 	void update_sol(instance& inst, const solution& sol, const logger& log);
 	/** Print the best solution of instance inst */

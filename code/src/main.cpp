@@ -7,12 +7,11 @@
  */
 
 #include "algorithms.hpp"
-#include "args.hxx"
-#include <csignal>
-#include <sys/stat.h>
-#include <termios.h>
-#include <thread>
-#include <unistd.h>
+#include "args.hxx"	  // For args::ArgumentParser, ...
+#include <csignal>	  // For signal()
+#include <sys/stat.h> // For stat buffer {}
+#include <termios.h>  // For CLI signal output manipulation
+#include <thread>	  // For thread operations
 
 volatile int global_terminate = 0;
 
