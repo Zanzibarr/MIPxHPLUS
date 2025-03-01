@@ -35,6 +35,7 @@ HOW I DO VERSIONING:
 ### :heavy_exclamation_mark: Changed
 - Better isint() function
     - [~/code/include/utils.hpp](code/include/utils.hpp)
+- Instance optimization now removes deleted facts from all effects and precondition
 <!-- ### :heavy_plus_sign: Added -->
 <!-- ### :x: Removed -->
 ### :curly_loop: Other

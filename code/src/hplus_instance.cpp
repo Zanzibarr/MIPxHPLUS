@@ -28,30 +28,32 @@ void hplus::print_stats(const statistics& stats, const logger& log) {
 }
 
 static inline void init(hplus::instance& inst) {
-	inst = (hplus::instance){ .equal_costs = false,
-							  .n = 0,
-							  .m = 0,
-							  .n_opt = 0,
-							  .m_opt = 0,
-							  .var_ranges = std::vector<size_t>(0),
-							  .actions = std::vector<hplus::action>(0),
-							  .goal = binary_set(),
-							  .best_sol = (hplus::solution){ std::vector<size_t>(), std::numeric_limits<unsigned int>::max() },
-							  .var_e = binary_set(),
-							  .var_f = binary_set(),
-							  .act_e = binary_set(),
-							  .act_f = binary_set(),
-							  .fadd_e = std::vector<binary_set>(0),
-							  .fadd_f = std::vector<binary_set>(0),
-							  .var_t = std::vector<int>(0),
-							  .act_t = std::vector<int>(0),
-							  .act_inv = std::vector<std::vector<size_t>>(0),
-							  .var_opt_conv = std::vector<size_t>(0),
-							  .act_opt_conv = std::vector<size_t>(0),
-							  .fadd_checkpoint = std::vector<size_t>(0),
-							  .act_cpxtoidx = std::vector<size_t>(0),
-							  .act_with_eff = std::vector<std::vector<size_t>>(0),
-							  .act_with_pre = std::vector<std::vector<size_t>>(0) };
+	inst = (hplus::instance){
+		.equal_costs = false,
+		.n = 0,
+		.m = 0,
+		.n_opt = 0,
+		.m_opt = 0,
+		.var_ranges = std::vector<size_t>(0),
+		.actions = std::vector<hplus::action>(0),
+		.goal = binary_set(),
+		.best_sol = (hplus::solution){ std::vector<size_t>(), std::numeric_limits<unsigned int>::max() },
+		.var_e = binary_set(),
+		.var_f = binary_set(),
+		.act_e = binary_set(),
+		.act_f = binary_set(),
+		.fadd_e = std::vector<binary_set>(0),
+		.fadd_f = std::vector<binary_set>(0),
+		.var_t = std::vector<int>(0),
+		.act_t = std::vector<int>(0),
+		.act_inv = std::vector<std::vector<size_t>>(0),
+		.var_opt_conv = std::vector<size_t>(0),
+		.act_opt_conv = std::vector<size_t>(0),
+		.fadd_checkpoint = std::vector<size_t>(0),
+		.act_cpxtoidx = std::vector<size_t>(0),
+		.act_with_eff = std::vector<std::vector<size_t>>(0),
+		.act_with_pre = std::vector<std::vector<size_t>>(0)
+	};
 }
 
 [[nodiscard]]
@@ -452,12 +454,12 @@ bool hplus::create_instance(instance& inst, environment& env, statistics& stats,
 	return true;
 }
 
-binary_set hplus::var_remaining(const instance& inst) {
-	return !inst.var_e;
+std::vector<size_t> hplus::var_remaining(const instance& inst) {
+	return (!inst.var_e).sparse();
 }
 
-binary_set hplus::act_remaining(const instance& inst) {
-	return !inst.act_e;
+std::vector<size_t> hplus::act_remaining(const instance& inst) {
+	return (!inst.act_e).sparse();
 }
 
 void hplus::update_sol(instance& inst, const solution& sol, const logger& log) {
@@ -682,15 +684,14 @@ static inline void relevance_analysis(hplus::instance& inst, binary_set& fact_la
 static inline void dominated_actions_elimination(hplus::instance& inst, std::vector<binary_set>& landmarks, std::vector<binary_set>& first_adders, const logger& log) {
 	_PRINT_VERBOSE(log, "Extracting dominated actions.");
 
-	const auto&						 remaining_var = hplus::var_remaining(inst);
-	const auto&						 remaining_var_sparse = remaining_var.sparse();
+	const auto&						 rem_var = hplus::var_remaining(inst);
 	auto							 act_flm = std::vector<binary_set>(inst.m, binary_set(inst.n));
 	std::vector<std::vector<size_t>> var_flm_sparse(inst.n);
 
 	// compute the landmarks for each variable remaining
-	for (auto var_i : remaining_var_sparse) {
+	for (auto var_i : rem_var) {
 		var_flm_sparse[var_i].reserve(inst.n);
-		for (auto var_j : remaining_var_sparse) {
+		for (auto var_j : rem_var) {
 			if (landmarks[var_i][var_j] || landmarks[var_i][inst.n])
 				var_flm_sparse[var_i].push_back(var_j);
 		}
@@ -701,9 +702,6 @@ static inline void dominated_actions_elimination(hplus::instance& inst, std::vec
 	// compute the landmarks for each action remaining
 	for (size_t act_i = 0; act_i < inst.m; act_i++) {
 		for (auto var_i : inst.actions[act_i].pre_sparse) {
-			if (!remaining_var[var_i])
-				continue;
-
 			for (auto i : var_flm_sparse[var_i])
 				act_flm[act_i].add(i);
 		}
@@ -712,15 +710,15 @@ static inline void dominated_actions_elimination(hplus::instance& inst, std::vec
 	}
 
 	// find efficently all actions that satisfy point 1) of Proposition 4 of in Imai's Paper
-	const auto& remaining_act_sparse = hplus::act_remaining(inst).sparse();
+	const auto& rem_act = hplus::act_remaining(inst);
 	bs_searcher candidates = bs_searcher(inst.n);
-	for (auto act_i : remaining_act_sparse)
+	for (auto act_i : rem_act)
 		candidates.add(act_i, first_adders[act_i]);
 
 	binary_set dominated_actions(inst.m);
 
 	// find all dominated actions and eliminate them
-	for (auto dominant_act : remaining_act_sparse) {
+	for (auto dominant_act : rem_act) {
 		if (dominated_actions[dominant_act])
 			continue;
 
@@ -740,8 +738,8 @@ static inline void dominated_actions_elimination(hplus::instance& inst, std::vec
 static inline void immediate_action_application(hplus::instance& inst, const hplus::environment& env, binary_set& act_landmarks, const logger& log) {
 	_PRINT_VERBOSE(log, "Immediate action application.");
 
-	binary_set current_state(inst.n);
-	auto	   actions_left = hplus::act_remaining(inst);
+	binary_set	current_state(inst.n), used_actions(inst.m);
+	const auto& rem_act = hplus::act_remaining(inst);
 
 	// keep looking until no more actions can be applied
 	int	 counter = 0;
@@ -749,14 +747,17 @@ static inline void immediate_action_application(hplus::instance& inst, const hpl
 	while (found_next_action) {
 		found_next_action = false;
 
-		for (auto act_i : actions_left) {
-			const auto& pre = inst.actions[act_i].pre & hplus::var_remaining(inst);
-			const auto& eff = inst.actions[act_i].eff & hplus::var_remaining(inst);
+		for (auto act_i : rem_act) {
+			if (used_actions[act_i])
+				continue;
+
+			const auto& pre = inst.actions[act_i].pre; // & hplus::var_remaining(inst);
+			const auto& eff = inst.actions[act_i].eff; // & hplus::var_remaining(inst);
 
 			if (!current_state.contains(pre) || !(act_landmarks[act_i] || inst.actions[act_i].cost == 0)) [[likely]]
 				continue;
 
-			actions_left.remove(act_i);
+			used_actions.add(act_i);
 			inst.act_f.add(act_i);
 			if (env.alg == HPLUS_CLI_ALG_IMAI || env.heur == "relax")
 				inst.act_t[act_i] = counter;
@@ -769,7 +770,7 @@ static inline void immediate_action_application(hplus::instance& inst, const hpl
 				if (env.alg == HPLUS_CLI_ALG_IMAI || env.heur == "relax")
 					inst.var_t[var_i] = counter + 1;
 				inst.fadd_f[act_i].add(var_i);
-				for (auto act_j : actions_left)
+				for (auto act_j : rem_act)
 					inst.fadd_e[act_j].add(var_i);
 			}
 			current_state |= eff;
@@ -787,11 +788,11 @@ static inline void inverse_actions_extraction(hplus::instance& inst, const logge
 	bs_searcher subset_finder = bs_searcher(inst.n);
 
 	// find efficiently all actions that satisfy point 2) of the Definition 1 in section 4.6 of Imai's paper
-	const auto remaining_actions = hplus::act_remaining(inst).sparse();
-	for (auto act_i : remaining_actions)
+	const auto& rem_act = hplus::act_remaining(inst);
+	for (auto act_i : rem_act)
 		subset_finder.add(act_i, inst.actions[act_i].eff);
 
-	for (auto act_i : remaining_actions) {
+	for (auto act_i : rem_act) {
 		const auto& pre = inst.actions[act_i].pre;
 		const auto& eff = inst.actions[act_i].eff;
 		for (auto act_j : subset_finder.find_subsets(pre)) {
@@ -821,8 +822,13 @@ static inline void finish_opt(hplus::instance& inst, const logger& log) {
 	}
 	inst.m_opt = count;
 	inst.fadd_checkpoint = std::vector<size_t>(inst.m_opt);
-	for (size_t act_i = 0; act_i < inst.m_opt; act_i++)
+	for (size_t act_i = 0; act_i < inst.m_opt; act_i++) {
+		inst.actions[act_i].pre -= inst.var_e;
+		inst.actions[act_i].eff -= inst.var_e;
+		inst.actions[act_i].pre_sparse = inst.actions[act_i].pre.sparse();
+		inst.actions[act_i].eff_sparse = inst.actions[act_i].eff.sparse();
 		inst.fadd_checkpoint[act_i] = act_i * inst.n_opt;
+	}
 	_INTCHECK_ASSERT_LOG(log, !inst.var_f.intersects(inst.var_e));
 	_INTCHECK_ASSERT_LOG(log, !inst.act_f.intersects(inst.act_e));
 }
@@ -845,7 +851,7 @@ void hplus::prepare_faster_actsearch(instance& inst, const logger& log) {
 	_PRINT_VERBOSE(log, "Initializing data structures for faster actions lookup.");
 	inst.act_with_pre = std::vector<std::vector<size_t>>(inst.n);
 	inst.act_with_eff = std::vector<std::vector<size_t>>(inst.n);
-	const auto &rem_var = var_remaining(inst).sparse(), rem_act = act_remaining(inst).sparse();
+	const auto &rem_var = var_remaining(inst), rem_act = act_remaining(inst);
 	for (auto var_i : rem_var) {
 		inst.act_with_pre[var_i].reserve(inst.m_opt);
 		inst.act_with_eff[var_i].reserve(inst.m_opt);

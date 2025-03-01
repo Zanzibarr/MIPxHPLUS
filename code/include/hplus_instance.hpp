@@ -85,10 +85,10 @@ namespace hplus {
 	bool create_instance(instance& inst, environment& env, statistics& stats, const logger& log);
 	/** Get the remaining variables (the ones not eliminated by an eventual optimization of the instance) of the instance inst */
 	[[nodiscard]]
-	binary_set var_remaining(const instance& inst);
+	std::vector<size_t> var_remaining(const instance& inst);
 	/** Get the remaining actions (the ones not eliminated by an eventual optimization of the instance) of the instance inst */
 	[[nodiscard]]
-	binary_set act_remaining(const instance& inst);
+	std::vector<size_t> act_remaining(const instance& inst);
 	/** Update the best solution of inst with a new solution sol (with cost cost): if the solution is not better, the solution won't be updated */
 	void update_sol(instance& inst, const solution& sol, const logger& log);
 	/** Print the best solution of instance inst */
