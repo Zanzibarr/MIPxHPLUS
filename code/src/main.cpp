@@ -226,6 +226,7 @@ static inline void run(hplus::instance& inst, hplus::environment& env,
 
 	try {
 		if (env.alg != HPLUS_CLI_ALG_IMAI && env.alg != HPLUS_CLI_ALG_RANKOOH && env.alg != HPLUS_CLI_ALG_DYNAMIC_SMALL && env.alg != HPLUS_CLI_ALG_DYNAMIC_LARGE && env.alg != HPLUS_CLI_ALG_HEUR)
+
 			log.raise_error(
 				"The algorithm specified (%s) is not on the list of possible "
 				"algorithms... Please read the Readme.md for instructions.",
@@ -259,8 +260,10 @@ static inline void run(hplus::instance& inst, hplus::environment& env,
 
 		if (env.heur != "none" || env.alg == HPLUS_CLI_ALG_HEUR) {
 			if (env.heur != "greedycost" && env.heur != "greedycxe" && env.heur != "rand" && env.heur != "randr" && env.heur != "hmax" && env.heur != "hadd" && env.heur != "relax") {
+
 				const auto& heur = split_string(env.heur, '-');
 				if (heur.size() != 2 || heur[0] != "local" || (heur[1] != "greedycost" && heur[1] != "greedycxe" && heur[1] != "rand" && heur[1] != "randr" && heur[1] != "hmax" && heur[1] != "hadd" && heur[1] != "relax"))
+
 					log.raise_error(
 						"The heuristic specified (%s) is not on the list of possible "
 						"heuristics... Please read the Readme.md for instructions.",

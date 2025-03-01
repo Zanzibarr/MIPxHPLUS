@@ -170,12 +170,19 @@ def main():
                         "Time limit:"
                     )[0]
                 ):
-                    hcost = int(
-                        content.partition("Updated best solution - Cost:")[2]
-                        .partition(".\n")[0]
-                        .strip()
+                    # Find the last updated best solution before "Building model"
+                    heuristic_part = content.partition(
+                        "Calculating heuristic solution."
+                    )[2].partition("Building model.")[0]
+                    # Get all solution updates in this section
+                    solution_updates = heuristic_part.split(
+                        "Updated best solution - Cost:"
                     )
-                    runsum["results"][instance_name]["hcost"] = hcost
+                    if len(solution_updates) > 1:
+                        # Get the last update (most recent one)
+                        last_update = solution_updates[-1]
+                        hcost = int(last_update.partition(".\n")[0].strip())
+                        runsum["results"][instance_name]["hcost"] = hcost
 
         move_file(filepath, save_logs_dir)
 

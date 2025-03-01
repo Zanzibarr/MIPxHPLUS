@@ -277,10 +277,10 @@ static inline bool parse_inst_file(hplus::instance& inst, hplus::environment& en
 
 	if (inst.m == 0) {
 		for (size_t i = 0; i < inst.n; i++) {
-			if (tmp_istate[i] != tmp_goal[i] && tmp_goal[i] >= 0) {
-				stats.parsing = env.timer.get_time();
-				return false; // no actions and goal isn't the starting point -> infeasible
-			}
+			if (tmp_istate[i] == tmp_goal[i] || tmp_goal[i] < 0)
+				continue;
+			stats.parsing = env.timer.get_time();
+			return false; // no actions and goal isn't the starting point -> infeasible
 		}
 	}
 
@@ -490,7 +490,7 @@ void hplus::update_sol(instance& inst, const solution& sol, const logger& log) {
 void hplus::print_sol(const instance& inst, const logger& log) {
 	const auto& [sol_plan, sol_cost] = inst.best_sol;
 	log.print("Solution cost: %10u", sol_cost);
-	// for (auto act_i : sol_plan)
+	// for (auto act_i : sol_plan)		// [ ]: Uncomment
 	// 	log.print("(%s)", inst.actions[act_i].name.c_str());
 }
 
@@ -545,22 +545,24 @@ static inline void landmark_extraction(hplus::instance& inst, std::vector<binary
 
 			// we then check if L[var_i] != X, and if they are the same we skip,
 			// if X = P, then (X intersection L[P]) = L[P], hence we can already skip
-			if (!x[inst.n]) {
-				// if the set for variable var_i is the full set of variables,
-				// the intersection generates back x -> we can skip the intersection
-				if (!landmarks[var_i][inst.n])
-					x &= landmarks[var_i];
+			if (x[inst.n])
+				continue;
 
-				// we already know that x is not the full set now, so if
-				// the set for variable var_i is the full set, we know that x is not
-				// equal to the set for variable var_i -> we can skip the check
-				if (landmarks[var_i][inst.n] || x != landmarks[var_i]) {
-					landmarks[var_i] = x;
-					for (auto act_i : act_with_pre[var_i]) {
-						if (s_set.contains(inst.actions[act_i].pre) && std::find(actions_queue.begin(), actions_queue.end(), act_i) == actions_queue.end())
-							actions_queue.push_back(act_i);
-					}
-				}
+			// if the set for variable var_i is the full set of variables,
+			// the intersection generates back x -> we can skip the intersection
+			if (!landmarks[var_i][inst.n])
+				x &= landmarks[var_i];
+
+			// we already know that x is not the full set now, so if
+			// the set for variable var_i is the full set, we know that x is not
+			// equal to the set for variable var_i -> we can skip the check
+			if (!landmarks[var_i][inst.n] && x == landmarks[var_i])
+				continue;
+
+			landmarks[var_i] = x;
+			for (auto act_i : act_with_pre[var_i]) {
+				if (s_set.contains(inst.actions[act_i].pre) && std::find(actions_queue.begin(), actions_queue.end(), act_i) == actions_queue.end())
+					actions_queue.push_back(act_i);
 			}
 		}
 		if (_CHECK_STOP()) [[unlikely]]
@@ -580,18 +582,19 @@ static inline void landmark_extraction(hplus::instance& inst, std::vector<binary
 	// popolate fact_landmarks and act_landmarks sets
 	for (auto var_i : inst.goal) {
 		for (auto var_j : !fact_landmarks) {
-			if (landmarks[var_i][var_j] || landmarks[var_i][inst.n]) {
-				fact_landmarks.add(var_j);
-				size_t count = 0, cand_act;
-				for (auto act_i : act_with_eff[var_j]) {
-					cand_act = act_i;
-					count++;
-					if (count > 1)
-						break;
-				}
-				if (count == 1)
-					act_landmarks.add(cand_act);
+			if (!landmarks[var_i][var_j] && !landmarks[var_i][inst.n])
+				continue;
+
+			fact_landmarks.add(var_j);
+			size_t count = 0, cand_act;
+			for (auto act_i : act_with_eff[var_j]) {
+				cand_act = act_i;
+				count++;
+				if (count > 1)
+					break;
 			}
+			if (count == 1)
+				act_landmarks.add(cand_act);
 		}
 		if (_CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
@@ -656,12 +659,13 @@ static inline void relevance_analysis(hplus::instance& inst, binary_set& fact_la
 		std::vector<size_t> new_relevant_actions;
 		new_relevant_actions.reserve(inst.m);
 		for (auto act_i : cand_actions_sparse) {
-			if (inst.actions[act_i].eff.intersects(relevant_variables)) {
-				relevant_actions.add(act_i);
-				relevant_variables |= inst.actions[act_i].pre;
-				new_relevant_actions.push_back(act_i);
-				new_act = true;
-			}
+			if (!inst.actions[act_i].eff.intersects(relevant_variables))
+				continue;
+
+			relevant_actions.add(act_i);
+			relevant_variables |= inst.actions[act_i].pre;
+			new_relevant_actions.push_back(act_i);
+			new_act = true;
 		}
 		auto it = std::set_difference(cand_actions_sparse.begin(), cand_actions_sparse.end(), new_relevant_actions.begin(), new_relevant_actions.end(), cand_actions_sparse.begin());
 		cand_actions_sparse.resize(it - cand_actions_sparse.begin());
@@ -678,7 +682,8 @@ static inline void relevance_analysis(hplus::instance& inst, binary_set& fact_la
 static inline void dominated_actions_elimination(hplus::instance& inst, std::vector<binary_set>& landmarks, std::vector<binary_set>& first_adders, const logger& log) {
 	_PRINT_VERBOSE(log, "Extracting dominated actions.");
 
-	auto							 remaining_var_sparse = hplus::var_remaining(inst).sparse();
+	const auto&						 remaining_var = hplus::var_remaining(inst);
+	const auto&						 remaining_var_sparse = remaining_var.sparse();
 	auto							 act_flm = std::vector<binary_set>(inst.m, binary_set(inst.n));
 	std::vector<std::vector<size_t>> var_flm_sparse(inst.n);
 
@@ -696,37 +701,39 @@ static inline void dominated_actions_elimination(hplus::instance& inst, std::vec
 	// compute the landmarks for each action remaining
 	for (size_t act_i = 0; act_i < inst.m; act_i++) {
 		for (auto var_i : inst.actions[act_i].pre_sparse) {
-			if (hplus::var_remaining(inst)[var_i]) {
-				for (auto i : var_flm_sparse[var_i])
-					act_flm[act_i].add(i);
-			}
+			if (!remaining_var[var_i])
+				continue;
+
+			for (auto i : var_flm_sparse[var_i])
+				act_flm[act_i].add(i);
 		}
 		if (_CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
 	}
 
 	// find efficently all actions that satisfy point 1) of Proposition 4 of in Imai's Paper
+	const auto& remaining_act_sparse = hplus::act_remaining(inst).sparse();
 	bs_searcher candidates = bs_searcher(inst.n);
-	for (auto act_i : hplus::act_remaining(inst))
+	for (auto act_i : remaining_act_sparse)
 		candidates.add(act_i, first_adders[act_i]);
 
 	binary_set dominated_actions(inst.m);
 
 	// find all dominated actions and eliminate them
-	const auto& rem_act = hplus::act_remaining(inst).sparse();
-	for (auto dominant_act : rem_act) {
-		if (!dominated_actions[dominant_act]) {
-			for (auto dominated_act : candidates.find_subsets(first_adders[dominant_act])) {
-				if (inst.act_f[dominated_act] || dominant_act == dominated_act || inst.actions[dominant_act].cost > inst.actions[dominated_act].cost || !act_flm[dominated_act].contains(inst.actions[dominant_act].pre)) [[likely]]
-					continue;
+	for (auto dominant_act : remaining_act_sparse) {
+		if (dominated_actions[dominant_act])
+			continue;
 
-				dominated_actions.add(dominated_act);
-				inst.act_e.add(dominated_act);
-				candidates.remove(dominated_act, first_adders[dominated_act]);
-			}
-			if (_CHECK_STOP()) [[unlikely]]
-				throw timelimit_exception("Reached time limit.");
+		for (auto dominated_act : candidates.find_subsets(first_adders[dominant_act])) {
+			if (inst.act_f[dominated_act] || dominant_act == dominated_act || inst.actions[dominant_act].cost > inst.actions[dominated_act].cost || !act_flm[dominated_act].contains(inst.actions[dominant_act].pre)) [[likely]]
+				continue;
+
+			dominated_actions.add(dominated_act);
+			inst.act_e.add(dominated_act);
+			candidates.remove(dominated_act, first_adders[dominated_act]);
 		}
+		if (_CHECK_STOP()) [[unlikely]]
+			throw timelimit_exception("Reached time limit.");
 	}
 }
 
@@ -746,26 +753,28 @@ static inline void immediate_action_application(hplus::instance& inst, const hpl
 			const auto& pre = inst.actions[act_i].pre & hplus::var_remaining(inst);
 			const auto& eff = inst.actions[act_i].eff & hplus::var_remaining(inst);
 
-			if (current_state.contains(pre) && (act_landmarks[act_i] || inst.actions[act_i].cost == 0)) [[unlikely]] {
-				actions_left.remove(act_i);
-				inst.act_f.add(act_i);
+			if (!current_state.contains(pre) || !(act_landmarks[act_i] || inst.actions[act_i].cost == 0)) [[likely]]
+				continue;
+
+			actions_left.remove(act_i);
+			inst.act_f.add(act_i);
+			if (env.alg == HPLUS_CLI_ALG_IMAI || env.heur == "relax")
+				inst.act_t[act_i] = counter;
+			inst.var_f |= pre;
+			for (auto var_i : eff) {
+				if (current_state[var_i])
+					continue;
+
+				inst.var_f.add(var_i);
 				if (env.alg == HPLUS_CLI_ALG_IMAI || env.heur == "relax")
-					inst.act_t[act_i] = counter;
-				inst.var_f |= pre;
-				for (auto var_i : eff) {
-					if (!current_state[var_i]) {
-						inst.var_f.add(var_i);
-						if (env.alg == HPLUS_CLI_ALG_IMAI || env.heur == "relax")
-							inst.var_t[var_i] = counter + 1;
-						inst.fadd_f[act_i].add(var_i);
-						for (auto act_j : actions_left)
-							inst.fadd_e[act_j].add(var_i);
-					}
-				}
-				current_state |= eff;
-				counter++;
-				found_next_action = true;
+					inst.var_t[var_i] = counter + 1;
+				inst.fadd_f[act_i].add(var_i);
+				for (auto act_j : actions_left)
+					inst.fadd_e[act_j].add(var_i);
 			}
+			current_state |= eff;
+			counter++;
+			found_next_action = true;
 		}
 		if (_CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
@@ -786,12 +795,13 @@ static inline void inverse_actions_extraction(hplus::instance& inst, const logge
 		const auto& pre = inst.actions[act_i].pre;
 		const auto& eff = inst.actions[act_i].eff;
 		for (auto act_j : subset_finder.find_subsets(pre)) {
-			if (inst.actions[act_j].pre.contains(eff)) [[unlikely]] {
-				if (!inst.act_f[act_i])
-					inst.act_inv[act_i].push_back(act_j);
-				if (!inst.act_f[act_j])
-					inst.act_inv[act_j].push_back(act_i);
-			}
+			if (!inst.actions[act_j].pre.contains(eff)) [[likely]]
+				continue;
+
+			if (!inst.act_f[act_i])
+				inst.act_inv[act_i].push_back(act_j);
+			if (!inst.act_f[act_j])
+				inst.act_inv[act_j].push_back(act_i);
 		}
 		if (_CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");

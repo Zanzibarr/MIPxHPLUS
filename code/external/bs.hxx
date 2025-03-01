@@ -13,19 +13,9 @@
 	#define INTCHECK_BS true
 #endif
 
-#include <algorithm>
-#include <bitset>
-#include <concepts>
 #include <deque>
 #include <memory>
-#include <optional>
-#include <queue>
-#include <ranges>
-#include <span>
 #include <stdexcept>
-#include <string>
-#include <string_view>
-#include <type_traits>
 #include <vector>
 
 /**
@@ -59,7 +49,6 @@ public:
 #endif
 
 		set_.resize((capacity_ + 7) / 8, fill ? static_cast<unsigned char>(~0u) : 0);
-
 		// Set appropriate bits in last byte if capacity is not a multiple of 8
 		if (fill && capacity_ % 8 != 0 && capacity_ != 0)
 			set_[set_.size() - 1] &= static_cast<unsigned char>((1u << (capacity_ % 8)) - 1);
@@ -77,11 +66,11 @@ public:
 	 */
 	bool add(size_t element) {
 		validate_element(element);
-
 		if (contains(element))
 			return false;
 
 		set_[element / 8] |= (1u << (element % 8));
+
 		return true;
 	}
 
@@ -97,11 +86,11 @@ public:
 	 */
 	bool remove(size_t element) {
 		validate_element(element);
-
 		if (!contains(element))
 			return false;
 
 		set_[element / 8] &= ~(1u << (element % 8));
+
 		return true;
 	}
 
@@ -117,7 +106,6 @@ public:
 	 */
 	void fill() {
 		std::fill(set_.begin(), set_.end(), static_cast<unsigned char>(~0u));
-
 		// Set appropriate bits in last byte if capacity is not a multiple of 8
 		if (capacity_ % 8 != 0 && capacity_ != 0)
 			set_[set_.size() - 1] &= static_cast<unsigned char>((1u << (capacity_ % 8)) - 1);
@@ -136,11 +124,19 @@ public:
 	[[nodiscard]]
 	bool contains(size_t element) const {
 		validate_element(element);
+
 		return (set_[element / 8] & (1u << (element % 8))) != 0;
 	}
 
 	/**
-	 * @brief Alias for contains to maintain backward compatibility
+	 * @brief Check if element is in the set
+	 *
+	 * @param element The element to lookup
+	 * @return true If the element is in the set
+	 * @return false If the element isn't in the set
+	 *
+	 * @throw std::domain_error If this binary_set's capacity is 0
+	 * @throw std::out_of_range If the specified element is outside of the possible range for this binary_set
 	 */
 	[[nodiscard]]
 	bool operator[](size_t element) const {
@@ -184,13 +180,7 @@ public:
 			throw std::domain_error("This binary set has a size of 0.");
 #endif
 
-		std::vector<size_t> result;
-		result.reserve(capacity_); // Worst case, but avoids reallocations
-
-		for (auto element : *this)
-			result.push_back(element);
-
-		return result;
+		return std::vector<size_t>(this->begin(), this->end());
 	}
 
 	/**
@@ -200,12 +190,16 @@ public:
 	 */
 	[[nodiscard]]
 	explicit operator std::string() const {
-		std::stringstream repr;
-		repr << "[";
-		for (size_t i = 0; i < capacity_; i++)
-			repr << (contains(i) ? "X" : " ");
-		repr << "]";
-		return repr.str();
+		std::string result;
+		result.reserve(capacity_ + 2);
+
+		result.push_back('[');
+		for (size_t i = 0; i < capacity_; i++) {
+			result.push_back(contains(i) ? 'X' : ' ');
+		}
+		result.push_back(']');
+
+		return result;
 	}
 
 	// Set operations
@@ -349,6 +343,7 @@ public:
 	[[nodiscard]]
 	bool operator==(const binary_set& other) const {
 		validate_same_capacity(other);
+
 		return set_ == other.set_;
 	}
 
@@ -364,6 +359,7 @@ public:
 	[[nodiscard]]
 	bool operator!=(const binary_set& other) const {
 		validate_same_capacity(other);
+
 		return set_ != other.set_;
 	}
 
@@ -383,6 +379,7 @@ public:
 		size_t i = 0;
 		for (i = 0; i < set_.size() && !(set_[i] & other.set_[i]); i++)
 			;
+
 		return i != set_.size();
 	}
 
@@ -535,20 +532,23 @@ public:
 	void add(size_t value, const binary_set& bs) {
 		validate_capacity(bs);
 
+		// Start from the root node...
 		treenode* leaf = root_.get();
 
+		// ... traverse the tree according to the binary_set (true -> right, false -> left) ...
 		for (size_t i = 0; i < bs.capacity(); i++) {
 			if (bs[i]) {
-				if (!leaf->right)
+				if (!leaf->right) // ... create a new node if necessary ...
 					leaf->right = std::make_unique<treenode>();
 				leaf = leaf->right.get();
 			} else {
-				if (!leaf->left)
+				if (!leaf->left) // ... create a new node if necessary ...
 					leaf->left = std::make_unique<treenode>();
 				leaf = leaf->left.get();
 			}
 		}
 
+		// ... and append the value at the end
 		leaf->values.push_back(value);
 	}
 
@@ -637,13 +637,16 @@ public:
 	std::vector<size_t> find_subsets(const binary_set& bs) const {
 		validate_capacity(bs);
 
+		// Keep track of nodes to be expanded
 		std::deque<treenode*> open_nodes;
 		if (root_)
 			open_nodes.push_back(root_.get());
 
+		// Reach the end of the tree (i < capacity) until we have open nodes to explore
 		for (size_t i = 0; i < bs.capacity() && !open_nodes.empty(); i++) {
 			size_t level_size = open_nodes.size();
 
+			// Look among past iteration's open nodes and expand them
 			for (size_t j = 0; j < level_size; j++) {
 				treenode* node = open_nodes.front();
 				open_nodes.pop_front();
@@ -655,13 +658,14 @@ public:
 					if (node->right)
 						open_nodes.push_back(node->right.get());
 				} else {
-					// If element is not in the queried set, we can only follow the left path (0)
+					// If element is not in the queried set, we can only follow the left path (binary_set didn't contain this element)
 					if (node->left)
 						open_nodes.push_back(node->left.get());
 				}
 			}
 		}
 
+		// Open nodes are now all leaves whose binary_set is a subset of the target one (bs)
 		std::vector<size_t> result;
 		for (auto node : open_nodes)
 			result.insert(result.end(), node->values.begin(), node->values.end());

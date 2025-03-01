@@ -25,6 +25,22 @@ HOW I DO VERSIONING:
 ### :curly_loop: Other
 -->
 
+
+## [1.0.4] - 2025/03/01
+### :ballot_box_with_check: Fixed
+- Script for reading results from logs only read the first heuristic solution found (in randr, we need to read the last one)
+    - [~/code/test/code/results_jobs.py](code/test/code/results_jobs.py)
+- Removed unused imports
+    - [~/code/external/bs.hxx](code/external/bs.hxx)
+### :heavy_exclamation_mark: Changed
+- Better isint() function
+    - [~/code/include/utils.hpp](code/include/utils.hpp)
+<!-- ### :heavy_plus_sign: Added -->
+<!-- ### :x: Removed -->
+### :curly_loop: Other
+- Code readability adjustments
+
+
 ## [1.0.3] - 2025/02/27
 ### :ballot_box_with_check: Fixed
 - Logger formatting function didn't work properly

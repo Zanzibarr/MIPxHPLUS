@@ -9,6 +9,7 @@
 #include "algorithms.hpp"
 #include "pq.hxx"
 #include <algorithm>
+#include <queue>
 #include <random>
 #include <set>
 
@@ -142,7 +143,7 @@ static inline void greedycxe(hplus::instance& inst, hplus::environment& env, con
 			if (neff == 0)
 				continue;
 			double cxe = static_cast<double>(inst.actions[act_i].cost) / neff;
-			if (cxe < best_cxe) [[unlikely]] {
+			if (cxe < best_cxe) {
 				found = true;
 				best_act = act_i;
 				best_cxe = inst.actions[act_i].cost;
@@ -247,7 +248,7 @@ static inline double evaluate_htype_state(const binary_set& state, const std::ve
 	return state_htype;
 }
 
-static inline void update_htype_values(const hplus::instance& inst, const binary_set& used_actions, const binary_set& state, std::vector<double>& values, priority_queue<double>& pq, double (*h_eqtype)(double, double)) {
+static inline void update_htype_values(const hplus::instance& inst, const binary_set& used_actions, const binary_set& state, std::vector<double>& values, priority_queue<double>& pq, double (*h_eqtype)(double, double), const logger& log) {
 	for (auto p : state) {
 		values[p] = 0;
 		pq.push(p, 0);
@@ -257,20 +258,23 @@ static inline void update_htype_values(const hplus::instance& inst, const binary
 		size_t p = pq.top();
 		pq.pop();
 		for (auto act_i : inst.act_with_pre[p]) {
-			if (!inst.act_e[act_i] && !used_actions[act_i]) {
-				double cost_pre = evaluate_htype_state(inst.actions[act_i].pre & !inst.var_e, values, h_eqtype);
-				if (cost_pre >= std::numeric_limits<double>::infinity())
+			if (inst.act_e[act_i] || used_actions[act_i])
+				continue;
+
+			double cost_pre = evaluate_htype_state(inst.actions[act_i].pre & !inst.var_e, values, h_eqtype);
+			if (cost_pre >= std::numeric_limits<double>::infinity())
+				continue;
+
+			double new_cost = cost_pre + inst.actions[act_i].cost;
+			for (auto p_eff : inst.actions[act_i].eff_sparse) {
+				if (new_cost >= values[p_eff] || inst.var_e[p_eff])
 					continue;
-				double new_cost = cost_pre + inst.actions[act_i].cost;
-				for (auto p_eff : inst.actions[act_i].eff_sparse) {
-					if (new_cost < values[p_eff] && !inst.var_e[p_eff]) {
-						values[p_eff] = new_cost;
-						if (pq.has(p_eff))
-							pq.change(p_eff, new_cost);
-						else
-							pq.push(p_eff, new_cost);
-					}
-				}
+
+				values[p_eff] = new_cost;
+				if (pq.has(p_eff))
+					pq.change(p_eff, new_cost);
+				else
+					pq.push(p_eff, new_cost);
 			}
 		}
 	}
@@ -286,30 +290,31 @@ static inline bool htype(const hplus::instance& inst, hplus::solution& sol, cons
 	for (auto act_i : hplus::act_remaining(inst))
 		feasible_actions.add(act_i, inst.actions[act_i].pre);
 
-	// initial state is empty -> I need to initialize the values vector manually
+	// initialize values and priority queue (needs to be done manually since here the initial state will always be empty)
 	priority_queue<double> pq(inst.n);
 	for (auto act_i : feasible_actions.find_subsets(state)) {
 		// preconditions of these variables are already met -> hmax/hadd (act.pre) = 0 -> need only the cost of the action to set the hmax/hadd of the effects
+		double cost = static_cast<double>(inst.actions[act_i].cost);
 		for (auto p : inst.actions[act_i].eff_sparse) {
-			double cost = static_cast<double>(inst.actions[act_i].cost);
-			if (cost < values[p]) {
-				values[p] = cost;
-				if (pq.has(p))
-					pq.change(p, cost);
-				else
-					pq.push(p, cost);
-			}
+			if (cost >= values[p] || inst.var_e[p])
+				continue;
+
+			values[p] = cost;
+			if (pq.has(p))
+				pq.change(p, cost);
+			else
+				pq.push(p, cost);
 		}
 	}
-	update_htype_values(inst, used_actions, state, values, pq, h_eqtype);
+	update_htype_values(inst, used_actions, state, values, pq, h_eqtype, log);
 
-	auto find_best_act = [&inst, &used_actions, &state, &values, &pq, &h_eqtype](const std::vector<size_t>& candidates) {
+	auto find_best_act = [&inst, &used_actions, &state, &values, &pq, &h_eqtype, &log](const std::vector<size_t>& candidates) {
 		size_t choice = 0;
 		bool   found = false;
 		double best_act_cost = std::numeric_limits<double>::infinity();
 		for (auto act_i : candidates) {
-#if false
-			double act_cost = evaluate_htype_state(inst.actions[act_i].eff, values, h_eqtype);
+#if true
+			double act_cost = evaluate_htype_state(inst.actions[act_i].eff & !inst.var_e, values, h_eqtype);
 #else
 			double act_weight = 0;
 			for (auto p : inst.actions[act_i].eff_sparse) {
@@ -320,14 +325,13 @@ static inline bool htype(const hplus::instance& inst, hplus::solution& sol, cons
 				continue;
 			double act_cost = static_cast<double>(inst.actions[act_i].cost) / act_weight;
 #endif
-			// double act_cost = static_cast<double>(inst.actions[act_i].cost) / (evaluate_htype_state(inst.actions[act_i].eff & !inst.var_e, values, h_eqtype) + 0.1); // +.01 to avoid it being 0 (0-cost actions)
 			if (act_cost < best_act_cost) {
 				choice = act_i;
 				best_act_cost = act_cost;
 				found = true;
 			}
 		}
-		update_htype_values(inst, used_actions, inst.actions[choice].eff - state, values, pq, h_eqtype);
+		update_htype_values(inst, used_actions, inst.actions[choice].eff - state, values, pq, h_eqtype, log);
 		return std::pair<bool, size_t>(found, choice);
 	};
 
@@ -337,13 +341,13 @@ static inline bool htype(const hplus::instance& inst, hplus::solution& sol, cons
 
 	while (!state.contains(inst.goal)) {
 		const auto& candidates = feasible_actions.find_subsets(state);
-		if (candidates.empty()) [[unlikely]] {
+		if (candidates.empty()) [[unlikely]]
 			return false;
-		}
+
 		const auto& [found, choice] = find_best_act(candidates);
-		if (!found) [[unlikely]] {
+		if (!found) [[unlikely]]
 			return false;
-		}
+
 		used_actions.add(choice);
 		sol.plan.push_back(choice);
 		sol.cost += inst.actions[choice].cost;
@@ -402,8 +406,10 @@ static inline bool random_walk(const hplus::instance& inst, hplus::solution& sol
 		double weight_sum = 0;
 		for (auto x : candidates)
 			weight_sum += plan[inst.act_cpxtoidx[x]];
+
 		if (weight_sum <= 0)
 			return std::pair<bool, size_t>(true, candidates[rand() % candidates.size()]);
+
 		std::random_device				 rd;
 		std::mt19937					 gen(rd());
 		std::uniform_real_distribution<> dis(0.0, weight_sum);
@@ -414,6 +420,7 @@ static inline bool random_walk(const hplus::instance& inst, hplus::solution& sol
 			if (random_value <= cumulative_weight)
 				return std::pair<bool, size_t>(true, x);
 		}
+
 		return std::pair<bool, size_t>(true, candidates.back());
 	};
 
@@ -426,9 +433,12 @@ static inline bool random_walk(const hplus::instance& inst, hplus::solution& sol
 		const auto& candidates = feasible_actions.find_subsets(state);
 		if (candidates.empty()) [[unlikely]]
 			return false;
+
 		const auto& [found, choice] = find_best_act(candidates);
+
 		if (!found) [[unlikely]]
 			return false;
+
 		sol.plan.push_back(choice);
 		sol.cost += inst.actions[choice].cost;
 		state |= inst.actions[choice].eff;
@@ -472,8 +482,6 @@ static inline void relax(hplus::instance& inst, hplus::environment& env, const l
 
 	// solve model
 	_ASSERT_LOG(log, !CPXmipopt(cpxenv, cpxlp));
-	hplus::environment dummy;
-	dummy.warm_start = env.warm_start;
 
 	// parse cplex status to see what it found
 	switch (int cpxstatus = CPXgetstat(cpxenv, cpxlp)) {
@@ -498,6 +506,7 @@ static inline void relax(hplus::instance& inst, hplus::environment& env, const l
 	heur_sol.cost = 0;
 	double* plan = new double[inst.m_opt];
 	_ASSERT_LOG(log, !CPXgetx(cpxenv, cpxlp, plan, 0, inst.m_opt - 1));
+	// [ ] Rethink how we reconstruct our solution... this one isn't a good approximate solution
 	if (!random_walk(inst, heur_sol, plan, log)) {
 		delete[] plan;
 		env.sol_s = solution_status::INFEAS;
@@ -565,7 +574,8 @@ void find_heuristic(hplus::instance& inst, hplus::environment& env, const logger
 // ##################################################################### //
 
 void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log, bool relaxed) {
-	_PRINT_VERBOSE(log, "Building imai's model.");
+	if (!relaxed)
+		_PRINT_VERBOSE(log, "Building imai's model.");
 
 	auto stopchk1 = []() {
 		if (_CHECK_STOP()) [[unlikely]]
@@ -877,15 +887,16 @@ void cpx_post_warmstart_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::in
 		cpx_sol_val[nnz++] = timestamp;
 		timestamp++;
 		for (auto var_i : inst.actions[act_i].eff_sparse) {
-			if (rem_var[var_i] && !state[var_i]) {
-				cpx_sol_ind[nnz] = 2 * inst.m_opt + inst.var_opt_conv[var_i];
-				cpx_sol_val[nnz++] = 1;
-				cpx_sol_ind[nnz] = 2 * inst.m_opt + inst.n_opt + inst.var_opt_conv[var_i];
-				cpx_sol_val[nnz++] = timestamp;
-				cpx_sol_ind[nnz] = 2 * inst.m_opt + 2 * inst.n_opt + inst.fadd_checkpoint[inst.act_opt_conv[act_i]] + inst.var_opt_conv[var_i];
-				cpx_sol_val[nnz++] = 1;
-				state.add(var_i);
-			}
+			if (!rem_var[var_i] || state[var_i])
+				continue;
+
+			cpx_sol_ind[nnz] = 2 * inst.m_opt + inst.var_opt_conv[var_i];
+			cpx_sol_val[nnz++] = 1;
+			cpx_sol_ind[nnz] = 2 * inst.m_opt + inst.n_opt + inst.var_opt_conv[var_i];
+			cpx_sol_val[nnz++] = timestamp;
+			cpx_sol_ind[nnz] = 2 * inst.m_opt + 2 * inst.n_opt + inst.fadd_checkpoint[inst.act_opt_conv[act_i]] + inst.var_opt_conv[var_i];
+			cpx_sol_val[nnz++] = 1;
+			state.add(var_i);
 		}
 	}
 
@@ -973,13 +984,13 @@ void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance
 		auto eff_sparse = (inst.actions[act_i].eff & rem_var_set).sparse();
 		for (auto var_i : inst.actions[act_i].pre& rem_var_set) {
 			for (auto var_j : eff_sparse) {
-				if (var_i != var_j) [[likely]] {
-					const auto check = graph[var_i].insert(var_j);
-					// check.second is true if the element was actually inserted in the set
-					if (check.second) {
-						degree_counter[var_i] += 1;
-						degree_counter[var_j] += 1;
-					}
+				if (var_i == var_j) [[unlikely]]
+					continue;
+
+				// added is true if the element was actually inserted in the set
+				if (graph[var_i].insert(var_j).second) {
+					degree_counter[var_i] += 1;
+					degree_counter[var_j] += 1;
 				}
 			}
 			cumulative_graph[var_i] |= (inst.actions[act_i].eff & rem_var_set);
@@ -1018,32 +1029,33 @@ void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance
 		std::set<size_t> new_nodes;
 
 		for (auto p : rem_var) {
-			if (graph[p].find(idx) != graph[p].end()) {
-				for (auto q : graph[idx]) {
-					if (p != q) [[likely]] {
-						// add edge p - q
-						const auto check = graph[p].insert(q);
-						// check.second is true if the element was actually inserted in the set
-						if (check.second) {
-							degree_counter[p] += 1;
-							degree_counter[q] += 1;
-						}
+			if (graph[p].find(idx) == graph[p].end())
+				continue;
 
-						// update the overall graph
-						cumulative_graph[p].add(q);
-					}
+			for (auto q : graph[idx]) {
+				if (p == q) [[unlikely]]
+					continue;
+
+				// add edge p - q
+				// check.second is true if the element was actually inserted in the set
+				if (graph[p].insert(q).second) {
+					degree_counter[p] += 1;
+					degree_counter[q] += 1;
 				}
 
-				// remove the edge p - idx
-				graph[p].erase(idx);
-				degree_counter[p] -= 1;
-				new_nodes.insert(p);
+				// update the overall graph
+				cumulative_graph[p].add(q);
+			}
 
-				// update triangles list
-				for (auto q : graph[idx]) {
-					if (p != q) [[likely]]
-						triangles_list.emplace_back(p, idx, q);
-				}
+			// remove the edge p - idx
+			graph[p].erase(idx);
+			degree_counter[p] -= 1;
+			new_nodes.insert(p);
+
+			// update triangles list
+			for (auto q : graph[idx]) {
+				if (p != q) [[likely]]
+					triangles_list.emplace_back(p, idx, q);
 			}
 		}
 
@@ -1263,13 +1275,14 @@ void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance
 
 	for (auto act_i : rem_act) {
 		for (auto var_i : inst.actions[act_i].eff) {
-			if (rem_var_set[var_i]) {
-				ind_c5_c6_c7[0] = get_act_idx(act_i);
-				val_c5_c6_c7[0] = -1;
-				ind_c5_c6_c7[1] = get_fa_idx(act_i, var_i);
-				val_c5_c6_c7[1] = 1;
-				_ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
-			}
+			if (!rem_var_set[var_i])
+				continue;
+
+			ind_c5_c6_c7[0] = get_act_idx(act_i);
+			val_c5_c6_c7[0] = -1;
+			ind_c5_c6_c7[1] = get_fa_idx(act_i, var_i);
+			val_c5_c6_c7[1] = 1;
+			_ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
 		}
 		stopchk1();
 	}
@@ -1278,18 +1291,20 @@ void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance
 		const auto& pre = inst.actions[act_i].pre_sparse;
 		const auto& eff = inst.actions[act_i].eff_sparse;
 		for (auto var_i : pre) {
-			if (rem_var_set[var_i]) {
-				for (auto var_j : eff) {
-					if (rem_var_set[var_j]) {
-						ind_c5_c6_c7[0] = get_veg_idx(var_i, var_j);
-						val_c5_c6_c7[0] = -1;
-						ind_c5_c6_c7[1] = get_fa_idx(act_i, var_j);
-						val_c5_c6_c7[1] = 1;
-						_ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
-					}
-				}
-				stopchk1();
+			if (!rem_var_set[var_i])
+				continue;
+
+			for (auto var_j : eff) {
+				if (!rem_var_set[var_j])
+					continue;
+
+				ind_c5_c6_c7[0] = get_veg_idx(var_i, var_j);
+				val_c5_c6_c7[0] = -1;
+				ind_c5_c6_c7[1] = get_fa_idx(act_i, var_j);
+				val_c5_c6_c7[1] = 1;
+				_ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
 			}
+			stopchk1();
 		}
 	}
 
@@ -1338,13 +1353,14 @@ void cpx_post_warmstart_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus:
 		cpx_sol_ind[nnz] = inst.act_opt_conv[act_i];
 		cpx_sol_val[nnz++] = 1;
 		for (auto var_i : inst.actions[act_i].eff_sparse) {
-			if (remaining_variables[var_i] && !state[var_i]) {
-				cpx_sol_ind[nnz] = inst.m_opt + inst.m_opt * inst.n_opt + inst.var_opt_conv[var_i];
-				cpx_sol_val[nnz++] = 1;
-				cpx_sol_ind[nnz] = inst.m_opt + inst.fadd_checkpoint[inst.act_opt_conv[act_i]] + inst.var_opt_conv[var_i];
-				cpx_sol_val[nnz++] = 1;
-				state.add(var_i);
-			}
+			if (!remaining_variables[var_i] || state[var_i])
+				continue;
+
+			cpx_sol_ind[nnz] = inst.m_opt + inst.m_opt * inst.n_opt + inst.var_opt_conv[var_i];
+			cpx_sol_val[nnz++] = 1;
+			cpx_sol_ind[nnz] = inst.m_opt + inst.fadd_checkpoint[inst.act_opt_conv[act_i]] + inst.var_opt_conv[var_i];
+			cpx_sol_val[nnz++] = 1;
+			state.add(var_i);
 		}
 	}
 
@@ -1395,14 +1411,15 @@ void store_rankooh_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst
 		bool intcheck = false;
 #endif
 		for (auto i : remaining) {
-			if (state.contains(inst.actions[cpx_result[i]].pre)) {
-				remaining.remove(i);
-				state |= inst.actions[cpx_result[i]].eff;
-				solution.push_back(cpx_result[i]);
+			if (!state.contains(inst.actions[cpx_result[i]].pre))
+				continue;
+
+			remaining.remove(i);
+			state |= inst.actions[cpx_result[i]].eff;
+			solution.push_back(cpx_result[i]);
 #if HPLUS_INTCHECK
-				intcheck = true;
+			intcheck = true;
 #endif
-			}
 		}
 		_INTCHECK_ASSERT_LOG(log, intcheck);
 	}

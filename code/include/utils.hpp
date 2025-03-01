@@ -13,7 +13,7 @@
 // ############################ CODE VERSION ########################### //
 // ##################################################################### //
 
-#define CODE_VERSION "1.0.3"
+#define CODE_VERSION "1.0.4"
 
 // ##################################################################### //
 // ############################## IMPORTS ############################## //
@@ -77,10 +77,7 @@ extern volatile int global_terminate;
 struct time_keeper {
 	[[nodiscard]]
 	inline double get_time() const {
-		return (static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(
-										std::chrono::steady_clock::now() - this->timer)
-										.count())) /
-			1'000;
+		return (static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - this->timer).count())) / 1'000;
 	}
 	explicit inline time_keeper() { this->timer = std::chrono::steady_clock::now(); }
 
@@ -112,17 +109,21 @@ enum class exec_status {
 [[nodiscard]]
 inline std::vector<std::string> split_string(const std::string& str, char del) {
 	std::vector<std::string> tokens;
-	std::string				 tmp;
-	for (auto c : str) {
-		if (c == del) {
-			if (!tmp.empty())
-				tokens.push_back(tmp);
-			tmp = "";
-		} else
-			tmp += c;
+	tokens.reserve(std::count(str.begin(), str.end(), del) + 1);
+
+	size_t start = 0;
+	size_t end = 0;
+
+	while ((end = str.find(del, start)) != std::string::npos) {
+		if (end > start) // Avoid empty strings
+			tokens.emplace_back(str.substr(start, end - start));
+		start = end + 1;
 	}
-	if (!tmp.empty())
-		tokens.push_back(tmp);
+
+	// Add the last token if it exists
+	if (start < str.length())
+		tokens.emplace_back(str.substr(start));
+
 	return tokens;
 }
 
@@ -130,10 +131,31 @@ inline std::vector<std::string> split_string(const std::string& str, char del) {
 [[nodiscard]]
 inline bool isint(const std::string& str, const int from = std::numeric_limits<int>::min(),
 				  const int to = std::numeric_limits<int>::max()) {
+	// Handle empty string
+	if (str.empty())
+		return false;
+
+	// Check for leading whitespace or sign
+	size_t i = 0;
+	if (str[i] == '+' || str[i] == '-')
+		i++;
+
+	// Must have at least one digit
+	if (i == str.length() || !std::isdigit(static_cast<unsigned char>(str[i])))
+		return false;
+
+	// Check remaining characters are digits
+	for (; i < str.length(); i++) {
+		if (!std::isdigit(static_cast<unsigned char>(str[i])))
+			return false;
+	}
+
 	try {
-		int num = stoi(str);
+		// Only convert to int if the string consists of valid digits
+		int num = std::stoi(str);
 		return num >= from && num <= to;
-	} catch (std::invalid_argument&) {
+	} catch (const std::out_of_range&) {
+		// Handle overflow cases
 		return false;
 	}
 }
