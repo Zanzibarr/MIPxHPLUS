@@ -18,6 +18,7 @@ HOW I DO VERSIONING:
 
 <!-- 
 ## [x.y.z] - YYYY/MM/DD
+### :warning: Known issues
 ### :ballot_box_with_check: Fixed
 ### :heavy_exclamation_mark: Changed
 ### :heavy_plus_sign: Added
@@ -27,6 +28,10 @@ HOW I DO VERSIONING:
 
 
 ## [1.0.4] - 2025/03/01
+### :warning: Known issues
+- Imai's model crashes if instance optimization is active
+- Posting warm start to Imai's model might not find a feasible solution
+- Posting warm start to Rankooh's model finds wrong objective
 ### :ballot_box_with_check: Fixed
 - Script for reading results from logs only read the first heuristic solution found (in randr, we need to read the last one)
     - [~/code/test/code/results_jobs.py](code/test/code/results_jobs.py)
@@ -38,9 +43,11 @@ HOW I DO VERSIONING:
 - Better isint() function
     - [~/code/include/utils.hpp](code/include/utils.hpp)
 - Instance optimization now removes deleted facts from all effects and precondition
+- Changed hmax and hadd function
+    - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
+### :heavy_plus_sign: Added
 - New version of hmax and hadd
     - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
-<!-- ### :heavy_plus_sign: Added -->
 <!-- ### :x: Removed -->
 ### :curly_loop: Other
 - Code readability adjustments

@@ -167,7 +167,7 @@ inline void todo(const logger& log, const std::string& msg) {
 }
 
 /** (Debugging) Pauses the code execution until resuming, prints msg formatted as warning */
-inline void pause(const std::string& msg) {
+inline void mypause(const std::string& msg = "") {
 	size_t i = 0;
 	std::cout << msg << "(1 to exit, 0 to continue): ";
 	std::cin >> i;
