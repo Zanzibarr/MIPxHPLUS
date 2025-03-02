@@ -28,7 +28,8 @@ HOW I DO VERSIONING:
 
 
 ## [1.0.5] - 2025/03/02
-<!-- ### :warning: Known issues -->
+### :warning: Known issues
+- Imai's model won't accept a warmstart with flag NOCHECK
 ### :ballot_box_with_check: Fixed
 - Imai's model crashes if instance optimization is active
 - Posting warm start to Imai's model might not find a feasible solution
@@ -40,6 +41,7 @@ HOW I DO VERSIONING:
 - Better access to first adders in model building
     - [~/code/src/hplus_instance.cpp](code/src/hplus_instance.cpp)
     - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
+- Using immutable objects whenever it's possible
 ### :heavy_plus_sign: Added
 - Added integrity checks to find errors faster
     - [~/code/src/hplus_instance.cpp](code/src/hplus_instance.cpp)

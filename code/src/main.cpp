@@ -135,7 +135,7 @@ static inline void parse_cli(const int& argc, const char** argv,
 		env.heur = args::get(heur);
 	env.warm_start = !no_warmstart;
 	if (timelimit) {
-		int tl = args::get(timelimit);
+		const int tl = args::get(timelimit);
 		if (tl < 0)
 			_ACK_REQ("Time limit is negative: setting time limit to max");
 		env.time_limit = (tl < 0) ? std::numeric_limits<unsigned int>::max() : tl;
@@ -225,6 +225,7 @@ static inline void run(hplus::instance& inst, hplus::environment& env,
 	_PRINT_VERBOSE(log, "Executing the chosen algorithms.");
 
 	try {
+		double start_time = 0;
 		if (env.alg != HPLUS_CLI_ALG_IMAI && env.alg != HPLUS_CLI_ALG_RANKOOH && env.alg != HPLUS_CLI_ALG_DYNAMIC_SMALL && env.alg != HPLUS_CLI_ALG_DYNAMIC_LARGE && env.alg != HPLUS_CLI_ALG_HEUR)
 
 			log.raise_error(
@@ -246,7 +247,7 @@ static inline void run(hplus::instance& inst, hplus::environment& env,
 			env.exec_s = exec_status::PROBLEM_SIMPL;
 
 			stats.optimization = static_cast<double>(env.time_limit) - env.timer.get_time();
-			double start_time = env.timer.get_time();
+			start_time = env.timer.get_time();
 
 			hplus::instance_optimization(inst, env, log);
 
@@ -274,7 +275,7 @@ static inline void run(hplus::instance& inst, hplus::environment& env,
 			env.exec_s = exec_status::HEURISTIC;
 
 			stats.heuristic = static_cast<double>(env.time_limit) - env.timer.get_time();
-			double start_time = env.timer.get_time();
+			start_time = env.timer.get_time();
 
 			find_heuristic(inst, env, log);
 
@@ -296,7 +297,7 @@ static inline void run(hplus::instance& inst, hplus::environment& env,
 		env.exec_s = exec_status::MODEL_BUILD;
 
 		stats.build = static_cast<double>(env.time_limit) - env.timer.get_time();
-		double start_time = env.timer.get_time();
+		start_time = env.timer.get_time();
 
 		CPXENVptr cpxenv = nullptr;
 		CPXLPptr  cpxlp = nullptr;
