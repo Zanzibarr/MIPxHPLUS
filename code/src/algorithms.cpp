@@ -92,6 +92,9 @@ static inline void greedycost(hplus::instance& inst, hplus::environment& env, co
 				continue;
 			}
 
+			if (best_cost < 0)
+				continue;
+
 			const double cost = static_cast<double>(inst.actions[act_i].cost);
 			if (cost >= best_cost)
 				continue;
@@ -154,6 +157,9 @@ static inline void greedycxe(hplus::instance& inst, hplus::environment& env, con
 				found = true;
 				continue;
 			}
+
+			if (best_cxe < 0)
+				continue;
 
 			int neff = 0;
 			for (const auto var_i : inst.actions[act_i].eff_sparse) {
@@ -360,17 +366,31 @@ static inline bool htype(const hplus::instance& inst, hplus::solution& sol, doub
 				continue;
 			}
 
+			if (best_cxwe < 0)
+				continue;
+
 			int weighted_neff = 0, neff = 0;
 			for (const auto var_i : inst.actions[act_i].eff_sparse) {
-				if (!state[var_i]) {
-					weighted_neff += values[var_i];
-					neff++;
-				}
+				if (state[var_i])
+					continue;
+
+				weighted_neff += values[var_i];
+				neff++;
 			}
+
 			if (neff == 0) // if no new effects, this action won't change the state... if no action changes the state this problem is infeasible
 				continue;
-			double cxwe = (weighted_neff == 0 ? std::numeric_limits<double>::infinity() : static_cast<double>(inst.actions[act_i].cost) / weighted_neff); // if weighted_neff is 0 this means that all effects can be archieved with 0 cost actions, while this action is not a 0 cost one... -> we don't want this action
-			if (cxwe >= best_cxwe)																														  // if all actions have weighted_neff at 0, the best_cwe is never updated... however, if all actions have weighted_neff at 0, there must be an action with cost 0 among the candidate ones, hence we are not pruning feasible solution with >= insthead of > here.
+
+			double cxwe = std::numeric_limits<double>::infinity();
+			// if weighted_neff is 0 this means that all effects can be archieved with 0 cost actions
+			// if this action is not a 0 cost one we don't want this action, otherwise we incourage it
+			if (weighted_neff != 0)
+				cxwe = static_cast<double>(inst.actions[act_i].cost) / weighted_neff;
+			else if (inst.actions[act_i].cost == 0)
+				cxwe = 0;
+
+			// if all actions have weighted_neff at 0, there must be at least one 0 action cost that we can use, hence the best_cxwe is always updated
+			if (cxwe >= best_cxwe)
 				continue;
 
 			choice = act_i;
@@ -404,9 +424,13 @@ static inline bool htype(const hplus::instance& inst, hplus::solution& sol, doub
 				continue;
 			}
 
+			if (best_goal_cost < 0)
+				continue;
+
 			std::vector<double> values_copy{ values };
 			update_htype_values(inst, inst.actions[act_i].eff - state, values_copy, pq, used_actions, h_eqtype);
 			const double goal_cost = evaluate_htype_state(inst.goal.sparse(), values_copy, h_eqtype);
+
 			if (goal_cost >= best_goal_cost)
 				continue;
 
