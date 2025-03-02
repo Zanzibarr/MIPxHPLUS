@@ -150,6 +150,7 @@ static inline void greedycxe(hplus::instance& inst, hplus::environment& env, con
 			if (inst.act_f[act_i]) {
 				choice = act_i;
 				best_cxe = -1;
+				found = true;
 				continue;
 			}
 
@@ -354,6 +355,7 @@ static inline bool htype(const hplus::instance& inst, hplus::solution& sol, doub
 			if (inst.act_f[act_i]) {
 				choice = act_i;
 				best_cxwe = -1;
+				found = true;
 				continue;
 			}
 
@@ -397,6 +399,7 @@ static inline bool htype(const hplus::instance& inst, hplus::solution& sol, doub
 			if (inst.act_f[act_i]) {
 				choice = act_i;
 				best_goal_cost = -1;
+				found = true;
 				continue;
 			}
 
@@ -426,7 +429,7 @@ static inline bool htype(const hplus::instance& inst, hplus::solution& sol, doub
 		if (candidates.empty()) [[unlikely]]
 			return false;
 
-		const auto& [found, choice] = find_best_act_v2(candidates, values, state);
+		const auto& [found, choice] = find_best_act(candidates, values, state);
 		if (!found) [[unlikely]]
 			return false;
 

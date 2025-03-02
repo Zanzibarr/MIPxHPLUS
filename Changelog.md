@@ -33,6 +33,7 @@ HOW I DO VERSIONING:
 - Imai's model crashes if instance optimization is active
 - Posting warm start to Imai's model might not find a feasible solution
 - Posting warm start to Rankooh's model finds wrong objective
+- Hadd (v1) heuristic found infeasible solutions (even if problem was feasible)
 ### :heavy_exclamation_mark: Changed
 - Faster immediate action application with bs_searcher
     - [~/code/src/hplus_instance.cpp](code/src/hplus_instance.cpp)

@@ -12,6 +12,7 @@
 #include <sys/stat.h> // For stat buffer {}
 #include <termios.h>  // For CLI signal output manipulation
 #include <thread>	  // For thread operations
+#include <unistd.h>	  //For STDIN_FILENO
 
 volatile int global_terminate = 0;
 
