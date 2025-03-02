@@ -30,7 +30,7 @@ HOW I DO VERSIONING:
 ## [1.0.5] - 2025/03/02
 ### :warning: Known issues
 - Imai's model won't accept a warmstart with flag NOCHECK
-- Hmax and hadd heur find infeasible solutions even if they aren't
+- Hmaxv1 and haddv1 heur find infeasible solutions even if they aren't
 ### :ballot_box_with_check: Fixed
 - Imai's model crashes if instance optimization is active
 - Posting warm start to Imai's model might not find a feasible solution
