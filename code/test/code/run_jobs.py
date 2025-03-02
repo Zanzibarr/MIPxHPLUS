@@ -4,7 +4,6 @@ import sys
 sys.dont_write_bytecode = True
 
 import subprocess, shlex, os
-from pathlib import Path
 
 
 def main():
