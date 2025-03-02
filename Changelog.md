@@ -30,11 +30,11 @@ HOW I DO VERSIONING:
 ## [1.0.5] - 2025/03/02
 ### :warning: Known issues
 - Imai's model won't accept a warmstart with flag NOCHECK
+- Hmax and hadd heur find infeasible solutions even if they aren't
 ### :ballot_box_with_check: Fixed
 - Imai's model crashes if instance optimization is active
 - Posting warm start to Imai's model might not find a feasible solution
 - Posting warm start to Rankooh's model finds wrong objective
-- Hadd (v1) heuristic found infeasible solutions (even if problem was feasible)
 ### :heavy_exclamation_mark: Changed
 - Faster immediate action application with bs_searcher
     - [~/code/src/hplus_instance.cpp](code/src/hplus_instance.cpp)
