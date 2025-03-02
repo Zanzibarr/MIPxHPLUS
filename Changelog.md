@@ -27,6 +27,27 @@ HOW I DO VERSIONING:
 -->
 
 
+## [1.0.5] - 2025/03/02
+<!-- ### :warning: Known issues -->
+### :ballot_box_with_check: Fixed
+- Imai's model crashes if instance optimization is active
+- Posting warm start to Imai's model might not find a feasible solution
+- Posting warm start to Rankooh's model finds wrong objective
+### :heavy_exclamation_mark: Changed
+- Faster immediate action application with bs_searcher
+    - [~/code/src/hplus_instance.cpp](code/src/hplus_instance.cpp)
+- Better access to first adders in model building
+    - [~/code/src/hplus_instance.cpp](code/src/hplus_instance.cpp)
+    - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
+### :heavy_plus_sign: Added
+- Added integrity checks to find errors faster
+    - [~/code/src/hplus_instance.cpp](code/src/hplus_instance.cpp)
+- Heuristics now take into account fixed actions and fixed actions timestamps
+    - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+
+
 ## [1.0.4] - 2025/03/01
 ### :warning: Known issues
 - Imai's model crashes if instance optimization is active

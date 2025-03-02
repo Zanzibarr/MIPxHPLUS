@@ -51,7 +51,6 @@ static inline void init(hplus::instance& inst) {
 		.act_rem = std::vector<size_t>(0),
 		.var_opt_conv = std::vector<size_t>(0),
 		.act_opt_conv = std::vector<size_t>(0),
-		.fadd_checkpoint = std::vector<size_t>(0),
 		.act_cpxtoidx = std::vector<size_t>(0),
 		.act_with_eff = std::vector<std::vector<size_t>>(0),
 		.act_with_pre = std::vector<std::vector<size_t>>(0)
@@ -424,10 +423,8 @@ static inline void init_instance_opt(hplus::instance& inst, const hplus::environ
 	inst.act_f = binary_set(inst.m);
 	inst.fadd_e = std::vector<binary_set>(inst.m, binary_set(inst.n));
 	inst.fadd_f = std::vector<binary_set>(inst.m, binary_set(inst.n));
-	if (env.alg == HPLUS_CLI_ALG_IMAI || env.heur == "relax")
-		inst.var_t = std::vector<int>(inst.n, -1);
-	if (env.alg == HPLUS_CLI_ALG_IMAI || env.heur == "relax")
-		inst.act_t = std::vector<int>(inst.m, -1);
+	inst.var_t = std::vector<int>(inst.n, -1);
+	inst.act_t = std::vector<int>(inst.m, -1);
 	inst.act_inv = std::vector<std::vector<size_t>>(inst.m, std::vector<size_t>());
 	inst.var_rem = (!inst.var_e).sparse();
 	inst.act_rem = (!inst.act_e).sparse();
@@ -437,9 +434,6 @@ static inline void init_instance_opt(hplus::instance& inst, const hplus::environ
 	inst.act_opt_conv = std::vector<size_t>(inst.m);
 	for (size_t idx = 0; idx < inst.m; idx++)
 		inst.act_opt_conv[idx] = idx;
-	inst.fadd_checkpoint = std::vector<size_t>(inst.m);
-	for (size_t idx = 0; idx < inst.m; idx++)
-		inst.fadd_checkpoint[idx] = idx * inst.n;
 	inst.act_cpxtoidx = std::vector<size_t>(inst.m);
 	for (size_t idx = 0; idx < inst.m; idx++)
 		inst.act_cpxtoidx[idx] = idx;
@@ -458,23 +452,16 @@ bool hplus::create_instance(instance& inst, environment& env, statistics& stats,
 	return true;
 }
 
-const std::vector<size_t>& hplus::var_remaining(const instance& inst) {
-	return inst.var_rem;
-}
-
-const std::vector<size_t>& hplus::act_remaining(const instance& inst) {
-	return inst.act_rem;
-}
-
 void hplus::update_sol(instance& inst, const solution& sol, const logger& log) {
 	const auto& [sol_plan, sol_cost] = sol;
 	auto		 dbcheck = binary_set(inst.m);
 	unsigned int costcheck = 0;
-	_ASSERT_LOG(log, sol_plan.size() <= inst.m); // check that there aren't more actions that there exists
+	_ASSERT_LOG(log, sol_plan.size() <= inst.m_opt); // check that there aren't more actions that there exists
 	binary_set feas_checker(inst.n);
 	for (auto act_i : sol_plan) {
-		_ASSERT_LOG(log, act_i < inst.m);  // check that the solution only contains existing actions
-		_ASSERT_LOG(log, !dbcheck[act_i]); // check that there are no duplicates
+		_ASSERT_LOG(log, act_i < inst.m);	 // check that the solution only contains existing actions
+		_ASSERT_LOG(log, !dbcheck[act_i]);	 // check that there are no duplicates
+		_ASSERT_LOG(log, !inst.act_e[act_i]) // check that the action was not eliminated
 		dbcheck.add(act_i);
 		_ASSERT_LOG(log, feas_checker.contains(inst.actions[act_i].pre)); // check if the preconditions are respected at each step
 		feas_checker |= inst.actions[act_i].eff;
@@ -496,8 +483,8 @@ void hplus::update_sol(instance& inst, const solution& sol, const logger& log) {
 void hplus::print_sol(const instance& inst, const logger& log) {
 	const auto& [sol_plan, sol_cost] = inst.best_sol;
 	log.print("Solution cost: %10u", sol_cost);
-	// for (auto act_i : sol_plan)		// [ ]: Uncomment
-	// 	log.print("(%s)", inst.actions[act_i].name.c_str());
+	for (auto act_i : sol_plan)
+		log.print("(%s)", inst.actions[act_i].name.c_str());
 }
 
 static inline void landmark_extraction(hplus::instance& inst, std::vector<binary_set>& landmarks, binary_set& fact_landmarks, binary_set& act_landmarks, const logger& log) {
@@ -745,40 +732,48 @@ static inline void immediate_action_application(hplus::instance& inst, const hpl
 	binary_set	current_state(inst.n), used_actions(inst.m);
 	const auto& rem_act = (!inst.act_e).sparse();
 
+	// find efficiently all actions that satisfy point 2) of the Definition 1 in section 4.6 of Imai's paper
+	bs_searcher subset_finder = bs_searcher(inst.n);
+	for (auto act_i : rem_act)
+		subset_finder.add(act_i, inst.actions[act_i].pre - inst.var_e);
+
 	// keep looking until no more actions can be applied
 	int	 counter = 0;
 	bool found_next_action = true;
 	while (found_next_action) {
 		found_next_action = false;
 
-		for (auto act_i : rem_act) {
+		for (auto act_i : subset_finder.find_subsets(current_state)) {
 			if (used_actions[act_i])
 				continue;
 
-			const auto& pre = inst.actions[act_i].pre;
-			const auto& eff = inst.actions[act_i].eff;
+			const auto& pre = inst.actions[act_i].pre - inst.var_e;
+			const auto& eff = inst.actions[act_i].eff - inst.var_e;
 
-			if (!current_state.contains(pre) || !(act_landmarks[act_i] || inst.actions[act_i].cost == 0)) [[likely]]
+			if (!act_landmarks[act_i] && inst.actions[act_i].cost != 0) [[likely]] {
+				subset_finder.remove(act_i, pre);
 				continue;
+			}
 
 			used_actions.add(act_i);
 			inst.act_f.add(act_i);
-			if (env.alg == HPLUS_CLI_ALG_IMAI || env.heur == "relax")
-				inst.act_t[act_i] = counter;
-			inst.var_f |= pre;
+			inst.act_t[act_i] = counter;
 			for (auto var_i : eff) {
 				if (current_state[var_i])
 					continue;
 
-				inst.var_f.add(var_i);
-				if (env.alg == HPLUS_CLI_ALG_IMAI || env.heur == "relax")
-					inst.var_t[var_i] = counter + 1;
+				inst.var_t[var_i] = counter + 1;
 				inst.fadd_f[act_i].add(var_i);
-				for (auto act_j : rem_act)
+				for (auto act_j : rem_act) {
+					if (act_i == act_j)
+						continue;
 					inst.fadd_e[act_j].add(var_i);
+				}
 			}
+			inst.var_f |= eff;
 			current_state |= eff;
 			counter++;
+			subset_finder.remove(act_i, pre);
 			found_next_action = true;
 		}
 		if (_CHECK_STOP()) [[unlikely]]
@@ -814,29 +809,28 @@ static inline void inverse_actions_extraction(hplus::instance& inst, const logge
 }
 
 static inline void finish_opt(hplus::instance& inst, const logger& log) {
-	size_t count = 0;
 	inst.var_rem = (!inst.var_e).sparse();
 	inst.act_rem = (!inst.act_e).sparse();
-	for (auto var_i : hplus::var_remaining(inst))
+	size_t count = 0;
+	for (auto var_i : inst.var_rem)
 		inst.var_opt_conv[var_i] = count++;
 	inst.n_opt = count;
 	count = 0;
-	for (auto act_i : hplus::act_remaining(inst)) {
+	for (auto act_i : inst.act_rem) {
 		inst.act_opt_conv[act_i] = count;
-		inst.act_cpxtoidx[count] = act_i;
-		count++;
+		inst.act_cpxtoidx[count++] = act_i;
 	}
 	inst.m_opt = count;
-	inst.fadd_checkpoint = std::vector<size_t>(inst.m_opt);
-	for (size_t act_i = 0; act_i < inst.m_opt; act_i++) {
+	for (size_t act_i = 0; act_i < inst.m; act_i++) {
 		inst.actions[act_i].pre -= inst.var_e;
 		inst.actions[act_i].eff -= inst.var_e;
 		inst.actions[act_i].pre_sparse = inst.actions[act_i].pre.sparse();
 		inst.actions[act_i].eff_sparse = inst.actions[act_i].eff.sparse();
-		inst.fadd_checkpoint[act_i] = act_i * inst.n_opt;
 	}
 	_INTCHECK_ASSERT_LOG(log, !inst.var_f.intersects(inst.var_e));
 	_INTCHECK_ASSERT_LOG(log, !inst.act_f.intersects(inst.act_e));
+	for (size_t i = 0; i < inst.m; i++)
+		_INTCHECK_ASSERT_LOG(log, !inst.fadd_f[i].intersects(inst.fadd_e[i]));
 }
 
 void hplus::instance_optimization(instance& inst, const environment& env, const logger& log) {
@@ -857,11 +851,10 @@ void hplus::prepare_faster_actsearch(instance& inst, const logger& log) {
 	_PRINT_VERBOSE(log, "Initializing data structures for faster actions lookup.");
 	inst.act_with_pre = std::vector<std::vector<size_t>>(inst.n);
 	inst.act_with_eff = std::vector<std::vector<size_t>>(inst.n);
-	const auto &rem_var = var_remaining(inst), rem_act = act_remaining(inst);
-	for (auto var_i : rem_var) {
+	for (auto var_i : inst.var_rem) {
 		inst.act_with_pre[var_i].reserve(inst.m_opt);
 		inst.act_with_eff[var_i].reserve(inst.m_opt);
-		for (auto act_i : rem_act) {
+		for (auto act_i : inst.act_rem) {
 			if (inst.actions[act_i].pre[var_i])
 				inst.act_with_pre[var_i].push_back(act_i);
 			if (inst.actions[act_i].eff[var_i])
