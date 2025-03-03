@@ -113,7 +113,7 @@ static inline bool parse_inst_file(hplus::instance& inst, hplus::environment& en
 		std::getline(ifs, line); // range of variable
 		if (!isint(line, 0)) [[unlikely]]
 			log.raise_error("Corrupted file");
-		const size_t range = stoi(line);
+		const auto range = static_cast<size_t>(stoi(line));
 		inst.var_ranges[var_i] = range;
 		for (size_t j = 0; j < range; j++)
 			std::getline(ifs, line); // name for variable value (ignored)
@@ -127,7 +127,7 @@ static inline bool parse_inst_file(hplus::instance& inst, hplus::environment& en
 	std::getline(ifs, line); // number of mutex groups
 	if (!isint(line, 0)) [[unlikely]]
 		log.raise_error("Corrupted file");
-	const size_t nmgroups = stoi(line);
+	const auto nmgroups = static_cast<size_t>(stoi(line));
 	for (size_t i = 0; i < nmgroups; i++) {
 		std::getline(ifs, line); // begin_mutex_group
 		if (line != "begin_mutex_group") [[unlikely]]
@@ -148,7 +148,7 @@ static inline bool parse_inst_file(hplus::instance& inst, hplus::environment& en
 		std::getline(ifs, line); // initial value of var_i
 		if (!isint(line, 0, static_cast<int>(inst.var_ranges[var_i] - 1))) [[unlikely]]
 			log.raise_error("Corrupted file");
-		const int val = stoi(line);
+		const auto val = stoi(line);
 		tmp_istate[var_i] = val;
 	}
 	std::getline(ifs, line); // end_state
@@ -163,7 +163,7 @@ static inline bool parse_inst_file(hplus::instance& inst, hplus::environment& en
 	std::getline(ifs, line); // number of goals
 	if (!isint(line, 0, static_cast<int>(inst.n))) [[unlikely]]
 		log.raise_error("Corrupted file");
-	const size_t ngoals = stoi(line);
+	const auto ngoals = static_cast<size_t>(stoi(line));
 	for (size_t _ = 0; _ < ngoals; _++) {
 		// parsing each goal
 		std::vector<std::string> tokens;
@@ -173,10 +173,10 @@ static inline bool parse_inst_file(hplus::instance& inst, hplus::environment& en
 			log.raise_error("Corrupted file");
 		if (!isint(tokens[0], 0, static_cast<int>(inst.n - 1))) [[unlikely]]
 			log.raise_error("Corrupted file"); // variable index
-		size_t var = stoi(tokens[0]);
+		auto var = static_cast<size_t>(stoi(tokens[0]));
 		if (!isint(tokens[1], 0, static_cast<int>(inst.var_ranges[var] - 1))) [[unlikely]]
 			log.raise_error("Corrupted file"); // variable goal
-		const int value = stoi(tokens[1]);
+		const auto value = stoi(tokens[1]);
 		tmp_goal[var] = value;
 	}
 	std::getline(ifs, line); // end_goal
@@ -204,7 +204,7 @@ static inline bool parse_inst_file(hplus::instance& inst, hplus::environment& en
 		std::getline(ifs, line); // number of prevail conditions
 		if (!isint(line, 0, static_cast<int>(inst.n))) [[unlikely]]
 			log.raise_error("Corrupted file");
-		const size_t n_pre = stoi(line);
+		const auto n_pre = static_cast<size_t>(stoi(line));
 		for (size_t pre_i = 0; pre_i < n_pre; pre_i++) {
 			// parsing each prevail condition
 			std::vector<std::string> tokens;
@@ -214,10 +214,10 @@ static inline bool parse_inst_file(hplus::instance& inst, hplus::environment& en
 				log.raise_error("Corrupted file");
 			if (!isint(tokens[0], 0, static_cast<int>(inst.n - 1))) [[unlikely]]
 				log.raise_error("Corrupted file"); // variable index
-			const size_t var = stoi(tokens[0]);
+			const auto var = static_cast<size_t>(stoi(tokens[0]));
 			if (!isint(tokens[1], 0, static_cast<int>(inst.var_ranges[var] - 1))) [[unlikely]]
 				log.raise_error("Corrupted file"); // variable value
-			const int value = stoi(tokens[1]);
+			const auto value = stoi(tokens[1]);
 			act_pre[var] = value;
 		}
 		std::getline(ifs, line); // number of effects
@@ -236,13 +236,13 @@ static inline bool parse_inst_file(hplus::instance& inst, hplus::environment& en
 				log.raise_error("This program won't handle effect conditions."); // number of effect conditions (ignored and check to be 0)
 			if (!isint(tokens[1], 0, static_cast<int>(inst.n - 1))) [[unlikely]]
 				log.raise_error("Corrupted file"); // variable affected by the action
-			const size_t var = stoi(tokens[1]);
+			const auto var = static_cast<size_t>(stoi(tokens[1]));
 			if (!isint(tokens[2], -1, static_cast<int>(inst.var_ranges[var] - 1))) [[unlikely]]
 				log.raise_error("Corrupted file"); // precondition of the variable
-			const int pre_val = stoi(tokens[2]);
+			const auto pre_val = stoi(tokens[2]);
 			if (!isint(tokens[3], 0, static_cast<int>(inst.var_ranges[var] - 1))) [[unlikely]]
 				log.raise_error("Corrupted file"); // effect of the variable
-			const int eff_val = stoi(tokens[3]);
+			const auto eff_val = stoi(tokens[3]);
 			if (pre_val >= 0)
 				act_pre[var] = pre_val;
 			act_eff[var] = eff_val;
@@ -250,12 +250,12 @@ static inline bool parse_inst_file(hplus::instance& inst, hplus::environment& en
 		std::getline(ifs, line); // action cost
 		if (!isint(line)) [[unlikely]]
 			log.raise_error("Corrupted file");
-		unsigned int cost;
+		unsigned int cost = 1;
 		if (!inst.equal_costs) {
 			cost = stoi(line);
 			if (checkcosts == -1)
 				checkcosts = static_cast<int>(cost);
-			else if (checkcosts != cost)
+			else if (static_cast<unsigned int>(checkcosts) != cost)
 				equalcosts_check = false;
 		}
 		std::getline(ifs, line); // end_operator
@@ -482,8 +482,8 @@ void hplus::update_sol(instance& inst, const solution& sol, const logger& log) {
 void hplus::print_sol(const instance& inst, const logger& log) {
 	const auto& [sol_plan, sol_cost] = inst.best_sol;
 	log.print("Solution cost: %10u", sol_cost);
-	for (const auto& act_i : sol_plan)
-		log.print("(%s)", inst.actions[act_i].name.c_str());
+	// for (const auto& act_i : sol_plan)
+	// 	log.print("(%s)", inst.actions[act_i].name.c_str());
 }
 
 static inline void landmark_extraction(hplus::instance& inst, std::vector<binary_set>& landmarks, binary_set& fact_landmarks, binary_set& act_landmarks, const logger& log) {
@@ -737,8 +737,8 @@ static inline void immediate_action_application(hplus::instance& inst, const hpl
 		subset_finder.add(act_i, inst.actions[act_i].pre - inst.var_e);
 
 	// keep looking until no more actions can be applied
-	int	 counter = 0;
-	bool found_next_action = true;
+	unsigned int counter = 0;
+	bool		 found_next_action = true;
 	while (found_next_action) {
 		found_next_action = false;
 
@@ -756,13 +756,13 @@ static inline void immediate_action_application(hplus::instance& inst, const hpl
 
 			used_actions.add(act_i);
 			inst.act_f.add(act_i);
-			inst.act_t[act_i] = counter;
+			inst.act_t[act_i] = static_cast<int>(counter);
 			counter++;
 			for (const auto& var_i : eff) {
 				if (current_state[var_i])
 					continue;
 
-				inst.var_t[var_i] = counter;
+				inst.var_t[var_i] = static_cast<int>(counter);
 				inst.fadd_f[act_i].add(var_i);
 				for (const auto& act_j : rem_act) {
 					if (act_i == act_j)

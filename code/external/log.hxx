@@ -91,7 +91,7 @@ inline std::string format_string(const char* format, va_list args) {
 	va_copy(args_copy, args);
 
 	// Get required buffer size
-	int size_s = std::vsnprintf(nullptr, 0, format, args_copy) + 1;
+	auto size_s = std::vsnprintf(nullptr, 0, format, args_copy) + 1;
 	va_end(args_copy);
 
 	if (size_s <= 0)

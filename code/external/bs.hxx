@@ -643,7 +643,7 @@ public:
 
 		// Reach the end of the tree (i < capacity) until we have open nodes to explore
 		for (size_t i = 0; i < bs.capacity() && !open_nodes.empty(); i++) {
-			size_t level_size = open_nodes.size();
+			auto level_size = open_nodes.size();
 
 			// Look among past iteration's open nodes and expand them
 			for (size_t j = 0; j < level_size; j++) {
@@ -666,7 +666,7 @@ public:
 
 		// Open nodes are now all leaves whose binary_set is a subset of the target one (bs)
 		std::vector<size_t> result;
-		for (auto node : open_nodes)
+		for (const auto& node : open_nodes)
 			result.insert(result.end(), node->values.begin(), node->values.end());
 
 		return result;

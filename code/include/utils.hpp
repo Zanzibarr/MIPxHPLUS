@@ -111,8 +111,7 @@ inline std::vector<std::string> split_string(const std::string& str, char del) {
 	std::vector<std::string> tokens;
 	tokens.reserve(std::ranges::count(str.begin(), str.end(), del) + 1);
 
-	size_t start = 0;
-	size_t end;
+	size_t start = 0, end;
 
 	while ((end = str.find(del, start)) != std::string::npos) {
 		if (end > start) // Avoid empty strings
@@ -152,7 +151,7 @@ inline bool isint(const std::string& str, const int from = std::numeric_limits<i
 
 	try {
 		// Only convert to int if the string consists of valid digits
-		int num = std::stoi(str);
+		auto num = std::stoi(str);
 		return num >= from && num <= to;
 	} catch (const std::out_of_range&) {
 		// Handle overflow cases
@@ -169,10 +168,10 @@ inline void todo(const logger& log, const std::string& msg) {
 
 /** (Debugging) Pauses the code execution until resuming, prints msg formatted as warning */
 inline void mypause(const std::string& msg = "") {
-	size_t i = 0;
+	std::string i;
 	std::cout << msg << "(1 to exit, 0 to continue): ";
 	std::cin >> i;
-	if (i > 0)
+	if (i == "0")
 		exit(1);
 }
 

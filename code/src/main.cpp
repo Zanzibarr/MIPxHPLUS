@@ -135,7 +135,7 @@ static inline void parse_cli(const int& argc, const char** argv,
 		env.heur = args::get(heur);
 	env.warm_start = !no_warmstart;
 	if (timelimit) {
-		const int tl = args::get(timelimit);
+		const auto tl = args::get(timelimit);
 		if (tl < 0)
 			ACK_REQ("Time limit is negative: setting time limit to max");
 		env.time_limit = (tl < 0) ? std::numeric_limits<unsigned int>::max() : tl;
