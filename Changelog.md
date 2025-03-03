@@ -2,7 +2,6 @@
 
 All notable changes to this project will be documented in this file.
 
-_To see what I'm still working on, please refer to the [TodoList](Todolist.md)._  
 _To see info about this project, please refer to the [Readme](Readme.md)._
 
 <!--
@@ -25,6 +24,17 @@ HOW I DO VERSIONING:
 ### :x: Removed
 ### :curly_loop: Other
 -->
+
+## [1.0.6] - 2025/03/03
+<!-- ### :warning: Known issues -->
+### :ballot_box_with_check: Fixed
+- Input file, Run name and Log name prints in show_info() were poorly formatted
+    - [~/code/src/main.cpp](code/src/main.cpp)
+<!-- ### :heavy_exclamation_mark: Changed -->
+<!-- ### :heavy_plus_sign: Added -->
+<!-- ### :x: Removed -->
+### :curly_loop: Other
+- Started using clang-tidy as static code analyzer
 
 
 ## [1.0.5] - 2025/03/02

@@ -7,37 +7,40 @@
  */
 
 #include "algorithms.hpp"
-#include "pq.hxx"	 // For priority_queue
-#include <algorithm> // For std::sort, std::transform
-#include <numeric>	 // For std::accumulate
-#include <queue>	 // For std::priority_queue (// TODO remove when substituted with priority_queue)
-#include <random>	 // For random number generators
-#include <set>		 // For std::set
+#include <numeric> // For std::accumulate
+#include <queue>   // For std::priority_queue (// TODO remove when substituted with priority_queue)
+#include <random>  // For random number generators
+#include <set>	   // For std::set
+
+#if HPLUS_INTCHECK == 0
+	#define INTCHECK_PQ false
+#endif
+#include "pq.hxx" // For priority_queue
 
 // ##################################################################### //
 // ############################ CPLEX UTILS ############################ //
 // ##################################################################### //
 
 void cpx_init(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::environment& env, const logger& log, bool log_file) {
-	_PRINT_VERBOSE(log, "Initializing CPLEX.");
+	PRINT_VERBOSE(log, "Initializing CPLEX.");
 	int cpxerror;
 	cpxenv = CPXopenCPLEX(&cpxerror);
-	_ASSERT_LOG(log, !cpxerror);
+	ASSERT_LOG(log, !cpxerror);
 	cpxlp = CPXcreateprob(cpxenv, &cpxerror, env.run_name.c_str());
-	_ASSERT_LOG(log, !cpxerror);
+	ASSERT_LOG(log, !cpxerror);
 	// log file
-	_ASSERT_LOG(log, !CPXsetintparam(cpxenv, CPXPARAM_ScreenOutput, CPX_OFF));
+	ASSERT_LOG(log, !CPXsetintparam(cpxenv, CPXPARAM_ScreenOutput, CPX_OFF));
 	if (log_file)
-		_ASSERT_LOG(log, !CPXsetlogfilename(cpxenv, (HPLUS_CPLEX_OUTPUT_DIR "/log/" + env.run_name + ".log").c_str(), "w"));
-	_ASSERT_LOG(log, !CPXsetintparam(cpxenv, CPX_PARAM_CLONELOG, -1));
+		ASSERT_LOG(log, !CPXsetlogfilename(cpxenv, (HPLUS_CPLEX_OUTPUT_DIR "/log/" + env.run_name + ".log").c_str(), "w"));
+	ASSERT_LOG(log, !CPXsetintparam(cpxenv, CPX_PARAM_CLONELOG, -1));
 	// tolerance
-	_ASSERT_LOG(log, !CPXsetdblparam(cpxenv, CPXPARAM_MIP_Tolerances_MIPGap, 0));
+	ASSERT_LOG(log, !CPXsetdblparam(cpxenv, CPXPARAM_MIP_Tolerances_MIPGap, 0));
 	// memory/size limits
-	_ASSERT_LOG(log, !CPXsetdblparam(cpxenv, CPXPARAM_MIP_Limits_TreeMemory, 12000));
-	_ASSERT_LOG(log, !CPXsetdblparam(cpxenv, CPXPARAM_WorkMem, 4096));
-	_ASSERT_LOG(log, !CPXsetintparam(cpxenv, CPXPARAM_MIP_Strategy_File, 3));
+	ASSERT_LOG(log, !CPXsetdblparam(cpxenv, CPXPARAM_MIP_Limits_TreeMemory, 12000));
+	ASSERT_LOG(log, !CPXsetdblparam(cpxenv, CPXPARAM_WorkMem, 4096));
+	ASSERT_LOG(log, !CPXsetintparam(cpxenv, CPXPARAM_MIP_Strategy_File, 3));
 	// terminate condition
-	_ASSERT_LOG(log, !CPXsetterminate(cpxenv, &global_terminate));
+	ASSERT_LOG(log, !CPXsetterminate(cpxenv, &global_terminate));
 }
 
 void cpx_close(CPXENVptr& cpxenv, CPXLPptr& cpxlp) {
@@ -45,8 +48,8 @@ void cpx_close(CPXENVptr& cpxenv, CPXLPptr& cpxlp) {
 	CPXcloseCPLEX(&cpxenv);
 }
 
-bool parse_cpx_status(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, hplus::environment& env, const logger& log) {
-	_PRINT_VERBOSE(log, "Parsing CPLEX status code.");
+bool parse_cpx_status(const CPXENVptr& cpxenv, const CPXLPptr& cpxlp, const hplus::instance& inst, hplus::environment& env, const logger& log) {
+	PRINT_VERBOSE(log, "Parsing CPLEX status code.");
 	switch (int cpxstatus = CPXgetstat(cpxenv, cpxlp)) {
 		case CPXMIP_TIME_LIM_FEAS: // exceeded time limit, found intermediate solution
 		case CPXMIP_ABORT_FEAS:	   // terminated by user, found solution
@@ -61,7 +64,7 @@ bool parse_cpx_status(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance&
 			env.sol_s = solution_status::INFEAS;
 			return false;
 		case CPXMIP_OPTIMAL_TOL: // found optimal within the tollerance
-			_PRINT_WARN(log, "Found optimal within the tolerance.");
+			PRINT_WARN(log, "Found optimal within the tolerance.");
 		case CPXMIP_OPTIMAL: // found optimal
 			env.sol_s = solution_status::OPT;
 			return true;
@@ -76,14 +79,14 @@ bool parse_cpx_status(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance&
 // ##################################################################### //
 
 static inline void greedycost(hplus::instance& inst, hplus::environment& env, const logger& log) {
-	_PRINT_VERBOSE(log, "Running greedycost algorithm.");
+	PRINT_VERBOSE(log, "Running greedycost algorithm.");
 
 	size_t timestamp = 0;
 	// greedy choice
 	const auto find_best_act = [&inst, &timestamp](const std::vector<size_t>& candidates) {
 		size_t choice = 0;
 		double best_cost = std::numeric_limits<double>::infinity();
-		for (const auto act_i : candidates) {
+		for (const auto& act_i : candidates) {
 			if (inst.act_t[act_i] >= 0 && static_cast<size_t>(inst.act_t[act_i]) == timestamp)
 				return std::pair<bool, size_t>(true, act_i);
 			if (inst.act_f[act_i]) {
@@ -95,7 +98,7 @@ static inline void greedycost(hplus::instance& inst, hplus::environment& env, co
 			if (best_cost < 0)
 				continue;
 
-			const double cost = static_cast<double>(inst.actions[act_i].cost);
+			const auto cost = static_cast<double>(inst.actions[act_i].cost);
 			if (cost >= best_cost)
 				continue;
 
@@ -113,7 +116,7 @@ static inline void greedycost(hplus::instance& inst, hplus::environment& env, co
 
 	// binary_set searcher for faster actions lookup
 	bs_searcher feasible_actions = bs_searcher(inst.n);
-	for (const auto act_i : inst.act_rem)
+	for (const auto& act_i : inst.act_rem)
 		feasible_actions.add(act_i, inst.actions[act_i].pre);
 
 	while (!state.contains(inst.goal)) {
@@ -131,7 +134,7 @@ static inline void greedycost(hplus::instance& inst, hplus::environment& env, co
 		feasible_actions.remove(choice, inst.actions[choice].pre);
 		timestamp++;
 
-		if (_CHECK_STOP()) [[unlikely]]
+		if (CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
 	}
 
@@ -140,7 +143,7 @@ static inline void greedycost(hplus::instance& inst, hplus::environment& env, co
 }
 
 static inline void greedycxe(hplus::instance& inst, hplus::environment& env, const logger& log) {
-	_PRINT_VERBOSE(log, "Running greedycxe algorithm.");
+	PRINT_VERBOSE(log, "Running greedycxe algorithm.");
 
 	size_t timestamp = 0;
 	// greedy choice
@@ -148,7 +151,7 @@ static inline void greedycxe(hplus::instance& inst, hplus::environment& env, con
 		size_t choice = 0;
 		bool   found = false;
 		double best_cxe = std::numeric_limits<double>::infinity();
-		for (const auto act_i : candidates) {
+		for (const auto& act_i : candidates) {
 			if (inst.act_t[act_i] >= 0 && static_cast<size_t>(inst.act_t[act_i]) == timestamp)
 				return std::pair<bool, size_t>(true, act_i);
 			if (inst.act_f[act_i]) {
@@ -162,7 +165,7 @@ static inline void greedycxe(hplus::instance& inst, hplus::environment& env, con
 				continue;
 
 			int neff = 0;
-			for (const auto var_i : inst.actions[act_i].eff_sparse) {
+			for (const auto& var_i : inst.actions[act_i].eff_sparse) {
 				if (!state[var_i])
 					neff++;
 			}
@@ -187,7 +190,7 @@ static inline void greedycxe(hplus::instance& inst, hplus::environment& env, con
 
 	// binary_set searcher for faster actions lookup
 	bs_searcher feasible_actions = bs_searcher(inst.n);
-	for (const auto act_i : inst.act_rem)
+	for (const auto& act_i : inst.act_rem)
 		feasible_actions.add(act_i, inst.actions[act_i].pre);
 
 	while (!state.contains(inst.goal)) {
@@ -209,7 +212,7 @@ static inline void greedycxe(hplus::instance& inst, hplus::environment& env, con
 		feasible_actions.remove(choice, inst.actions[choice].pre);
 		timestamp++;
 
-		if (_CHECK_STOP()) [[unlikely]]
+		if (CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
 	}
 
@@ -218,20 +221,19 @@ static inline void greedycxe(hplus::instance& inst, hplus::environment& env, con
 }
 
 static inline void randheur(hplus::instance& inst, hplus::environment& env, const logger& log) {
-	_PRINT_VERBOSE(log, "Running rand algorithm.");
+	PRINT_VERBOSE(log, "Running rand algorithm.");
 
 	size_t timestamp = 0;
 	// greedy choice
 	const auto find_best_act = [&inst, &timestamp](const std::vector<size_t>& candidates) {
 		size_t choice = 0;
 		bool   found = false;
-		for (const auto act_i : candidates) {
+		for (const auto& act_i : candidates) {
 			if (inst.act_t[act_i] >= 0 && static_cast<size_t>(inst.act_t[act_i]) == timestamp)
 				return std::pair<bool, size_t>(true, act_i);
 			if (inst.act_f[act_i]) {
 				choice = act_i;
 				found = true;
-				continue;
 			}
 		}
 		if (found)
@@ -247,7 +249,7 @@ static inline void randheur(hplus::instance& inst, hplus::environment& env, cons
 
 	// binary_set searcher for faster actions lookup
 	bs_searcher feasible_actions = bs_searcher(inst.n);
-	for (const auto act_i : inst.act_rem)
+	for (const auto& act_i : inst.act_rem)
 		feasible_actions.add(act_i, inst.actions[act_i].pre);
 
 	while (!state.contains(inst.goal)) {
@@ -265,7 +267,7 @@ static inline void randheur(hplus::instance& inst, hplus::environment& env, cons
 		feasible_actions.remove(choice, inst.actions[choice].pre);
 		timestamp++;
 
-		if (_CHECK_STOP()) [[unlikely]]
+		if (CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
 	}
 
@@ -274,10 +276,10 @@ static inline void randheur(hplus::instance& inst, hplus::environment& env, cons
 }
 
 static inline void randr(hplus::instance& inst, hplus::environment& env, const logger& log) {
-	_PRINT_VERBOSE(log, "Running randr algorithm.");
-	// [ ]: (maybe) Choose on CLI
-	const size_t repetitions = 100;
-	// [ ]: Threads (if using threads, make hplus::update_sol thread safe.)
+	PRINT_VERBOSE(log, "Running randr algorithm.");
+	// TODO: (maybe) Choose on CLI
+	constexpr size_t repetitions = 100;
+	// TODO: Threads (if using threads, make hplus::update_sol thread safe.)
 	for (size_t _ = 0; _ < repetitions; _++) {
 		randheur(inst, env, log);
 		if (env.sol_s == solution_status::INFEAS) [[unlikely]]
@@ -288,24 +290,24 @@ static inline void randr(hplus::instance& inst, hplus::environment& env, const l
 [[nodiscard]]
 static inline double evaluate_htype_state(const std::vector<size_t>& state, const std::vector<double>& values, double (*h_eqtype)(double, double)) {
 	double state_hcost = 0;
-	for (const auto p : state)
+	for (const auto& p : state)
 		state_hcost = h_eqtype(state_hcost, values[p]);
 	return state_hcost;
 }
 
 static inline void update_htype_values(const hplus::instance& inst, const binary_set& state, std::vector<double>& values, priority_queue<double>& pq, const binary_set& used_actions, double (*h_eqtype)(double, double)) {
-	for (const auto p : state) {
+	for (const auto& p : state) {
 		values[p] = 0;
-		if (!pq.has(p))
-			pq.push(p, 0);
+		if (!pq.has(static_cast<int>(p)))
+			pq.push(static_cast<int>(p), 0);
 		else
-			pq.change(p, 0);
+			pq.change(static_cast<int>(p), 0);
 	}
 
 	while (!pq.empty()) {
 		const size_t p = pq.top();
 		pq.pop();
-		for (const auto act_i : inst.act_with_pre[p]) {
+		for (const auto& act_i : inst.act_with_pre[p]) {
 			if (used_actions[act_i])
 				continue;
 
@@ -314,15 +316,15 @@ static inline void update_htype_values(const hplus::instance& inst, const binary
 				continue;
 
 			const double new_cost = cost_pre + static_cast<double>(inst.actions[act_i].cost);
-			for (const auto p_eff : inst.actions[act_i].eff_sparse) {
+			for (const auto& p_eff : inst.actions[act_i].eff_sparse) {
 				if (new_cost >= values[p_eff])
 					continue;
 
 				values[p_eff] = new_cost;
-				if (pq.has(p_eff))
-					pq.change(p_eff, new_cost);
+				if (pq.has(static_cast<int>(p_eff)))
+					pq.change(static_cast<int>(p_eff), new_cost);
 				else
-					pq.push(p_eff, new_cost);
+					pq.push(static_cast<int>(p_eff), new_cost);
 			}
 		}
 	}
@@ -330,18 +332,18 @@ static inline void update_htype_values(const hplus::instance& inst, const binary
 
 static inline void init_htype(const hplus::instance& inst, const bs_searcher& feasible_actions, std::vector<double>& values, priority_queue<double>& pq, double (*h_eqtype)(double, double)) {
 	const auto& initial_actions = feasible_actions.find_subsets(binary_set(inst.n));
-	for (const auto act_i : initial_actions) {
+	for (const auto& act_i : initial_actions) {
 		// preconditions of these variables are already met -> hmax/hadd (act.pre) = 0 -> need only the cost of the action to set the hmax/hadd of the effects
-		const double cost = static_cast<double>(inst.actions[act_i].cost);
-		for (const auto p : inst.actions[act_i].eff_sparse) {
+		const auto cost = static_cast<double>(inst.actions[act_i].cost);
+		for (const auto& p : inst.actions[act_i].eff_sparse) {
 			if (cost >= values[p])
 				continue;
 
 			values[p] = cost;
-			if (pq.has(p))
-				pq.change(p, cost);
+			if (pq.has(static_cast<int>(p)))
+				pq.change(static_cast<int>(p), cost);
 			else
-				pq.push(p, cost);
+				pq.push(static_cast<int>(p), cost);
 		}
 	}
 	update_htype_values(inst, binary_set(inst.n), values, pq, binary_set(inst.m), h_eqtype);
@@ -352,11 +354,11 @@ static inline bool htype(const hplus::instance& inst, hplus::solution& sol, doub
 
 	size_t timestamp = 0;
 	// greedy choice
-	const auto find_best_act = [&inst, &h_eqtype, &timestamp](const std::vector<size_t>& candidates, const std::vector<double>& values, const binary_set& state) {
+	const auto find_best_act = [&inst, &timestamp](const std::vector<size_t>& candidates, const std::vector<double>& values, const binary_set& state) {
 		size_t choice = 0;
 		bool   found = false;
 		double best_cxwe = std::numeric_limits<double>::infinity();
-		for (const auto act_i : candidates) {
+		for (const auto& act_i : candidates) {
 			if (inst.act_t[act_i] >= 0 && static_cast<size_t>(inst.act_t[act_i]) == timestamp)
 				return std::pair<bool, size_t>(true, act_i);
 			if (inst.act_f[act_i]) {
@@ -370,11 +372,11 @@ static inline bool htype(const hplus::instance& inst, hplus::solution& sol, doub
 				continue;
 
 			int weighted_neff = 0, neff = 0;
-			for (const auto var_i : inst.actions[act_i].eff_sparse) {
+			for (const auto& var_i : inst.actions[act_i].eff_sparse) {
 				if (state[var_i])
 					continue;
 
-				weighted_neff += values[var_i];
+				weighted_neff += static_cast<int>(values[var_i]);
 				neff++;
 			}
 
@@ -408,13 +410,13 @@ static inline bool htype(const hplus::instance& inst, hplus::solution& sol, doub
 	// Initialize helpers
 	std::vector<double>	   values(inst.n, std::numeric_limits<double>::infinity());
 	binary_set			   state(inst.n), used_actions(inst.m);
-	priority_queue<double> pq(inst.n);
+	priority_queue<double> pq(static_cast<int>(inst.n));
 
 	const auto find_best_act_v2 = [&inst, &h_eqtype, &used_actions, &pq, timestamp](const std::vector<size_t>& candidates, const std::vector<double>& values, const binary_set& state) {
 		size_t choice = 0;
 		bool   found = false;
 		double best_goal_cost = std::numeric_limits<double>::infinity();
-		for (const auto act_i : candidates) {
+		for (const auto& act_i : candidates) {
 			if (inst.act_t[act_i] >= 0 && static_cast<size_t>(inst.act_t[act_i]) == timestamp)
 				return std::pair<bool, size_t>(true, act_i);
 			if (inst.act_f[act_i]) {
@@ -443,7 +445,7 @@ static inline bool htype(const hplus::instance& inst, hplus::solution& sol, doub
 
 	// binary_set searcher for faster actions lookup
 	bs_searcher feasible_actions = bs_searcher(inst.n);
-	for (const auto act_i : inst.act_rem)
+	for (const auto& act_i : inst.act_rem)
 		feasible_actions.add(act_i, inst.actions[act_i].pre);
 
 	// initialize values and priority queue (needs to be done manually since here the initial state will always be empty)
@@ -467,7 +469,7 @@ static inline bool htype(const hplus::instance& inst, hplus::solution& sol, doub
 		feasible_actions.remove(choice, inst.actions[choice].pre);
 		timestamp++;
 
-		if (_CHECK_STOP()) [[unlikely]]
+		if (CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
 	}
 
@@ -475,7 +477,7 @@ static inline bool htype(const hplus::instance& inst, hplus::solution& sol, doub
 }
 
 static inline void hmax(hplus::instance& inst, hplus::environment& env, const logger& log) {
-	_PRINT_VERBOSE(log, "Running hmax algorithm.");
+	PRINT_VERBOSE(log, "Running hmax algorithm.");
 
 	hplus::solution heur_sol;
 	heur_sol.plan.reserve(inst.m_opt);
@@ -488,11 +490,10 @@ static inline void hmax(hplus::instance& inst, hplus::environment& env, const lo
 
 	hplus::update_sol(inst, heur_sol, log);
 	env.sol_s = solution_status::FEAS;
-	return;
 }
 
 static inline void hadd(hplus::instance& inst, hplus::environment& env, const logger& log) {
-	_PRINT_VERBOSE(log, "Running hadd algorithm.");
+	PRINT_VERBOSE(log, "Running hadd algorithm.");
 
 	hplus::solution heur_sol;
 	heur_sol.plan.reserve(inst.m_opt);
@@ -505,7 +506,6 @@ static inline void hadd(hplus::instance& inst, hplus::environment& env, const lo
 
 	hplus::update_sol(inst, heur_sol, log);
 	env.sol_s = solution_status::FEAS;
-	return;
 }
 
 [[nodiscard]]
@@ -522,7 +522,7 @@ static inline bool random_walk(const hplus::instance& inst, hplus::solution& sol
 		double weight_sum = 0;
 		size_t choice = 0;
 		bool   found = false;
-		for (const auto act_i : candidates) {
+		for (const auto& act_i : candidates) {
 			if (inst.act_t[act_i] >= 0 && static_cast<size_t>(inst.act_t[act_i]) == timestamp)
 				return std::pair<bool, size_t>(true, act_i);
 			if (inst.act_f[act_i]) {
@@ -543,7 +543,7 @@ static inline bool random_walk(const hplus::instance& inst, hplus::solution& sol
 		std::uniform_real_distribution<> dis(0.0, weight_sum);
 		const double					 random_value = dis(gen);
 		double							 cumulative_weight = 0;
-		for (const auto x : candidates) {
+		for (const auto& x : candidates) {
 			cumulative_weight += plan[inst.act_cpxtoidx[x]];
 			if (random_value <= cumulative_weight)
 				return std::pair<bool, size_t>(true, x);
@@ -554,7 +554,7 @@ static inline bool random_walk(const hplus::instance& inst, hplus::solution& sol
 
 	// binary_set searcher for faster actions lookup
 	bs_searcher feasible_actions = bs_searcher(inst.n);
-	for (const auto act_i : inst.act_rem)
+	for (const auto& act_i : inst.act_rem)
 		feasible_actions.add(act_i, inst.actions[act_i].pre);
 
 	while (!state.contains(inst.goal)) {
@@ -572,7 +572,7 @@ static inline bool random_walk(const hplus::instance& inst, hplus::solution& sol
 		feasible_actions.remove(choice, inst.actions[choice].pre);
 		timestamp++;
 
-		if (_CHECK_STOP()) [[unlikely]]
+		if (CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
 	}
 
@@ -580,7 +580,7 @@ static inline bool random_walk(const hplus::instance& inst, hplus::solution& sol
 }
 
 static inline void relax(hplus::instance& inst, hplus::environment& env, const logger& log) {
-	_PRINT_VERBOSE(log, "Running relax algorithm (linear relaxation of Imai's model).");
+	PRINT_VERBOSE(log, "Running relax algorithm (linear relaxation of Imai's model).");
 
 	// build cplex model
 	CPXENVptr cpxenv = nullptr;
@@ -592,25 +592,25 @@ static inline void relax(hplus::instance& inst, hplus::environment& env, const l
 	int*  indices = new int[inst.n_opt + inst.m_opt + inst.n_opt * inst.m_opt];
 	char* ctypes = new char[inst.n_opt + inst.m_opt + inst.n_opt * inst.m_opt];
 	for (size_t i = 0; i < inst.m_opt; i++) {
-		indices[i] = i;
+		indices[i] = static_cast<int>(i);
 		ctypes[i] = 'C';
 	}
 	for (size_t i = 0; i < inst.n_opt; i++) {
-		indices[inst.m_opt + i] = 2 * inst.m_opt + i;
+		indices[inst.m_opt + i] = static_cast<int>(2 * inst.m_opt + i);
 		ctypes[inst.m_opt + i] = 'C';
 	}
 	for (size_t i = 0; i < inst.m_opt * inst.n_opt; i++) {
-		indices[inst.m_opt + inst.n_opt + i] = 2 * inst.m_opt + 2 * inst.n_opt + i;
+		indices[inst.m_opt + inst.n_opt + i] = static_cast<int>(2 * inst.m_opt + 2 * inst.n_opt + i);
 		ctypes[inst.m_opt + inst.n_opt + i] = 'C';
 	}
-	_ASSERT_LOG(log, !CPXchgctype(cpxenv, cpxlp, inst.n_opt + inst.m_opt + inst.n_opt * inst.m_opt, indices, ctypes));
+	ASSERT_LOG(log, !CPXchgctype(cpxenv, cpxlp, inst.n_opt + inst.m_opt + inst.n_opt * inst.m_opt, indices, ctypes));
 	delete[] ctypes;
 	ctypes = nullptr;
 	delete[] indices;
 	indices = nullptr;
 
 	// solve model
-	_ASSERT_LOG(log, !CPXmipopt(cpxenv, cpxlp));
+	ASSERT_LOG(log, !CPXmipopt(cpxenv, cpxlp));
 
 	// parse cplex status to see what it found
 	switch (int cpxstatus = CPXgetstat(cpxenv, cpxlp)) {
@@ -633,9 +633,9 @@ static inline void relax(hplus::instance& inst, hplus::environment& env, const l
 	hplus::solution heur_sol;
 	heur_sol.plan.reserve(inst.m_opt);
 	heur_sol.cost = 0;
-	double* plan = new double[inst.m_opt];
-	_ASSERT_LOG(log, !CPXgetx(cpxenv, cpxlp, plan, 0, inst.m_opt - 1));
-	// [ ] Rethink how we reconstruct our solution... this one isn't a good approximate solution
+	auto* plan = new double[inst.m_opt];
+	ASSERT_LOG(log, !CPXgetx(cpxenv, cpxlp, plan, 0, inst.m_opt - 1));
+	// TODO: Rethink how we reconstruct our solution... this one isn't a good approximate solution
 	if (!random_walk(inst, heur_sol, plan, log)) {
 		delete[] plan;
 		env.sol_s = solution_status::INFEAS;
@@ -648,8 +648,8 @@ static inline void relax(hplus::instance& inst, hplus::environment& env, const l
 	env.sol_s = solution_status::FEAS;
 }
 
-static inline void localsearch(hplus::instance& inst, void (*heuristic)(hplus::instance& inst, hplus::environment& env, const logger& log), hplus::environment& env, const logger& log) {
-	_PRINT_VERBOSE(log, "Running local-search algorithm.");
+static inline void localsearch(hplus::instance& inst, void (*heuristic)(hplus::instance&, hplus::environment&, const logger&), hplus::environment& env, const logger& log) {
+	PRINT_VERBOSE(log, "Running local-search algorithm.");
 	heuristic(inst, env, log);
 
 	if (env.sol_s == solution_status::INFEAS) [[unlikely]]
@@ -657,13 +657,14 @@ static inline void localsearch(hplus::instance& inst, void (*heuristic)(hplus::i
 
 	hplus::solution heur_sol{ .plan = inst.best_sol.plan, .cost = inst.best_sol.cost };
 
-	// [ ]: Local search on top of the initial solution
+	// TODO: Local search on top of the initial solution
+	todo(log, "Local Search");
 
 	hplus::update_sol(inst, heur_sol, log);
 }
 
 void find_heuristic(hplus::instance& inst, hplus::environment& env, const logger& log) {
-	srand(time(0));
+	srand(time(nullptr));
 	if (env.heur == "greedycost")
 		greedycost(inst, env, log);
 	else if (env.heur == "greedycxe")
@@ -704,10 +705,10 @@ void find_heuristic(hplus::instance& inst, hplus::environment& env, const logger
 
 void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log, bool relaxed) {
 	if (!relaxed)
-		_PRINT_VERBOSE(log, "Building imai's model.");
+		PRINT_VERBOSE(log, "Building imai's model.");
 
 	const auto stopchk1 = []() {
-		if (_CHECK_STOP()) [[unlikely]]
+		if (CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
 	};
 
@@ -715,23 +716,23 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
 	// ============== TIGHTER TIMESTAMPS BOUNDS ============= //
 	// ====================================================== //
 
-	int timestamps_ubound = inst.m_opt;
+	int timestamps_ubound = static_cast<int>(inst.m_opt);
 	if (env.imai_tight_bounds) {
 		// number of variables
 		if (inst.n_opt < timestamps_ubound)
-			timestamps_ubound = inst.n_opt;
+			timestamps_ubound = static_cast<int>(inst.n_opt);
 
 		// max number of steps to reach heuristic
 		if (env.heur != "none" && !relaxed) {
 			unsigned int min_act_cost = inst.actions[0].cost + 1; // +1 to avoid it being 0
 			size_t		 n_act_zerocost = 0;
-			for (const auto act : inst.actions) {
+			for (const auto& act : inst.actions) {
 				if (act.cost == 0)
 					n_act_zerocost++;
 				else if (act.cost < min_act_cost) [[unlikely]]
 					min_act_cost = act.cost;
 			}
-			const int nsteps = inst.best_sol.cost / min_act_cost + n_act_zerocost;
+			const int nsteps = static_cast<int>(inst.best_sol.cost / min_act_cost + n_act_zerocost);
 			if (nsteps < timestamps_ubound)
 				timestamps_ubound = nsteps;
 		}
@@ -745,10 +746,10 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
 
 	size_t curr_col = 0;
 
-	double* objs = new double[inst.m_opt];
-	double* lbs = new double[inst.m_opt];
-	double* ubs = new double[inst.m_opt];
-	char*	types = new char[inst.m_opt];
+	auto* objs = new double[inst.m_opt];
+	auto* lbs = new double[inst.m_opt];
+	auto* ubs = new double[inst.m_opt];
+	auto* types = new char[inst.m_opt];
 
 	auto resize_cpx_arrays = [&objs, &lbs, &ubs, &types](size_t new_size) {
 		delete[] types;
@@ -767,7 +768,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
 	};
 
 	const auto stopchk2 = [&objs, &lbs, &ubs, &types]() {
-		if (_CHECK_STOP()) [[unlikely]] {
+		if (CHECK_STOP()) [[unlikely]] {
 			delete[] types;
 			types = nullptr;
 			delete[] ubs;
@@ -783,31 +784,31 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
 	// -------- actions ------- //
 	const size_t act_start = curr_col;
 	size_t		 count = 0;
-	for (const auto act_i : inst.act_rem) {
+	for (const auto& act_i : inst.act_rem) {
 		objs[count] = static_cast<double>(inst.actions[act_i].cost);
 		lbs[count] = (inst.act_f[act_i] ? 1 : 0);
 		ubs[count] = 1;
 		types[count++] = 'B';
 	}
-	_INTCHECK_ASSERT_LOG(log, count == inst.m_opt);
+	INTCHECK_ASSERT_LOG(log, count == inst.m_opt);
 	curr_col += inst.m_opt;
 
-	_ASSERT_LOG(log, !CPXnewcols(cpxenv, cpxlp, inst.m_opt, objs, lbs, ubs, types, nullptr));
+	ASSERT_LOG(log, !CPXnewcols(cpxenv, cpxlp, inst.m_opt, objs, lbs, ubs, types, nullptr));
 	stopchk2();
 
 	// --- action timestamps -- //
 	const size_t tact_start = curr_col;
 	count = 0;
-	for (const auto act_i : inst.act_rem) {
+	for (const auto& act_i : inst.act_rem) {
 		objs[count] = 0;
 		lbs[count] = (inst.act_t[act_i] >= 0 ? inst.act_t[act_i] : 0);
 		ubs[count] = (inst.act_t[act_i] >= 0 ? inst.act_t[act_i] : timestamps_ubound - 1);
 		types[count++] = 'I';
 	}
-	_INTCHECK_ASSERT_LOG(log, count == inst.m_opt);
+	INTCHECK_ASSERT_LOG(log, count == inst.m_opt);
 	curr_col += inst.m_opt;
 
-	_ASSERT_LOG(log, !CPXnewcols(cpxenv, cpxlp, inst.m_opt, objs, lbs, ubs, types, nullptr));
+	ASSERT_LOG(log, !CPXnewcols(cpxenv, cpxlp, inst.m_opt, objs, lbs, ubs, types, nullptr));
 	stopchk2();
 
 	resize_cpx_arrays(inst.n_opt);
@@ -815,47 +816,47 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
 	// ------- variables ------ //
 	const size_t var_start = curr_col;
 	count = 0;
-	for (const auto var_i : inst.var_rem) {
+	for (const auto& var_i : inst.var_rem) {
 		objs[count] = 0;
 		lbs[count] = ((inst.var_f[var_i] || inst.goal[var_i]) ? 1 : 0);
 		ubs[count] = 1;
 		types[count++] = 'B';
 	}
-	_INTCHECK_ASSERT_LOG(log, count == inst.n_opt);
+	INTCHECK_ASSERT_LOG(log, count == inst.n_opt);
 	curr_col += inst.n_opt;
 
-	_ASSERT_LOG(log, !CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
+	ASSERT_LOG(log, !CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
 	stopchk2();
 
 	// -- variable timestamps - //
 	const size_t tvar_start = curr_col;
 	count = 0;
-	for (const auto i : inst.var_rem) {
+	for (const auto& i : inst.var_rem) {
 		objs[count] = 0;
 		lbs[count] = (inst.var_t[i] >= 0 ? inst.var_t[i] : 1); // 1 since with no initial state, each variable needs to be archieved first
 		ubs[count] = (inst.var_t[i] >= 0 ? inst.var_t[i] : timestamps_ubound);
 		types[count++] = 'I';
 	}
-	_INTCHECK_ASSERT_LOG(log, count == inst.n_opt);
+	INTCHECK_ASSERT_LOG(log, count == inst.n_opt);
 	curr_col += inst.n_opt;
 
-	_ASSERT_LOG(log, !CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
+	ASSERT_LOG(log, !CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
 	stopchk2();
 
 	// --- first archievers --- //
 	const size_t fa_start = curr_col;
 	count = 0;
-	for (const auto act_i : inst.act_rem) {
+	for (const auto& act_i : inst.act_rem) {
 		size_t count_var = 0;
-		for (const auto var_i : inst.var_rem) {
+		for (const auto& var_i : inst.var_rem) {
 			objs[count_var] = 0;
 			lbs[count_var] = (inst.fadd_f[act_i][var_i] ? 1 : 0);
 			ubs[count_var] = ((!inst.actions[act_i].eff[var_i] || inst.fadd_e[act_i][var_i]) ? 0 : 1);
 			types[count_var++] = 'B';
 		}
-		_INTCHECK_ASSERT_LOG(log, count_var == inst.n_opt);
+		INTCHECK_ASSERT_LOG(log, count_var == inst.n_opt);
 		curr_col += inst.n_opt;
-		_ASSERT_LOG(log, !CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
+		ASSERT_LOG(log, !CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
 		count++;
 		stopchk2();
 	}
@@ -875,20 +876,19 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
 	// (section 3 of Imai's paper)
 
 	// accessing cplex variables
-	const auto get_act_idx = [&inst, &act_start](size_t idx) { return act_start + inst.act_opt_conv[idx]; };
-	const auto get_tact_idx = [&inst, &tact_start](size_t idx) { return tact_start + inst.act_opt_conv[idx]; };
-	const auto get_var_idx = [&inst, &var_start](size_t idx) { return var_start + inst.var_opt_conv[idx]; };
-	const auto get_tvar_idx = [&inst, &tvar_start](size_t idx) { return tvar_start + inst.var_opt_conv[idx]; };
-	const auto get_fa_idx = [&inst, &fa_start](size_t act_idx, size_t var_idx) { return fa_start + inst.act_opt_conv[act_idx] * inst.n_opt + inst.var_opt_conv[var_idx]; };
+	const auto get_act_idx = [&inst, &act_start](size_t idx) { return static_cast<int>(act_start + inst.act_opt_conv[idx]); };
+	const auto get_tact_idx = [&inst, &tact_start](size_t idx) { return static_cast<int>(tact_start + inst.act_opt_conv[idx]); };
+	const auto get_var_idx = [&inst, &var_start](size_t idx) { return static_cast<int>(var_start + inst.var_opt_conv[idx]); };
+	const auto get_tvar_idx = [&inst, &tvar_start](size_t idx) { return static_cast<int>(tvar_start + inst.var_opt_conv[idx]); };
+	const auto get_fa_idx = [&inst, &fa_start](size_t act_idx, size_t var_idx) { return static_cast<int>(fa_start + inst.act_opt_conv[act_idx] * inst.n_opt + inst.var_opt_conv[var_idx]); };
 
-	int*		 ind_c1 = new int[inst.m_opt + 1];
-	double*		 val_c1 = new double[inst.m_opt + 1];
-	int			 ind_c2_4[2], ind_c5[3];
-	double		 val_c2_4[2], val_c5[3];
-	const int	 nnz_c2_4 = 2, nnz_c5 = 3;
-	const char	 sensel = 'L', sensee = 'E';
-	const double rhs_c1_2_4 = 0, rhs_c5 = timestamps_ubound;
-	const int	 begin = 0;
+	auto*		   ind_c1 = new int[inst.m_opt + 1];
+	auto*		   val_c1 = new double[inst.m_opt + 1];
+	int			   ind_c2_4[2], ind_c5[3];
+	double		   val_c2_4[2], val_c5[3];
+	constexpr char sensel = 'L', sensee = 'E';
+	const double   rhs_c1_2_4 = 0, rhs_c5 = timestamps_ubound;
+	constexpr int  begin = 0;
 
 	std::vector<int*>	 ind_c3(inst.n_opt);
 	std::vector<double*> val_c3(inst.n_opt);
@@ -896,7 +896,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
 	std::vector<double>	 rhs_c3(inst.n_opt);
 
 	const auto stopchk3 = [&inst, &ind_c1, &val_c1, &ind_c3, &val_c3]() {
-		if (_CHECK_STOP()) [[unlikely]] {
+		if (CHECK_STOP()) [[unlikely]] {
 			for (size_t var_i = 0; var_i < inst.n_opt; var_i++) {
 				delete[] ind_c3[var_i];
 				ind_c3[var_i] = nullptr;
@@ -911,7 +911,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
 		}
 	};
 
-	for (const auto i : inst.var_rem) {
+	for (const auto& i : inst.var_rem) {
 		ind_c3[inst.var_opt_conv[i]] = new int[inst.m_opt + 1];
 		val_c3[inst.var_opt_conv[i]] = new double[inst.m_opt + 1];
 		nnz_c3[inst.var_opt_conv[i]] = 0;
@@ -922,9 +922,10 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
 	}
 	stopchk3();
 
-	for (const auto act_i : inst.act_rem) {
-		const auto& inverse_actions = inst.act_inv[act_i];
-		for (const auto var_i : inst.actions[act_i].pre_sparse) {
+	for (const auto& act_i : inst.act_rem) {
+		const auto&	  inverse_actions = inst.act_inv[act_i];
+		constexpr int nnz_c2_4 = 2;
+		for (const auto& var_i : inst.actions[act_i].pre_sparse) {
 			// constraint 1: x_a + sum_{inv(a, p)}(z_a'vj) <= y_vj, vj in pre(a)
 			ind_c1[0] = get_act_idx(act_i);
 			val_c1[0] = 1;
@@ -932,27 +933,28 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
 			val_c1[1] = -1;
 			int nnz0 = 2;
 			// (section 4.6 of Imai's paper)
-			for (size_t i = 0; i < inverse_actions.size(); i++) {
-				if (inst.actions[inverse_actions[i]].eff[var_i]) {
-					ind_c1[nnz0] = get_fa_idx(inverse_actions[i], var_i);
+			for (const auto& inverse_action : inverse_actions) {
+				if (inst.actions[inverse_action].eff[var_i]) {
+					ind_c1[nnz0] = get_fa_idx(inverse_action, var_i);
 					val_c1[nnz0++] = 1;
 				}
 			}
-			_ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz0, &rhs_c1_2_4, &sensel, &begin, ind_c1, val_c1, nullptr, nullptr));
+			ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz0, &rhs_c1_2_4, &sensel, &begin, ind_c1, val_c1, nullptr, nullptr));
 			// constraint 4: t_vj <= t_a, vj in pre(a)
 			ind_c2_4[0] = get_tvar_idx(var_i);
 			val_c2_4[0] = 1;
 			ind_c2_4[1] = get_tact_idx(act_i);
 			val_c2_4[1] = -1;
-			_ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c2_4, &rhs_c1_2_4, &sensel, &begin, ind_c2_4, val_c2_4, nullptr, nullptr));
+			ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c2_4, &rhs_c1_2_4, &sensel, &begin, ind_c2_4, val_c2_4, nullptr, nullptr));
 		}
-		for (const auto var_i : inst.actions[act_i].eff_sparse) {
+		for (const auto& var_i : inst.actions[act_i].eff_sparse) {
+			constexpr int nnz_c5 = 3;
 			// constraint 2: z_avj <= x_a, vj in eff(a)
 			ind_c2_4[0] = get_fa_idx(act_i, var_i);
 			val_c2_4[0] = 1;
 			ind_c2_4[1] = get_act_idx(act_i);
 			val_c2_4[1] = -1;
-			_ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c2_4, &rhs_c1_2_4, &sensel, &begin, ind_c2_4, val_c2_4, nullptr, nullptr));
+			ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c2_4, &rhs_c1_2_4, &sensel, &begin, ind_c2_4, val_c2_4, nullptr, nullptr));
 			// constraint 5: t_a + 1 <= t_vj + (|A|+1)(1-z_avj), vj in eff(a)
 			ind_c5[0] = get_tact_idx(act_i);
 			val_c5[0] = 1;
@@ -960,7 +962,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
 			val_c5[1] = -1;
 			ind_c5[2] = get_fa_idx(act_i, var_i);
 			val_c5[2] = timestamps_ubound + 1;
-			_ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c5, &rhs_c5, &sensel, &begin, ind_c5, val_c5, nullptr, nullptr));
+			ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c5, &rhs_c5, &sensel, &begin, ind_c5, val_c5, nullptr, nullptr));
 			// constraint 3: I(v_j) + sum(z_avj) = y_vj
 			ind_c3[inst.var_opt_conv[var_i]][nnz_c3[inst.var_opt_conv[var_i]]] = get_fa_idx(act_i, var_i);
 			val_c3[inst.var_opt_conv[var_i]][nnz_c3[inst.var_opt_conv[var_i]]] = -1;
@@ -970,7 +972,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
 	}
 
 	for (size_t var_i = 0; var_i < inst.n_opt; var_i++)
-		_ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c3[var_i], &rhs_c3[var_i], &sensee, &begin, ind_c3[var_i], val_c3[var_i], nullptr, nullptr));
+		ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c3[var_i], &rhs_c3[var_i], &sensee, &begin, ind_c3[var_i], val_c3[var_i], nullptr, nullptr));
 
 	for (size_t var_i = 0; var_i < inst.n_opt; var_i++) {
 		delete[] ind_c3[var_i];
@@ -983,23 +985,23 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
 	delete[] ind_c1;
 	ind_c1 = nullptr;
 
-	// _ASSERT_LOG(log, !CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR "/lp/" + env.run_name + ".lp").c_str(), "LP"));
+	// ASSERT_LOG(log, !CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR "/lp/" + env.run_name + ".lp").c_str(), "LP"));
 }
 
 void cpx_post_warmstart_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log) {
-	_INTCHECK_ASSERT_LOG(log, env.sol_s != solution_status::INFEAS && env.sol_s != solution_status::NOTFOUND);
+	INTCHECK_ASSERT_LOG(log, env.sol_s != solution_status::INFEAS && env.sol_s != solution_status::NOTFOUND);
 
 	binary_set state(inst.n);
 
 	const auto& warm_start = inst.best_sol.plan;
 
 	const size_t ncols = CPXgetnumcols(cpxenv, cpxlp);
-	int*		 cpx_sol_ind = new int[ncols];
-	double*		 cpx_sol_val = new double[ncols];
+	auto*		 cpx_sol_ind = new int[ncols];
+	auto*		 cpx_sol_val = new double[ncols];
 
-	const int izero = 0;
-	const int effortlevel = CPX_MIPSTART_AUTO;
-	size_t	  nnz = 0, timestamp = 0;
+	constexpr int izero = 0;
+	constexpr int effortlevel = CPX_MIPSTART_AUTO; // FIXME: Why can't I use NOCHECK???
+	size_t		  nnz = 0, timestamp = 0;
 
 #if HPLUS_INTCHECK
 	binary_set				fixed_act_check{ inst.act_f }, fixed_var_check{ inst.var_f };
@@ -1008,46 +1010,46 @@ void cpx_post_warmstart_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::in
 		fixed_fadd_check[i] = inst.fadd_f[i];
 #endif
 
-	for (const auto act_i : warm_start) {
-		_INTCHECK_ASSERT_LOG(log, !(inst.act_t[act_i] >= 0 && timestamp != inst.act_t[act_i]));
-		_INTCHECK_ASSERT_LOG(log, !inst.act_e[act_i]);
+	for (const auto& act_i : warm_start) {
+		INTCHECK_ASSERT_LOG(log, !(inst.act_t[act_i] >= 0 && timestamp != inst.act_t[act_i]));
+		INTCHECK_ASSERT_LOG(log, !inst.act_e[act_i]);
 #if HPLUS_INTCHECK
 		fixed_act_check.remove(act_i);
 #endif
-		cpx_sol_ind[nnz] = inst.act_opt_conv[act_i];
+		cpx_sol_ind[nnz] = static_cast<int>(inst.act_opt_conv[act_i]);
 		cpx_sol_val[nnz++] = 1;
-		cpx_sol_ind[nnz] = inst.m_opt + inst.act_opt_conv[act_i];
-		cpx_sol_val[nnz++] = timestamp;
+		cpx_sol_ind[nnz] = static_cast<int>(inst.m_opt + inst.act_opt_conv[act_i]);
+		cpx_sol_val[nnz++] = static_cast<int>(timestamp);
 		timestamp++;
-		for (const auto var_i : inst.actions[act_i].eff_sparse) {
+		for (const auto& var_i : inst.actions[act_i].eff_sparse) {
 			if (state[var_i])
 				continue;
 
-			_INTCHECK_ASSERT_LOG(log, !(inst.var_t[var_i] >= 0 && timestamp != inst.var_t[var_i]));
-			_INTCHECK_ASSERT_LOG(log, !inst.var_e[var_i]);
-			_INTCHECK_ASSERT_LOG(log, !inst.fadd_e[act_i][var_i]);
+			INTCHECK_ASSERT_LOG(log, !(inst.var_t[var_i] >= 0 && timestamp != inst.var_t[var_i]));
+			INTCHECK_ASSERT_LOG(log, !inst.var_e[var_i]);
+			INTCHECK_ASSERT_LOG(log, !inst.fadd_e[act_i][var_i]);
 #if HPLUS_INTCHECK
 			fixed_var_check.remove(var_i);
 			fixed_fadd_check[act_i].remove(var_i);
 #endif
 
-			cpx_sol_ind[nnz] = 2 * inst.m_opt + inst.var_opt_conv[var_i];
+			cpx_sol_ind[nnz] = static_cast<int>(2 * inst.m_opt + inst.var_opt_conv[var_i]);
 			cpx_sol_val[nnz++] = 1;
-			cpx_sol_ind[nnz] = 2 * inst.m_opt + inst.n_opt + inst.var_opt_conv[var_i];
-			cpx_sol_val[nnz++] = timestamp;
-			cpx_sol_ind[nnz] = 2 * inst.m_opt + 2 * inst.n_opt + inst.act_opt_conv[act_i] * inst.n_opt + inst.var_opt_conv[var_i];
+			cpx_sol_ind[nnz] = static_cast<int>(2 * inst.m_opt + inst.n_opt + inst.var_opt_conv[var_i]);
+			cpx_sol_val[nnz++] = static_cast<int>(timestamp);
+			cpx_sol_ind[nnz] = static_cast<int>(2 * inst.m_opt + 2 * inst.n_opt + inst.act_opt_conv[act_i] * inst.n_opt + inst.var_opt_conv[var_i]);
 			cpx_sol_val[nnz++] = 1;
 		}
 		state |= inst.actions[act_i].eff;
 	}
 
 #if HPLUS_INTCHECK
-	_ASSERT_LOG(log, fixed_act_check.empty());
-	_ASSERT_LOG(log, fixed_var_check.empty());
+	ASSERT_LOG(log, fixed_act_check.empty());
+	ASSERT_LOG(log, fixed_var_check.empty());
 	for (size_t i = 0; i < inst.m; i++)
-		_ASSERT_LOG(log, fixed_fadd_check[i].empty());
+		ASSERT_LOG(log, fixed_fadd_check[i].empty());
 #endif
-	_ASSERT_LOG(log, !CPXaddmipstarts(cpxenv, cpxlp, 1, nnz, &izero, cpx_sol_ind, cpx_sol_val, &effortlevel, nullptr));
+	ASSERT_LOG(log, !CPXaddmipstarts(cpxenv, cpxlp, 1, nnz, &izero, cpx_sol_ind, cpx_sol_val, &effortlevel, nullptr));
 
 	delete[] cpx_sol_ind;
 	cpx_sol_ind = nullptr;
@@ -1055,13 +1057,13 @@ void cpx_post_warmstart_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::in
 	cpx_sol_val = nullptr;
 }
 
-void store_imai_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst, const hplus::environment& env, const logger& log) {
-	_PRINT_VERBOSE(log, "Storing imai's solution.");
+void store_imai_sol(const CPXENVptr& cpxenv, const CPXLPptr& cpxlp, hplus::instance& inst, const hplus::environment& env, const logger& log) {
+	PRINT_VERBOSE(log, "Storing imai's solution.");
 
 	// get cplex result (interested only in the sequence of actions [0/inst.m_opt-1]
 	// used and its ordering [inst.m_opt/2nact-1])
-	double* plan = new double[2 * inst.m_opt];
-	_ASSERT_LOG(log, !CPXgetx(cpxenv, cpxlp, plan, 0, 2 * inst.m_opt - 1));
+	auto* plan = new double[2 * inst.m_opt];
+	ASSERT_LOG(log, !CPXgetx(cpxenv, cpxlp, plan, 0, 2 * inst.m_opt - 1));
 
 	// convert to std collections for easier parsing
 	std::vector<std::pair<double, size_t>> cpx_result;
@@ -1073,11 +1075,11 @@ void store_imai_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst, c
 	plan = nullptr;
 
 	// sort cpx_result based on actions timestamps
-	std::sort(cpx_result.begin(), cpx_result.end(), [](const std::pair<double, size_t>& x, const std::pair<double, size_t>& y) { return x.first < y.first; });
+	std::ranges::sort(cpx_result.begin(), cpx_result.end(), [](const std::pair<double, size_t>& x, const std::pair<double, size_t>& y) { return x.first < y.first; });
 
 	// get solution from sorted cpx_result
 	std::vector<size_t> solution;
-	std::transform(cpx_result.begin(), cpx_result.end(), std::back_inserter(solution), [inst](const std::pair<double, size_t>& p) { return inst.act_cpxtoidx[p.second]; });
+	std::ranges::transform(cpx_result.begin(), cpx_result.end(), std::back_inserter(solution), [inst](const std::pair<double, size_t>& p) { return inst.act_cpxtoidx[p.second]; });
 
 	// store solution
 	hplus::solution imai_sol{ solution, static_cast<unsigned int>(std::accumulate(solution.begin(), solution.end(), 0, [inst](const size_t acc, const size_t index) { return acc + inst.actions[index].cost; })) };
@@ -1089,10 +1091,10 @@ void store_imai_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst, c
 // ##################################################################### //
 
 void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log) {
-	_PRINT_VERBOSE(log, "Building rankooh's model.");
+	PRINT_VERBOSE(log, "Building rankooh's model.");
 
 	const auto stopchk1 = []() {
-		if (_CHECK_STOP()) [[unlikely]]
+		if (CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
 	};
 
@@ -1106,7 +1108,7 @@ void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance
 			: id(id), deg(deg) {}
 	};
 	struct compare_node {
-		bool operator()(const node& n1, const node& n2) { return n1.deg > n2.deg; }
+		bool operator()(const node& n1, const node& n2) const { return n1.deg > n2.deg; }
 	};
 	struct triangle {
 		size_t first, second, third;
@@ -1118,14 +1120,14 @@ void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance
 	std::vector<binary_set>		  cumulative_graph(inst.n, binary_set(inst.n));
 	std::vector<triangle>		  triangles_list;
 
-	// [ ]: (maybe) Implement using pq.hxx
+	// TODO: (maybe) Implement using pq.hxx
 	std::priority_queue<node, std::vector<node>, compare_node> nodes_queue;
 	std::vector<size_t>										   degree_counter(inst.n, 0);
 
 	// G_0
-	for (const auto act_i : inst.act_rem) {
-		for (const auto var_i : inst.actions[act_i].pre_sparse) {
-			for (const auto var_j : inst.actions[act_i].eff_sparse) {
+	for (const auto& act_i : inst.act_rem) {
+		for (const auto& var_i : inst.actions[act_i].pre_sparse) {
+			for (const auto& var_j : inst.actions[act_i].eff_sparse) {
 				if (var_i == var_j) [[unlikely]]
 					continue;
 
@@ -1146,19 +1148,19 @@ void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance
 	}
 
 	// finding minimum degree node
-	const auto find_min = [&inst, &degree_counter](std::priority_queue<node, std::vector<node>, compare_node>& nodes_queue) {
+	const auto find_min = [&degree_counter](std::priority_queue<node, std::vector<node>, compare_node>& nodes_queue) {
 		int idx = -1;
 		while (!nodes_queue.empty() && idx < 0) {
-			node tmp = nodes_queue.top();
+			const auto& tmp = nodes_queue.top();
 			nodes_queue.pop();
 			if (degree_counter[tmp.id] == tmp.deg)
-				idx = tmp.id;
+				idx = static_cast<int>(tmp.id);
 		}
 		return idx;
 	};
 
 	// G_i (min degree heuristics)
-	for (const auto _ : inst.var_rem) {
+	for (const auto& _ : inst.var_rem) {
 		int idx = find_min(nodes_queue);
 		if (idx == -1) [[unlikely]]
 			break;
@@ -1170,11 +1172,11 @@ void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance
 
 		std::set<size_t> new_nodes;
 
-		for (const auto p : inst.var_rem) {
-			if (graph[p].find(idx) == graph[p].end())
+		for (const auto& p : inst.var_rem) {
+			if (!graph[p].contains(idx))
 				continue;
 
-			for (const auto q : graph[idx]) {
+			for (const auto& q : graph[idx]) {
 				if (p == q) [[unlikely]]
 					continue;
 
@@ -1195,14 +1197,14 @@ void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance
 			new_nodes.insert(p);
 
 			// update triangles list
-			for (const auto q : graph[idx]) {
+			for (const auto& q : graph[idx]) {
 				if (p != q) [[likely]]
 					triangles_list.emplace_back(p, idx, q);
 			}
 		}
 
 		// remove the edge idx - q
-		for (const auto q : graph[idx]) {
+		for (const auto& q : graph[idx]) {
 			degree_counter[q] -= 1;
 			new_nodes.insert(q);
 		}
@@ -1210,9 +1212,9 @@ void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance
 		degree_counter[idx] = 0;
 
 		// Update the priority queue
-		for (const auto node : new_nodes) {
-			if (degree_counter[node] > 0)
-				nodes_queue.emplace(node, degree_counter[node]);
+		for (const auto& x : new_nodes) {
+			if (degree_counter[x] > 0)
+				nodes_queue.emplace(x, degree_counter[x]);
 		}
 
 #if HPLUS_INTCHECK // care: this takes HUGE amount of time
@@ -1220,12 +1222,12 @@ void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance
 			size_t i_cnt = 0;
 			i_cnt += graph[node_i].size();
 			for (size_t tmp_j = 0; tmp_j < inst.n; tmp_j++) {
-				for (const auto tmp_k : graph[tmp_j]) {
+				for (const auto& tmp_k : graph[tmp_j]) {
 					if (tmp_k == node_i)
 						i_cnt += 1;
 				}
 			}
-			_ASSERT_LOG(log, i_cnt == degree_counter[node_i]);
+			ASSERT_LOG(log, i_cnt == degree_counter[node_i]);
 		}
 #endif
 		stopchk1();
@@ -1235,11 +1237,11 @@ void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance
 	// =================== CPLEX VARIABLES ================== //
 	// ====================================================== //
 
-	size_t	curr_col = 0;
-	double* objs = new double[inst.m_opt];
-	double* lbs = new double[inst.m_opt];
-	double* ubs = new double[inst.m_opt];
-	char*	types = new char[inst.m_opt];
+	size_t curr_col = 0;
+	auto*  objs = new double[inst.m_opt];
+	auto*  lbs = new double[inst.m_opt];
+	auto*  ubs = new double[inst.m_opt];
+	auto*  types = new char[inst.m_opt];
 
 	const auto resize_cpx_arrays = [&objs, &lbs, &ubs, &types](size_t new_size) {
 		delete[] types;
@@ -1258,7 +1260,7 @@ void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance
 	};
 
 	const auto stopchk2 = [&objs, &lbs, &ubs, &types]() {
-		if (_CHECK_STOP()) [[unlikely]] {
+		if (CHECK_STOP()) [[unlikely]] {
 			delete[] types;
 			types = nullptr;
 			delete[] ubs;
@@ -1274,17 +1276,17 @@ void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance
 	// -------- actions ------- //
 	const size_t act_start = curr_col;
 	size_t		 count = 0;
-	for (const auto act_i : inst.act_rem) {
+	for (const auto& act_i : inst.act_rem) {
 		objs[count] = static_cast<double>(inst.actions[act_i].cost);
 		lbs[count] = inst.act_f[act_i] ? 1 : 0;
 		ubs[count] = 1;
 		types[count++] = 'B';
 	}
-	_INTCHECK_ASSERT_LOG(log, count == inst.m_opt);
+	INTCHECK_ASSERT_LOG(log, count == inst.m_opt);
 
 	curr_col += inst.m_opt;
 
-	_ASSERT_LOG(log, !CPXnewcols(cpxenv, cpxlp, inst.m_opt, objs, lbs, ubs, types, nullptr));
+	ASSERT_LOG(log, !CPXnewcols(cpxenv, cpxlp, inst.m_opt, objs, lbs, ubs, types, nullptr));
 	stopchk2();
 
 	resize_cpx_arrays(inst.n_opt);
@@ -1293,18 +1295,18 @@ void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance
 	const size_t		fa_start = curr_col;
 	std::vector<size_t> fa_individual_start(inst.m_opt);
 	count = 0;
-	for (const auto act_i : inst.act_rem) {
+	for (const auto& act_i : inst.act_rem) {
 		fa_individual_start[count] = count * inst.n_opt;
 		size_t count_var = 0;
-		for (const auto var_i : inst.var_rem) {
+		for (const auto& var_i : inst.var_rem) {
 			objs[count_var] = 0;
 			lbs[count_var] = inst.fadd_f[act_i][var_i] ? 1 : 0;
 			ubs[count_var] = (!inst.actions[act_i].eff[var_i] || inst.fadd_e[act_i][var_i]) ? 0 : 1;
 			types[count_var++] = 'B';
 		}
-		_INTCHECK_ASSERT_LOG(log, count_var == inst.n_opt);
+		INTCHECK_ASSERT_LOG(log, count_var == inst.n_opt);
 		curr_col += inst.n_opt;
-		_ASSERT_LOG(log, !CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
+		ASSERT_LOG(log, !CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
 		count++;
 		stopchk2();
 	}
@@ -1312,31 +1314,31 @@ void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance
 	// ------- variables ------ //
 	const size_t var_start = curr_col;
 	count = 0;
-	for (const auto var_i : inst.var_rem) {
+	for (const auto& var_i : inst.var_rem) {
 		objs[count] = 0;
 		lbs[count] = (inst.var_f[var_i] || inst.goal[var_i]) ? 1 : 0;
 		ubs[count] = 1;
 		types[count++] = 'B';
 	}
 
-	_INTCHECK_ASSERT_LOG(log, count == inst.n_opt);
+	INTCHECK_ASSERT_LOG(log, count == inst.n_opt);
 	curr_col += inst.n_opt;
 
-	_ASSERT_LOG(log, !CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
+	ASSERT_LOG(log, !CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
 	stopchk2();
 
 	// vertex elimination graph edges
 	const size_t veg_edges_start = curr_col;
-	for (const auto var_i : inst.var_rem) {
+	for (const auto& var_i : inst.var_rem) {
 		count = 0;
-		for (const auto var_j : inst.var_rem) {
+		for (const auto& var_j : inst.var_rem) {
 			objs[count] = 0;
 			lbs[count] = 0;
 			ubs[count] = cumulative_graph[var_i][var_j] ? 1 : 0;
 			types[count++] = 'B';
 		}
-		_INTCHECK_ASSERT_LOG(log, count == inst.n_opt);
-		_ASSERT_LOG(log, !CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
+		INTCHECK_ASSERT_LOG(log, count == inst.n_opt);
+		ASSERT_LOG(log, !CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
 		stopchk2();
 	}
 	curr_col += inst.n_opt * inst.n_opt;
@@ -1355,20 +1357,20 @@ void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance
 	// ====================================================== //
 
 	// accessing cplex variables
-	const auto get_act_idx = [&inst, &act_start](size_t idx) { return act_start + inst.act_opt_conv[idx]; };
-	const auto get_var_idx = [&inst, &var_start](size_t idx) { return var_start + inst.var_opt_conv[idx]; };
-	const auto get_fa_idx = [&inst, &fa_start](size_t act_idx, size_t var_idx) { return fa_start + inst.act_opt_conv[act_idx] * inst.n_opt + inst.var_opt_conv[var_idx]; };
-	const auto get_veg_idx = [&inst, &veg_edges_start](size_t idx_i, size_t idx_j) { return veg_edges_start + inst.var_opt_conv[idx_i] * inst.n_opt + inst.var_opt_conv[idx_j]; };
+	const auto get_act_idx = [&inst, &act_start](size_t idx) { return static_cast<int>(act_start + inst.act_opt_conv[idx]); };
+	const auto get_var_idx = [&inst, &var_start](size_t idx) { return static_cast<int>(var_start + inst.var_opt_conv[idx]); };
+	const auto get_fa_idx = [&inst, &fa_start](size_t act_idx, size_t var_idx) { return static_cast<int>(fa_start + inst.act_opt_conv[act_idx] * inst.n_opt + inst.var_opt_conv[var_idx]); };
+	const auto get_veg_idx = [&inst, &veg_edges_start](size_t idx_i, size_t idx_j) { return static_cast<int>(veg_edges_start + inst.var_opt_conv[idx_i] * inst.n_opt + inst.var_opt_conv[idx_j]); };
 
-	int*		 ind = new int[inst.m_opt + 1];
-	double*		 val = new double[inst.m_opt + 1];
-	int			 nnz = 0;
-	const char	 sense_e = 'E', sense_l = 'L';
-	const double rhs_0 = 0, rhs_1 = 1;
-	const int	 begin = 0;
+	auto*			 ind = new int[inst.m_opt + 1];
+	auto*			 val = new double[inst.m_opt + 1];
+	int				 nnz = 0;
+	constexpr char	 sense_e = 'E', sense_l = 'L';
+	constexpr double rhs_0 = 0, rhs_1 = 1;
+	constexpr int	 begin = 0;
 
 	const auto stopchk3 = [&ind, &val]() {
-		if (_CHECK_STOP()) [[unlikely]] {
+		if (CHECK_STOP()) [[unlikely]] {
 			delete[] val;
 			val = nullptr;
 			delete[] ind;
@@ -1377,32 +1379,32 @@ void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance
 		}
 	};
 
-	for (const auto var_i : inst.var_rem) {
+	for (const auto& var_i : inst.var_rem) {
 		nnz = 0;
 		ind[nnz] = get_var_idx(var_i);
 		val[nnz++] = 1;
 
-		for (const auto act_i : inst.act_with_eff[var_i]) {
+		for (const auto& act_i : inst.act_with_eff[var_i]) {
 			ind[nnz] = get_fa_idx(act_i, var_i);
 			val[nnz++] = -1;
 		}
 
-		_ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_e, &begin, ind, val, nullptr, nullptr));
+		ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_e, &begin, ind, val, nullptr, nullptr));
 		stopchk3();
 	}
 
-	for (const auto var_i : inst.var_rem) {
-		for (const auto var_j : inst.var_rem) {
+	for (const auto& var_i : inst.var_rem) {
+		for (const auto& var_j : inst.var_rem) {
 			nnz = 0;
 			ind[nnz] = get_var_idx(var_j);
 			val[nnz++] = -1;
-			for (const auto act_i : inst.act_with_eff[var_i]) {
+			for (const auto& act_i : inst.act_with_eff[var_i]) {
 				if (inst.actions[act_i].pre[var_j]) [[unlikely]] {
 					ind[nnz] = get_fa_idx(act_i, var_i);
 					val[nnz++] = 1;
 				}
 			}
-			_ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_l, &begin, ind, val, nullptr, nullptr));
+			ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_l, &begin, ind, val, nullptr, nullptr));
 			stopchk3();
 		}
 	}
@@ -1415,69 +1417,69 @@ void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance
 	int	   ind_c5_c6_c7[2], ind_c8[3];
 	double val_c5_c6_c7[2], val_c8[3];
 
-	for (const auto act_i : inst.act_rem) {
-		for (const auto var_i : inst.actions[act_i].eff_sparse) {
+	for (const auto& act_i : inst.act_rem) {
+		for (const auto& var_i : inst.actions[act_i].eff_sparse) {
 			ind_c5_c6_c7[0] = get_act_idx(act_i);
 			val_c5_c6_c7[0] = -1;
 			ind_c5_c6_c7[1] = get_fa_idx(act_i, var_i);
 			val_c5_c6_c7[1] = 1;
-			_ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
+			ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
 		}
 		stopchk1();
 	}
 
-	for (const auto act_i : inst.act_rem) {
-		for (const auto var_i : inst.actions[act_i].pre_sparse) {
-			for (const auto var_j : inst.actions[act_i].eff_sparse) {
+	for (const auto& act_i : inst.act_rem) {
+		for (const auto& var_i : inst.actions[act_i].pre_sparse) {
+			for (const auto& var_j : inst.actions[act_i].eff_sparse) {
 				ind_c5_c6_c7[0] = get_veg_idx(var_i, var_j);
 				val_c5_c6_c7[0] = -1;
 				ind_c5_c6_c7[1] = get_fa_idx(act_i, var_j);
 				val_c5_c6_c7[1] = 1;
-				_ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
+				ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
 			}
 			stopchk1();
 		}
 	}
 
-	for (const auto var_i : inst.var_rem) {
-		for (const auto var_j : cumulative_graph[var_i]) {
+	for (const auto& var_i : inst.var_rem) {
+		for (const auto& var_j : cumulative_graph[var_i]) {
 			ind_c5_c6_c7[0] = get_veg_idx(var_i, var_j);
 			val_c5_c6_c7[0] = 1;
 			ind_c5_c6_c7[1] = get_veg_idx(var_j, var_i);
 			val_c5_c6_c7[1] = 1;
-			_ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_1, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
+			ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_1, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
 			stopchk1();
 		}
 	}
 
-	for (const auto [a, b, c] : triangles_list) {
+	for (const auto& [a, b, c] : triangles_list) {
 		ind_c8[0] = get_veg_idx(a, b);
 		val_c8[0] = 1;
 		ind_c8[1] = get_veg_idx(b, c);
 		val_c8[1] = 1;
 		ind_c8[2] = get_veg_idx(a, c);
 		val_c8[2] = -1;
-		_ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, 3, &rhs_1, &sense_l, &begin, ind_c8, val_c8, nullptr, nullptr));
+		ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, 3, &rhs_1, &sense_l, &begin, ind_c8, val_c8, nullptr, nullptr));
 		stopchk1();
 	}
 
-	// _ASSERT_LOG(log, !CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR "/lp/" + env.run_name + ".lp").c_str(), "LP"));
+	// ASSERT_LOG(log, !CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR "/lp/" + env.run_name + ".lp").c_str(), "LP"));
 }
 
 void cpx_post_warmstart_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log) {
-	_INTCHECK_ASSERT_LOG(log, env.sol_s != solution_status::INFEAS && env.sol_s != solution_status::NOTFOUND);
+	INTCHECK_ASSERT_LOG(log, env.sol_s != solution_status::INFEAS && env.sol_s != solution_status::NOTFOUND);
 
 	binary_set state(inst.n);
 
 	const auto& warm_start = inst.best_sol.plan;
 
-	size_t	ncols = CPXgetnumcols(cpxenv, cpxlp);
-	int*	cpx_sol_ind = new int[ncols];
-	double* cpx_sol_val = new double[ncols];
+	size_t ncols = CPXgetnumcols(cpxenv, cpxlp);
+	auto*  cpx_sol_ind = new int[ncols];
+	auto*  cpx_sol_val = new double[ncols];
 
-	const int izero = 0;
-	const int effortlevel = CPX_MIPSTART_AUTO;
-	size_t	  nnz = 0;
+	constexpr int izero = 0;
+	constexpr int effortlevel = CPX_MIPSTART_AUTO;
+	size_t		  nnz = 0;
 
 #if HPLUS_INTCHECK
 	size_t					timestamp = 0;
@@ -1487,57 +1489,57 @@ void cpx_post_warmstart_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus:
 		fixed_fadd_check[i] = inst.fadd_f[i];
 #endif
 
-	for (const auto act_i : warm_start) {
+	for (const auto& act_i : warm_start) {
 #if HPLUS_INTCHECK
-		_ASSERT_LOG(log, !(inst.act_t[act_i] >= 0 && timestamp != inst.act_t[act_i]));
-		_ASSERT_LOG(log, !inst.act_e[act_i]);
+		ASSERT_LOG(log, !(inst.act_t[act_i] >= 0 && timestamp != inst.act_t[act_i]));
+		ASSERT_LOG(log, !inst.act_e[act_i]);
 		fixed_act_check.remove(act_i);
 		timestamp++;
 #endif
 		// set the action indicator variable
-		cpx_sol_ind[nnz] = inst.act_opt_conv[act_i];
+		cpx_sol_ind[nnz] = static_cast<int>(inst.act_opt_conv[act_i]);
 		cpx_sol_val[nnz++] = 1;
-		for (const auto var_i : inst.actions[act_i].eff_sparse) {
+		for (const auto& var_i : inst.actions[act_i].eff_sparse) {
 			if (state[var_i])
 				continue;
 
 #if HPLUS_INTCHECK
-			_ASSERT_LOG(log, !(inst.var_t[var_i] >= 0 && timestamp != inst.var_t[var_i]));
-			_ASSERT_LOG(log, !inst.var_e[var_i]);
-			_ASSERT_LOG(log, !inst.fadd_e[act_i][var_i]);
+			ASSERT_LOG(log, !(inst.var_t[var_i] >= 0 && timestamp != inst.var_t[var_i]));
+			ASSERT_LOG(log, !inst.var_e[var_i]);
+			ASSERT_LOG(log, !inst.fadd_e[act_i][var_i]);
 			fixed_var_check.remove(var_i);
 			fixed_fadd_check[act_i].remove(var_i);
 #endif
 
 			// set the fact indicator variable
-			cpx_sol_ind[nnz] = inst.m_opt + inst.m_opt * inst.n_opt + inst.var_opt_conv[var_i];
+			cpx_sol_ind[nnz] = static_cast<int>(inst.m_opt + inst.m_opt * inst.n_opt + inst.var_opt_conv[var_i]);
 			cpx_sol_val[nnz++] = 1;
 			// set the fadd indicator variable
-			cpx_sol_ind[nnz] = inst.m_opt + inst.act_opt_conv[act_i] * inst.n_opt + inst.var_opt_conv[var_i];
+			cpx_sol_ind[nnz] = static_cast<int>(inst.m_opt + inst.act_opt_conv[act_i] * inst.n_opt + inst.var_opt_conv[var_i]);
 			cpx_sol_val[nnz++] = 1;
 		}
 		state |= inst.actions[act_i].eff;
 	}
 
 #if HPLUS_INTCHECK
-	_ASSERT_LOG(log, fixed_act_check.empty());
-	_ASSERT_LOG(log, fixed_var_check.empty());
+	ASSERT_LOG(log, fixed_act_check.empty());
+	ASSERT_LOG(log, fixed_var_check.empty());
 	for (size_t i = 0; i < inst.m; i++)
-		_ASSERT_LOG(log, fixed_fadd_check[i].empty());
+		ASSERT_LOG(log, fixed_fadd_check[i].empty());
 #endif
 
-	_ASSERT_LOG(log, !CPXaddmipstarts(cpxenv, cpxlp, 1, nnz, &izero, cpx_sol_ind, cpx_sol_val, &effortlevel, nullptr));
+	ASSERT_LOG(log, !CPXaddmipstarts(cpxenv, cpxlp, 1, nnz, &izero, cpx_sol_ind, cpx_sol_val, &effortlevel, nullptr));
 	delete[] cpx_sol_ind;
 	cpx_sol_ind = nullptr;
 	delete[] cpx_sol_val;
 	cpx_sol_val = nullptr;
 }
 
-void store_rankooh_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst, const hplus::environment& env, const logger& log) {
-	_PRINT_VERBOSE(log, "Storing rankooh's solution.");
+void store_rankooh_sol(const CPXENVptr& cpxenv, const CPXLPptr& cpxlp, hplus::instance& inst, const hplus::environment& env, const logger& log) {
+	PRINT_VERBOSE(log, "Storing rankooh's solution.");
 
-	double* plan = new double[inst.m_opt + inst.m_opt * inst.n_opt];
-	_ASSERT_LOG(log, !CPXgetx(cpxenv, cpxlp, plan, 0, inst.m_opt + inst.m_opt * inst.n_opt - 1));
+	auto* plan = new double[inst.m_opt + inst.m_opt * inst.n_opt];
+	ASSERT_LOG(log, !CPXgetx(cpxenv, cpxlp, plan, 0, inst.m_opt + inst.m_opt * inst.n_opt - 1));
 
 	// fixing the solution to read the plan (some actions are set to 1 even if
 	// they are not a first archiever of anything)
@@ -1545,7 +1547,7 @@ void store_rankooh_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst
 		bool set_zero = true;
 		for (size_t var_i_cpx = 0; var_i_cpx < inst.n_opt; var_i_cpx++) {
 			if (plan[fadd_i + var_i_cpx] > HPLUS_CPX_INT_ROUNDING) {
-				_INTCHECK_ASSERT_LOG(log, plan[act_i_cpx] > HPLUS_CPX_INT_ROUNDING);
+				INTCHECK_ASSERT_LOG(log, plan[act_i_cpx] > HPLUS_CPX_INT_ROUNDING);
 				set_zero = false;
 				break;
 			}
@@ -1572,7 +1574,7 @@ void store_rankooh_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst
 #if HPLUS_INTCHECK
 		bool intcheck = false;
 #endif
-		for (const auto i : remaining) {
+		for (const auto& i : remaining) {
 			if (!state.contains(inst.actions[cpx_result[i]].pre))
 				continue;
 
@@ -1583,7 +1585,7 @@ void store_rankooh_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst
 			intcheck = true;
 #endif
 		}
-		_INTCHECK_ASSERT_LOG(log, intcheck);
+		INTCHECK_ASSERT_LOG(log, intcheck);
 	}
 
 	// store solution
@@ -1597,19 +1599,19 @@ void store_rankooh_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst
 // ##################################################################### //
 
 void cpx_build_dynamic_small(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log) {
-	_PRINT_VERBOSE(log, "Building dynamic small model.");
-	// [ ]: Building the small dynamic model
+	PRINT_VERBOSE(log, "Building dynamic small model.");
+	// TODO: Building the small dynamic model
 	todo(log, "Building the small dynamic model");
 }
 
 void cpx_post_warmstart_dynamic_small(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log) {
-	// [ ]: Posting warmstart to the small dynamic model
+	// TODO: Posting warmstart to the small dynamic model
 	todo(log, "Posting warmstart to the small dynamic model");
 }
 
-void store_dynamic_small_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst, const hplus::environment& env, const logger& log) {
-	_PRINT_VERBOSE(log, "Storing the dynamic small solution.");
-	// [ ]: Storing solution of the small dynamic model
+void store_dynamic_small_sol(const CPXENVptr& cpxenv, const CPXLPptr& cpxlp, hplus::instance& inst, const hplus::environment& env, const logger& log) {
+	PRINT_VERBOSE(log, "Storing the dynamic small solution.");
+	// TODO: Storing solution of the small dynamic model
 	todo(log, "Storing solution of the small dynamic model");
 }
 
@@ -1618,18 +1620,18 @@ void store_dynamic_small_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance
 // ##################################################################### //
 
 void cpx_build_dynamic_large(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log) {
-	_PRINT_VERBOSE(log, "Building dynamic large model.");
-	// [ ]: Building the large dynamic model
+	PRINT_VERBOSE(log, "Building dynamic large model.");
+	// TODO: Building the large dynamic model
 	todo(log, "Building the large dynamic model");
 }
 
 void cpx_post_warmstart_dynamic_large(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log) {
-	// [ ]: Posting warmstart to the large dynamic model
+	// TODO: Posting warmstart to the large dynamic model
 	todo(log, "Posting warmstart to the large dynamic model");
 }
 
-void store_dynamic_large_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst, const hplus::environment& env, const logger& log) {
-	_PRINT_VERBOSE(log, "Storing the dynamic large solution.");
-	// [ ]: Storing solution of the large dynamic model
+void store_dynamic_large_sol(const CPXENVptr& cpxenv, const CPXLPptr& cpxlp, hplus::instance& inst, const hplus::environment& env, const logger& log) {
+	PRINT_VERBOSE(log, "Storing the dynamic large solution.");
+	// TODO: Storing solution of the large dynamic model
 	todo(log, "Storing solution of the large dynamic model");
 }

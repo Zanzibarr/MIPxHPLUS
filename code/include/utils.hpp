@@ -13,7 +13,7 @@
 // ############################ CODE VERSION ########################### //
 // ##################################################################### //
 
-#define CODE_VERSION "1.0.5"
+#define CODE_VERSION "1.0.6"
 
 // ##################################################################### //
 // ############################## IMPORTS ############################## //
@@ -108,10 +108,10 @@ enum class exec_status {
 [[nodiscard]]
 inline std::vector<std::string> split_string(const std::string& str, char del) {
 	std::vector<std::string> tokens;
-	tokens.reserve(std::count(str.begin(), str.end(), del) + 1);
+	tokens.reserve(std::ranges::count(str.begin(), str.end(), del) + 1);
 
 	size_t start = 0;
-	size_t end = 0;
+	size_t end;
 
 	while ((end = str.find(del, start)) != std::string::npos) {
 		if (end > start) // Avoid empty strings
@@ -180,25 +180,25 @@ private:
 	std::string msg;
 
 public:
-	inline timelimit_exception(const char* msg)
+	inline explicit timelimit_exception(const char* msg)
 		: msg(msg) {}
 	[[nodiscard]]
-	inline const char* what() const throw() { return msg.c_str(); }
+	inline const char* what() const noexcept override { return msg.c_str(); }
 };
 
 /** Require user acknowledge to resume execution */
-#define _ACK_REQ(msg)                                          \
+#define ACK_REQ(msg)                                           \
 	{                                                          \
 		std::cout << msg << ".\nPress any key to continue..."; \
 		std::cin.ignore();                                     \
 	}
 
 /** Check for external execution termination required */
-#define _CHECK_STOP() global_terminate == 1
+#define CHECK_STOP() global_terminate == 1
 
 /** Define an assert function */
-#ifndef _ASSERT
-	#define _ASSERT(cond)                                                                                            \
+#ifndef ASSERT
+	#define ASSERT(cond)                                                                                             \
 		{                                                                                                            \
 			if (!(cond)) [[unlikely]] {                                                                              \
 				std::cerr << "Assert check failed at " << __func__ << "(): " << __FILE__ << ":" << __LINE__ << "\n"; \
@@ -207,7 +207,7 @@ public:
 		}
 #endif
 
-#define _ASSERT_LOG(log, cond)                           \
+#define ASSERT_LOG(log, cond)                            \
 	{                                                    \
 		if (!(cond)) [[unlikely]] {                      \
 			std::string msg = "Assert check failed at "; \
@@ -223,48 +223,48 @@ public:
 
 /** Print a warning message only if the warn flag is set */
 #if HPLUS_WARN
-	#define _PRINT_WARN(log, msg) \
+	#define PRINT_WARN(log, msg) \
 		{ log.print_warn(msg); }
 #else
-	#define _PRINT_WARN(log, msg) \
+	#define PRINT_WARN(log, msg) \
 		{}
 #endif
 
 /** Print info message only with the right verbose settings */
 #if HPLUS_VERBOSE >= 10
-	#define _PRINT_INFO(log, msg) \
+	#define PRINT_INFO(log, msg) \
 		{ log.print_info(msg); }
 #else
-	#define _PRINT_INFO(log, msg) \
+	#define PRINT_INFO(log, msg) \
 		{}
 #endif
 
 /** Print info message only with the right verbose settings */
 #if HPLUS_VERBOSE >= 20
-	#define _PRINT_DEBUG(log, msg) _PRINT_INFO(log, msg)
+	#define PRINT_DEBUG(log, msg) PRINT_INFO(log, msg)
 #else
-	#define _PRINT_DEBUG(log, msg) \
+	#define PRINT_DEBUG(log, msg) \
 		{}
 #endif
 
 /** Print info message only with the right verbose settings */
 #if HPLUS_VERBOSE >= 100
-	#define _PRINT_VERBOSE(log, msg) _PRINT_INFO(log, msg)
+	#define PRINT_VERBOSE(log, msg) PRINT_INFO(log, msg)
 #else
-	#define _PRINT_VERBOSE(log, msg) \
+	#define PRINT_VERBOSE(log, msg) \
 		{}
 #endif
 
 /** Asserts to be made only if integrity checks flag is set */
 #if HPLUS_INTCHECK
-	#define _INTCHECK_ASSERT(cond) \
-		{ _ASSERT(cond); }
-	#define _INTCHECK_ASSERT_LOG(log, cond) \
-		{ _ASSERT_LOG(log, cond); }
+	#define INTCHECK_ASSERT(cond) \
+		{ ASSERT(cond); }
+	#define INTCHECK_ASSERT_LOG(log, cond) \
+		{ ASSERT_LOG(log, cond); }
 #else
-	#define _INTCHECK_ASSERT(cond) \
+	#define INTCHECK_ASSERT(cond) \
 		{}
-	#define _INTCHECK_ASSERT_LOG(log, cond) \
+	#define INTCHECK_ASSERT_LOG(log, cond) \
 		{}
 #endif
 

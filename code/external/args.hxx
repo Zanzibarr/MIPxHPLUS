@@ -41,7 +41,6 @@
 #include <algorithm>
 #include <cctype>
 #include <cstddef>
-#include <exception>
 #include <functional>
 #include <iostream>
 #include <iterator>

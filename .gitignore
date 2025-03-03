@@ -8,6 +8,7 @@
 code/build/
 code/test/jobs/
 code/test/jobs_output/
+code/.cache
 local/
 logs/
 results/

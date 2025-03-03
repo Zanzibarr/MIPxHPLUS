@@ -12,7 +12,7 @@
 #include <sys/stat.h> // For stat buffer {}
 #include <termios.h>  // For CLI signal output manipulation
 #include <thread>	  // For thread operations
-#include <unistd.h>	  //For STDIN_FILENO
+#include <unistd.h>	  // For STDIN_FILENO
 
 volatile int global_terminate = 0;
 
@@ -23,7 +23,7 @@ static inline void signal_callback_handler(const int signum) {
 }
 
 static inline void* time_limit_termination(void* args) {
-	hplus::environment* env = (hplus::environment*)args;
+	const auto* env = static_cast<hplus::environment*>(args);
 	while (env->exec_s < exec_status::STOP_TL && env->sol_s != solution_status::INFEAS) {
 		if (env->timer.get_time() > static_cast<double>(env->time_limit)) [[unlikely]] {
 			raise(SIGINT);
@@ -64,7 +64,7 @@ static inline void init(hplus::statistics& stats) {
 
 static inline void parse_cli(const int& argc, const char** argv,
 							 hplus::environment& env) {
-	args::ArgumentParser		  parser("//[ ]: HEADER.", "//[ ]: FOOTER.");
+	args::ArgumentParser		  parser("// TODO: HEADER.", "// TODO: FOOTER.");
 	args::HelpFlag				  help(parser, "help", "Display the help menu", { "h", "help" });
 	args::Positional<std::string> input_file(
 		parser, "input_file",
@@ -137,7 +137,7 @@ static inline void parse_cli(const int& argc, const char** argv,
 	if (timelimit) {
 		const int tl = args::get(timelimit);
 		if (tl < 0)
-			_ACK_REQ("Time limit is negative: setting time limit to max");
+			ACK_REQ("Time limit is negative: setting time limit to max");
 		env.time_limit = (tl < 0) ? std::numeric_limits<unsigned int>::max() : tl;
 	}
 	if (logname) {
@@ -151,15 +151,15 @@ static inline void parse_cli(const int& argc, const char** argv,
 		env.using_cplex = false;
 	}
 	if (env.warm_start && env.heur == "none") {
-		_ACK_REQ("Warm start has been activated but heuristic has been disabled: "
-				 "disabling warm start");
+		ACK_REQ("Warm start has been activated but heuristic has been disabled: "
+				"disabling warm start");
 		env.warm_start = false;
 	}
 }
 
 static inline void show_info(const hplus::instance&	   inst,
 							 const hplus::environment& env, const logger& log) {
-	_PRINT_VERBOSE(log, "Showing info about the execution.");
+	PRINT_VERBOSE(log, "Showing info about the execution.");
 #if HPLUS_VERBOSE <= 1
 	return;
 #endif
@@ -169,11 +169,11 @@ static inline void show_info(const hplus::instance&	   inst,
 	std::time_t time =
 		std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
 	log.print("%sCode version: %s.\n%s", std::ctime(&time), CODE_VERSION, LINE);
-	log.print("Input file: %s.", env.input_file.c_str());
+	log.print("Input file: %47s.", env.input_file.c_str());
 	if (env.log && !env.log_name.empty())
-		log.print("Log name:               %35s.", env.log_name.c_str());
+		log.print("Log name: %49s.", env.log_name.c_str());
 	if (!env.run_name.empty())
-		log.print("Run name:                              %20s.",
+		log.print("Run name:          %40s.",
 				  env.run_name.c_str());
 	log.print("Verbose parameter:                               %10d.",
 			  HPLUS_VERBOSE);
@@ -222,10 +222,10 @@ static inline void show_info(const hplus::instance&	   inst,
 
 static inline void run(hplus::instance& inst, hplus::environment& env,
 					   hplus::statistics& stats, const logger& log) {
-	_PRINT_VERBOSE(log, "Executing the chosen algorithms.");
+	PRINT_VERBOSE(log, "Executing the chosen algorithms.");
 
 	try {
-		double start_time = 0;
+		double start_time;
 		if (env.alg != HPLUS_CLI_ALG_IMAI && env.alg != HPLUS_CLI_ALG_RANKOOH && env.alg != HPLUS_CLI_ALG_DYNAMIC_SMALL && env.alg != HPLUS_CLI_ALG_DYNAMIC_LARGE && env.alg != HPLUS_CLI_ALG_HEUR)
 
 			log.raise_error(
@@ -234,7 +234,7 @@ static inline void run(hplus::instance& inst, hplus::environment& env,
 				env.alg.c_str());
 
 		auto stopchk = [&env]() {
-			if (_CHECK_STOP()) {
+			if (CHECK_STOP()) {
 				env.exec_s = exec_status::STOP_TL;
 				throw timelimit_exception("Reached time limit.");
 			}
@@ -243,7 +243,7 @@ static inline void run(hplus::instance& inst, hplus::environment& env,
 		// ~~~~~~~~ PROBLEM SIMPLIFICATION ~~~~~~~ //
 
 		if (env.problem_opt) {
-			_PRINT_INFO(log, "Problem simplification.");
+			PRINT_INFO(log, "Problem simplification.");
 			env.exec_s = exec_status::PROBLEM_SIMPL;
 
 			stats.optimization = static_cast<double>(env.time_limit) - env.timer.get_time();
@@ -271,7 +271,7 @@ static inline void run(hplus::instance& inst, hplus::environment& env,
 						env.heur.c_str());
 			}
 
-			_PRINT_INFO(log, "Calculating heuristic solution.");
+			PRINT_INFO(log, "Calculating heuristic solution.");
 			env.exec_s = exec_status::HEURISTIC;
 
 			stats.heuristic = static_cast<double>(env.time_limit) - env.timer.get_time();
@@ -293,7 +293,7 @@ static inline void run(hplus::instance& inst, hplus::environment& env,
 
 		// ~~~~~~~~~~~~ MODEL BUILDING ~~~~~~~~~~~ //
 
-		_PRINT_INFO(log, "Building model.");
+		PRINT_INFO(log, "Building model.");
 		env.exec_s = exec_status::MODEL_BUILD;
 
 		stats.build = static_cast<double>(env.time_limit) - env.timer.get_time();
@@ -317,13 +317,13 @@ static inline void run(hplus::instance& inst, hplus::environment& env,
 
 		// time limit
 		if (static_cast<double>(env.time_limit) > env.timer.get_time()) {
-			_ASSERT_LOG(log, !CPXsetdblparam(cpxenv, CPXPARAM_TimeLimit, static_cast<double>(env.time_limit) - env.timer.get_time()));
+			ASSERT_LOG(log, !CPXsetdblparam(cpxenv, CPXPARAM_TimeLimit, static_cast<double>(env.time_limit) - env.timer.get_time()));
 		} else
 			throw timelimit_exception("Reached the time limit");
 
 		if (env.warm_start) { // Post warm starto to CPLEX
 
-			_PRINT_INFO(log, "Posting warm start.");
+			PRINT_INFO(log, "Posting warm start.");
 
 			if (env.alg == HPLUS_CLI_ALG_IMAI)
 				cpx_post_warmstart_imai(cpxenv, cpxlp, inst, env, log);
@@ -339,16 +339,15 @@ static inline void run(hplus::instance& inst, hplus::environment& env,
 
 		// ~~~~~~~~~~~ MODEL EXECUTION ~~~~~~~~~~~ //
 
-		_PRINT_INFO(log, "Running CPLEX.");
+		PRINT_INFO(log, "Running CPLEX.");
 		env.exec_s = exec_status::CPX_EXEC;
 
 		stats.execution = static_cast<double>(env.time_limit) - env.timer.get_time();
 		start_time = env.timer.get_time();
 
-		_ASSERT_LOG(log, !CPXmipopt(cpxenv, cpxlp));
+		ASSERT_LOG(log, !CPXmipopt(cpxenv, cpxlp));
 
-		if (parse_cpx_status(cpxenv, cpxlp, inst, env,
-							 log)) { // If CPLEX has found a solution
+		if (parse_cpx_status(cpxenv, cpxlp, inst, env, log)) { // If CPLEX has found a solution
 			if (env.alg == HPLUS_CLI_ALG_IMAI)
 				store_imai_sol(cpxenv, cpxlp, inst, env, log);
 			else if (env.alg == HPLUS_CLI_ALG_RANKOOH)
@@ -363,9 +362,7 @@ static inline void run(hplus::instance& inst, hplus::environment& env,
 
 		stats.execution = env.timer.get_time() - start_time;
 
-	} catch (timelimit_exception& e) {
-		return;
-	}
+	} catch (timelimit_exception&) {}
 }
 
 static inline void end(const hplus::instance& inst, hplus::environment& env,
@@ -418,7 +415,7 @@ static inline void end(const hplus::instance& inst, hplus::environment& env,
 
 int main(const int argc, const char** argv) {
 	signal(SIGINT, signal_callback_handler);
-	struct termios t;
+	struct termios t{};
 	tcgetattr(STDIN_FILENO, &t);
 	t.c_lflag &= ~ECHOCTL;
 	tcsetattr(STDIN_FILENO, TCSAFLUSH, &t);

@@ -1,5 +1,5 @@
 /**
- * @file log.hpp
+ * @file log.hxx
  * @brief logger with formatted output using modern C++ features
  *
  * @author Matteo Zanella <matteozanella2@gmail.com>
@@ -21,90 +21,87 @@
 #define LINE "------------------------------------------------------------"
 #define THICK_LINE "############################################################"
 
-namespace {
+// Enum for log level types
+enum class log_level {
+	print,
+	info,
+	warning,
+	error
+};
 
-	// Enum for log level types
-	enum class log_level {
-		print,
-		info,
-		warning,
-		error
-	};
+// Get formatted current time using C time functions
+inline std::string get_current_time() {
+	const auto time_now = std::time(nullptr);
 
-	// Get formatted current time using C time functions
-	inline std::string get_current_time() {
-		const auto time_now = std::time(nullptr);
+	char	  buffer[26];
+	struct tm timeinfo{};
+	localtime_r(&time_now, &timeinfo);
 
-		char	  buffer[26];
-		struct tm timeinfo;
-		localtime_r(&time_now, &timeinfo);
+	strftime(buffer, sizeof(buffer), "%Y-%m-%d.%X", &timeinfo);
+	return { buffer };
+}
 
-		strftime(buffer, sizeof(buffer), "%Y-%m-%d.%X", &timeinfo);
-		return std::string(buffer);
+// ANSI color codes
+namespace colors {
+	constexpr std::string_view reset = "\033[0m";
+	constexpr std::string_view info = "\033[38;5;68m\033[1m";
+	constexpr std::string_view warn = "\033[38;5;215m\033[1m";
+	constexpr std::string_view error = "\033[91m\033[1m";
+	constexpr std::string_view reset_bold = "\033[22m";
+} // namespace colors
+
+inline std::pair<std::string, std::string> format_prefix(log_level level, bool include_time) {
+	std::string terminal_prefix, file_prefix;
+	switch (level) {
+		case log_level::info:
+			terminal_prefix = std::string(colors::info) + "[ INFO ] " +
+				std::string(colors::reset_bold) + "-- ";
+			file_prefix = "[ INFO ] -- ";
+			break;
+		case log_level::warning:
+			terminal_prefix = std::string(colors::warn) + "[ WARN ] " +
+				std::string(colors::reset_bold) + "-- ";
+			file_prefix = "[ WARN ] -- ";
+			break;
+		case log_level::error:
+			terminal_prefix = std::string(colors::error) + "[ ERROR ] " +
+				std::string(colors::reset_bold) + "-- ";
+			file_prefix = "[ ERROR ] -- ";
+			break;
+		default:
+			// No prefix for regular print
+			break;
 	}
-
-	// ANSI color codes
-	namespace colors {
-		constexpr std::string_view reset = "\033[0m";
-		constexpr std::string_view info = "\033[38;5;68m\033[1m";
-		constexpr std::string_view warn = "\033[38;5;215m\033[1m";
-		constexpr std::string_view error = "\033[91m\033[1m";
-		constexpr std::string_view reset_bold = "\033[22m";
-	} // namespace colors
-
-	inline std::pair<std::string, std::string> format_prefix(log_level level, bool include_time) {
-		std::string terminal_prefix, file_prefix;
-		switch (level) {
-			case log_level::info:
-				terminal_prefix = std::string(colors::info) + "[ INFO ] " +
-					std::string(colors::reset_bold) + "-- ";
-				file_prefix = "[ INFO ] -- ";
-				break;
-			case log_level::warning:
-				terminal_prefix = std::string(colors::warn) + "[ WARN ] " +
-					std::string(colors::reset_bold) + "-- ";
-				file_prefix = "[ WARN ] -- ";
-				break;
-			case log_level::error:
-				terminal_prefix = std::string(colors::error) + "[ ERROR ] " +
-					std::string(colors::reset_bold) + "-- ";
-				file_prefix = "[ ERROR ] -- ";
-				break;
-			default:
-				// No prefix for regular print
-				break;
+	if (include_time) {
+		const std::string time_str = get_current_time() + " : ";
+		if (!terminal_prefix.empty()) {
+			terminal_prefix = terminal_prefix + time_str;
+			file_prefix = file_prefix + time_str;
+		} else {
+			terminal_prefix = time_str;
+			file_prefix = time_str;
 		}
-		if (include_time) {
-			const std::string time_str = get_current_time() + " : ";
-			if (!terminal_prefix.empty()) {
-				terminal_prefix = terminal_prefix + time_str;
-				file_prefix = file_prefix + time_str;
-			} else {
-				terminal_prefix = time_str;
-				file_prefix = time_str;
-			}
-		}
-		return { terminal_prefix, file_prefix };
 	}
+	return { terminal_prefix, file_prefix };
+}
 
-	std::string format_string(const char* format, va_list args) {
-		// Make a copy of the va_list to avoid potential corruption
-		va_list args_copy;
-		va_copy(args_copy, args);
+inline std::string format_string(const char* format, va_list args) {
+	// Make a copy of the va_list to avoid potential corruption
+	va_list args_copy;
+	va_copy(args_copy, args);
 
-		// Get required buffer size
-		int size_s = std::vsnprintf(nullptr, 0, format, args_copy) + 1;
-		va_end(args_copy);
+	// Get required buffer size
+	int size_s = std::vsnprintf(nullptr, 0, format, args_copy) + 1;
+	va_end(args_copy);
 
-		if (size_s <= 0)
-			throw std::runtime_error("Error during formatting");
+	if (size_s <= 0)
+		throw std::runtime_error("Error during formatting");
 
-		auto size = static_cast<size_t>(size_s);
-		auto buf = std::make_unique<char[]>(size);
-		std::vsnprintf(buf.get(), size, format, args);
-		return std::string(buf.get(), size - 1);
-	}
-} // anonymous namespace
+	auto size = static_cast<size_t>(size_s);
+	auto buf = std::make_unique<char[]>(size);
+	std::vsnprintf(buf.get(), size, format, args);
+	return { buf.get(), size - 1 };
+}
 
 /**
  * @brief Modern logger class for formatted output on terminal and log file

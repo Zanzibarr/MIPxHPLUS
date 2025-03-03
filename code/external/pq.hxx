@@ -1,5 +1,5 @@
 /**
- * @file pq.hpp
+ * @file pq.hxx
  * @brief Priority Queue for a set of integers
  *
  * @author Domenico Salvagnin <dominiqs at gmail dot com>
@@ -9,45 +9,39 @@
 #ifndef PQ_H
 #define PQ_H
 
-#include <string> // For std::string
-#include <vector> // For std::vector
-
-#ifndef _ASSERT
-	#include <iostream>
-	#define _ASSERT(cond)                                                                                            \
-		{                                                                                                            \
-			if (!(cond)) [[unlikely]] {                                                                              \
-				std::cerr << "Assert check failed at " << __func__ << "(): " << __FILE__ << ":" << __LINE__ << "\n"; \
-				exit(1);                                                                                             \
-			}                                                                                                        \
-		}
+#ifndef INTCHECK_PQ
+	#define INTCHECK_PQ true
 #endif
+
+#include <stdexcept> // For std::domain_error
+#include <string>	 // For std::string
+#include <vector>	 // For std::vector
 
 template <typename score_type>
 class priority_queue {
 public:
 	/** Construct a priority queue for the integer form 0 to n - 1 */
-	explicit inline priority_queue(int n)
+	explicit priority_queue(int n)
 		: n(n), cnt(0), data(n), prior(n), position(n, -1) {}
 	/** Return the integer with minimal priority (throws exception if empty) */
 	[[nodiscard]]
-	inline int top() const {
-		_ASSERT(!empty());
+	int top() const {
+		check_empty();
 		return data[0];
 	}
 	/** Check whether the queue is empty */
 	[[nodiscard]]
-	inline bool empty() const { return (cnt == 0); }
+	bool empty() const { return cnt == 0; }
 	/** Checks whether an integer j is in the queue */
 	[[nodiscard]]
-	inline bool has(int j) const { return (position[j] >= 0); }
+	bool has(int j) const { return (position[j] >= 0); }
 	/** Clear content */
-	inline void clear() {
-		std::fill(position.begin(), position.begin() + cnt, -1);
+	void clear() {
+		std::fill_n(position.begin(), cnt, -1);
 		cnt = 0;
 	}
 	/** Restore heap structure */
-	inline void heapify() {
+	void heapify() {
 		int start = (cnt - 2) / 2;
 		while (start >= 0) {
 			int j = data[start];
@@ -61,9 +55,12 @@ public:
 		}
 	}
 	/** Insert integer j into the queue with a priority p */
-	inline void push(int j, score_type p, bool mantain_heap = true) {
-		_ASSERT((j >= 0) && (j < n));
-		_ASSERT(position[j] == -1);
+	void push(int j, score_type p, bool mantain_heap = true) {
+		validate_element(j);
+#if INTCHECK_PQ
+		if (position[j] != -1)
+			throw std::invalid_argument("Element was already in the priority queue.");
+#endif
 		prior[j] = p;
 		// put gap at last position
 		int gap = cnt++;
@@ -74,32 +71,41 @@ public:
 		position[j] = gap;
 	}
 	/** Removes the integer with minimal priority */
-	inline void pop() {
-		_ASSERT(!empty());
+	void pop() {
+		check_empty();
 		remove_at(0, true);
 	}
 	/** Removes integer j from the queue */
-	inline void remove(int j, bool mantain_heap = true) {
-		_ASSERT(position[j] >= 0);
+	void remove(int j, bool mantain_heap = true) {
+#if INTCHECK_PQ
+		if (position[j] < 0)
+			throw std::invalid_argument("Element wasn't in the priority queue.");
+#endif
 		remove_at(position[j], mantain_heap);
-		_ASSERT(position[j] == -1);
+#if INTCHECK_PQ
+		if (position[j] != -1)
+			throw std::invalid_argument("Element hasn't been removed from the priority queue.");
+#endif
 	}
 	/** Changes the score of an integer j already in the queue to p */
-	inline void change(int j, score_type p, bool mantain_heap = true) {
-		_ASSERT(position[j] >= 0);
+	void change(int j, score_type p, bool mantain_heap = true) {
+#if INTCHECK_PQ
+		if (position[j] < 0)
+			throw std::invalid_argument("Element wasn't in the priority queue.");
+#endif
 		int gap = position[j];
 		if (mantain_heap) {
 			score_type oldp = prior[gap];
 			// if the priority didn't change, return immediately
 			if (oldp == p)
 				return;
-			if (mantain_heap) {
-				// percolate up or down depending on new priority value
-				if (p < oldp)
-					sift_up(gap, p);
-				else
-					sift_down(gap, p);
-			}
+
+			// percolate up or down depending on new priority value
+			if (p < oldp)
+				sift_up(gap, p);
+			else
+				sift_down(gap, p);
+
 			// fill gap with last element
 			data[gap] = j;
 			position[j] = gap;
@@ -107,7 +113,7 @@ public:
 		prior[j] = p;
 	}
 	[[nodiscard]]
-	inline operator std::string() const {
+	explicit operator std::string() const {
 		std::string repr;
 		for (int k = 0; k < cnt; k++)
 			repr.append("\t").append(std::to_string(k)).append("\t").append(std::to_string(data[k])).append("\t").append(std::to_string(prior[data[k]])).append("\n");
@@ -124,7 +130,7 @@ private:
 	 * Moves the gap up from the current position gap to the proper place for a priority of value p
 	 * The final position of the gap is stored in gap
 	 */
-	inline void sift_up(int& gap, score_type p) {
+	void sift_up(int& gap, score_type p) {
 		while (gap > 0) {
 			int parent = (gap - 1) / 2;
 			if (p < prior[data[parent]]) {
@@ -139,13 +145,11 @@ private:
 	 * Moves the gap down from the current position gap
 	 * The final position of the gap is stored in gap
 	 */
-	inline void sift_down(int& gap, score_type p) {
+	void sift_down(int& gap, score_type p) {
 		int newgap;
-		int left;
-		int right;
 		while (true) {
-			left = 2 * gap + 1;
-			right = left + 1;
+			int left = 2 * gap + 1;
+			int right = left + 1;
 			if (right < cnt) {
 				if (prior[data[left]] < prior[data[right]])
 					newgap = left;
@@ -170,8 +174,8 @@ private:
 		}
 	}
 	/** Removes the integer in position gap */
-	inline void remove_at(int gap, bool mantain_heap) {
-		int last = --cnt;
+	void remove_at(int gap, bool mantain_heap) {
+		const int last = --cnt;
 		position[data[gap]] = -1;
 		if (gap == last)
 			return;
@@ -190,6 +194,18 @@ private:
 		// fill gap with last element
 		data[gap] = data[last];
 		position[data[gap]] = gap;
+	}
+	void check_empty() const {
+#if INTCHECK_PQ
+		if (empty())
+			throw std::domain_error("The priority queue is empty");
+#endif
+	}
+	void validate_element(int j) const {
+#if INTCHECK_PQ
+		if (j < 0 || j >= n)
+			throw std::invalid_argument("Element is outside of predefined range.");
+#endif
 	}
 };
 
