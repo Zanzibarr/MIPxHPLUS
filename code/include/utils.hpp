@@ -19,11 +19,12 @@
 // ############################## IMPORTS ############################## //
 // ##################################################################### //
 
-#include "log.hxx"	// For logger
-#include <chrono>	// For std::chrono
-#include <iostream> // For console output
-#include <string>	// For std::string
-#include <vector>	// For std::vector
+#include "log.hxx"	 // For logger
+#include <algorithm> // For std::ranges::count, std::ranges::all_of
+#include <chrono>	 // For std::chrono
+#include <iostream>	 // For console output
+#include <string>	 // For std::string
+#include <vector>	 // For std::vector
 
 // ##################################################################### //
 // ######################### PATHS AND FOLDERS ######################### //

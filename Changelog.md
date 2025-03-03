@@ -30,6 +30,8 @@ HOW I DO VERSIONING:
 ### :ballot_box_with_check: Fixed
 - Input file, Run name and Log name prints in show_info() were poorly formatted
     - [~/code/src/main.cpp](code/src/main.cpp)
+- Include errors for Linux
+    - [~/code/include/utils.hpp](code/include/utils.hpp)
 <!-- ### :heavy_exclamation_mark: Changed -->
 <!-- ### :heavy_plus_sign: Added -->
 <!-- ### :x: Removed -->
