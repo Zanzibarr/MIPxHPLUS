@@ -791,8 +791,8 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
 	};
 
 	// -------- actions ------- //
-	const auto& act_start = curr_col;
-	size_t		count = 0;
+	const auto act_start = curr_col;
+	size_t	   count = 0;
 	for (const auto& act_i : inst.act_rem) {
 		objs[count] = static_cast<double>(inst.actions[act_i].cost);
 		lbs[count] = (inst.act_f[act_i] ? 1 : 0);
@@ -806,7 +806,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
 	stopchk2();
 
 	// --- action timestamps -- //
-	const auto& tact_start = curr_col;
+	const auto tact_start = curr_col;
 	count = 0;
 	for (const auto& act_i : inst.act_rem) {
 		objs[count] = 0;
@@ -823,7 +823,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
 	resize_cpx_arrays(inst.n_opt);
 
 	// ------- variables ------ //
-	const auto& var_start = curr_col;
+	const auto var_start = curr_col;
 	count = 0;
 	for (const auto& var_i : inst.var_rem) {
 		objs[count] = 0;
@@ -838,7 +838,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
 	stopchk2();
 
 	// -- variable timestamps - //
-	const auto& tvar_start = curr_col;
+	const auto tvar_start = curr_col;
 	count = 0;
 	for (const auto& i : inst.var_rem) {
 		objs[count] = 0;
@@ -853,7 +853,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
 	stopchk2();
 
 	// --- first archievers --- //
-	const auto& fa_start = curr_col;
+	const auto fa_start = curr_col;
 	count = 0;
 	for (const auto& act_i : inst.act_rem) {
 		size_t count_var = 0;
@@ -1284,8 +1284,8 @@ void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance
 	};
 
 	// -------- actions ------- //
-	const auto& act_start = curr_col;
-	size_t		count = 0;
+	const auto act_start = curr_col;
+	size_t	   count = 0;
 	for (const auto& act_i : inst.act_rem) {
 		objs[count] = static_cast<double>(inst.actions[act_i].cost);
 		lbs[count] = inst.act_f[act_i] ? 1 : 0;
@@ -1302,7 +1302,7 @@ void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance
 	resize_cpx_arrays(inst.n_opt);
 
 	// --- first archievers --- //
-	const size_t		fa_start = curr_col;
+	const auto			fa_start = curr_col;
 	std::vector<size_t> fa_individual_start(inst.m_opt);
 	count = 0;
 	for (const auto& act_i : inst.act_rem) {
@@ -1322,7 +1322,7 @@ void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance
 	}
 
 	// ------- variables ------ //
-	const auto& var_start = curr_col;
+	const auto var_start = curr_col;
 	count = 0;
 	for (const auto& var_i : inst.var_rem) {
 		objs[count] = 0;
@@ -1338,7 +1338,7 @@ void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance
 	stopchk2();
 
 	// vertex elimination graph edges
-	const auto& veg_edges_start = curr_col;
+	const auto veg_edges_start = curr_col;
 	for (const auto& var_i : inst.var_rem) {
 		count = 0;
 		for (const auto& var_j : inst.var_rem) {
