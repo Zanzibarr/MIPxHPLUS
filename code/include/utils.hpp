@@ -76,10 +76,10 @@ extern volatile int global_terminate;
 /** Time keeper for execution time monitoring */
 struct time_keeper {
 	[[nodiscard]]
-	inline double get_time() const {
+	double get_time() const {
 		return (static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - this->timer).count())) / 1'000;
 	}
-	explicit inline time_keeper() { this->timer = std::chrono::steady_clock::now(); }
+	explicit time_keeper() { this->timer = std::chrono::steady_clock::now(); }
 
 private:
 	std::chrono::steady_clock::time_point timer;
@@ -107,7 +107,7 @@ enum class exec_status {
 
 /** Split the string str using del as delimiter */
 [[nodiscard]]
-inline std::vector<std::string> split_string(const std::string& str, char del) {
+inline std::vector<std::string> split_string(const std::string& str, const char del) {
 	std::vector<std::string> tokens;
 	tokens.reserve(std::ranges::count(str.begin(), str.end(), del) + 1);
 
@@ -175,15 +175,14 @@ inline void mypause(const std::string& msg = "") {
 		exit(1);
 }
 
-class timelimit_exception : public std::exception {
-private:
+class timelimit_exception final : public std::exception {
 	std::string msg;
 
 public:
-	inline explicit timelimit_exception(const char* msg)
+	explicit timelimit_exception(const char* msg)
 		: msg(msg) {}
 	[[nodiscard]]
-	inline const char* what() const noexcept override { return msg.c_str(); }
+	const char* what() const noexcept override { return msg.c_str(); }
 };
 
 /** Require user acknowledge to resume execution */

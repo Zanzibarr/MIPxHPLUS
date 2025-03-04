@@ -42,7 +42,7 @@ public:
 	 *
 	 * @throw std::invalid_argument If capacity is 0
 	 */
-	explicit binary_set(size_t capacity, bool fill = false)
+	explicit binary_set(const size_t capacity, const bool fill = false)
 		: capacity_(capacity) {
 #if INTCHECK_BS
 		if (capacity == 0)
@@ -65,7 +65,7 @@ public:
 	 * @throw std::domain_error If this binary_set's capacity is 0
 	 * @throw std::out_of_range If the specified element is outside of the possible range for this binary_set
 	 */
-	bool add(size_t element) {
+	bool add(const size_t element) {
 		validate_element(element);
 		if (contains(element))
 			return false;
@@ -85,7 +85,7 @@ public:
 	 * @throw std::domain_error If this binary_set's capacity is 0
 	 * @throw std::out_of_range If the specified element is outside of the possible range for this binary_set
 	 */
-	bool remove(size_t element) {
+	bool remove(const size_t element) {
 		validate_element(element);
 		if (!contains(element))
 			return false;
@@ -123,7 +123,7 @@ public:
 	 * @throw std::out_of_range If the specified element is outside of the possible range for this binary_set
 	 */
 	[[nodiscard]]
-	bool contains(size_t element) const {
+	bool contains(const size_t element) const {
 		validate_element(element);
 
 		return (set_[element / 8] & (1u << (element % 8))) != 0;
@@ -140,7 +140,7 @@ public:
 	 * @throw std::out_of_range If the specified element is outside of the possible range for this binary_set
 	 */
 	[[nodiscard]]
-	bool operator[](size_t element) const {
+	bool operator[](const size_t element) const {
 		return contains(element);
 	}
 
@@ -435,7 +435,7 @@ public:
 		using pointer = const value_type*;
 		using reference = const value_type&;
 
-		iterator(const binary_set* bs, size_t pos) noexcept
+		iterator(const binary_set* bs, const size_t pos) noexcept
 			: bs_(bs), current_pos_(pos) {
 			// Advance to first set element if starting position is not set
 			if (current_pos_ < bs_->capacity() && !bs_->contains(current_pos_))
@@ -451,7 +451,7 @@ public:
 		}
 
 		iterator operator++(int) {
-			iterator tmp = *this;
+			const iterator tmp = *this;
 			++(*this);
 			return tmp;
 		}
@@ -481,7 +481,7 @@ private:
 	std::vector<unsigned char> set_;
 
 	// Helper methods for validation
-	void validate_element(size_t element) const {
+	void validate_element(const size_t element) const {
 #if INTCHECK_BS
 		if (element >= capacity_) {
 			if (capacity_ == 0)
@@ -519,7 +519,7 @@ public:
 	 *
 	 * @param capacity The capacity of the binary_set that are going to be used
 	 */
-	explicit bs_searcher(size_t capacity)
+	explicit bs_searcher(const size_t capacity)
 		: root_(std::make_unique<treenode>()), capacity_(capacity) {}
 
 	/**
@@ -530,7 +530,7 @@ public:
 	 *
 	 * @throw std::invalid_argument If the binary_set has a different capacity than the one specified in the constructor
 	 */
-	void add(size_t value, const binary_set& bs) {
+	void add(const size_t value, const binary_set& bs) {
 		validate_capacity(bs);
 
 		// Start from the root node...
@@ -563,7 +563,7 @@ public:
 	 *
 	 * @throw std::invalid_argument If the binary_set has a different capacity than the one specified in the constructor
 	 */
-	bool remove(size_t value, const binary_set& bs) {
+	bool remove(const size_t value, const binary_set& bs) {
 		validate_capacity(bs);
 
 		// Helper function to check if a node is empty (no values and no children)
@@ -643,11 +643,11 @@ public:
 
 		// Reach the end of the tree (i < capacity) until we have open nodes to explore
 		for (size_t i = 0; i < bs.capacity() && !open_nodes.empty(); i++) {
-			auto level_size = open_nodes.size();
+			const auto level_size = open_nodes.size();
 
 			// Look among past iteration's open nodes and expand them
 			for (size_t j = 0; j < level_size; j++) {
-				treenode* node = open_nodes.front();
+				const treenode* node = open_nodes.front();
 				open_nodes.pop_front();
 
 				if (bs[i]) {

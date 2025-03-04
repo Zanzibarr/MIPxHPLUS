@@ -16,13 +16,13 @@
 
 volatile int global_terminate = 0;
 
-static inline void signal_callback_handler(const int signum) {
+static void signal_callback_handler(const int signum) {
 	if (global_terminate)
 		exit(1);
 	global_terminate = 1;
 }
 
-static inline void* time_limit_termination(void* args) {
+static void* time_limit_termination(void* args) {
 	const auto* env = static_cast<hplus::environment*>(args);
 	while (env->exec_s < exec_status::STOP_TL && env->sol_s != solution_status::INFEAS) {
 		if (env->timer.get_time() > static_cast<double>(env->time_limit)) [[unlikely]] {
@@ -34,7 +34,7 @@ static inline void* time_limit_termination(void* args) {
 	return nullptr;
 }
 
-static inline void init(hplus::environment& env) {
+static void init(hplus::environment& env) {
 	env = (hplus::environment){ .exec_s = exec_status::START,
 								.sol_s = solution_status::NOTFOUND,
 								.input_file = "N/A",
@@ -51,7 +51,7 @@ static inline void init(hplus::environment& env) {
 								.timer = time_keeper() };
 }
 
-static inline void init(hplus::statistics& stats) {
+static void init(hplus::statistics& stats) {
 	stats = (hplus::statistics){ .parsing = 0,
 								 .optimization = 0,
 								 .heuristic = 0,
@@ -62,8 +62,8 @@ static inline void init(hplus::statistics& stats) {
 	pthread_mutex_init(&stats.callback_time_mutex, nullptr);
 }
 
-static inline void parse_cli(const int& argc, const char** argv,
-							 hplus::environment& env) {
+static void parse_cli(const int& argc, const char** argv,
+					  hplus::environment& env) {
 	args::ArgumentParser		  parser("// TODO: HEADER.", "// TODO: FOOTER.");
 	args::HelpFlag				  help(parser, "help", "Display the help menu", { "h", "help" });
 	args::Positional<std::string> input_file(
@@ -135,7 +135,7 @@ static inline void parse_cli(const int& argc, const char** argv,
 		env.heur = args::get(heur);
 	env.warm_start = !no_warmstart;
 	if (timelimit) {
-		const auto tl = args::get(timelimit);
+		const auto& tl = args::get(timelimit);
 		if (tl < 0)
 			ACK_REQ("Time limit is negative: setting time limit to max");
 		env.time_limit = (tl < 0) ? std::numeric_limits<unsigned int>::max() : tl;
@@ -157,8 +157,8 @@ static inline void parse_cli(const int& argc, const char** argv,
 	}
 }
 
-static inline void show_info(const hplus::instance&	   inst,
-							 const hplus::environment& env, const logger& log) {
+static void show_info(const hplus::instance&	inst,
+					  const hplus::environment& env, const logger& log) {
 	PRINT_VERBOSE(log, "Showing info about the execution.");
 #if HPLUS_VERBOSE <= 1
 	return;
@@ -220,8 +220,8 @@ static inline void show_info(const hplus::instance&	   inst,
 	log.print(LINE);
 }
 
-static inline void run(hplus::instance& inst, hplus::environment& env,
-					   hplus::statistics& stats, const logger& log) {
+static void run(hplus::instance& inst, hplus::environment& env,
+				hplus::statistics& stats, const logger& log) {
 	PRINT_VERBOSE(log, "Executing the chosen algorithms.");
 
 	try {
@@ -347,15 +347,15 @@ static inline void run(hplus::instance& inst, hplus::environment& env,
 
 		ASSERT_LOG(log, !CPXmipopt(cpxenv, cpxlp));
 
-		if (parse_cpx_status(cpxenv, cpxlp, inst, env, log)) { // If CPLEX has found a solution
+		if (parse_cpx_status(cpxenv, cpxlp, env, log)) { // If CPLEX has found a solution
 			if (env.alg == HPLUS_CLI_ALG_IMAI)
-				store_imai_sol(cpxenv, cpxlp, inst, env, log);
+				store_imai_sol(cpxenv, cpxlp, inst, log);
 			else if (env.alg == HPLUS_CLI_ALG_RANKOOH)
-				store_rankooh_sol(cpxenv, cpxlp, inst, env, log);
+				store_rankooh_sol(cpxenv, cpxlp, inst, log);
 			else if (env.alg == HPLUS_CLI_ALG_DYNAMIC_SMALL)
-				store_dynamic_small_sol(cpxenv, cpxlp, inst, env, log);
+				store_dynamic_small_sol(cpxenv, cpxlp, inst, log);
 			else if (env.alg == HPLUS_CLI_ALG_DYNAMIC_LARGE)
-				store_dynamic_large_sol(cpxenv, cpxlp, inst, env, log);
+				store_dynamic_large_sol(cpxenv, cpxlp, inst, log);
 		}
 
 		cpx_close(cpxenv, cpxlp);
@@ -365,8 +365,8 @@ static inline void run(hplus::instance& inst, hplus::environment& env,
 	} catch (timelimit_exception&) {}
 }
 
-static inline void end(const hplus::instance& inst, hplus::environment& env,
-					   hplus::statistics& stats, const logger& log) {
+static void end(const hplus::instance& inst, hplus::environment& env,
+				hplus::statistics& stats, const logger& log) {
 	if (env.timer.get_time() >= static_cast<double>(env.time_limit)) {
 		switch (env.exec_s) {
 			case exec_status::START:

@@ -31,7 +31,7 @@ enum class log_level {
 
 // Get formatted current time using C time functions
 inline std::string get_current_time() {
-	const auto time_now = std::time(nullptr);
+	const auto& time_now = std::time(nullptr);
 
 	char	  buffer[26];
 	struct tm timeinfo{};
@@ -50,7 +50,7 @@ namespace colors {
 	constexpr std::string_view reset_bold = "\033[22m";
 } // namespace colors
 
-inline std::pair<std::string, std::string> format_prefix(log_level level, bool include_time) {
+inline std::pair<std::string, std::string> format_prefix(const log_level level, const bool include_time) {
 	std::string terminal_prefix, file_prefix;
 	switch (level) {
 		case log_level::info:
@@ -91,14 +91,14 @@ inline std::string format_string(const char* format, va_list args) {
 	va_copy(args_copy, args);
 
 	// Get required buffer size
-	auto size_s = std::vsnprintf(nullptr, 0, format, args_copy) + 1;
+	const auto size_s = std::vsnprintf(nullptr, 0, format, args_copy) + 1;
 	va_end(args_copy);
 
 	if (size_s <= 0)
 		throw std::runtime_error("Error during formatting");
 
-	auto size = static_cast<size_t>(size_s);
-	auto buf = std::make_unique<char[]>(size);
+	const auto size = static_cast<size_t>(size_s);
+	const auto buf = std::make_unique<char[]>(size);
 	std::vsnprintf(buf.get(), size, format, args);
 	return { buf.get(), size - 1 };
 }
@@ -117,7 +117,7 @@ public:
 	 *
 	 * @throw std::runtime_error If any problem with opening the log file occurs
 	 */
-	explicit logger(bool log_enabled, std::string_view log_name, std::string_view run_title = "")
+	explicit logger(const bool log_enabled, const std::string_view log_name, const std::string_view run_title = "")
 		: log_file_path_(log_name), log_enabled_(log_enabled) {
 		if (log_enabled_) {
 			try {
@@ -140,61 +140,61 @@ public:
 	/**
 	 * @brief Writes a simple output (like printf)
 	 *
-	 * @param format Formatted string
+	 * @param msg Formatted string
 	 * @param ... Elements to be added to the formatted string
 	 *
 	 * @throw std::runtime_error If any problem with the log file occurs
 	 */
-	void print(const char* format, ...) const {
+	void print(const char* msg, ...) const {
 		va_list args;
-		va_start(args, format);
-		log_message(log_level::print, false, format, args);
+		va_start(args, msg);
+		log_message(log_level::print, false, msg, args);
 		va_end(args);
 	}
 
 	/**
 	 * @brief Writes an info message with timestamp
 	 *
-	 * @param format Formatted string
+	 * @param msg Formatted string
 	 * @param ... Elements to be added to the formatted string
 	 *
 	 * @throw std::runtime_error If any problem with the log file occurs
 	 */
-	void print_info(const char* format, ...) const {
+	void print_info(const char* msg, ...) const {
 		va_list args;
-		va_start(args, format);
-		log_message(log_level::info, true, format, args);
+		va_start(args, msg);
+		log_message(log_level::info, true, msg, args);
 		va_end(args);
 	}
 
 	/**
 	 * @brief Writes a warning message with timestamp
 	 *
-	 * @param format Formatted string
+	 * @param msg Formatted string
 	 * @param ... Elements to be added to the formatted string
 	 *
 	 * @throw std::runtime_error If any problem with the log file occurs
 	 */
-	void print_warn(const char* format, ...) const {
+	void print_warn(const char* msg, ...) const {
 		va_list args;
-		va_start(args, format);
-		log_message(log_level::warning, true, format, args);
+		va_start(args, msg);
+		log_message(log_level::warning, true, msg, args);
 		va_end(args);
 	}
 
 	/**
 	 * @brief Writes an error message with timestamp and terminates execution
 	 *
-	 * @param format Formatted string
+	 * @param msg Formatted string
 	 * @param ... Elements to be added to the formatted string
 	 *
 	 * @throw std::runtime_error If any problem with the log file occurs
 	 */
 	[[noreturn]]
-	void raise_error(const char* format, ...) const {
+	void raise_error(const char* msg, ...) const {
 		va_list args;
-		va_start(args, format);
-		log_message(log_level::error, true, format, args);
+		va_start(args, msg);
+		log_message(log_level::error, true, msg, args);
 		va_end(args);
 		std::cerr << colors::reset;
 		std::exit(1);
@@ -207,7 +207,7 @@ private:
 	/**
 	 * @brief Internal implementation for logging messages
 	 */
-	void log_message(log_level level, bool include_time, const char* format, va_list args) const {
+	void log_message(const log_level level, const bool include_time, const char* format, va_list args) const {
 		try {
 			std::string message = format_string(format, args);
 			auto [terminal_prefix, file_prefix] = format_prefix(level, include_time);

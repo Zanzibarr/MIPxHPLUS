@@ -27,7 +27,7 @@ void hplus::print_stats(const statistics& stats, const logger& log) {
 	log.print("\n\n");
 }
 
-static inline void init(hplus::instance& inst) {
+static void init(hplus::instance& inst) {
 	inst = (hplus::instance){
 		.equal_costs = false,
 		.n = 0,
@@ -58,7 +58,7 @@ static inline void init(hplus::instance& inst) {
 }
 
 [[nodiscard]]
-static inline bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplus::statistics& stats, const logger& log) {
+static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplus::statistics& stats, const logger& log) {
 	// ====================================================== //
 	// ================== PARSING SAS FILE ================== //
 	// ====================================================== //
@@ -113,7 +113,7 @@ static inline bool parse_inst_file(hplus::instance& inst, hplus::environment& en
 		std::getline(ifs, line); // range of variable
 		if (!isint(line, 0)) [[unlikely]]
 			log.raise_error("Corrupted file");
-		const auto range = static_cast<size_t>(stoi(line));
+		const auto& range = static_cast<size_t>(stoi(line));
 		inst.var_ranges[var_i] = range;
 		for (size_t j = 0; j < range; j++)
 			std::getline(ifs, line); // name for variable value (ignored)
@@ -127,7 +127,7 @@ static inline bool parse_inst_file(hplus::instance& inst, hplus::environment& en
 	std::getline(ifs, line); // number of mutex groups
 	if (!isint(line, 0)) [[unlikely]]
 		log.raise_error("Corrupted file");
-	const auto nmgroups = static_cast<size_t>(stoi(line));
+	const auto& nmgroups = static_cast<size_t>(stoi(line));
 	for (size_t i = 0; i < nmgroups; i++) {
 		std::getline(ifs, line); // begin_mutex_group
 		if (line != "begin_mutex_group") [[unlikely]]
@@ -148,7 +148,7 @@ static inline bool parse_inst_file(hplus::instance& inst, hplus::environment& en
 		std::getline(ifs, line); // initial value of var_i
 		if (!isint(line, 0, static_cast<int>(inst.var_ranges[var_i] - 1))) [[unlikely]]
 			log.raise_error("Corrupted file");
-		const auto val = stoi(line);
+		const auto& val = stoi(line);
 		tmp_istate[var_i] = val;
 	}
 	std::getline(ifs, line); // end_state
@@ -163,7 +163,7 @@ static inline bool parse_inst_file(hplus::instance& inst, hplus::environment& en
 	std::getline(ifs, line); // number of goals
 	if (!isint(line, 0, static_cast<int>(inst.n))) [[unlikely]]
 		log.raise_error("Corrupted file");
-	const auto ngoals = static_cast<size_t>(stoi(line));
+	const auto& ngoals = static_cast<size_t>(stoi(line));
 	for (size_t _ = 0; _ < ngoals; _++) {
 		// parsing each goal
 		std::vector<std::string> tokens;
@@ -176,7 +176,7 @@ static inline bool parse_inst_file(hplus::instance& inst, hplus::environment& en
 		auto var = static_cast<size_t>(stoi(tokens[0]));
 		if (!isint(tokens[1], 0, static_cast<int>(inst.var_ranges[var] - 1))) [[unlikely]]
 			log.raise_error("Corrupted file"); // variable goal
-		const auto value = stoi(tokens[1]);
+		const auto& value = stoi(tokens[1]);
 		tmp_goal[var] = value;
 	}
 	std::getline(ifs, line); // end_goal
@@ -204,7 +204,7 @@ static inline bool parse_inst_file(hplus::instance& inst, hplus::environment& en
 		std::getline(ifs, line); // number of prevail conditions
 		if (!isint(line, 0, static_cast<int>(inst.n))) [[unlikely]]
 			log.raise_error("Corrupted file");
-		const auto n_pre = static_cast<size_t>(stoi(line));
+		const auto& n_pre = static_cast<size_t>(stoi(line));
 		for (size_t pre_i = 0; pre_i < n_pre; pre_i++) {
 			// parsing each prevail condition
 			std::vector<std::string> tokens;
@@ -214,10 +214,10 @@ static inline bool parse_inst_file(hplus::instance& inst, hplus::environment& en
 				log.raise_error("Corrupted file");
 			if (!isint(tokens[0], 0, static_cast<int>(inst.n - 1))) [[unlikely]]
 				log.raise_error("Corrupted file"); // variable index
-			const auto var = static_cast<size_t>(stoi(tokens[0]));
+			const auto& var = static_cast<size_t>(stoi(tokens[0]));
 			if (!isint(tokens[1], 0, static_cast<int>(inst.var_ranges[var] - 1))) [[unlikely]]
 				log.raise_error("Corrupted file"); // variable value
-			const auto value = stoi(tokens[1]);
+			const auto& value = stoi(tokens[1]);
 			act_pre[var] = value;
 		}
 		std::getline(ifs, line); // number of effects
@@ -236,13 +236,13 @@ static inline bool parse_inst_file(hplus::instance& inst, hplus::environment& en
 				log.raise_error("This program won't handle effect conditions."); // number of effect conditions (ignored and check to be 0)
 			if (!isint(tokens[1], 0, static_cast<int>(inst.n - 1))) [[unlikely]]
 				log.raise_error("Corrupted file"); // variable affected by the action
-			const auto var = static_cast<size_t>(stoi(tokens[1]));
+			const auto& var = static_cast<size_t>(stoi(tokens[1]));
 			if (!isint(tokens[2], -1, static_cast<int>(inst.var_ranges[var] - 1))) [[unlikely]]
 				log.raise_error("Corrupted file"); // precondition of the variable
-			const auto pre_val = stoi(tokens[2]);
+			const auto& pre_val = stoi(tokens[2]);
 			if (!isint(tokens[3], 0, static_cast<int>(inst.var_ranges[var] - 1))) [[unlikely]]
 				log.raise_error("Corrupted file"); // effect of the variable
-			const auto eff_val = stoi(tokens[3]);
+			const auto& eff_val = stoi(tokens[3]);
 			if (pre_val >= 0)
 				act_pre[var] = pre_val;
 			act_eff[var] = eff_val;
@@ -291,7 +291,7 @@ static inline bool parse_inst_file(hplus::instance& inst, hplus::environment& en
 
 	std::vector<size_t> var_active_state(inst.n, -1);
 
-	const auto is_deletefree = [&inst, &tmp_act_eff, &var_active_state]() {
+	const auto& is_deletefree = [&inst, &tmp_act_eff, &var_active_state]() {
 		for (const auto& r : inst.var_ranges) {
 			if (r != 2)
 				return false;
@@ -413,7 +413,7 @@ static inline bool parse_inst_file(hplus::instance& inst, hplus::environment& en
 	return !is_infeasible;
 }
 
-static inline void init_instance_opt(hplus::instance& inst, const hplus::environment& env) {
+static void init_instance_opt(hplus::instance& inst, const hplus::environment& env) {
 	inst.n_opt = inst.n;
 	inst.m_opt = inst.m;
 	inst.var_e = binary_set(inst.n);
@@ -486,7 +486,7 @@ void hplus::print_sol(const instance& inst, const logger& log) {
 	// 	log.print("(%s)", inst.actions[act_i].name.c_str());
 }
 
-static inline void landmark_extraction(hplus::instance& inst, std::vector<binary_set>& landmarks, binary_set& fact_landmarks, binary_set& act_landmarks, const logger& log) {
+static void landmark_extraction(hplus::instance& inst, std::vector<binary_set>& landmarks, binary_set& fact_landmarks, binary_set& act_landmarks, const logger& log) {
 	PRINT_VERBOSE(log, "Extracting landmarks.");
 
 	for (size_t var_i = 0; var_i < inst.n; var_i++)
@@ -595,7 +595,7 @@ static inline void landmark_extraction(hplus::instance& inst, std::vector<binary
 	inst.act_f |= act_landmarks;
 }
 
-static inline void fadd_extraction(hplus::instance& inst, const std::vector<binary_set>& landmarks, std::vector<binary_set>& first_adders, const logger& log) {
+static void fadd_extraction(hplus::instance& inst, const std::vector<binary_set>& landmarks, std::vector<binary_set>& first_adders, const logger& log) {
 	PRINT_VERBOSE(log, "Extracting first adders.");
 
 	// list of fact landmarks for each variable
@@ -625,7 +625,7 @@ static inline void fadd_extraction(hplus::instance& inst, const std::vector<bina
 		inst.fadd_e[act_i] |= (inst.actions[act_i].eff & !first_adders[act_i]);
 }
 
-static inline void relevance_analysis(hplus::instance& inst, const binary_set& fact_landmarks, const std::vector<binary_set>& first_adders, const logger& log) {
+static void relevance_analysis(hplus::instance& inst, const binary_set& fact_landmarks, const std::vector<binary_set>& first_adders, const logger& log) {
 	PRINT_VERBOSE(log, "Relevance analysis.");
 
 	auto relevant_variables = binary_set(inst.n);
@@ -659,7 +659,7 @@ static inline void relevance_analysis(hplus::instance& inst, const binary_set& f
 			new_relevant_actions.push_back(act_i);
 			new_act = true;
 		}
-		const auto it = std::set_difference(cand_actions_sparse.begin(), cand_actions_sparse.end(), new_relevant_actions.begin(), new_relevant_actions.end(), cand_actions_sparse.begin());
+		const auto& it = std::set_difference(cand_actions_sparse.begin(), cand_actions_sparse.end(), new_relevant_actions.begin(), new_relevant_actions.end(), cand_actions_sparse.begin());
 		cand_actions_sparse.resize(it - cand_actions_sparse.begin());
 		if (CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
@@ -671,7 +671,7 @@ static inline void relevance_analysis(hplus::instance& inst, const binary_set& f
 	inst.act_e |= !relevant_actions;
 }
 
-static inline void dominated_actions_elimination(hplus::instance& inst, const std::vector<binary_set>& landmarks, const std::vector<binary_set>& first_adders, const logger& log) {
+static void dominated_actions_elimination(hplus::instance& inst, const std::vector<binary_set>& landmarks, const std::vector<binary_set>& first_adders, const logger& log) {
 	PRINT_VERBOSE(log, "Extracting dominated actions.");
 
 	const auto&						 rem_var = (!inst.var_e).sparse();
@@ -725,7 +725,7 @@ static inline void dominated_actions_elimination(hplus::instance& inst, const st
 	}
 }
 
-static inline void immediate_action_application(hplus::instance& inst, const hplus::environment& env, const binary_set& act_landmarks, const logger& log) {
+static void immediate_action_application(hplus::instance& inst, const hplus::environment& env, const binary_set& act_landmarks, const logger& log) {
 	PRINT_VERBOSE(log, "Immediate action application.");
 
 	binary_set	current_state(inst.n), used_actions(inst.m);
@@ -780,7 +780,7 @@ static inline void immediate_action_application(hplus::instance& inst, const hpl
 	}
 }
 
-static inline void inverse_actions_extraction(hplus::instance& inst, const logger& log) {
+static void inverse_actions_extraction(hplus::instance& inst, const logger& log) {
 	PRINT_VERBOSE(log, "Extracting inverse actions.");
 
 	bs_searcher subset_finder = bs_searcher(inst.n);
@@ -807,7 +807,7 @@ static inline void inverse_actions_extraction(hplus::instance& inst, const logge
 	}
 }
 
-static inline void finish_opt(hplus::instance& inst, const logger& log) {
+static void finish_opt(hplus::instance& inst, const logger& log) {
 	inst.var_rem = (!inst.var_e).sparse();
 	inst.act_rem = (!inst.act_e).sparse();
 	size_t count = 0;

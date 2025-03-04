@@ -25,7 +25,7 @@ HOW I DO VERSIONING:
 ### :curly_loop: Other
 -->
 
-## [1.0.6] - 2025/03/03
+## [1.0.6] - 2025/03/04
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed
 - Input file, Run name and Log name prints in show_info() were poorly formatted
