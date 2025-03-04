@@ -14,7 +14,6 @@
 #endif
 
 #include <deque>	 // For std::deque
-#include <ranges>	 // For std::ranges
 #include <stdexcept> // For std::invalid_argument, std::domain_error, std::out_of_range
 #include <string>	 // For std::string
 #include <vector>	 // For std::vector
@@ -99,14 +98,14 @@ public:
 	 * @brief Remove all the elements from the set
 	 */
 	void clear() noexcept {
-		std::ranges::fill(set_.begin(), set_.end(), 0);
+		std::fill(set_.begin(), set_.end(), 0);
 	}
 
 	/**
 	 * @brief Add all the elements to the set
 	 */
 	void fill() {
-		std::ranges::fill(set_.begin(), set_.end(), static_cast<unsigned char>(~0u));
+		std::fill(set_.begin(), set_.end(), static_cast<unsigned char>(~0u));
 		// Set appropriate bits in last byte if capacity is not a multiple of 8
 		if (capacity_ % 8 != 0 && capacity_ != 0)
 			set_[set_.size() - 1] &= static_cast<unsigned char>((1u << (capacity_ % 8)) - 1);
@@ -162,7 +161,7 @@ public:
 	 */
 	[[nodiscard]]
 	bool empty() const noexcept {
-		return std::ranges::all_of(set_.begin(), set_.end(), [](unsigned char byte) {
+		return std::all_of(set_.begin(), set_.end(), [](unsigned char byte) {
 			return byte == 0;
 		});
 	}
@@ -573,7 +572,7 @@ public:
 
 		// Helper function to remove value from a vector
 		auto remove_value = [](std::vector<size_t>& values, size_t v) -> bool {
-			auto it = std::ranges::find(values.begin(), values.end(), v);
+			auto it = std::find(values.begin(), values.end(), v);
 			if (it != values.end()) {
 				values.erase(it);
 				return true;
@@ -606,7 +605,9 @@ public:
 			return false;
 
 		// Prune empty branches by walking back up the path
-		for (auto [parent_ptr, current_node] : std::ranges::reverse_view(path)) {
+		for (auto it = path.rbegin(); it != path.rend(); ++it) {
+			auto [parent_ptr, current_node] = *it;
+
 			// If both children are empty and this node has no values, remove it
 			if (is_empty_node(current_node->left.get()) && is_empty_node(current_node->right.get()) && current_node->values.empty()) {
 				// Reset unique_ptr will invoke destructor

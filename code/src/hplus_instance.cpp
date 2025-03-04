@@ -323,7 +323,7 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
 				if (var_active_state[var] == static_cast<int>(val))
 					act_pre.add(var);
 			}
-			for (const auto& var : std::views::keys(tmp_act_eff[act_i]))
+			for (const auto [var, val] : tmp_act_eff[act_i])
 				act_eff.add(var);
 			inst.actions[act_i].pre = act_pre;
 			inst.actions[act_i].pre_sparse = act_pre.sparse();
@@ -553,7 +553,7 @@ static void landmark_extraction(hplus::instance& inst, std::vector<binary_set>& 
 
 			landmarks[var_i] = x;
 			for (const auto& act_i : act_with_pre[var_i]) {
-				if (s_set.contains(inst.actions[act_i].pre) && std::ranges::find(actions_queue.begin(), actions_queue.end(), act_i) == actions_queue.end())
+				if (s_set.contains(inst.actions[act_i].pre) && std::find(actions_queue.begin(), actions_queue.end(), act_i) == actions_queue.end())
 					actions_queue.push_back(act_i);
 			}
 		}

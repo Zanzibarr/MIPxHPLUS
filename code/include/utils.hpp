@@ -20,7 +20,7 @@
 // ##################################################################### //
 
 #include "log.hxx"	 // For logger
-#include <algorithm> // For std::ranges::count, std::ranges::all_of
+#include <algorithm> // For std::count, std::all_of
 #include <chrono>	 // For std::chrono
 #include <iostream>	 // For console output
 #include <string>	 // For std::string
@@ -109,7 +109,7 @@ enum class exec_status {
 [[nodiscard]]
 inline std::vector<std::string> split_string(const std::string& str, const char del) {
 	std::vector<std::string> tokens;
-	tokens.reserve(std::ranges::count(str.begin(), str.end(), del) + 1);
+	tokens.reserve(std::count(str.begin(), str.end(), del) + 1);
 
 	size_t start = 0, end;
 

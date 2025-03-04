@@ -7,10 +7,11 @@
  */
 
 #include "algorithms.hpp"
-#include <numeric> // For std::accumulate
-#include <queue>   // For std::priority_queue (// TODO remove when substituted with priority_queue)
-#include <random>  // For random number generators
-#include <set>	   // For std::set
+#include <algorithm> // For std::transform
+#include <numeric>	 // For std::accumulate
+#include <queue>	 // For std::priority_queue (// TODO remove when substituted with priority_queue)
+#include <random>	 // For random number generators
+#include <set>		 // For std::set
 
 #if HPLUS_INTCHECK == 0
 	#define INTCHECK_PQ false
@@ -1085,11 +1086,11 @@ void store_imai_sol(const CPXENVptr& cpxenv, const CPXLPptr& cpxlp, hplus::insta
 	plan = nullptr;
 
 	// sort cpx_result based on actions timestamps
-	std::ranges::sort(cpx_result.begin(), cpx_result.end(), [](const std::pair<double, size_t>& x, const std::pair<double, size_t>& y) { return x.first < y.first; });
+	std::sort(cpx_result.begin(), cpx_result.end(), [](const std::pair<double, size_t>& x, const std::pair<double, size_t>& y) { return x.first < y.first; });
 
 	// get solution from sorted cpx_result
 	std::vector<size_t> solution;
-	std::ranges::transform(cpx_result.begin(), cpx_result.end(), std::back_inserter(solution), [inst](const std::pair<double, size_t>& p) { return inst.act_cpxtoidx[p.second]; });
+	std::transform(cpx_result.begin(), cpx_result.end(), std::back_inserter(solution), [inst](const std::pair<double, size_t>& p) { return inst.act_cpxtoidx[p.second]; });
 
 	// store solution
 	hplus::solution imai_sol{ solution, static_cast<unsigned int>(std::accumulate(solution.begin(), solution.end(), 0, [inst](const size_t acc, const size_t index) { return acc + inst.actions[index].cost; })) };
@@ -1183,7 +1184,7 @@ void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance
 		std::set<size_t> new_nodes;
 
 		for (const auto& p : inst.var_rem) {
-			if (!graph[p].contains(idx))
+			if (graph[p].find(idx) != graph[p].end())
 				continue;
 
 			for (const auto& q : graph[idx]) {
