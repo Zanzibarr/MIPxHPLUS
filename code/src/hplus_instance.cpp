@@ -289,7 +289,7 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
 	// ================== BINARY EXPANSION ================== //
 	// ====================================================== //
 
-	std::vector<size_t> var_active_state(inst.n, -1);
+	std::vector<int> var_active_state(inst.n, -1);
 
 	const auto& is_deletefree = [&inst, &tmp_act_eff, &var_active_state]() {
 		for (const auto& r : inst.var_ranges) {
@@ -300,7 +300,7 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
 			for (const auto& [var, val] : act_eff) {
 				if (var_active_state[var] == -1)
 					var_active_state[var] = val;
-				else if (var_active_state[var] != val)
+				else if (var_active_state[var] != static_cast<int>(val))
 					return false;
 			}
 		}
@@ -320,7 +320,7 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
 		for (size_t act_i = 0; act_i < inst.m; act_i++) {
 			binary_set act_pre(inst.n), act_eff(inst.n);
 			for (const auto& [var, val] : tmp_act_pre[act_i]) {
-				if (var_active_state[var] == val)
+				if (var_active_state[var] == static_cast<int>(val))
 					act_pre.add(var);
 			}
 			for (const auto& var : std::views::keys(tmp_act_eff[act_i]))
@@ -413,7 +413,7 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
 	return !is_infeasible;
 }
 
-static void init_instance_opt(hplus::instance& inst, const hplus::environment& env) {
+static void init_instance_opt(hplus::instance& inst) {
 	inst.n_opt = inst.n;
 	inst.m_opt = inst.m;
 	inst.var_e = binary_set(inst.n);
@@ -445,7 +445,7 @@ bool hplus::create_instance(instance& inst, environment& env, statistics& stats,
 		env.sol_s = solution_status::INFEAS;
 		return false;
 	}
-	init_instance_opt(inst, env);
+	init_instance_opt(inst);
 
 	PRINT_VERBOSE(log, "Created HPLUS_instance.");
 	return true;
@@ -725,7 +725,7 @@ static void dominated_actions_elimination(hplus::instance& inst, const std::vect
 	}
 }
 
-static void immediate_action_application(hplus::instance& inst, const hplus::environment& env, const binary_set& act_landmarks, const logger& log) {
+static void immediate_action_application(hplus::instance& inst, const binary_set& act_landmarks, const logger& log) {
 	PRINT_VERBOSE(log, "Immediate action application.");
 
 	binary_set	current_state(inst.n), used_actions(inst.m);
@@ -836,7 +836,7 @@ static void finish_opt(hplus::instance& inst, const logger& log) {
 		INTCHECK_ASSERT_LOG(log, !(inst.var_e[i] && inst.var_t[i] >= 0));
 }
 
-void hplus::instance_optimization(instance& inst, const environment& env, const logger& log) {
+void hplus::instance_optimization(instance& inst, const logger& log) {
 	auto landmarks = std::vector<binary_set>(inst.n, binary_set(inst.n + 1));
 	auto fact_landmarks = binary_set(inst.n);
 	auto act_landmarks = binary_set(inst.m);
@@ -845,7 +845,7 @@ void hplus::instance_optimization(instance& inst, const environment& env, const 
 	fadd_extraction(inst, landmarks, fadd, log);
 	relevance_analysis(inst, fact_landmarks, fadd, log);
 	dominated_actions_elimination(inst, landmarks, fadd, log);
-	immediate_action_application(inst, env, act_landmarks, log);
+	immediate_action_application(inst, act_landmarks, log);
 	inverse_actions_extraction(inst, log);
 	finish_opt(inst, log);
 }

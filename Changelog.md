@@ -25,6 +25,18 @@ HOW I DO VERSIONING:
 ### :curly_loop: Other
 -->
 
+
+## [1.1.0] - 2025/03/04
+### Tested all features added in 1.0.*
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+<!-- ### :heavy_exclamation_mark: Changed -->
+### :heavy_plus_sign: Added
+- Warnings flag to CMake
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+
+
 ## [1.0.6] - 2025/03/04
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed

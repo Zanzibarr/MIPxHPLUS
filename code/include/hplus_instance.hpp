@@ -89,7 +89,7 @@ namespace hplus {
 	/** Print the best solution of instance inst */
 	void print_sol(const instance& inst, const logger& log);
 	/** Perform instance optimization to inst using flags stored in the env environment */
-	void instance_optimization(instance& inst, const environment& env, const logger& log);
+	void instance_optimization(instance& inst, const logger& log);
 	/** Prepare helper data structure for faster action lookup on instance inst */
 	void prepare_faster_actsearch(instance& inst, const logger& log);
 

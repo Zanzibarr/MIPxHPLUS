@@ -249,7 +249,7 @@ static void run(hplus::instance& inst, hplus::environment& env,
 			stats.optimization = static_cast<double>(env.time_limit) - env.timer.get_time();
 			start_time = env.timer.get_time();
 
-			hplus::instance_optimization(inst, env, log);
+			hplus::instance_optimization(inst, log);
 
 			stats.optimization = env.timer.get_time() - start_time;
 		}
