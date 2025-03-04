@@ -171,7 +171,7 @@ inline void mypause(const std::string& msg = "") {
 	std::string i;
 	std::cout << msg << "(1 to exit, 0 to continue): ";
 	std::cin >> i;
-	if (i == "0")
+	if (i == "1")
 		exit(1);
 }
 

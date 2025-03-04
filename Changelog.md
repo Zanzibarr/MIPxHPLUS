@@ -29,7 +29,11 @@ HOW I DO VERSIONING:
 ## [1.1.0] - 2025/03/04
 ### Tested all features added in 1.0.*
 <!-- ### :warning: Known issues -->
-<!-- ### :ballot_box_with_check: Fixed -->
+### :ballot_box_with_check: Fixed
+- Results reading script mis-labeling jobs halted on time limit even if a solution was found
+    - [~/code/test/code](code/test/code)
+- mypause method exiting on 0 instead of 1
+    - [~/code/include/utils.hpp](code/include/utils.hpp)
 <!-- ### :heavy_exclamation_mark: Changed -->
 ### :heavy_plus_sign: Added
 - Warnings flag to CMake

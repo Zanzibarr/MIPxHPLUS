@@ -94,7 +94,7 @@ def main():
             runsum["stats"]["perc_found"] += 1
             runsum["stats"]["perc_opt"] += 1
             runsum["results"][instance_name]["status"] = 1
-        elif "Reached time limit" in content or "No solution found." in content:
+        elif "No solution found." in content:
             runsum["results"][instance_name]["status"] = 3
         elif "The solution has not been proven optimal." in content:
             runsum["stats"]["perc_found"] += 1
@@ -181,8 +181,9 @@ def main():
                     if len(solution_updates) > 1:
                         # Get the last update (most recent one)
                         last_update = solution_updates[-1]
-                        hcost = int(last_update.partition(".\n")[0].strip())
-                        runsum["results"][instance_name]["hcost"] = hcost
+                        runsum["results"][instance_name]["hcost"] = int(
+                            last_update.partition(".\n")[0].strip()
+                        )
 
         move_file(filepath, save_logs_dir)
 
