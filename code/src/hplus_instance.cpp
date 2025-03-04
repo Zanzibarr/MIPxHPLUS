@@ -34,7 +34,7 @@ static void init(hplus::instance& inst) {
 		.m = 0,
 		.n_opt = 0,
 		.m_opt = 0,
-		.var_ranges = std::vector<size_t>(0),
+		.var_ranges = std::vector<int>(0),
 		.actions = std::vector<hplus::action>(0),
 		.goal = binary_set(),
 		.best_sol = (hplus::solution){ std::vector<size_t>(), std::numeric_limits<unsigned int>::max() },
@@ -100,7 +100,7 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
 	if (!isint(line, 0)) [[unlikely]]
 		log.raise_error("Corrupted file");
 	inst.n = stoi(line);
-	inst.var_ranges = std::vector<size_t>(inst.n);
+	inst.var_ranges = std::vector<int>(inst.n);
 	for (size_t var_i = 0; var_i < inst.n; var_i++) {
 		// process each variable
 		std::getline(ifs, line); // begin_variable
@@ -113,7 +113,7 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
 		std::getline(ifs, line); // range of variable
 		if (!isint(line, 0)) [[unlikely]]
 			log.raise_error("Corrupted file");
-		const auto& range = static_cast<size_t>(stoi(line));
+		const auto& range = stoi(line);
 		inst.var_ranges[var_i] = range;
 		for (size_t j = 0; j < range; j++)
 			std::getline(ifs, line); // name for variable value (ignored)
@@ -127,7 +127,7 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
 	std::getline(ifs, line); // number of mutex groups
 	if (!isint(line, 0)) [[unlikely]]
 		log.raise_error("Corrupted file");
-	const auto& nmgroups = static_cast<size_t>(stoi(line));
+	const size_t& nmgroups = stoi(line);
 	for (size_t i = 0; i < nmgroups; i++) {
 		std::getline(ifs, line); // begin_mutex_group
 		if (line != "begin_mutex_group") [[unlikely]]
@@ -146,7 +146,7 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
 	std::vector<int> tmp_istate(inst.n);
 	for (size_t var_i = 0; var_i < inst.n; var_i++) {
 		std::getline(ifs, line); // initial value of var_i
-		if (!isint(line, 0, static_cast<int>(inst.var_ranges[var_i] - 1))) [[unlikely]]
+		if (!isint(line, 0, inst.var_ranges[var_i] - 1)) [[unlikely]]
 			log.raise_error("Corrupted file");
 		const auto& val = stoi(line);
 		tmp_istate[var_i] = val;
@@ -163,7 +163,7 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
 	std::getline(ifs, line); // number of goals
 	if (!isint(line, 0, static_cast<int>(inst.n))) [[unlikely]]
 		log.raise_error("Corrupted file");
-	const auto& ngoals = static_cast<size_t>(stoi(line));
+	const size_t& ngoals = stoi(line);
 	for (size_t _ = 0; _ < ngoals; _++) {
 		// parsing each goal
 		std::vector<std::string> tokens;
@@ -173,8 +173,8 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
 			log.raise_error("Corrupted file");
 		if (!isint(tokens[0], 0, static_cast<int>(inst.n - 1))) [[unlikely]]
 			log.raise_error("Corrupted file"); // variable index
-		auto var = static_cast<size_t>(stoi(tokens[0]));
-		if (!isint(tokens[1], 0, static_cast<int>(inst.var_ranges[var] - 1))) [[unlikely]]
+		const size_t& var = stoi(tokens[0]);
+		if (!isint(tokens[1], 0, inst.var_ranges[var] - 1)) [[unlikely]]
 			log.raise_error("Corrupted file"); // variable goal
 		const auto& value = stoi(tokens[1]);
 		tmp_goal[var] = value;
@@ -204,7 +204,7 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
 		std::getline(ifs, line); // number of prevail conditions
 		if (!isint(line, 0, static_cast<int>(inst.n))) [[unlikely]]
 			log.raise_error("Corrupted file");
-		const auto& n_pre = static_cast<size_t>(stoi(line));
+		const size_t& n_pre = stoi(line);
 		for (size_t pre_i = 0; pre_i < n_pre; pre_i++) {
 			// parsing each prevail condition
 			std::vector<std::string> tokens;
@@ -214,8 +214,8 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
 				log.raise_error("Corrupted file");
 			if (!isint(tokens[0], 0, static_cast<int>(inst.n - 1))) [[unlikely]]
 				log.raise_error("Corrupted file"); // variable index
-			const auto& var = static_cast<size_t>(stoi(tokens[0]));
-			if (!isint(tokens[1], 0, static_cast<int>(inst.var_ranges[var] - 1))) [[unlikely]]
+			const size_t& var = stoi(tokens[0]);
+			if (!isint(tokens[1], 0, inst.var_ranges[var] - 1)) [[unlikely]]
 				log.raise_error("Corrupted file"); // variable value
 			const auto& value = stoi(tokens[1]);
 			act_pre[var] = value;
@@ -236,11 +236,11 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
 				log.raise_error("This program won't handle effect conditions."); // number of effect conditions (ignored and check to be 0)
 			if (!isint(tokens[1], 0, static_cast<int>(inst.n - 1))) [[unlikely]]
 				log.raise_error("Corrupted file"); // variable affected by the action
-			const auto& var = static_cast<size_t>(stoi(tokens[1]));
-			if (!isint(tokens[2], -1, static_cast<int>(inst.var_ranges[var] - 1))) [[unlikely]]
+			const size_t& var = stoi(tokens[1]);
+			if (!isint(tokens[2], -1, inst.var_ranges[var] - 1)) [[unlikely]]
 				log.raise_error("Corrupted file"); // precondition of the variable
 			const auto& pre_val = stoi(tokens[2]);
-			if (!isint(tokens[3], 0, static_cast<int>(inst.var_ranges[var] - 1))) [[unlikely]]
+			if (!isint(tokens[3], 0, inst.var_ranges[var] - 1)) [[unlikely]]
 				log.raise_error("Corrupted file"); // effect of the variable
 			const auto& eff_val = stoi(tokens[3]);
 			if (pre_val >= 0)

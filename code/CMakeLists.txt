@@ -100,11 +100,11 @@ target_link_libraries(
     dl
 )
 
-# if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-#     target_compile_options(hplus_instance PRIVATE -Wall -Wextra -pedantic -Werror)
-#     target_compile_options(algorithms PRIVATE -Wall -Wextra -pedantic -Werror)
-#     target_compile_options(main PRIVATE -Wall -Wextra -pedantic -Werror)
-# endif()
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    target_compile_options(hplus_instance PRIVATE -Wall -Wextra -pedantic -Werror)
+    target_compile_options(algorithms PRIVATE -Wall -Wextra -pedantic -Werror)
+    target_compile_options(main PRIVATE -Wall -Wextra -pedantic -Werror)
+endif()
 
 # Definitions
 add_definitions(-DHPLUS_HOME_DIR="${HOME_DIR}" -DHPLUS_VERBOSE=${VERBOSE} -DHPLUS_WARN=${WARN} -DHPLUS_INTCHECK=${INTCHECK})

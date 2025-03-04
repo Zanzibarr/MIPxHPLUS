@@ -37,7 +37,7 @@ namespace hplus {
 		/** Domain */
 		bool				equal_costs;
 		size_t				n, m, n_opt, m_opt;
-		std::vector<size_t> var_ranges;
+		std::vector<int>	var_ranges;
 		std::vector<action> actions;
 		/** Instance */
 		binary_set goal;

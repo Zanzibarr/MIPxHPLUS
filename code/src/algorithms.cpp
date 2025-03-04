@@ -726,11 +726,11 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
 	// ============== TIGHTER TIMESTAMPS BOUNDS ============= //
 	// ====================================================== //
 
-	auto timestamps_ubound = static_cast<unsigned int>(inst.m_opt);
+	auto timestamps_ubound = inst.m_opt;
 	if (env.imai_tight_bounds) {
 		// number of variables
 		if (inst.n_opt < timestamps_ubound)
-			timestamps_ubound = static_cast<unsigned int>(inst.n_opt);
+			timestamps_ubound = inst.n_opt;
 
 		// max number of steps to reach heuristic
 		if (env.heur != "none" && !relaxed) {
@@ -1093,7 +1093,7 @@ void store_imai_sol(const CPXENVptr& cpxenv, const CPXLPptr& cpxlp, hplus::insta
 	std::transform(cpx_result.begin(), cpx_result.end(), std::back_inserter(solution), [inst](const std::pair<double, size_t>& p) { return inst.act_cpxtoidx[p.second]; });
 
 	// store solution
-	hplus::solution imai_sol{ solution, static_cast<unsigned int>(std::accumulate(solution.begin(), solution.end(), 0, [inst](const size_t acc, const size_t index) { return acc + inst.actions[index].cost; })) };
+	hplus::solution imai_sol{ solution, static_cast<unsigned int>(std::accumulate(solution.begin(), solution.end(), 0, [inst](const unsigned int acc, const size_t index) { return acc + inst.actions[index].cost; })) };
 	hplus::update_sol(inst, imai_sol, log);
 }
 
