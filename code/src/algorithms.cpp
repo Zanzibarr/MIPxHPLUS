@@ -1184,7 +1184,7 @@ void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance
 		std::set<size_t> new_nodes;
 
 		for (const auto& p : inst.var_rem) {
-			if (graph[p].find(idx) != graph[p].end())
+			if (graph[p].find(idx) == graph[p].end())
 				continue;
 
 			for (const auto& q : graph[idx]) {
