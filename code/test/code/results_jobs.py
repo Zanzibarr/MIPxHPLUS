@@ -156,13 +156,7 @@ def main():
                 runsum["results"][instance_name]["cbtime"] = callback_time
                 runsum["results"][instance_name]["ctime"] = cplex_time
                 runsum["results"][instance_name]["time"] = total_time
-                if runsum["results"][instance_name]["status"] == 0:
-                    fcost = int(
-                        content.partition("Solution cost:")[2]
-                        .partition("\n")[0]
-                        .strip()
-                    )
-                    runsum["results"][instance_name]["fcost"] = fcost
+                # If I have a solution (status 0 = opt, status 2 = heur)
                 if (
                     runsum["results"][instance_name]["status"] not in (1, 3)
                     and "Heuristic:"
@@ -184,6 +178,13 @@ def main():
                         runsum["results"][instance_name]["hcost"] = int(
                             last_update.partition(".\n")[0].strip()
                         )
+                    # Find the final cost proposed by the algorithm
+                    fcost = int(
+                        content.partition("Solution cost:")[2]
+                        .partition("\n")[0]
+                        .strip()
+                    )
+                    runsum["results"][instance_name]["fcost"] = fcost
 
         move_file(filepath, save_logs_dir)
 
