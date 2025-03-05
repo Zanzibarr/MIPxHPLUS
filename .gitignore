@@ -1,6 +1,7 @@
 # junk folders for IDE's and extensions
 .*DS_Store*
 .vscode/
+.trunk/
 .idea/
 
 # repository organization

@@ -111,7 +111,7 @@ inline std::vector<std::string> split_string(const std::string& str, const char 
 	std::vector<std::string> tokens;
 	tokens.reserve(std::count(str.begin(), str.end(), del) + 1);
 
-	size_t start = 0, end;
+	size_t start{ 0 }, end;
 
 	while ((end = str.find(del, start)) != std::string::npos) {
 		if (end > start) // Avoid empty strings
@@ -135,23 +135,23 @@ inline bool isint(const std::string& str, const int from = std::numeric_limits<i
 		return false;
 
 	// Check for leading whitespace or sign
-	size_t i = 0;
+	size_t i{ 0 };
 	if (str[i] == '+' || str[i] == '-')
 		i++;
 
 	// Must have at least one digit
-	if (i == str.length() || !std::isdigit(static_cast<unsigned char>(str[i])))
+	if (i == str.length() || !std::isdigit(str[i]))
 		return false;
 
 	// Check remaining characters are digits
 	for (; i < str.length(); i++) {
-		if (!std::isdigit(static_cast<unsigned char>(str[i])))
+		if (!std::isdigit(str[i]))
 			return false;
 	}
 
 	try {
 		// Only convert to int if the string consists of valid digits
-		auto num = std::stoi(str);
+		int num{ std::stoi(str) };
 		return num >= from && num <= to;
 	} catch (const std::out_of_range&) {
 		// Handle overflow cases

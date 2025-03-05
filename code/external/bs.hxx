@@ -216,7 +216,7 @@ public:
 	binary_set operator&(const binary_set& other) const {
 		validate_same_capacity(other);
 
-		binary_set result(*this);
+		binary_set result{ *this };
 		for (size_t i = 0; i < set_.size(); i++)
 			result.set_[i] &= other.set_[i];
 
@@ -252,7 +252,7 @@ public:
 	binary_set operator|(const binary_set& other) const {
 		validate_same_capacity(other);
 
-		binary_set result(*this);
+		binary_set result{ *this };
 		for (size_t i = 0; i < set_.size(); i++)
 			result.set_[i] |= other.set_[i];
 
@@ -288,7 +288,7 @@ public:
 	binary_set operator-(const binary_set& other) const {
 		validate_same_capacity(other);
 
-		binary_set result(*this);
+		binary_set result{ *this };
 		for (size_t i = 0; i < set_.size(); i++)
 			result.set_[i] &= ~other.set_[i];
 
@@ -319,7 +319,7 @@ public:
 	 */
 	[[nodiscard]]
 	binary_set operator!() const {
-		binary_set result(capacity_);
+		binary_set result{ capacity_ };
 
 		for (size_t i = 0; i < set_.size(); i++)
 			result.set_[i] = ~set_[i];
@@ -450,7 +450,7 @@ public:
 		}
 
 		iterator operator++(int) {
-			const iterator tmp = *this;
+			const iterator tmp{ *this };
 			++(*this);
 			return tmp;
 		}
@@ -476,7 +476,7 @@ public:
 	};
 
 private:
-	size_t					   capacity_ = 0;
+	size_t					   capacity_{ 0 };
 	std::vector<unsigned char> set_;
 
 	// Helper methods for validation
@@ -572,7 +572,7 @@ public:
 
 		// Helper function to remove value from a vector
 		auto remove_value = [](std::vector<size_t>& values, size_t v) -> bool {
-			auto it = std::find(values.begin(), values.end(), v);
+			auto it{ std::find(values.begin(), values.end(), v) };
 			if (it != values.end()) {
 				values.erase(it);
 				return true;
@@ -606,7 +606,7 @@ public:
 
 		// Prune empty branches by walking back up the path
 		for (auto it = path.rbegin(); it != path.rend(); ++it) {
-			auto [parent_ptr, current_node] = *it;
+			auto [parent_ptr, current_node]{ *it };
 
 			// If both children are empty and this node has no values, remove it
 			if (is_empty_node(current_node->left.get()) && is_empty_node(current_node->right.get()) && current_node->values.empty()) {
@@ -644,11 +644,11 @@ public:
 
 		// Reach the end of the tree (i < capacity) until we have open nodes to explore
 		for (size_t i = 0; i < bs.capacity() && !open_nodes.empty(); i++) {
-			const auto level_size = open_nodes.size();
+			const size_t level_size{ open_nodes.size() };
 
 			// Look among past iteration's open nodes and expand them
 			for (size_t j = 0; j < level_size; j++) {
-				const treenode* node = open_nodes.front();
+				const treenode* node{ open_nodes.front() };
 				open_nodes.pop_front();
 
 				if (bs[i]) {

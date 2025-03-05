@@ -28,7 +28,7 @@ void hplus::print_stats(const statistics& stats, const logger& log) {
 }
 
 static void init(hplus::instance& inst) {
-	inst = (hplus::instance){
+	inst = hplus::instance{
 		.equal_costs = false,
 		.n = 0,
 		.m = 0,
@@ -37,7 +37,7 @@ static void init(hplus::instance& inst) {
 		.var_ranges = std::vector<int>(0),
 		.actions = std::vector<hplus::action>(0),
 		.goal = binary_set(),
-		.best_sol = (hplus::solution){ std::vector<size_t>(), std::numeric_limits<unsigned int>::max() },
+		.best_sol = hplus::solution{ std::vector<size_t>(), std::numeric_limits<unsigned int>::max() },
 		.var_e = binary_set(),
 		.var_f = binary_set(),
 		.act_e = binary_set(),
@@ -113,9 +113,9 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
 		std::getline(ifs, line); // range of variable
 		if (!isint(line, 0)) [[unlikely]]
 			log.raise_error("Corrupted file");
-		const auto& range = stoi(line);
+		const int range{ stoi(line) };
 		inst.var_ranges[var_i] = range;
-		for (size_t j = 0; j < range; j++)
+		for (int j = 0; j < range; j++)
 			std::getline(ifs, line); // name for variable value (ignored)
 		std::getline(ifs, line);	 // end_variable
 		if (line != "end_variable") [[unlikely]]
@@ -127,7 +127,7 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
 	std::getline(ifs, line); // number of mutex groups
 	if (!isint(line, 0)) [[unlikely]]
 		log.raise_error("Corrupted file");
-	const size_t& nmgroups = stoi(line);
+	const size_t nmgroups{ static_cast<size_t>(stoi(line)) };
 	for (size_t i = 0; i < nmgroups; i++) {
 		std::getline(ifs, line); // begin_mutex_group
 		if (line != "begin_mutex_group") [[unlikely]]
@@ -148,7 +148,7 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
 		std::getline(ifs, line); // initial value of var_i
 		if (!isint(line, 0, inst.var_ranges[var_i] - 1)) [[unlikely]]
 			log.raise_error("Corrupted file");
-		const auto& val = stoi(line);
+		const int val{ stoi(line) };
 		tmp_istate[var_i] = val;
 	}
 	std::getline(ifs, line); // end_state
@@ -163,7 +163,7 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
 	std::getline(ifs, line); // number of goals
 	if (!isint(line, 0, static_cast<int>(inst.n))) [[unlikely]]
 		log.raise_error("Corrupted file");
-	const size_t& ngoals = stoi(line);
+	const size_t ngoals{ static_cast<size_t>(stoi(line)) };
 	for (size_t _ = 0; _ < ngoals; _++) {
 		// parsing each goal
 		std::vector<std::string> tokens;
@@ -171,12 +171,12 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
 		tokens = split_string(line, ' ');
 		if (tokens.size() != 2) [[unlikely]]
 			log.raise_error("Corrupted file");
-		if (!isint(tokens[0], 0, static_cast<int>(inst.n - 1))) [[unlikely]]
+		if (!isint(tokens[0], 0, static_cast<int>(inst.n) - 1)) [[unlikely]]
 			log.raise_error("Corrupted file"); // variable index
-		const size_t& var = stoi(tokens[0]);
+		const size_t var{ static_cast<size_t>(stoi(tokens[0])) };
 		if (!isint(tokens[1], 0, inst.var_ranges[var] - 1)) [[unlikely]]
 			log.raise_error("Corrupted file"); // variable goal
-		const auto& value = stoi(tokens[1]);
+		const int value{ stoi(tokens[1]) };
 		tmp_goal[var] = value;
 	}
 	std::getline(ifs, line); // end_goal
@@ -184,8 +184,8 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
 		log.raise_error("Corrupted file");
 
 	// * operator (actions) section
-	int	 checkcosts = -1;
-	bool equalcosts_check = true;
+	int	 checkcosts{ -1 };
+	bool equalcosts_check{ true };
 	PRINT_WARN(log, "Ignoring effect conditions.");
 	std::getline(ifs, line); // n_act
 	if (!isint(line, 0)) [[unlikely]]
@@ -199,12 +199,12 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
 		if (line != "begin_operator") [[unlikely]]
 			log.raise_error("Corrupted file");
 		std::getline(ifs, line); // symbolic action name
-		std::string		 name = line;
+		std::string		 name{ line };
 		std::vector<int> act_pre(inst.n, -1);
 		std::getline(ifs, line); // number of prevail conditions
 		if (!isint(line, 0, static_cast<int>(inst.n))) [[unlikely]]
 			log.raise_error("Corrupted file");
-		const size_t& n_pre = stoi(line);
+		const size_t n_pre{ static_cast<size_t>(stoi(line)) };
 		for (size_t pre_i = 0; pre_i < n_pre; pre_i++) {
 			// parsing each prevail condition
 			std::vector<std::string> tokens;
@@ -212,18 +212,18 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
 			tokens = split_string(line, ' ');
 			if (tokens.size() != 2) [[unlikely]]
 				log.raise_error("Corrupted file");
-			if (!isint(tokens[0], 0, static_cast<int>(inst.n - 1))) [[unlikely]]
+			if (!isint(tokens[0], 0, static_cast<int>(inst.n) - 1)) [[unlikely]]
 				log.raise_error("Corrupted file"); // variable index
-			const size_t& var = stoi(tokens[0]);
+			const size_t var{ static_cast<size_t>(stoi(tokens[0])) };
 			if (!isint(tokens[1], 0, inst.var_ranges[var] - 1)) [[unlikely]]
 				log.raise_error("Corrupted file"); // variable value
-			const auto& value = stoi(tokens[1]);
+			const int value{ stoi(tokens[1]) };
 			act_pre[var] = value;
 		}
 		std::getline(ifs, line); // number of effects
 		if (!isint(line, 0)) [[unlikely]]
 			log.raise_error("Corrupted file");
-		const size_t	 n_eff = stoi(line);
+		const size_t	 n_eff{ static_cast<size_t>(stoi(line)) };
 		std::vector<int> act_eff(inst.n, -1);
 		for (size_t eff_i = 0; eff_i < n_eff; eff_i++) {
 			// parsing each effect
@@ -234,34 +234,41 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
 				log.raise_error("This program won't handle effect conditions."); // not expecting effect conditions
 			if (!isint(tokens[0], 0, 0)) [[unlikely]]
 				log.raise_error("This program won't handle effect conditions."); // number of effect conditions (ignored and check to be 0)
-			if (!isint(tokens[1], 0, static_cast<int>(inst.n - 1))) [[unlikely]]
+			if (!isint(tokens[1], 0, static_cast<int>(inst.n) - 1)) [[unlikely]]
 				log.raise_error("Corrupted file"); // variable affected by the action
-			const size_t& var = stoi(tokens[1]);
+			const size_t var{ static_cast<size_t>(stoi(tokens[1])) };
 			if (!isint(tokens[2], -1, inst.var_ranges[var] - 1)) [[unlikely]]
 				log.raise_error("Corrupted file"); // precondition of the variable
-			const auto& pre_val = stoi(tokens[2]);
+			const int pre_val{ stoi(tokens[2]) };
 			if (!isint(tokens[3], 0, inst.var_ranges[var] - 1)) [[unlikely]]
 				log.raise_error("Corrupted file"); // effect of the variable
-			const auto& eff_val = stoi(tokens[3]);
+			const int eff_val{ stoi(tokens[3]) };
 			if (pre_val >= 0)
 				act_pre[var] = pre_val;
 			act_eff[var] = eff_val;
 		}
 		std::getline(ifs, line); // action cost
-		if (!isint(line)) [[unlikely]]
+		if (!isint(line, 0)) [[unlikely]]
 			log.raise_error("Corrupted file");
-		unsigned int cost = 1;
+		unsigned int cost{ 1 };
 		if (!inst.equal_costs) {
 			cost = stoi(line);
 			if (checkcosts == -1)
-				checkcosts = static_cast<int>(cost);
+				checkcosts = cost;
 			else if (static_cast<unsigned int>(checkcosts) != cost)
 				equalcosts_check = false;
 		}
 		std::getline(ifs, line); // end_operator
 		if (line != "end_operator") [[unlikely]]
 			log.raise_error("Corrupted file");
-		inst.actions[act_i] = (hplus::action){ .cost = cost, .name = name };
+		inst.actions[act_i] = hplus::action{
+			.cost = cost,
+			.name = name,
+			.pre = binary_set(),
+			.eff = binary_set(),
+			.pre_sparse = std::vector<size_t>(),
+			.eff_sparse = std::vector<size_t>()
+		};
 
 		for (size_t i = 0; i < inst.n; i++) {
 			if (act_pre[i] >= 0)
@@ -291,7 +298,7 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
 
 	std::vector<int> var_active_state(inst.n, -1);
 
-	const auto& is_deletefree = [&inst, &tmp_act_eff, &var_active_state]() {
+	const auto is_deletefree = [&inst, &tmp_act_eff, &var_active_state]() {
 		for (const auto& r : inst.var_ranges) {
 			if (r != 2)
 				return false;
@@ -318,12 +325,12 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
 				inst.goal.add(var_i);
 		}
 		for (size_t act_i = 0; act_i < inst.m; act_i++) {
-			binary_set act_pre(inst.n), act_eff(inst.n);
+			binary_set act_pre{ inst.n }, act_eff{ inst.n };
 			for (const auto& [var, val] : tmp_act_pre[act_i]) {
 				if (var_active_state[var] == static_cast<int>(val))
 					act_pre.add(var);
 			}
-			for (const auto [var, val] : tmp_act_eff[act_i])
+			for (const auto& [var, val] : tmp_act_eff[act_i])
 				act_eff.add(var);
 			inst.actions[act_i].pre = act_pre;
 			inst.actions[act_i].pre_sparse = act_pre.sparse();
@@ -333,7 +340,7 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
 	} else {
 		// binary expansion
 		PRINT_VERBOSE(log, "Performing binary expansion.");
-		size_t				n_exp = 0;
+		size_t				n_exp{ 0 };
 		std::vector<size_t> offsets(inst.n);
 		for (size_t i = 0; i < inst.n; i++) {
 			offsets[i] = n_exp;
@@ -348,7 +355,7 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
 		}
 		inst.n = n_exp;
 		for (size_t i = 0; i < inst.m; i++) {
-			binary_set act_pre(inst.n), act_eff(inst.n);
+			binary_set act_pre{ inst.n }, act_eff{ inst.n };
 			for (const auto& [var, val] : tmp_act_pre[i])
 				act_pre.add(offsets[var] + val);
 			for (const auto& [var, val] : tmp_act_eff[i])
@@ -366,7 +373,7 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
 
 	PRINT_VERBOSE(log, "Removing initial state variables.");
 	std::vector<size_t> istate_offsets(inst.n);
-	size_t				n_opt = inst.n;
+	size_t				n_opt{ inst.n };
 	for (size_t i = 0, c = 0; i < inst.n; i++) {
 		if (istate[i]) {
 			c++;
@@ -375,14 +382,14 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
 		istate_offsets[i] = c;
 	}
 	inst.n = n_opt;
-	binary_set goal_opt(inst.n);
+	binary_set goal_opt{ inst.n };
 	for (const auto& var : inst.goal) {
 		if (!istate[var])
 			goal_opt.add(var - istate_offsets[var]);
 	}
 	inst.goal = goal_opt;
 	for (size_t i = 0; i < inst.m; i++) {
-		binary_set act_pre(inst.n), act_eff(inst.n);
+		binary_set act_pre{ inst.n }, act_eff{ inst.n };
 		for (const auto& var : inst.actions[i].pre_sparse) {
 			if (!istate[var])
 				act_pre.add(var - istate_offsets[var]);
@@ -452,11 +459,11 @@ bool hplus::create_instance(instance& inst, environment& env, statistics& stats,
 }
 
 void hplus::update_sol(instance& inst, const solution& sol, const logger& log) {
-	const auto& [sol_plan, sol_cost] = sol;
-	auto		 dbcheck = binary_set(inst.m);
-	unsigned int costcheck = 0;
+	const auto& [sol_plan, sol_cost]{ sol };
+	binary_set	 dbcheck{ inst.m };
+	unsigned int costcheck{ 0 };
 	ASSERT_LOG(log, sol_plan.size() <= inst.m_opt); // check that there aren't more actions that there exists
-	binary_set feas_checker(inst.n);
+	binary_set feas_checker{ inst.n };
 	for (const auto& act_i : sol_plan) {
 		ASSERT_LOG(log, act_i < inst.m);	// check that the solution only contains existing actions
 		ASSERT_LOG(log, !dbcheck[act_i]);	// check that there are no duplicates
@@ -472,7 +479,7 @@ void hplus::update_sol(instance& inst, const solution& sol, const logger& log) {
 	if (sol_cost >= inst.best_sol.cost)
 		return;
 
-	inst.best_sol = (solution){ sol_plan, sol_cost };
+	inst.best_sol = solution{ sol_plan, sol_cost };
 
 #if HPLUS_VERBOSE >= 10
 	log.print_info("Updated best solution - Cost: %10u.", sol_cost);
@@ -480,7 +487,7 @@ void hplus::update_sol(instance& inst, const solution& sol, const logger& log) {
 }
 
 void hplus::print_sol(const instance& inst, const logger& log) {
-	const auto& [sol_plan, sol_cost] = inst.best_sol;
+	const auto& [sol_plan, sol_cost]{ inst.best_sol };
 	log.print("Solution cost: %10u", sol_cost);
 	// for (const auto& act_i : sol_plan)
 	// 	log.print("(%s)", inst.actions[act_i].name.c_str());
@@ -492,7 +499,7 @@ static void landmark_extraction(hplus::instance& inst, std::vector<binary_set>& 
 	for (size_t var_i = 0; var_i < inst.n; var_i++)
 		landmarks[var_i].add(inst.n);
 
-	binary_set s_set(inst.n);
+	binary_set s_set{ inst.n };
 
 	std::deque<size_t> actions_queue;
 	for (size_t act_i = 0; act_i < inst.m; act_i++) {
@@ -511,16 +518,16 @@ static void landmark_extraction(hplus::instance& inst, std::vector<binary_set>& 
 	}
 
 	while (!actions_queue.empty()) {
-		const hplus::action a = inst.actions[actions_queue.front()];
+		const hplus::action& a{ inst.actions[actions_queue.front()] };
 		actions_queue.pop_front();
 
-		const auto& pre_sparse = a.pre_sparse;
-		const auto& add_sparse = a.eff_sparse;
+		const auto& pre_sparse{ a.pre_sparse };
+		const auto& add_sparse{ a.eff_sparse };
 
 		for (const auto& var_i : add_sparse) {
 			s_set.add(var_i);
 
-			auto x = binary_set(inst.n + 1);
+			binary_set x{ inst.n + 1 };
 			for (const auto& var_j : add_sparse)
 				x.add(var_j);
 
@@ -578,7 +585,7 @@ static void landmark_extraction(hplus::instance& inst, std::vector<binary_set>& 
 				continue;
 
 			fact_landmarks.add(var_j);
-			size_t count = 0, cand_act;
+			size_t count{ 0 }, cand_act;
 			for (const auto& act_i : act_with_eff[var_j]) {
 				cand_act = act_i;
 				count++;
@@ -611,7 +618,7 @@ static void fadd_extraction(hplus::instance& inst, const std::vector<binary_set>
 	// compute the set of first adders
 	for (size_t act_i = 0; act_i < inst.m; act_i++) {
 		// f_lm_a is the set of fact landmarks of action act_i
-		binary_set f_lm_a(inst.n);
+		binary_set f_lm_a{ inst.n };
 		for (const auto& var_i : inst.actions[act_i].pre) {
 			for (const auto& i : var_flm_sparse[var_i])
 				f_lm_a.add(i);
@@ -628,8 +635,8 @@ static void fadd_extraction(hplus::instance& inst, const std::vector<binary_set>
 static void relevance_analysis(hplus::instance& inst, const binary_set& fact_landmarks, const std::vector<binary_set>& first_adders, const logger& log) {
 	PRINT_VERBOSE(log, "Relevance analysis.");
 
-	auto relevant_variables = binary_set(inst.n);
-	auto relevant_actions = binary_set(inst.m);
+	binary_set relevant_variables{ inst.n };
+	binary_set relevant_actions{ inst.m };
 
 	// compute first round of relevand variables and actions
 	for (size_t act_i = 0; act_i < inst.m; act_i++) {
@@ -642,10 +649,10 @@ static void relevance_analysis(hplus::instance& inst, const binary_set& fact_lan
 		throw timelimit_exception("Reached time limit.");
 
 	// list of actions yet to check
-	auto cand_actions_sparse = (!relevant_actions).sparse();
+	auto cand_actions_sparse{ (!relevant_actions).sparse() };
 
 	// keep looking for other relevant actions/variables until no more can be found
-	bool new_act = true;
+	bool new_act{ true };
 	while (new_act) {
 		new_act = false;
 		std::vector<size_t> new_relevant_actions;
@@ -659,7 +666,7 @@ static void relevance_analysis(hplus::instance& inst, const binary_set& fact_lan
 			new_relevant_actions.push_back(act_i);
 			new_act = true;
 		}
-		const auto& it = std::set_difference(cand_actions_sparse.begin(), cand_actions_sparse.end(), new_relevant_actions.begin(), new_relevant_actions.end(), cand_actions_sparse.begin());
+		const auto it{ std::set_difference(cand_actions_sparse.begin(), cand_actions_sparse.end(), new_relevant_actions.begin(), new_relevant_actions.end(), cand_actions_sparse.begin()) };
 		cand_actions_sparse.resize(it - cand_actions_sparse.begin());
 		if (CHECK_STOP()) [[unlikely]]
 			throw timelimit_exception("Reached time limit.");
@@ -674,8 +681,8 @@ static void relevance_analysis(hplus::instance& inst, const binary_set& fact_lan
 static void dominated_actions_elimination(hplus::instance& inst, const std::vector<binary_set>& landmarks, const std::vector<binary_set>& first_adders, const logger& log) {
 	PRINT_VERBOSE(log, "Extracting dominated actions.");
 
-	const auto&						 rem_var = (!inst.var_e).sparse();
-	auto							 act_flm = std::vector<binary_set>(inst.m, binary_set(inst.n));
+	const auto&						 rem_var{ (!inst.var_e).sparse() };
+	std::vector<binary_set>			 act_flm(inst.m, binary_set(inst.n));
 	std::vector<std::vector<size_t>> var_flm_sparse(inst.n);
 
 	// compute the landmarks for each variable remaining
@@ -700,12 +707,12 @@ static void dominated_actions_elimination(hplus::instance& inst, const std::vect
 	}
 
 	// find efficently all actions that satisfy point 1) of Proposition 4 of in Imai's Paper
-	const auto& rem_act = (!inst.act_e).sparse();
-	bs_searcher candidates = bs_searcher(inst.n);
+	const auto& rem_act{ (!inst.act_e).sparse() };
+	bs_searcher candidates{ inst.n };
 	for (const auto& act_i : rem_act)
 		candidates.add(act_i, first_adders[act_i]);
 
-	binary_set dominated_actions(inst.m);
+	binary_set dominated_actions{ inst.m };
 
 	// find all dominated actions and eliminate them
 	for (const auto& dominant_act : rem_act) {
@@ -728,17 +735,17 @@ static void dominated_actions_elimination(hplus::instance& inst, const std::vect
 static void immediate_action_application(hplus::instance& inst, const binary_set& act_landmarks, const logger& log) {
 	PRINT_VERBOSE(log, "Immediate action application.");
 
-	binary_set	current_state(inst.n), used_actions(inst.m);
-	const auto& rem_act = (!inst.act_e).sparse();
+	binary_set	current_state{ inst.n }, used_actions{ inst.m };
+	const auto& rem_act{ (!inst.act_e).sparse() };
 
 	// find efficiently all actions that satisfy point 2) of the Definition 1 in section 4.6 of Imai's paper
-	bs_searcher subset_finder = bs_searcher(inst.n);
+	bs_searcher subset_finder{ inst.n };
 	for (const auto& act_i : rem_act)
 		subset_finder.add(act_i, inst.actions[act_i].pre - inst.var_e);
 
 	// keep looking until no more actions can be applied
-	unsigned int counter = 0;
-	bool		 found_next_action = true;
+	unsigned int counter{ 0 };
+	bool		 found_next_action{ true };
 	while (found_next_action) {
 		found_next_action = false;
 
@@ -746,8 +753,8 @@ static void immediate_action_application(hplus::instance& inst, const binary_set
 			if (used_actions[act_i])
 				continue;
 
-			const auto& pre = inst.actions[act_i].pre - inst.var_e;
-			const auto& eff = inst.actions[act_i].eff - inst.var_e;
+			const auto& pre{ inst.actions[act_i].pre - inst.var_e };
+			const auto& eff{ inst.actions[act_i].eff - inst.var_e };
 
 			if (!act_landmarks[act_i] && inst.actions[act_i].cost != 0) [[likely]] {
 				subset_finder.remove(act_i, pre);
@@ -756,13 +763,13 @@ static void immediate_action_application(hplus::instance& inst, const binary_set
 
 			used_actions.add(act_i);
 			inst.act_f.add(act_i);
-			inst.act_t[act_i] = static_cast<int>(counter);
+			inst.act_t[act_i] = counter;
 			counter++;
 			for (const auto& var_i : eff) {
 				if (current_state[var_i])
 					continue;
 
-				inst.var_t[var_i] = static_cast<int>(counter);
+				inst.var_t[var_i] = counter;
 				inst.fadd_f[act_i].add(var_i);
 				for (const auto& act_j : rem_act) {
 					if (act_i == act_j)
@@ -783,16 +790,16 @@ static void immediate_action_application(hplus::instance& inst, const binary_set
 static void inverse_actions_extraction(hplus::instance& inst, const logger& log) {
 	PRINT_VERBOSE(log, "Extracting inverse actions.");
 
-	bs_searcher subset_finder = bs_searcher(inst.n);
+	bs_searcher subset_finder{ inst.n };
 
 	// find efficiently all actions that satisfy point 2) of the Definition 1 in section 4.6 of Imai's paper
-	const auto& rem_act = (!inst.act_e).sparse();
+	const auto& rem_act{ (!inst.act_e).sparse() };
 	for (const auto& act_i : rem_act)
 		subset_finder.add(act_i, inst.actions[act_i].eff);
 
 	for (const auto& act_i : rem_act) {
-		const auto& pre = inst.actions[act_i].pre;
-		const auto& eff = inst.actions[act_i].eff;
+		const auto& pre{ inst.actions[act_i].pre };
+		const auto& eff{ inst.actions[act_i].eff };
 		for (const auto& act_j : subset_finder.find_subsets(pre)) {
 			if (!inst.actions[act_j].pre.contains(eff)) [[likely]]
 				continue;
@@ -810,7 +817,7 @@ static void inverse_actions_extraction(hplus::instance& inst, const logger& log)
 static void finish_opt(hplus::instance& inst, const logger& log) {
 	inst.var_rem = (!inst.var_e).sparse();
 	inst.act_rem = (!inst.act_e).sparse();
-	size_t count = 0;
+	size_t count{ 0 };
 	for (const auto& var_i : inst.var_rem)
 		inst.var_opt_conv[var_i] = count++;
 	inst.n_opt = count;
@@ -837,10 +844,10 @@ static void finish_opt(hplus::instance& inst, const logger& log) {
 }
 
 void hplus::instance_optimization(instance& inst, const logger& log) {
-	auto landmarks = std::vector<binary_set>(inst.n, binary_set(inst.n + 1));
-	auto fact_landmarks = binary_set(inst.n);
-	auto act_landmarks = binary_set(inst.m);
-	auto fadd = std::vector<binary_set>(inst.m, binary_set(inst.n));
+	std::vector<binary_set> landmarks(inst.n, binary_set(inst.n + 1));
+	binary_set				fact_landmarks{ inst.n };
+	binary_set				act_landmarks{ inst.m };
+	std::vector<binary_set> fadd(inst.m, binary_set(inst.n));
 	landmark_extraction(inst, landmarks, fact_landmarks, act_landmarks, log);
 	fadd_extraction(inst, landmarks, fadd, log);
 	relevance_analysis(inst, fact_landmarks, fadd, log);

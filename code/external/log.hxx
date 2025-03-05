@@ -31,7 +31,7 @@ enum class log_level {
 
 // Get formatted current time using C time functions
 inline std::string get_current_time() {
-	const auto& time_now = std::time(nullptr);
+	const time_t time_now{ std::time(nullptr) };
 
 	char	  buffer[26];
 	struct tm timeinfo{};
@@ -43,11 +43,11 @@ inline std::string get_current_time() {
 
 // ANSI color codes
 namespace colors {
-	constexpr std::string_view reset = "\033[0m";
-	constexpr std::string_view info = "\033[38;5;68m\033[1m";
-	constexpr std::string_view warn = "\033[38;5;215m\033[1m";
-	constexpr std::string_view error = "\033[91m\033[1m";
-	constexpr std::string_view reset_bold = "\033[22m";
+	constexpr std::string_view reset{ "\033[0m" };
+	constexpr std::string_view info{ "\033[38;5;68m\033[1m" };
+	constexpr std::string_view warn{ "\033[38;5;215m\033[1m" };
+	constexpr std::string_view error{ "\033[91m\033[1m" };
+	constexpr std::string_view reset_bold{ "\033[22m" };
 } // namespace colors
 
 inline std::pair<std::string, std::string> format_prefix(const log_level level, const bool include_time) {
@@ -73,7 +73,7 @@ inline std::pair<std::string, std::string> format_prefix(const log_level level, 
 			break;
 	}
 	if (include_time) {
-		const std::string time_str = get_current_time() + " : ";
+		const std::string& time_str{ get_current_time() + " : " };
 		if (!terminal_prefix.empty()) {
 			terminal_prefix = terminal_prefix + time_str;
 			file_prefix = file_prefix + time_str;
@@ -91,14 +91,14 @@ inline std::string format_string(const char* format, va_list args) {
 	va_copy(args_copy, args);
 
 	// Get required buffer size
-	const auto size_s = std::vsnprintf(nullptr, 0, format, args_copy) + 1;
+	const int size_s{ std::vsnprintf(nullptr, 0, format, args_copy) + 1 };
 	va_end(args_copy);
 
 	if (size_s <= 0)
 		throw std::runtime_error("Error during formatting");
 
-	const auto size = static_cast<size_t>(size_s);
-	const auto buf = std::make_unique<char[]>(size);
+	const size_t size{ static_cast<size_t>(size_s) };
+	const auto	 buf{ std::make_unique<char[]>(size) };
 	std::vsnprintf(buf.get(), size, format, args);
 	return { buf.get(), size - 1 };
 }
@@ -209,8 +209,8 @@ private:
 	 */
 	void log_message(const log_level level, const bool include_time, const char* format, va_list args) const {
 		try {
-			std::string message = format_string(format, args);
-			auto [terminal_prefix, file_prefix] = format_prefix(level, include_time);
+			std::string message{ format_string(format, args) };
+			auto [terminal_prefix, file_prefix]{ format_prefix(level, include_time) };
 
 			std::ostream& out_stream = (level == log_level::warning || level == log_level::error)
 				? std::cerr

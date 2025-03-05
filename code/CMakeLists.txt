@@ -18,6 +18,7 @@ endif()
 # Compiler flags for release and debug builds
 set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -Ofast")
 set(CMAKE_CXX_FLAGS_DEBUG "-Og -ggdb")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -pedantic -Werror")
 
 # Verbosity, warnings, and integrity checks
 set(VERBOSE "5" CACHE STRING "Verbose setting set from command line")
@@ -99,12 +100,6 @@ target_link_libraries(
     Threads::Threads
     dl
 )
-
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_compile_options(hplus_instance PRIVATE -Wall -Wextra -pedantic -Werror)
-    target_compile_options(algorithms PRIVATE -Wall -Wextra -pedantic -Werror)
-    target_compile_options(main PRIVATE -Wall -Wextra -pedantic -Werror)
-endif()
 
 # Definitions
 add_definitions(-DHPLUS_HOME_DIR="${HOME_DIR}" -DHPLUS_VERBOSE=${VERBOSE} -DHPLUS_WARN=${WARN} -DHPLUS_INTCHECK=${INTCHECK})

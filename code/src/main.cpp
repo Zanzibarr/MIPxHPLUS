@@ -14,16 +14,16 @@
 #include <thread>	  // For thread operations
 #include <unistd.h>	  // For STDIN_FILENO
 
-volatile int global_terminate = 0;
+volatile int global_terminate{ 0 };
 
-static void signal_callback_handler(const int signum) {
+static void signal_callback_handler([[maybe_unused]] const int signum) {
 	if (global_terminate)
 		exit(1);
 	global_terminate = 1;
 }
 
 static void* time_limit_termination(void* args) {
-	const auto* env = static_cast<hplus::environment*>(args);
+	const auto* env{ static_cast<hplus::environment*>(args) };
 	while (env->exec_s < exec_status::STOP_TL && env->sol_s != solution_status::INFEAS) {
 		if (env->timer.get_time() > static_cast<double>(env->time_limit)) [[unlikely]] {
 			raise(SIGINT);
@@ -35,30 +35,30 @@ static void* time_limit_termination(void* args) {
 }
 
 static void init(hplus::environment& env) {
-	env = (hplus::environment){ .exec_s = exec_status::START,
-								.sol_s = solution_status::NOTFOUND,
-								.input_file = "N/A",
-								.log_name = HPLUS_LOG_DIR "/hplus_log.log",
-								.run_name = "DEFAULT RUN NAME",
-								.alg = "rankooh",
-								.heur = "greedycxe",
-								.log = false,
-								.problem_opt = true,
-								.warm_start = true,
-								.imai_tight_bounds = true,
-								.using_cplex = true,
-								.time_limit = 60,
-								.timer = time_keeper() };
+	env = hplus::environment{ .exec_s = exec_status::START,
+							  .sol_s = solution_status::NOTFOUND,
+							  .input_file = "N/A",
+							  .log_name = HPLUS_LOG_DIR "/hplus_log.log",
+							  .run_name = "DEFAULT RUN NAME",
+							  .alg = "rankooh",
+							  .heur = "greedycxe",
+							  .log = false,
+							  .problem_opt = true,
+							  .warm_start = true,
+							  .imai_tight_bounds = true,
+							  .using_cplex = true,
+							  .time_limit = 60,
+							  .timer = time_keeper() };
 }
 
 static void init(hplus::statistics& stats) {
-	stats = (hplus::statistics){ .parsing = 0,
-								 .optimization = 0,
-								 .heuristic = 0,
-								 .build = 0,
-								 .callback = 0,
-								 .execution = 0,
-								 .total = 0 };
+	stats = hplus::statistics{ .parsing = 0,
+							   .optimization = 0,
+							   .heuristic = 0,
+							   .build = 0,
+							   .callback = 0,
+							   .execution = 0,
+							   .total = 0 };
 	pthread_mutex_init(&stats.callback_time_mutex, nullptr);
 }
 
@@ -135,7 +135,7 @@ static void parse_cli(const int& argc, const char** argv,
 		env.heur = args::get(heur);
 	env.warm_start = !no_warmstart;
 	if (timelimit) {
-		const auto& tl = args::get(timelimit);
+		const int tl{ args::get(timelimit) };
 		if (tl < 0)
 			ACK_REQ("Time limit is negative: setting time limit to max");
 		env.time_limit = (tl < 0) ? std::numeric_limits<unsigned int>::max() : tl;
@@ -198,7 +198,7 @@ static void show_info(const hplus::instance&	inst,
 
 #if HPLUS_INTCHECK
 	log.print(
-		"\e[1m!!  Integrity checks enabled (execution might be slower)  !!\e[0m");
+		"\033[1m!!  Integrity checks enabled (execution might be slower)  !!\033[0m");
 	log.print(LINE);
 #endif
 
@@ -262,7 +262,7 @@ static void run(hplus::instance& inst, hplus::environment& env,
 		if (env.heur != "none" || env.alg == HPLUS_CLI_ALG_HEUR) {
 			if (env.heur != "greedycost" && env.heur != "greedycxe" && env.heur != "rand" && env.heur != "randr" && env.heur != "hmax" && env.heur != "hadd" && env.heur != "relax") {
 
-				const auto& heur = split_string(env.heur, '-');
+				const auto& heur{ split_string(env.heur, '-') };
 				if (heur.size() != 2 || heur[0] != "local" || (heur[1] != "greedycost" && heur[1] != "greedycxe" && heur[1] != "rand" && heur[1] != "randr" && heur[1] != "hmax" && heur[1] != "hadd" && heur[1] != "relax"))
 
 					log.raise_error(

@@ -42,12 +42,12 @@ public:
 	}
 	/** Restore heap structure */
 	void heapify() {
-		int start = (cnt - 2) / 2;
+		int start{ (cnt - 2) / 2 };
 		while (start >= 0) {
-			auto j = data[start];
+			score_type j = data[start];
 			position[j] = -1;
 			score_type p = prior[j];
-			int		   gap = start;
+			int		   gap{ start };
 			sift_down(gap, p);
 			data[gap] = j;
 			position[j] = gap;
@@ -63,7 +63,7 @@ public:
 #endif
 		prior[j] = p;
 		// put gap at last position
-		int gap = cnt++;
+		int gap{ static_cast<int>(cnt++) };
 		if (mantain_heap) // move gap down to the proper position
 			sift_up(gap, p);
 		// fill gap with new element
@@ -93,7 +93,7 @@ public:
 		if (position[j] < 0)
 			throw std::invalid_argument("Element wasn't in the priority queue.");
 #endif
-		int gap = position[j];
+		int gap{ position[j] };
 		if (mantain_heap) {
 			score_type oldp = prior[gap];
 			// if the priority didn't change, return immediately
@@ -132,7 +132,7 @@ private:
 	 */
 	void sift_up(int& gap, const score_type p) {
 		while (gap > 0) {
-			const auto parent = (gap - 1) / 2;
+			const int parent{ (gap - 1) / 2 };
 			if (p < prior[data[parent]]) {
 				data[gap] = data[parent];
 				position[data[gap]] = gap;
@@ -148,9 +148,9 @@ private:
 	void sift_down(int& gap, const score_type p) {
 		int newgap;
 		while (true) {
-			auto left = 2 * gap + 1;
-			auto right = left + 1;
-			if (right < cnt) {
+			int left{ 2 * gap + 1 };
+			int right{ left + 1 };
+			if (right < static_cast<int>(cnt)) {
 				if (prior[data[left]] < prior[data[right]])
 					newgap = left;
 				else
@@ -162,7 +162,7 @@ private:
 					position[data[gap]] = gap;
 					gap = newgap;
 				}
-			} else if (right == cnt) {
+			} else if (right == static_cast<int>(cnt)) {
 				newgap = left;
 				if (p < prior[data[newgap]])
 					break;
@@ -175,9 +175,9 @@ private:
 	}
 	/** Removes the integer in position gap */
 	void remove_at(int gap, const bool mantain_heap) {
-		const auto& last = --cnt;
+		const size_t last{ --cnt };
 		position[data[gap]] = -1;
-		if (gap == last)
+		if (gap == static_cast<int>(last))
 			return;
 		score_type gapP = prior[data[gap]];
 		// get last element priority
