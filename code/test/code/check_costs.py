@@ -56,7 +56,7 @@ def main():
                 and (inst_res["fcost"] < bound[0] or inst_res["fcost"] > bound[1])
             )
             or (inst_res["status"] == 1 and content.splitlines()[0] != "0.0 1e+20")
-            or (inst_res["status"] == 2 and inst_res["hcost"] < bound[0])
+            or (inst_res["status"] == 2 and inst_res["fcost"] < bound[0])
         ):
             errors += 1
             errors_names += f"{file}\n"
