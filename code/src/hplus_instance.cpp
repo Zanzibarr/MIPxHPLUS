@@ -262,12 +262,12 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
 		if (line != "end_operator") [[unlikely]]
 			log.raise_error("Corrupted file");
 		inst.actions[act_i] = hplus::action{
-			.cost = cost,
-			.name = name,
 			.pre = binary_set(),
 			.eff = binary_set(),
 			.pre_sparse = std::vector<size_t>(),
-			.eff_sparse = std::vector<size_t>()
+			.eff_sparse = std::vector<size_t>(),
+			.cost = cost,
+			.name = name
 		};
 
 		for (size_t i = 0; i < inst.n; i++) {
