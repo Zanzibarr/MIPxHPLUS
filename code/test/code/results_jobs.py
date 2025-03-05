@@ -156,6 +156,7 @@ def main():
                 runsum["results"][instance_name]["cbtime"] = callback_time
                 runsum["results"][instance_name]["ctime"] = cplex_time
                 runsum["results"][instance_name]["time"] = total_time
+
                 # If I have a solution (status 0 = opt, status 2 = heur)
                 if (
                     runsum["results"][instance_name]["status"] not in (1, 3)
@@ -178,7 +179,9 @@ def main():
                         runsum["results"][instance_name]["hcost"] = int(
                             last_update.partition(".\n")[0].strip()
                         )
-                    # Find the final cost proposed by the algorithm
+
+                # Find the final cost proposed by the algorithm
+                if runsum["results"][instance_name]["status"] not in (1, 3):
                     fcost = int(
                         content.partition("Solution cost:")[2]
                         .partition("\n")[0]
