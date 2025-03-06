@@ -1,11 +1,12 @@
 cmake_minimum_required(VERSION 3.20)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Enforce out-of-source build
-if ("${CMAKE_CURRENT_SOURCE_DIR}" STREQUAL "${CMAKE_CURRENT_BINARY_DIR}")
-    message(FATAL_ERROR "Please build the project from a build folder.\nCreate a separate build directory and run CMake from there:\n  mkdir build\n  cd build\n  cmake <build_options> ..\n\nYou may delete the CMakeCache.txt file and the CMakeFiles folder that has been created.\n" )
+if (CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
+    message(FATAL_ERROR "Out-of-source build required. Create a 'build' directory and run cmake from there.")
 endif()
 
 project(main)
@@ -16,7 +17,8 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # Compiler flags for release and debug builds
-set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -Ofast")
+add_compile_options(-Wall -Wextra -pedantic -Werror)
+set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3")
 set(CMAKE_CXX_FLAGS_DEBUG "-Og -ggdb")
 
 # Verbosity, warnings, and integrity checks
@@ -27,9 +29,19 @@ message(STATUS "WARN is set to ${WARN}")
 set(INTCHECK "0" CACHE STRING "Flag to enable integrity checks")
 message(STATUS "INTCHECK is set to ${INTCHECK}")
 
-# CPLEX directories
-set(CPLEX_DIR "/Applications/CPLEX_Studio2211/cplex/lib/arm64_osx/static_pic" CACHE STRING "Path to the CPLEX library")
-set(CPLEX_INCLUDE "/Applications/CPLEX_Studio2211/cplex/include/ilcplex" CACHE STRING "Path to the CPLEX headers")
+# Detect machine and set CPLEX paths accordingly
+if(EXISTS "/Applications/CPLEX_Studio2211/cplex/lib/arm64_osx/static_pic")                  # Mac Laptop
+    set(CPLEX_DIR "/Applications/CPLEX_Studio2211/cplex/lib/arm64_osx/static_pic")
+    set(CPLEX_INCLUDE "/Applications/CPLEX_Studio2211/cplex/include/ilcplex")
+elseif(EXISTS "/opt/ibm/ILOG/CPLEX_Studio2211/cplex/lib/x86-64_linux/static_pic")           # Linux PC
+    set(CPLEX_DIR "/opt/ibm/ILOG/CPLEX_Studio2211/cplex/lib/x86-64_linux/static_pic")
+    set(CPLEX_INCLUDE "/opt/ibm/ILOG/CPLEX_Studio2211/cplex/include/ilcplex")
+elseif(EXISTS "/nfsd/rop/sw/ibm/cos221/cplex/lib/x86-64_linux/static_pic")                  # Cluster DEI
+    set(CPLEX_DIR "/nfsd/rop/sw/ibm/cos221/cplex/lib/x86-64_linux/static_pic")
+    set(CPLEX_INCLUDE "/nfsd/rop/sw/ibm/cos221/cplex/include/ilcplex")
+else()
+    message(FATAL_ERROR "CPLEX directory not found on this machine. Please set CPLEX_DIR manually.")
+endif()
 
 if(NOT EXISTS ${CPLEX_DIR})
     message(FATAL_ERROR "Directory ${CPLEX_DIR} doesn't exist... Please set with -DCPLEX_DIR=<path> the correct path to CPLEX's static pic folder.")
@@ -38,17 +50,21 @@ if(NOT EXISTS ${CPLEX_INCLUDE})
     message(FATAL_ERROR "Directory ${CPLEX_INCLUDE} doesn't exist... Please set with -DCPLEX_INCLUDE=<path> the correct path to CPLEX's headers folder.")
 endif()
 
+message(STATUS "Using CPLEX_DIR: ${CPLEX_DIR}")
+message(STATUS "Using CPLEX_INCLUDE: ${CPLEX_INCLUDE}")
+
+include_directories(${CPLEX_INCLUDE_DIR})
+
 # Directory setup
 cmake_path(GET CMAKE_HOME_DIRECTORY PARENT_PATH HOME_DIR)
 set(LOGS_DIR "${HOME_DIR}/logs")
-set(CPXOUT_DIR "${LOGS_DIR}/cpxout")
-set(CPXLOG_DIR "${CPXOUT_DIR}/log")
-set(CPXLP_DIR "${CPXOUT_DIR}/lp")
-
-foreach(DIR ${LOGS_DIR} ${CPXOUT_DIR} ${CPXLOG_DIR} ${CPXLP_DIR} "${LOGS_DIR}/AAA_output_logs")
+foreach(DIR ${LOGS_DIR} ${LOGS_DIR}/cpxout ${LOGS_DIR}/cpxout/log ${LOGS_DIR}/cpxout/lp)
     if(NOT EXISTS ${DIR})
         file(MAKE_DIRECTORY ${DIR})
-        message(STATUS "Directory ${DIR} created.")
+        if(NOT EXISTS ${DIR})
+            message(FATAL_ERROR "Failed to create directory ${DIR}")
+        endif()
+        message(STATUS "Created directory: ${DIR}")
     endif()
 endforeach()
 
@@ -100,25 +116,13 @@ target_link_libraries(
     dl
 )
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    target_compile_options(hplus_instance PRIVATE -Wall -Wextra -pedantic -Werror)
-    target_compile_options(algorithms PRIVATE -Wall -Wextra -pedantic -Werror)
-    target_compile_options(main PRIVATE -Wall -Wextra -pedantic -Werror)
-endif()
-
 # Definitions
 add_definitions(-DHPLUS_HOME_DIR="${HOME_DIR}" -DHPLUS_VERBOSE=${VERBOSE} -DHPLUS_WARN=${WARN} -DHPLUS_INTCHECK=${INTCHECK})
 
 # Custom build targets
-add_custom_target(opt
-    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --config Release
-)
-
-add_custom_target(debug
-    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --config Debug
-)
+add_custom_target(opt COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --config Release)
+add_custom_target(debug COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --config Debug)
 
 add_custom_target(clear
     COMMAND rm -r ${CMAKE_HOME_DIRECTORY}/build/*
 )
-

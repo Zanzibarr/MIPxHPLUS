@@ -26,7 +26,7 @@ HOW I DO VERSIONING:
 -->
 
 
-## [1.1.0] - 2025/03/05
+## [1.1.0] - 2025/03/06
 ### Tested all features added in 1.0.*
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed
@@ -36,11 +36,16 @@ HOW I DO VERSIONING:
     - [~/code/test/code/results_jobs.py](code/test/code/results_jobs.py)
 - mypause method exiting on 0 instead of 1
     - [~/code/include/utils.hpp](code/include/utils.hpp)
-<!-- ### :heavy_exclamation_mark: Changed -->
+### :heavy_exclamation_mark: Changed
+- Better CMake file
+    - [~/code/CMakeLists.txt](code/CMakeLists.txt)
 ### :heavy_plus_sign: Added
 - Warnings flag to CMake
+    - [~/code/CMakeLists.txt](code/CMakeLists.txt)
 <!-- ### :x: Removed -->
-<!-- ### :curly_loop: Other -->
+### :curly_loop: Other
+- Using google style as clang-format configuration
+    - [~/.clang-format](.clang-format)
 
 
 ## [1.0.6] - 2025/03/04
