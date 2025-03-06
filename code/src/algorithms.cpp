@@ -401,9 +401,10 @@ static bool htype(const hplus::instance& inst, hplus::solution& sol,
     // 	double best_cxwe{ std::numeric_limits<double>::infinity() };
     // 	for (const auto& act_i : candidates) {
     // 		if (inst.act_t[act_i] >= 0 && static_cast<unsigned
-    // int>(inst.act_t[act_i]) == timestamp) 			return std::pair(true, act_i); 		if
-    // (inst.act_f[act_i]) { 			choice = act_i; 			best_cxwe = -1; 			found = true;
-    // 			continue;
+    // int>(inst.act_t[act_i]) == timestamp) 			return
+    // std::pair(true, act_i); 		if (inst.act_f[act_i]) {
+    // choice = act_i; 			best_cxwe = -1;
+    // found = true; 			continue;
     // 		}
 
     // 		if (best_cxwe < 0)
@@ -427,13 +428,13 @@ static bool htype(const hplus::instance& inst, hplus::solution& sol,
     // 		// if weighted_neff is 0 this means that all effects can be
     // archieved with 0 cost actions
     // 		// if this action is not a 0 cost one we don't want this action,
-    // otherwise we incourage it 		if (weighted_neff != 0) 			cxwe =
-    // static_cast<double>(inst.actions[act_i].cost) / weighted_neff; 		else if
-    // (inst.actions[act_i].cost == 0) 			cxwe = 0;
+    // otherwise we incourage it 		if (weighted_neff != 0)
+    // cxwe = static_cast<double>(inst.actions[act_i].cost) / weighted_neff;
+    // else if (inst.actions[act_i].cost == 0) 			cxwe = 0;
 
     // 		// if all actions have weighted_neff at 0, there must be at
     // least one 0 action cost that we can use, hence the best_cxwe is updated
-    // at least once 		if (cxwe >= best_cxwe) 			continue;
+    // at least once 		if (cxwe >= best_cxwe) continue;
 
     // 		choice = act_i;
     // 		best_cxwe = cxwe;

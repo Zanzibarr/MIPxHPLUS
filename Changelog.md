@@ -25,7 +25,6 @@ HOW I DO VERSIONING:
 ### :curly_loop: Other
 -->
 
-
 ## [1.1.0] - 2025/03/06
 ### Tested all features added in 1.0.*
 <!-- ### :warning: Known issues -->
@@ -39,9 +38,7 @@ HOW I DO VERSIONING:
 ### :heavy_exclamation_mark: Changed
 - Better CMake file
     - [~/code/CMakeLists.txt](code/CMakeLists.txt)
-### :heavy_plus_sign: Added
-- Warnings flag to CMake
-    - [~/code/CMakeLists.txt](code/CMakeLists.txt)
+<!-- ### :heavy_plus_sign: Added -->
 <!-- ### :x: Removed -->
 ### :curly_loop: Other
 - Using google style as clang-format configuration

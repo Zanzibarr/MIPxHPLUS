@@ -17,9 +17,12 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # Compiler flags for release and debug builds
-add_compile_options(-Wall -Wextra -pedantic -Werror)
 set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3")
 set(CMAKE_CXX_FLAGS_DEBUG "-Og -ggdb")
+set(COMPILEWARNS OFF CACHE BOOL "Flag to enable compile warnings")
+if(COMPILEWARNS)
+    add_compile_options(-Wall -Wextra -pedantic -Werror)
+endif()
 
 # Verbosity, warnings, and integrity checks
 set(VERBOSE "5" CACHE STRING "Verbose setting set from command line")
