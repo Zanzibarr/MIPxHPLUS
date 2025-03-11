@@ -25,7 +25,7 @@ HOW I DO VERSIONING:
 ### :curly_loop: Other
 -->
 
-## [1.1.0] - 2025/03/06
+## [1.1.0] - 2025/03/11
 ### Tested all features added in 1.0.*
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed

@@ -106,10 +106,8 @@ inline std::string::size_type Glyphs(const std::string& string_) {
  * \return the vector of lines
  */
 template <typename It>
-inline std::vector<std::string> Wrap(
-    It begin, It end, const std::string::size_type width,
-    std::string::size_type firstlinewidth = 0,
-    std::string::size_type firstlineindent = 0) {
+inline std::vector<std::string> Wrap(It begin, It end, const std::string::size_type width, std::string::size_type firstlinewidth = 0,
+                                     std::string::size_type firstlineindent = 0) {
     std::vector<std::string> output;
     std::string line(firstlineindent, ' ');
     bool empty = true;
@@ -189,17 +187,13 @@ std::string Join(const T& array, const std::string& delimiter) {
  * body
  * \return the vector of lines
  */
-inline std::vector<std::string> Wrap(
-    const std::string& in, const std::string::size_type width,
-    std::string::size_type firstlinewidth = 0) {
+inline std::vector<std::string> Wrap(const std::string& in, const std::string::size_type width, std::string::size_type firstlinewidth = 0) {
     // Preserve existing line breaks
     const auto newlineloc = in.find('\n');
     if (newlineloc != in.npos) {
         auto first = Wrap(std::string(in, 0, newlineloc), width);
         auto second = Wrap(std::string(in, newlineloc + 1), width);
-        first.insert(std::end(first),
-                     std::make_move_iterator(std::begin(second)),
-                     std::make_move_iterator(std::end(second)));
+        first.insert(std::end(first), std::make_move_iterator(std::begin(second)), std::make_move_iterator(std::end(second)));
         return first;
     }
 
@@ -213,9 +207,7 @@ inline std::vector<std::string> Wrap(
         ++indent;
     }
 
-    return Wrap(std::istream_iterator<std::string>(stream),
-                std::istream_iterator<std::string>(), width, firstlinewidth,
-                indent);
+    return Wrap(std::istream_iterator<std::string>(stream), std::istream_iterator<std::string>(), width, firstlinewidth, indent);
 }
 
 #ifdef ARGS_NOEXCEPT
@@ -322,16 +314,13 @@ struct EitherFlag {
     const bool isShort;
     const char shortFlag;
     const std::string longFlag;
-    EitherFlag(const std::string& flag)
-        : isShort(false), shortFlag(), longFlag(flag) {}
-    EitherFlag(const char* flag)
-        : isShort(false), shortFlag(), longFlag(flag) {}
+    EitherFlag(const std::string& flag) : isShort(false), shortFlag(), longFlag(flag) {}
+    EitherFlag(const char* flag) : isShort(false), shortFlag(), longFlag(flag) {}
     EitherFlag(const char flag) : isShort(true), shortFlag(flag), longFlag() {}
 
     /** Get just the long flags from an initializer list of EitherFlags
      */
-    static std::unordered_set<std::string> GetLong(
-        std::initializer_list<EitherFlag> flags) {
+    static std::unordered_set<std::string> GetLong(std::initializer_list<EitherFlag> flags) {
         std::unordered_set<std::string> longFlags;
         for (const EitherFlag& flag : flags) {
             if (!flag.isShort) {
@@ -343,8 +332,7 @@ struct EitherFlag {
 
     /** Get just the short flags from an initializer list of EitherFlags
      */
-    static std::unordered_set<char> GetShort(
-        std::initializer_list<EitherFlag> flags) {
+    static std::unordered_set<char> GetShort(std::initializer_list<EitherFlag> flags) {
         std::unordered_set<char> shortFlags;
         for (const EitherFlag& flag : flags) {
             if (flag.isShort) {
@@ -354,14 +342,10 @@ struct EitherFlag {
         return shortFlags;
     }
 
-    std::string str() const {
-        return isShort ? std::string(1, shortFlag) : longFlag;
-    }
+    std::string str() const { return isShort ? std::string(1, shortFlag) : longFlag; }
 
-    std::string str(const std::string& shortPrefix,
-                    const std::string& longPrefix) const {
-        return isShort ? shortPrefix + std::string(1, shortFlag)
-                       : longPrefix + longFlag;
+    std::string str(const std::string& shortPrefix, const std::string& longPrefix) const {
+        return isShort ? shortPrefix + std::string(1, shortFlag) : longPrefix + longFlag;
     }
 };
 
@@ -383,10 +367,8 @@ class Matcher {
      * longFlags.begin(), longFlags.end())`
      */
     template <typename ShortIt, typename LongIt>
-    Matcher(ShortIt shortFlagsStart, ShortIt shortFlagsEnd,
-            LongIt longFlagsStart, LongIt longFlagsEnd)
-        : shortFlags(shortFlagsStart, shortFlagsEnd),
-          longFlags(longFlagsStart, longFlagsEnd) {
+    Matcher(ShortIt shortFlagsStart, ShortIt shortFlagsEnd, LongIt longFlagsStart, LongIt longFlagsEnd)
+        : shortFlags(shortFlagsStart, shortFlagsEnd), longFlags(longFlagsStart, longFlagsEnd) {
         if (shortFlags.empty() && longFlags.empty()) {
 #ifndef ARGS_NOEXCEPT
             throw UsageError("empty Matcher");
@@ -396,10 +378,7 @@ class Matcher {
 
 #ifdef ARGS_NOEXCEPT
     /// Only for ARGS_NOEXCEPT
-    Error GetError() const noexcept {
-        return shortFlags.empty() && longFlags.empty() ? Error::Usage
-                                                       : Error::None;
-    }
+    Error GetError() const noexcept { return shortFlags.empty() && longFlags.empty() ? Error::Usage : Error::None; }
 #endif
 
     /** Specify short and long flags separately as iterables
@@ -407,9 +386,7 @@ class Matcher {
      * ex: `args::Matcher(shortFlags, longFlags)`
      */
     template <typename Short, typename Long>
-    Matcher(Short&& shortIn, Long&& longIn)
-        : Matcher(std::begin(shortIn), std::end(shortIn), std::begin(longIn),
-                  std::end(longIn)) {}
+    Matcher(Short&& shortIn, Long&& longIn) : Matcher(std::begin(shortIn), std::end(shortIn), std::begin(longIn), std::end(longIn)) {}
 
     /** Specify a mixed single initializer-list of both short and long flags
      *
@@ -423,32 +400,23 @@ class Matcher {
      *     args::Matcher{'h', "help"}
      *     args::Matcher{"foo", 'f', 'F', "FoO"}
      */
-    Matcher(std::initializer_list<EitherFlag> in)
-        : Matcher(EitherFlag::GetShort(in), EitherFlag::GetLong(in)) {}
+    Matcher(std::initializer_list<EitherFlag> in) : Matcher(EitherFlag::GetShort(in), EitherFlag::GetLong(in)) {}
 
-    Matcher(Matcher&& other) noexcept
-        : shortFlags(std::move(other.shortFlags)),
-          longFlags(std::move(other.longFlags)) {}
+    Matcher(Matcher&& other) noexcept : shortFlags(std::move(other.shortFlags)), longFlags(std::move(other.longFlags)) {}
 
     ~Matcher() {}
 
     /** (INTERNAL) Check if there is a match of a short flag
      */
-    bool Match(const char flag) const {
-        return shortFlags.find(flag) != shortFlags.end();
-    }
+    bool Match(const char flag) const { return shortFlags.find(flag) != shortFlags.end(); }
 
     /** (INTERNAL) Check if there is a match of a long flag
      */
-    bool Match(const std::string& flag) const {
-        return longFlags.find(flag) != longFlags.end();
-    }
+    bool Match(const std::string& flag) const { return longFlags.find(flag) != longFlags.end(); }
 
     /** (INTERNAL) Check if there is a match of a flag
      */
-    bool Match(const EitherFlag& flag) const {
-        return flag.isShort ? Match(flag.shortFlag) : Match(flag.longFlag);
-    }
+    bool Match(const EitherFlag& flag) const { return flag.isShort ? Match(flag.shortFlag) : Match(flag.longFlag); }
 
     /** (INTERNAL) Get all flag strings as a vector, with the prefixes embedded
      */
@@ -535,13 +503,9 @@ enum class Options {
     Hidden = HiddenFromUsage | HiddenFromDescription | HiddenFromCompletion,
 };
 
-inline Options operator|(Options lhs, Options rhs) {
-    return static_cast<Options>(static_cast<int>(lhs) | static_cast<int>(rhs));
-}
+inline Options operator|(Options lhs, Options rhs) { return static_cast<Options>(static_cast<int>(lhs) | static_cast<int>(rhs)); }
 
-inline Options operator&(Options lhs, Options rhs) {
-    return static_cast<Options>(static_cast<int>(lhs) & static_cast<int>(rhs));
-}
+inline Options operator&(Options lhs, Options rhs) { return static_cast<Options>(static_cast<int>(lhs) & static_cast<int>(rhs)); }
 
 class FlagBase;
 class PositionalBase;
@@ -722,13 +686,9 @@ struct Nargs {
 
     Nargs(size_t num_) : min{num_}, max{num_} {}
 
-    friend bool operator==(const Nargs& lhs, const Nargs& rhs) {
-        return lhs.min == rhs.min && lhs.max == rhs.max;
-    }
+    friend bool operator==(const Nargs& lhs, const Nargs& rhs) { return lhs.min == rhs.min && lhs.max == rhs.max; }
 
-    friend bool operator!=(const Nargs& lhs, const Nargs& rhs) {
-        return !(lhs == rhs);
-    }
+    friend bool operator!=(const Nargs& lhs, const Nargs& rhs) { return !(lhs == rhs); }
 };
 
 /** Base class for all match types
@@ -747,15 +707,12 @@ class Base {
 #endif
 
    public:
-    Base(const std::string& help_, Options options_ = {})
-        : options(options_), help(help_) {}
+    Base(const std::string& help_, Options options_ = {}) : options(options_), help(help_) {}
     virtual ~Base() {}
 
     Options GetOptions() const noexcept { return options; }
 
-    bool IsRequired() const noexcept {
-        return (GetOptions() & Options::Required) != Options::None;
-    }
+    bool IsRequired() const noexcept { return (GetOptions() & Options::Required) != Options::None; }
 
     virtual bool Matched() const noexcept { return matched; }
 
@@ -763,8 +720,7 @@ class Base {
 
     operator bool() const noexcept { return Matched(); }
 
-    virtual std::vector<std::tuple<std::string, std::string, unsigned>>
-    GetDescription(const HelpParams&, const unsigned indentLevel) const {
+    virtual std::vector<std::tuple<std::string, std::string, unsigned>> GetDescription(const HelpParams&, const unsigned indentLevel) const {
         std::tuple<std::string, std::string, unsigned> description;
         std::get<1>(description) = help;
         std::get<2>(description) = indentLevel;
@@ -787,24 +743,19 @@ class Base {
 
     virtual bool HasCommand() const { return false; }
 
-    virtual std::vector<std::string> GetProgramLine(const HelpParams&) const {
-        return {};
-    }
+    virtual std::vector<std::string> GetProgramLine(const HelpParams&) const { return {}; }
 
     /// Sets a kick-out value for building subparsers
     void KickOut(bool kickout_) noexcept {
         if (kickout_) {
             options = options | Options::KickOut;
         } else {
-            options = static_cast<Options>(static_cast<int>(options) &
-                                           ~static_cast<int>(Options::KickOut));
+            options = static_cast<Options>(static_cast<int>(options) & ~static_cast<int>(Options::KickOut));
         }
     }
 
     /// Gets the kick-out value for building subparsers
-    bool KickOut() const noexcept {
-        return (options & Options::KickOut) != Options::None;
-    }
+    bool KickOut() const noexcept { return (options & Options::KickOut) != Options::None; }
 
     virtual void Reset() noexcept {
         matched = false;
@@ -836,18 +787,11 @@ class NamedBase : public Base {
 
     virtual std::string GetDefaultString(const HelpParams&) const { return {}; }
 
-    virtual std::vector<std::string> GetChoicesStrings(
-        const HelpParams&) const {
-        return {};
-    }
+    virtual std::vector<std::string> GetChoicesStrings(const HelpParams&) const { return {}; }
 
-    virtual std::string GetNameString(const HelpParams&) const {
-        return Name();
-    }
+    virtual std::string GetNameString(const HelpParams&) const { return Name(); }
 
-    void AddDescriptionPostfix(std::string& dest, const bool isManual,
-                               const std::string& manual, bool isGenerated,
-                               const std::string& generated,
+    void AddDescriptionPostfix(std::string& dest, const bool isManual, const std::string& manual, bool isGenerated, const std::string& generated,
                                const std::string& str) const {
         if (isManual && !manual.empty()) {
             dest += str;
@@ -859,9 +803,7 @@ class NamedBase : public Base {
     }
 
    public:
-    NamedBase(const std::string& name_, const std::string& help_,
-              Options options_ = {})
-        : Base(help_, options_), name(name_) {}
+    NamedBase(const std::string& name_, const std::string& help_, Options options_ = {}) : Base(help_, options_), name(name_) {}
     virtual ~NamedBase() {}
 
     /** Sets default value string that will be added to argument description.
@@ -874,9 +816,7 @@ class NamedBase : public Base {
 
     /** Gets default value string that will be added to argument description.
      */
-    std::string HelpDefault(const HelpParams& params) const {
-        return defaultStringManual ? defaultString : GetDefaultString(params);
-    }
+    std::string HelpDefault(const HelpParams& params) const { return defaultStringManual ? defaultString : GetDefaultString(params); }
 
     /** Sets choices strings that will be added to argument description.
      *  Use empty vector to disable it for this argument.
@@ -888,25 +828,19 @@ class NamedBase : public Base {
 
     /** Gets choices strings that will be added to argument description.
      */
-    std::vector<std::string> HelpChoices(const HelpParams& params) const {
-        return choicesStringManual ? choicesStrings : GetChoicesStrings(params);
-    }
+    std::vector<std::string> HelpChoices(const HelpParams& params) const { return choicesStringManual ? choicesStrings : GetChoicesStrings(params); }
 
-    virtual std::vector<std::tuple<std::string, std::string, unsigned>>
-    GetDescription(const HelpParams& params,
-                   const unsigned indentLevel) const override {
+    virtual std::vector<std::tuple<std::string, std::string, unsigned>> GetDescription(const HelpParams& params,
+                                                                                       const unsigned indentLevel) const override {
         std::tuple<std::string, std::string, unsigned> description;
         std::get<0>(description) = GetNameString(params);
         std::get<1>(description) = help;
         std::get<2>(description) = indentLevel;
 
-        AddDescriptionPostfix(
-            std::get<1>(description), choicesStringManual,
-            detail::Join(choicesStrings, ", "), params.addChoices,
-            detail::Join(GetChoicesStrings(params), ", "), params.choiceString);
-        AddDescriptionPostfix(std::get<1>(description), defaultStringManual,
-                              defaultString, params.addDefault,
-                              GetDefaultString(params), params.defaultString);
+        AddDescriptionPostfix(std::get<1>(description), choicesStringManual, detail::Join(choicesStrings, ", "), params.addChoices,
+                              detail::Join(GetChoicesStrings(params), ", "), params.choiceString);
+        AddDescriptionPostfix(std::get<1>(description), defaultStringManual, defaultString, params.addDefault, GetDefaultString(params),
+                              params.defaultString);
 
         return {std::move(description)};
     }
@@ -919,14 +853,12 @@ template <typename T>
 using vector = std::vector<T, std::allocator<T>>;
 
 template <typename K, typename T>
-using unordered_map = std::unordered_map<K, T, std::hash<K>, std::equal_to<K>,
-                                         std::allocator<std::pair<const K, T>>>;
+using unordered_map = std::unordered_map<K, T, std::hash<K>, std::equal_to<K>, std::allocator<std::pair<const K, T>>>;
 
 template <typename S, typename T>
 class is_streamable {
     template <typename SS, typename TT>
-    static auto test(int) -> decltype(std::declval<SS&>() << std::declval<TT>(),
-                                      std::true_type());
+    static auto test(int) -> decltype(std::declval<SS&>() << std::declval<TT>(), std::true_type());
 
     template <typename, typename>
     static auto test(...) -> std::false_type;
@@ -936,20 +868,17 @@ class is_streamable {
 };
 
 template <typename T>
-using IsConvertableToString =
-    typename is_streamable<std::ostringstream, T>::type;
+using IsConvertableToString = typename is_streamable<std::ostringstream, T>::type;
 
 template <typename T>
-typename std::enable_if<IsConvertableToString<T>::value, std::string>::type
-ToString(const T& value) {
+typename std::enable_if<IsConvertableToString<T>::value, std::string>::type ToString(const T& value) {
     std::ostringstream s;
     s << value;
     return s.str();
 }
 
 template <typename T>
-typename std::enable_if<!IsConvertableToString<T>::value, std::string>::type
-ToString(const T&) {
+typename std::enable_if<!IsConvertableToString<T>::value, std::string>::type ToString(const T&) {
     return {};
 }
 
@@ -975,13 +904,10 @@ class FlagBase : public NamedBase {
     const Matcher matcher;
 
     virtual std::string GetNameString(const HelpParams& params) const override {
-        const std::string postfix =
-            !params.showValueName || NumberOfArguments() == 0 ? std::string()
-                                                              : Name();
+        const std::string postfix = !params.showValueName || NumberOfArguments() == 0 ? std::string() : Name();
         std::string flags;
         const auto flagStrings = matcher.GetFlagStrings();
-        const bool useValueNameOnce =
-            flagStrings.size() == 1 ? false : params.useValueNameOnce;
+        const bool useValueNameOnce = flagStrings.size() == 1 ? false : params.useValueNameOnce;
         for (auto it = flagStrings.begin(); it != flagStrings.end(); ++it) {
             auto& flag = *it;
             if (it != flagStrings.begin()) {
@@ -991,10 +917,8 @@ class FlagBase : public NamedBase {
             flags += flag.isShort ? params.shortPrefix : params.longPrefix;
             flags += flag.str();
 
-            if (!postfix.empty() &&
-                (!useValueNameOnce || it + 1 == flagStrings.end())) {
-                flags +=
-                    flag.isShort ? params.shortSeparator : params.longSeparator;
+            if (!postfix.empty() && (!useValueNameOnce || it + 1 == flagStrings.end())) {
+                flags += flag.isShort ? params.shortSeparator : params.longSeparator;
                 flags += params.valueOpen + postfix + params.valueClose;
             }
         }
@@ -1003,13 +927,10 @@ class FlagBase : public NamedBase {
     }
 
    public:
-    FlagBase(const std::string& name_, const std::string& help_,
-             Matcher&& matcher_, const bool extraError_ = false)
-        : NamedBase(name_, help_, extraError_ ? Options::Single : Options()),
-          matcher(std::move(matcher_)) {}
+    FlagBase(const std::string& name_, const std::string& help_, Matcher&& matcher_, const bool extraError_ = false)
+        : NamedBase(name_, help_, extraError_ ? Options::Single : Options()), matcher(std::move(matcher_)) {}
 
-    FlagBase(const std::string& name_, const std::string& help_,
-             Matcher&& matcher_, Options options_)
+    FlagBase(const std::string& name_, const std::string& help_, Matcher&& matcher_, Options options_)
         : NamedBase(name_, help_, options_), matcher(std::move(matcher_)) {}
 
     virtual ~FlagBase() {}
@@ -1018,10 +939,9 @@ class FlagBase : public NamedBase {
         if (matcher.Match(flag)) {
             if ((GetOptions() & Options::Single) != Options::None && matched) {
                 std::ostringstream problem;
-                problem
-                    << "Flag '" << flag.str()
-                    << "' was passed multiple times, but is only allowed to be "
-                       "passed once";
+                problem << "Flag '" << flag.str()
+                        << "' was passed multiple times, but is only allowed to be "
+                           "passed once";
 #ifdef ARGS_NOEXCEPT
                 error = Error::Extra;
                 errorMsg = problem.str();
@@ -1039,13 +959,10 @@ class FlagBase : public NamedBase {
 
     const Matcher& GetMatcher() const { return matcher; }
 
-    virtual void Validate(const std::string& shortPrefix,
-                          const std::string& longPrefix) const override {
+    virtual void Validate(const std::string& shortPrefix, const std::string& longPrefix) const override {
         if (!Matched() && IsRequired()) {
             std::ostringstream problem;
-            problem << "Flag '"
-                    << matcher.GetLongOrAny().str(shortPrefix, longPrefix)
-                    << "' is required";
+            problem << "Flag '" << matcher.GetLongOrAny().str(shortPrefix, longPrefix) << "' is required";
 #ifdef ARGS_NOEXCEPT
             error = Error::Required;
             errorMsg = problem.str();
@@ -1055,27 +972,20 @@ class FlagBase : public NamedBase {
         }
     }
 
-    virtual std::vector<std::string> GetProgramLine(
-        const HelpParams& params) const override {
+    virtual std::vector<std::string> GetProgramLine(const HelpParams& params) const override {
         if (!params.proglineShowFlags) {
             return {};
         }
 
-        const std::string postfix =
-            NumberOfArguments() == 0 ? std::string() : Name();
-        const EitherFlag flag = params.proglinePreferShortFlags
-                                    ? matcher.GetShortOrAny()
-                                    : matcher.GetLongOrAny();
+        const std::string postfix = NumberOfArguments() == 0 ? std::string() : Name();
+        const EitherFlag flag = params.proglinePreferShortFlags ? matcher.GetShortOrAny() : matcher.GetLongOrAny();
         std::string res = flag.str(params.shortPrefix, params.longPrefix);
         if (!postfix.empty()) {
-            res +=
-                params.proglineValueOpen + postfix + params.proglineValueClose;
+            res += params.proglineValueOpen + postfix + params.proglineValueClose;
         }
 
-        return {IsRequired() ? params.proglineRequiredOpen + res +
-                                   params.proglineRequiredClose
-                             : params.proglineNonrequiredOpen + res +
-                                   params.proglineNonrequiredClose};
+        return {IsRequired() ? params.proglineRequiredOpen + res + params.proglineRequiredClose
+                             : params.proglineNonrequiredOpen + res + params.proglineNonrequiredClose};
     }
 
     virtual bool HasFlag() const override { return true; }
@@ -1115,11 +1025,9 @@ class FlagBase : public NamedBase {
  */
 class ValueFlagBase : public FlagBase {
    public:
-    ValueFlagBase(const std::string& name_, const std::string& help_,
-                  Matcher&& matcher_, const bool extraError_ = false)
+    ValueFlagBase(const std::string& name_, const std::string& help_, Matcher&& matcher_, const bool extraError_ = false)
         : FlagBase(name_, help_, std::move(matcher_), extraError_) {}
-    ValueFlagBase(const std::string& name_, const std::string& help_,
-                  Matcher&& matcher_, Options options_)
+    ValueFlagBase(const std::string& name_, const std::string& help_, Matcher&& matcher_, Options options_)
         : FlagBase(name_, help_, std::move(matcher_), options_) {}
     virtual ~ValueFlagBase() {}
 
@@ -1133,9 +1041,7 @@ class CompletionFlag : public ValueFlagBase {
     std::string syntax;
 
     template <typename GroupClass>
-    CompletionFlag(GroupClass& group_, Matcher&& matcher_)
-        : ValueFlagBase("completion", "completion flag", std::move(matcher_),
-                        Options::Hidden) {
+    CompletionFlag(GroupClass& group_, Matcher&& matcher_) : ValueFlagBase("completion", "completion flag", std::move(matcher_), Options::Hidden) {
         group_.AddCompletion(*this);
     }
 
@@ -1167,9 +1073,7 @@ class PositionalBase : public NamedBase {
     bool ready;
 
    public:
-    PositionalBase(const std::string& name_, const std::string& help_,
-                   Options options_ = {})
-        : NamedBase(name_, help_, options_), ready(true) {}
+    PositionalBase(const std::string& name_, const std::string& help_, Options options_ = {}) : NamedBase(name_, help_, options_), ready(true) {}
     virtual ~PositionalBase() {}
 
     bool Ready() { return ready; }
@@ -1185,22 +1089,16 @@ class PositionalBase : public NamedBase {
 #endif
     }
 
-    virtual PositionalBase* GetNextPositional() override {
-        return Ready() ? this : nullptr;
-    }
+    virtual PositionalBase* GetNextPositional() override { return Ready() ? this : nullptr; }
 
     virtual bool HasPositional() const override { return true; }
 
-    virtual std::vector<std::string> GetProgramLine(
-        const HelpParams& params) const override {
-        return {IsRequired() ? params.proglineRequiredOpen + Name() +
-                                   params.proglineRequiredClose
-                             : params.proglineNonrequiredOpen + Name() +
-                                   params.proglineNonrequiredClose};
+    virtual std::vector<std::string> GetProgramLine(const HelpParams& params) const override {
+        return {IsRequired() ? params.proglineRequiredOpen + Name() + params.proglineRequiredClose
+                             : params.proglineNonrequiredOpen + Name() + params.proglineNonrequiredClose};
     }
 
-    virtual void Validate(const std::string&,
-                          const std::string&) const override {
+    virtual void Validate(const std::string&, const std::string&) const override {
         if (IsRequired() && !Matched()) {
             std::ostringstream problem;
             problem << "Option '" << Name() << "' is required";
@@ -1225,52 +1123,32 @@ class Group : public Base {
     /** Default validators
      */
     struct Validators {
-        static bool Xor(const Group& group) {
-            return group.MatchedChildren() == 1;
-        }
+        static bool Xor(const Group& group) { return group.MatchedChildren() == 1; }
 
-        static bool AtLeastOne(const Group& group) {
-            return group.MatchedChildren() >= 1;
-        }
+        static bool AtLeastOne(const Group& group) { return group.MatchedChildren() >= 1; }
 
-        static bool AtMostOne(const Group& group) {
-            return group.MatchedChildren() <= 1;
-        }
+        static bool AtMostOne(const Group& group) { return group.MatchedChildren() <= 1; }
 
-        static bool All(const Group& group) {
-            return group.Children().size() == group.MatchedChildren();
-        }
+        static bool All(const Group& group) { return group.Children().size() == group.MatchedChildren(); }
 
-        static bool AllOrNone(const Group& group) {
-            return (All(group) || None(group));
-        }
+        static bool AllOrNone(const Group& group) { return (All(group) || None(group)); }
 
         static bool AllChildGroups(const Group& group) {
-            return std::none_of(
-                std::begin(group.Children()), std::end(group.Children()),
-                [](const Base* child) -> bool {
-                    return child->IsGroup() && !child->Matched();
-                });
+            return std::none_of(std::begin(group.Children()), std::end(group.Children()),
+                                [](const Base* child) -> bool { return child->IsGroup() && !child->Matched(); });
         }
 
         static bool DontCare(const Group&) { return true; }
 
         static bool CareTooMuch(const Group&) { return false; }
 
-        static bool None(const Group& group) {
-            return group.MatchedChildren() == 0;
-        }
+        static bool None(const Group& group) { return group.MatchedChildren() == 0; }
     };
     /// If help is empty, this group will not be printed in help output
-    Group(const std::string& help_ = std::string(),
-          const std::function<bool(const Group&)>& validator_ =
-              Validators::DontCare,
-          Options options_ = {})
+    Group(const std::string& help_ = std::string(), const std::function<bool(const Group&)>& validator_ = Validators::DontCare, Options options_ = {})
         : Base(help_, options_), validator(validator_) {}
     /// If help is empty, this group will not be printed in help output
-    Group(Group& group_, const std::string& help_ = std::string(),
-          const std::function<bool(const Group&)>& validator_ =
-              Validators::DontCare,
+    Group(Group& group_, const std::string& help_ = std::string(), const std::function<bool(const Group&)>& validator_ = Validators::DontCare,
           Options options_ = {})
         : Base(help_, options_), validator(validator_) {
         group_.Add(*this);
@@ -1309,8 +1187,7 @@ class Group : public Base {
         return res;
     }
 
-    virtual void Validate(const std::string& shortPrefix,
-                          const std::string& longPrefix) const override {
+    virtual void Validate(const std::string& shortPrefix, const std::string& longPrefix) const override {
         for (Base* child : Children()) {
             child->Validate(shortPrefix, longPrefix);
         }
@@ -1335,8 +1212,7 @@ class Group : public Base {
      * \return Whether or not there are any FlagBase children
      */
     virtual bool HasFlag() const override {
-        return std::any_of(Children().begin(), Children().end(),
-                           [](Base* child) { return child->HasFlag(); });
+        return std::any_of(Children().begin(), Children().end(), [](Base* child) { return child->HasFlag(); });
     }
 
     /** Get whether this has any PositionalBase children
@@ -1344,8 +1220,7 @@ class Group : public Base {
      * \return Whether or not there are any PositionalBase children
      */
     virtual bool HasPositional() const override {
-        return std::any_of(Children().begin(), Children().end(),
-                           [](Base* child) { return child->HasPositional(); });
+        return std::any_of(Children().begin(), Children().end(), [](Base* child) { return child->HasPositional(); });
     }
 
     /** Get whether this has any Command children
@@ -1353,8 +1228,7 @@ class Group : public Base {
      * \return Whether or not there are any Command children
      */
     virtual bool HasCommand() const override {
-        return std::any_of(Children().begin(), Children().end(),
-                           [](Base* child) { return child->HasCommand(); });
+        return std::any_of(Children().begin(), Children().end(), [](Base* child) { return child->HasCommand(); });
     }
 
     /** Count the number of matched children this group has
@@ -1362,8 +1236,7 @@ class Group : public Base {
     std::vector<Base*>::size_type MatchedChildren() const {
         // Cast to avoid warnings from -Wsign-conversion
         return static_cast<std::vector<Base*>::size_type>(
-            std::count_if(std::begin(Children()), std::end(Children()),
-                          [](const Base* child) { return child->Matched(); }));
+            std::count_if(std::begin(Children()), std::end(Children()), [](const Base* child) { return child->Matched(); }));
     }
 
     /** Whether or not this group matches validation
@@ -1376,11 +1249,9 @@ class Group : public Base {
 
     /** Get all the child descriptions for help generation
      */
-    virtual std::vector<std::tuple<std::string, std::string, unsigned>>
-    GetDescription(const HelpParams& params,
-                   const unsigned int indent) const override {
-        std::vector<std::tuple<std::string, std::string, unsigned int>>
-            descriptions;
+    virtual std::vector<std::tuple<std::string, std::string, unsigned>> GetDescription(const HelpParams& params,
+                                                                                       const unsigned int indent) const override {
+        std::vector<std::tuple<std::string, std::string, unsigned int>> descriptions;
 
         // Push that group description on the back if not empty
         unsigned addindent = 0;
@@ -1390,36 +1261,28 @@ class Group : public Base {
         }
 
         for (Base* child : Children()) {
-            if ((child->GetOptions() & Options::HiddenFromDescription) !=
-                Options::None) {
+            if ((child->GetOptions() & Options::HiddenFromDescription) != Options::None) {
                 continue;
             }
 
-            auto groupDescriptions =
-                child->GetDescription(params, indent + addindent);
-            descriptions.insert(
-                std::end(descriptions),
-                std::make_move_iterator(std::begin(groupDescriptions)),
-                std::make_move_iterator(std::end(groupDescriptions)));
+            auto groupDescriptions = child->GetDescription(params, indent + addindent);
+            descriptions.insert(std::end(descriptions), std::make_move_iterator(std::begin(groupDescriptions)),
+                                std::make_move_iterator(std::end(groupDescriptions)));
         }
         return descriptions;
     }
 
     /** Get the names of positional parameters
      */
-    virtual std::vector<std::string> GetProgramLine(
-        const HelpParams& params) const override {
+    virtual std::vector<std::string> GetProgramLine(const HelpParams& params) const override {
         std::vector<std::string> names;
         for (Base* child : Children()) {
-            if ((child->GetOptions() & Options::HiddenFromUsage) !=
-                Options::None) {
+            if ((child->GetOptions() & Options::HiddenFromUsage) != Options::None) {
                 continue;
             }
 
             auto groupNames = child->GetProgramLine(params);
-            names.insert(std::end(names),
-                         std::make_move_iterator(std::begin(groupNames)),
-                         std::make_move_iterator(std::end(groupNames)));
+            names.insert(std::end(names), std::make_move_iterator(std::begin(groupNames)), std::make_move_iterator(std::end(groupNames)));
         }
         return names;
     }
@@ -1428,8 +1291,7 @@ class Group : public Base {
         std::vector<Command*> res;
         for (const auto& child : Children()) {
             auto subparsers = child->GetCommands();
-            res.insert(std::end(res), std::begin(subparsers),
-                       std::end(subparsers));
+            res.insert(std::end(res), std::begin(subparsers), std::end(subparsers));
         }
         return res;
     }
@@ -1455,9 +1317,7 @@ class Group : public Base {
             return error;
         }
 
-        auto it = std::find_if(
-            Children().begin(), Children().end(),
-            [](const Base* child) { return child->GetError() != Error::None; });
+        auto it = std::find_if(Children().begin(), Children().end(), [](const Base* child) { return child->GetError() != Error::None; });
         if (it == Children().end()) {
             return Error::None;
         } else {
@@ -1471,9 +1331,7 @@ class Group : public Base {
             return errorMsg;
         }
 
-        auto it = std::find_if(
-            Children().begin(), Children().end(),
-            [](const Base* child) { return child->GetError() != Error::None; });
+        auto it = std::find_if(Children().begin(), Children().end(), [](const Base* child) { return child->GetError() != Error::None; });
         if (it == Children().end()) {
             return "";
         } else {
@@ -1487,10 +1345,7 @@ class Group : public Base {
  */
 class GlobalOptions : public Group {
    public:
-    GlobalOptions(Group& base, Base& options_)
-        : Group(base, {}, Group::Validators::DontCare, Options::Global) {
-        Add(options_);
-    }
+    GlobalOptions(Group& base, Base& options_) : Group(base, {}, Group::Validators::DontCare, Options::Global) { Add(options_); }
 };
 
 /** Utility class for building subparsers with coroutines/callbacks.
@@ -1521,18 +1376,11 @@ class Subparser : public Group {
     bool isParsed = false;
 
    public:
-    Subparser(std::vector<std::string> args_, ArgumentParser& parser_,
-              const Command& command_, const HelpParams& helpParams_)
-        : Group({}, Validators::AllChildGroups),
-          args(std::move(args_)),
-          parser(&parser_),
-          helpParams(helpParams_),
-          command(command_) {}
+    Subparser(std::vector<std::string> args_, ArgumentParser& parser_, const Command& command_, const HelpParams& helpParams_)
+        : Group({}, Validators::AllChildGroups), args(std::move(args_)), parser(&parser_), helpParams(helpParams_), command(command_) {}
 
     Subparser(const Command& command_, const HelpParams& helpParams_)
-        : Group({}, Validators::AllChildGroups),
-          helpParams(helpParams_),
-          command(command_) {}
+        : Group({}, Validators::AllChildGroups), helpParams(helpParams_), command(command_) {}
 
     Subparser(const Subparser&) = delete;
     Subparser(Subparser&&) = delete;
@@ -1553,9 +1401,7 @@ class Subparser : public Group {
      *
      * \sa Base::KickOut
      */
-    const std::vector<std::string>& KickedOut() const noexcept {
-        return kicked;
-    }
+    const std::vector<std::string>& KickedOut() const noexcept { return kicked; }
 };
 
 /** Main class for building subparsers.
@@ -1576,8 +1422,7 @@ class Command : public Group {
     bool commandIsRequired = true;
     Command* selectedCommand = nullptr;
 
-    mutable std::vector<std::tuple<std::string, std::string, unsigned>>
-        subparserDescription;
+    mutable std::vector<std::tuple<std::string, std::string, unsigned>> subparserDescription;
     mutable std::vector<std::string> subparserProgramLine;
     mutable bool subparserHasFlag = false;
     mutable bool subparserHasPositional = false;
@@ -1605,10 +1450,7 @@ class Command : public Group {
 
     Command() = default;
 
-    std::function<void(Subparser&)>& GetCoroutine() {
-        return selectedCommand != nullptr ? selectedCommand->GetCoroutine()
-                                          : parserCoroutine;
-    }
+    std::function<void(Subparser&)>& GetCoroutine() { return selectedCommand != nullptr ? selectedCommand->GetCoroutine() : parserCoroutine; }
 
     Command& SelectedCommand() {
         Command* res = this;
@@ -1643,11 +1485,8 @@ class Command : public Group {
     }
 
    public:
-    Command(Group& base_, std::string name_, std::string help_,
-            std::function<void(Subparser&)> coroutine_ = {})
-        : name(std::move(name_)),
-          help(std::move(help_)),
-          parserCoroutine(std::move(coroutine_)) {
+    Command(Group& base_, std::string name_, std::string help_, std::function<void(Subparser&)> coroutine_ = {})
+        : name(std::move(name_)), help(std::move(help_)), parserCoroutine(std::move(coroutine_)) {
         base_.Add(*this);
     }
 
@@ -1657,9 +1496,7 @@ class Command : public Group {
 
     /** The description that appears on the prog line after options
      */
-    void ProglinePostfix(const std::string& proglinePostfix_) {
-        this->proglinePostfix = proglinePostfix_;
-    }
+    void ProglinePostfix(const std::string& proglinePostfix_) { this->proglinePostfix = proglinePostfix_; }
 
     /** The description that appears above options
      */
@@ -1667,9 +1504,7 @@ class Command : public Group {
     /** The description that appears above options
      */
 
-    void Description(const std::string& description_) {
-        this->description = description_;
-    }
+    void Description(const std::string& description_) { this->description = description_; }
 
     /** The description that appears below options
      */
@@ -1741,8 +1576,7 @@ class Command : public Group {
         }
 
         for (auto* child : Children()) {
-            if (selectedCommand == nullptr ||
-                (child->GetOptions() & Options::Global) != Options::None) {
+            if (selectedCommand == nullptr || (child->GetOptions() & Options::Global) != Options::None) {
                 auto childFlags = child->GetAllFlags();
                 res.insert(res.end(), childFlags.begin(), childFlags.end());
             }
@@ -1785,39 +1619,28 @@ class Command : public Group {
         return Matched() ? Group::GetNextPositional() : nullptr;
     }
 
-    virtual bool HasFlag() const override {
-        return subparserHasFlag || Group::HasFlag();
-    }
+    virtual bool HasFlag() const override { return subparserHasFlag || Group::HasFlag(); }
 
-    virtual bool HasPositional() const override {
-        return subparserHasPositional || Group::HasPositional();
-    }
+    virtual bool HasPositional() const override { return subparserHasPositional || Group::HasPositional(); }
 
     virtual bool HasCommand() const override { return true; }
 
-    std::vector<std::string> GetCommandProgramLine(
-        const HelpParams& params) const {
+    std::vector<std::string> GetCommandProgramLine(const HelpParams& params) const {
         UpdateSubparserHelp(params);
 
         std::vector<std::string> res;
 
-        if ((subparserHasFlag || Group::HasFlag()) &&
-            params.showProglineOptions && !params.proglineShowFlags) {
+        if ((subparserHasFlag || Group::HasFlag()) && params.showProglineOptions && !params.proglineShowFlags) {
             res.push_back(params.proglineOptions);
         }
 
         auto group_res = Group::GetProgramLine(params);
-        std::move(std::move(group_res).begin(), std::move(group_res).end(),
-                  std::back_inserter(res));
+        std::move(std::move(group_res).begin(), std::move(group_res).end(), std::back_inserter(res));
 
-        res.insert(res.end(), subparserProgramLine.begin(),
-                   subparserProgramLine.end());
+        res.insert(res.end(), subparserProgramLine.begin(), subparserProgramLine.end());
 
-        if (!params.proglineCommand.empty() &&
-            (Group::HasCommand() || subparserHasCommand)) {
-            res.insert(res.begin(), commandIsRequired
-                                        ? params.proglineCommand
-                                        : "[" + params.proglineCommand + "]");
+        if (!params.proglineCommand.empty() && (Group::HasCommand() || subparserHasCommand)) {
+            res.insert(res.begin(), commandIsRequired ? params.proglineCommand : "[" + params.proglineCommand + "]");
         }
 
         if (!Name().empty()) {
@@ -1849,8 +1672,7 @@ class Command : public Group {
         return res;
     }
 
-    virtual std::vector<std::string> GetProgramLine(
-        const HelpParams& params) const override {
+    virtual std::vector<std::string> GetProgramLine(const HelpParams& params) const override {
         if (!Matched()) {
             return {};
         }
@@ -1870,11 +1692,9 @@ class Command : public Group {
         return {this};
     }
 
-    virtual std::vector<std::tuple<std::string, std::string, unsigned>>
-    GetDescription(const HelpParams& params,
-                   const unsigned int indent) const override {
-        std::vector<std::tuple<std::string, std::string, unsigned>>
-            descriptions;
+    virtual std::vector<std::tuple<std::string, std::string, unsigned>> GetDescription(const HelpParams& params,
+                                                                                       const unsigned int indent) const override {
+        std::vector<std::tuple<std::string, std::string, unsigned>> descriptions;
         unsigned addindent = 0;
 
         UpdateSubparserHelp(params);
@@ -1907,24 +1727,18 @@ class Command : public Group {
 
         if (params.showCommandFullHelp && !Matched()) {
             descriptions.emplace_back("", "", indent + addindent);
-            descriptions.emplace_back(
-                Description().empty() ? Help() : Description(), "",
-                indent + addindent);
+            descriptions.emplace_back(Description().empty() ? Help() : Description(), "", indent + addindent);
             descriptions.emplace_back("", "", indent + addindent);
         }
 
         for (Base* child : Children()) {
-            if ((child->GetOptions() & Options::HiddenFromDescription) !=
-                Options::None) {
+            if ((child->GetOptions() & Options::HiddenFromDescription) != Options::None) {
                 continue;
             }
 
-            auto groupDescriptions =
-                child->GetDescription(params, indent + addindent);
-            descriptions.insert(
-                std::end(descriptions),
-                std::make_move_iterator(std::begin(groupDescriptions)),
-                std::make_move_iterator(std::end(groupDescriptions)));
+            auto groupDescriptions = child->GetDescription(params, indent + addindent);
+            descriptions.insert(std::end(descriptions), std::make_move_iterator(std::begin(groupDescriptions)),
+                                std::make_move_iterator(std::end(groupDescriptions)));
         }
 
         for (auto childDescription : subparserDescription) {
@@ -1943,8 +1757,7 @@ class Command : public Group {
         return descriptions;
     }
 
-    virtual void Validate(const std::string& shortprefix,
-                          const std::string& longprefix) const override {
+    virtual void Validate(const std::string& shortprefix, const std::string& longprefix) const override {
         if (!Matched()) {
             return;
         }
@@ -1975,8 +1788,7 @@ class Command : public Group {
             }
         }
 
-        if (selectedCommand == nullptr && commandIsRequired &&
-            (Group::HasCommand() || subparserHasCommand)) {
+        if (selectedCommand == nullptr && commandIsRequired && (Group::HasCommand() || subparserHasCommand)) {
             std::ostringstream problem;
             problem << "Command is required";
 #ifdef ARGS_NOEXCEPT
@@ -2046,13 +1858,11 @@ class ArgumentParser : public Command {
     enum class OptionType { LongFlag, ShortFlag, Positional };
 
     OptionType ParseOption(const std::string& s, bool allowEmpty = false) {
-        if (s.find(longprefix) == 0 &&
-            (allowEmpty || s.length() > longprefix.length())) {
+        if (s.find(longprefix) == 0 && (allowEmpty || s.length() > longprefix.length())) {
             return OptionType::LongFlag;
         }
 
-        if (s.find(shortprefix) == 0 &&
-            (allowEmpty || s.length() > shortprefix.length())) {
+        if (s.find(shortprefix) == 0 && (allowEmpty || s.length() > shortprefix.length())) {
             return OptionType::ShortFlag;
         }
 
@@ -2090,19 +1900,14 @@ class ArgumentParser : public Command {
      * \param[out] values The vector to store parsed arg's values
      */
     template <typename It>
-    std::string ParseArgsValues(FlagBase& flag, const std::string& arg, It& it,
-                                It end, const bool allowSeparate,
-                                const bool allowJoined, const bool hasJoined,
-                                const std::string& joinedArg,
-                                const bool canDiscardJoined,
-                                std::vector<std::string>& values) {
+    std::string ParseArgsValues(FlagBase& flag, const std::string& arg, It& it, It end, const bool allowSeparate, const bool allowJoined,
+                                const bool hasJoined, const std::string& joinedArg, const bool canDiscardJoined, std::vector<std::string>& values) {
         values.clear();
 
         Nargs nargs = flag.NumberOfArguments();
 
         if (hasJoined && !allowJoined && nargs.min != 0) {
-            return "Flag '" + arg +
-                   "' was passed a joined argument, but these are disallowed";
+            return "Flag '" + arg + "' was passed a joined argument, but these are disallowed";
         }
 
         if (hasJoined) {
@@ -2119,9 +1924,7 @@ class ArgumentParser : public Command {
             auto valueIt = it;
             ++valueIt;
 
-            while (valueIt != end && values.size() < nargs.max &&
-                   (values.size() < nargs.min ||
-                    ParseOption(*valueIt) == OptionType::Positional)) {
+            while (valueIt != end && values.size() < nargs.max && (values.size() < nargs.min || ParseOption(*valueIt) == OptionType::Positional)) {
                 if (Complete(flag, valueIt, end)) {
                     it = end;
                     return "";
@@ -2137,19 +1940,14 @@ class ArgumentParser : public Command {
             return "Passed an argument into a non-argument flag: " + arg;
         } else if (values.size() < nargs.min) {
             if (nargs.min == 1 && nargs.max == 1) {
-                return "Flag '" + arg +
-                       "' requires an argument but received none";
+                return "Flag '" + arg + "' requires an argument but received none";
             } else if (nargs.min == 1) {
-                return "Flag '" + arg +
-                       "' requires at least one argument but received none";
+                return "Flag '" + arg + "' requires at least one argument but received none";
             } else if (nargs.min != nargs.max) {
-                return "Flag '" + arg + "' requires at least " +
-                       std::to_string(nargs.min) + " arguments but received " +
+                return "Flag '" + arg + "' requires at least " + std::to_string(nargs.min) + " arguments but received " +
                        std::to_string(values.size());
             } else {
-                return "Flag '" + arg + "' requires " +
-                       std::to_string(nargs.min) + " arguments but received " +
-                       std::to_string(values.size());
+                return "Flag '" + arg + "' requires " + std::to_string(nargs.min) + " arguments but received " + std::to_string(values.size());
             }
         }
 
@@ -2161,24 +1959,15 @@ class ArgumentParser : public Command {
         const auto& chunk = *it;
         const auto argchunk = chunk.substr(longprefix.size());
         // Try to separate it, in case of a separator:
-        const auto separator = longseparator.empty()
-                                   ? argchunk.npos
-                                   : argchunk.find(longseparator);
+        const auto separator = longseparator.empty() ? argchunk.npos : argchunk.find(longseparator);
         // If the separator is in the argument, separate it.
-        const auto arg =
-            (separator != argchunk.npos ? std::string(argchunk, 0, separator)
-                                        : argchunk);
-        const auto joined =
-            (separator != argchunk.npos
-                 ? argchunk.substr(separator + longseparator.size())
-                 : std::string());
+        const auto arg = (separator != argchunk.npos ? std::string(argchunk, 0, separator) : argchunk);
+        const auto joined = (separator != argchunk.npos ? argchunk.substr(separator + longseparator.size()) : std::string());
 
         if (auto flag = Match(arg)) {
             std::vector<std::string> values;
-            const std::string errorMessage = ParseArgsValues(
-                *flag, arg, it, end, allowSeparateLongValue,
-                allowJoinedLongValue, separator != argchunk.npos, joined, false,
-                values);
+            const std::string errorMessage =
+                ParseArgsValues(*flag, arg, it, end, allowSeparateLongValue, allowJoinedLongValue, separator != argchunk.npos, joined, false, values);
             if (!errorMessage.empty()) {
 #ifndef ARGS_NOEXCEPT
                 throw ParseError(errorMessage);
@@ -2215,17 +2004,14 @@ class ArgumentParser : public Command {
     bool ParseShort(It& it, It end) {
         const auto& chunk = *it;
         const auto argchunk = chunk.substr(shortprefix.size());
-        for (auto argit = std::begin(argchunk); argit != std::end(argchunk);
-             ++argit) {
+        for (auto argit = std::begin(argchunk); argit != std::end(argchunk); ++argit) {
             const auto arg = *argit;
 
             if (auto flag = Match(arg)) {
                 const std::string value(argit + 1, std::end(argchunk));
                 std::vector<std::string> values;
-                const std::string errorMessage = ParseArgsValues(
-                    *flag, std::string(1, arg), it, end,
-                    allowSeparateShortValue, allowJoinedShortValue,
-                    !value.empty(), value, !value.empty(), values);
+                const std::string errorMessage = ParseArgsValues(*flag, std::string(1, arg), it, end, allowSeparateShortValue, allowJoinedShortValue,
+                                                                 !value.empty(), value, !value.empty(), values);
 
                 if (!errorMessage.empty()) {
 #ifndef ARGS_NOEXCEPT
@@ -2250,8 +2036,7 @@ class ArgumentParser : public Command {
                     break;
                 }
             } else {
-                const std::string errorMessage("Flag could not be matched: '" +
-                                               std::string(1, arg) + "'");
+                const std::string errorMessage("Flag could not be matched: '" + std::string(1, arg) + "'");
 #ifndef ARGS_NOEXCEPT
                 throw ParseError(errorMessage);
 #else
@@ -2267,11 +2052,8 @@ class ArgumentParser : public Command {
 
     bool AddCompletionReply(const std::string& cur, const std::string& choice) {
         if (cur.empty() || choice.find(cur) == 0) {
-            if (completion->syntax == "bash" &&
-                ParseOption(choice) == OptionType::LongFlag &&
-                choice.find(longseparator) != std::string::npos) {
-                completion->reply.push_back(
-                    choice.substr(choice.find(longseparator) + 1));
+            if (completion->syntax == "bash" && ParseOption(choice) == OptionType::LongFlag && choice.find(longseparator) != std::string::npos) {
+                completion->reply.push_back(choice.substr(choice.find(longseparator) + 1));
             } else {
                 completion->reply.push_back(choice);
             }
@@ -2293,11 +2075,9 @@ class ArgumentParser : public Command {
         std::vector<Command*> commands = GetCommands();
         const auto optionType = ParseOption(chunk, true);
 
-        if (!commands.empty() &&
-            (chunk.empty() || optionType == OptionType::Positional)) {
+        if (!commands.empty() && (chunk.empty() || optionType == OptionType::Positional)) {
             for (auto& cmd : commands) {
-                if ((cmd->GetOptions() & Options::HiddenFromCompletion) ==
-                    Options::None) {
+                if ((cmd->GetOptions() & Options::HiddenFromCompletion) == Options::None) {
                     AddCompletionReply(chunk, cmd->Name());
                 }
             }
@@ -2306,18 +2086,14 @@ class ArgumentParser : public Command {
 
             if (!commands.empty()) {
                 for (auto& cmd : commands) {
-                    if ((cmd->GetOptions() & Options::HiddenFromCompletion) ==
-                        Options::None) {
+                    if ((cmd->GetOptions() & Options::HiddenFromCompletion) == Options::None) {
                         AddCompletionReply(chunk, cmd->Name());
                     }
                 }
             } else if (pos) {
-                if ((pos->GetOptions() & Options::HiddenFromCompletion) ==
-                    Options::None) {
+                if ((pos->GetOptions() & Options::HiddenFromCompletion) == Options::None) {
                     auto choices = pos->HelpChoices(helpParams);
-                    hasPositionalCompletion =
-                        !choices.empty() ||
-                        optionType != OptionType::Positional;
+                    hasPositionalCompletion = !choices.empty() || optionType != OptionType::Positional;
                     for (auto& choice : choices) {
                         AddCompletionReply(chunk, choice);
                     }
@@ -2327,48 +2103,36 @@ class ArgumentParser : public Command {
             if (hasPositionalCompletion) {
                 auto flags = GetAllFlags();
                 for (auto flag : flags) {
-                    if ((flag->GetOptions() & Options::HiddenFromCompletion) !=
-                        Options::None) {
+                    if ((flag->GetOptions() & Options::HiddenFromCompletion) != Options::None) {
                         continue;
                     }
 
                     auto& matcher = flag->GetMatcher();
-                    if (!AddCompletionReply(
-                            chunk, matcher.GetShortOrAny().str(shortprefix,
-                                                               longprefix))) {
+                    if (!AddCompletionReply(chunk, matcher.GetShortOrAny().str(shortprefix, longprefix))) {
                         for (auto& flagName : matcher.GetFlagStrings()) {
-                            if (AddCompletionReply(
-                                    chunk,
-                                    flagName.str(shortprefix, longprefix))) {
+                            if (AddCompletionReply(chunk, flagName.str(shortprefix, longprefix))) {
                                 break;
                             }
                         }
                     }
                 }
 
-                if (optionType == OptionType::LongFlag &&
-                    allowJoinedLongValue) {
-                    const auto separator = longseparator.empty()
-                                               ? chunk.npos
-                                               : chunk.find(longseparator);
+                if (optionType == OptionType::LongFlag && allowJoinedLongValue) {
+                    const auto separator = longseparator.empty() ? chunk.npos : chunk.find(longseparator);
                     if (separator != chunk.npos) {
                         std::string arg(chunk, 0, separator);
-                        if (auto flag =
-                                this->Match(arg.substr(longprefix.size()))) {
+                        if (auto flag = this->Match(arg.substr(longprefix.size()))) {
                             for (auto& choice : flag->HelpChoices(helpParams)) {
-                                AddCompletionReply(
-                                    chunk, arg + longseparator + choice);
+                                AddCompletionReply(chunk, arg + longseparator + choice);
                             }
                         }
                     }
-                } else if (optionType == OptionType::ShortFlag &&
-                           allowJoinedShortValue) {
+                } else if (optionType == OptionType::ShortFlag && allowJoinedShortValue) {
                     if (chunk.size() > shortprefix.size() + 1) {
                         auto arg = chunk.at(shortprefix.size());
                         if (auto flag = this->Match(arg)) {
                             for (auto& choice : flag->HelpChoices(helpParams)) {
-                                AddCompletionReply(chunk,
-                                                   shortprefix + arg + choice);
+                                AddCompletionReply(chunk, shortprefix + arg + choice);
                             }
                         }
                     }
@@ -2398,20 +2162,16 @@ class ArgumentParser : public Command {
 
             if (!terminated && chunk == terminator) {
                 terminated = true;
-            } else if (!terminated &&
-                       ParseOption(chunk) == OptionType::LongFlag) {
+            } else if (!terminated && ParseOption(chunk) == OptionType::LongFlag) {
                 if (!ParseLong(it, end)) {
                     return it;
                 }
-            } else if (!terminated &&
-                       ParseOption(chunk) == OptionType::ShortFlag) {
+            } else if (!terminated && ParseOption(chunk) == OptionType::ShortFlag) {
                 if (!ParseShort(it, end)) {
                     return it;
                 }
             } else if (!terminated && !commands.empty()) {
-                auto itCommand = std::find_if(
-                    commands.begin(), commands.end(),
-                    [&chunk](Command* c) { return c->Name() == chunk; });
+                auto itCommand = std::find_if(commands.begin(), commands.end(), [&chunk](Command* c) { return c->Name() == chunk; });
                 if (itCommand == commands.end()) {
                     const std::string errorMessage("Unknown command: " + chunk);
 #ifndef ARGS_NOEXCEPT
@@ -2427,8 +2187,7 @@ class ArgumentParser : public Command {
 
                 if (const auto& coroutine = GetCoroutine()) {
                     ++it;
-                    RaiiSubparser coro(*this,
-                                       std::vector<std::string>(it, end));
+                    RaiiSubparser coro(*this, std::vector<std::string>(it, end));
                     coroutine(coro.Parser());
 #ifdef ARGS_NOEXCEPT
                     error = GetError();
@@ -2474,17 +2233,14 @@ class ArgumentParser : public Command {
                 }
             }
 
-            if (!readCompletion && completion != nullptr &&
-                completion->Matched()) {
+            if (!readCompletion && completion != nullptr && completion->Matched()) {
 #ifdef ARGS_NOEXCEPT
                 error = Error::Completion;
 #endif
                 readCompletion = true;
                 ++it;
-                const auto argsLeft =
-                    static_cast<size_t>(std::distance(it, end));
-                if (completion->cword == 0 || argsLeft <= 1 ||
-                    completion->cword >= argsLeft) {
+                const auto argsLeft = static_cast<size_t>(std::distance(it, end));
+                if (completion->cword == 0 || argsLeft <= 1 || completion->cword >= argsLeft) {
 #ifndef ARGS_NOEXCEPT
                     throw Completion("");
 #endif
@@ -2499,12 +2255,10 @@ class ArgumentParser : public Command {
                         if (idx > 0 && curArgs[idx] == "=") {
                             curArgs[idx - 1] += "=";
                             // Avoid warnings from -Wsign-conversion
-                            const auto signedIdx =
-                                static_cast<std::ptrdiff_t>(idx);
+                            const auto signedIdx = static_cast<std::ptrdiff_t>(idx);
                             if (idx + 1 < curArgs.size()) {
                                 curArgs[idx - 1] += curArgs[idx + 1];
-                                curArgs.erase(curArgs.begin() + signedIdx,
-                                              curArgs.begin() + signedIdx + 2);
+                                curArgs.erase(curArgs.begin() + signedIdx, curArgs.begin() + signedIdx + 2);
                             } else {
                                 curArgs.erase(curArgs.begin() + signedIdx);
                             }
@@ -2535,8 +2289,7 @@ class ArgumentParser : public Command {
    public:
     HelpParams helpParams;
 
-    ArgumentParser(const std::string& description_,
-                   const std::string& epilog_ = std::string()) {
+    ArgumentParser(const std::string& description_, const std::string& epilog_ = std::string()) {
         Description(description_);
         Epilog(epilog_);
         LongPrefix("--");
@@ -2557,9 +2310,7 @@ class ArgumentParser : public Command {
     const std::string& Prog() const { return helpParams.programName; }
     /** The program name for help generation
      */
-    void Prog(const std::string& prog_) {
-        this->helpParams.programName = prog_;
-    }
+    void Prog(const std::string& prog_) { this->helpParams.programName = prog_; }
 
     /** The prefix for long flags
      */
@@ -2588,8 +2339,7 @@ class ArgumentParser : public Command {
      */
     void LongSeparator(const std::string& longseparator_) {
         if (longseparator_.empty()) {
-            const std::string errorMessage(
-                "longseparator can not be set to empty");
+            const std::string errorMessage("longseparator can not be set to empty");
 #ifdef ARGS_NOEXCEPT
             error = Error::Usage;
             errorMsg = errorMessage;
@@ -2598,8 +2348,7 @@ class ArgumentParser : public Command {
 #endif
         } else {
             this->longseparator = longseparator_;
-            this->helpParams.longSeparator =
-                allowJoinedLongValue ? longseparator_ : " ";
+            this->helpParams.longSeparator = allowJoinedLongValue ? longseparator_ : " ";
         }
     }
 
@@ -2608,17 +2357,13 @@ class ArgumentParser : public Command {
     const std::string& Terminator() const { return terminator; }
     /** The terminator that forcibly separates flags from positionals
      */
-    void Terminator(const std::string& terminator_) {
-        this->terminator = terminator_;
-    }
+    void Terminator(const std::string& terminator_) { this->terminator = terminator_; }
 
     /** Get the current argument separation parameters.
      *
      * See SetArgumentSeparations for details on what each one means.
      */
-    void GetArgumentSeparations(bool& allowJoinedShortValue_,
-                                bool& allowJoinedLongValue_,
-                                bool& allowSeparateShortValue_,
+    void GetArgumentSeparations(bool& allowJoinedShortValue_, bool& allowJoinedLongValue_, bool& allowSeparateShortValue_,
                                 bool& allowSeparateLongValue_) const {
         allowJoinedShortValue_ = this->allowJoinedShortValue;
         allowJoinedLongValue_ = this->allowJoinedLongValue;
@@ -2641,17 +2386,14 @@ class ArgumentParser : public Command {
      * to be passed its argument separated by whitespace (ie. in the next argv
      * field)
      */
-    void SetArgumentSeparations(const bool allowJoinedShortValue_,
-                                const bool allowJoinedLongValue_,
-                                const bool allowSeparateShortValue_,
+    void SetArgumentSeparations(const bool allowJoinedShortValue_, const bool allowJoinedLongValue_, const bool allowSeparateShortValue_,
                                 const bool allowSeparateLongValue_) {
         this->allowJoinedShortValue = allowJoinedShortValue_;
         this->allowJoinedLongValue = allowJoinedLongValue_;
         this->allowSeparateShortValue = allowSeparateShortValue_;
         this->allowSeparateLongValue = allowSeparateLongValue_;
 
-        this->helpParams.longSeparator =
-            allowJoinedLongValue ? longseparator : " ";
+        this->helpParams.longSeparator = allowJoinedLongValue ? longseparator : " ";
         this->helpParams.shortSeparator = allowJoinedShortValue ? "" : " ";
     }
 
@@ -2659,14 +2401,9 @@ class ArgumentParser : public Command {
      */
     void Help(std::ostream& help_) const {
         auto& command = SelectedCommand();
-        const auto& commandDescription = command.Description().empty()
-                                             ? command.Help()
-                                             : command.Description();
-        const auto description_text =
-            Wrap(commandDescription,
-                 helpParams.width - helpParams.descriptionindent);
-        const auto epilog_text = Wrap(
-            command.Epilog(), helpParams.width - helpParams.descriptionindent);
+        const auto& commandDescription = command.Description().empty() ? command.Help() : command.Description();
+        const auto description_text = Wrap(commandDescription, helpParams.width - helpParams.descriptionindent);
+        const auto epilog_text = Wrap(command.Epilog(), helpParams.width - helpParams.descriptionindent);
 
         const bool hasoptions = command.HasFlag();
         const bool hasarguments = command.HasPositional();
@@ -2675,30 +2412,24 @@ class ArgumentParser : public Command {
         prognameline.push_back(helpParams.usageString);
         prognameline.push_back(Prog());
         auto commandProgLine = command.GetProgramLine(helpParams);
-        prognameline.insert(prognameline.end(), commandProgLine.begin(),
-                            commandProgLine.end());
+        prognameline.insert(prognameline.end(), commandProgLine.begin(), commandProgLine.end());
 
-        const auto proglines =
-            Wrap(prognameline.begin(), prognameline.end(),
-                 helpParams.width -
-                     (helpParams.progindent + helpParams.progtailindent),
-                 helpParams.width - helpParams.progindent);
+        const auto proglines = Wrap(prognameline.begin(), prognameline.end(), helpParams.width - (helpParams.progindent + helpParams.progtailindent),
+                                    helpParams.width - helpParams.progindent);
         auto progit = std::begin(proglines);
         if (progit != std::end(proglines)) {
             help_ << std::string(helpParams.progindent, ' ') << *progit << '\n';
             ++progit;
         }
         for (; progit != std::end(proglines); ++progit) {
-            help_ << std::string(helpParams.progtailindent, ' ') << *progit
-                  << '\n';
+            help_ << std::string(helpParams.progtailindent, ' ') << *progit << '\n';
         }
 
         help_ << '\n';
 
         if (!description_text.empty()) {
             for (const auto& line : description_text) {
-                help_ << std::string(helpParams.descriptionindent, ' ') << line
-                      << "\n";
+                help_ << std::string(helpParams.descriptionindent, ' ') << line << "\n";
             }
             help_ << "\n";
         }
@@ -2706,67 +2437,49 @@ class ArgumentParser : public Command {
         bool lastDescriptionIsNewline = false;
 
         if (!helpParams.optionsString.empty()) {
-            help_ << std::string(helpParams.progindent, ' ')
-                  << helpParams.optionsString << "\n\n";
+            help_ << std::string(helpParams.progindent, ' ') << helpParams.optionsString << "\n\n";
         }
 
         for (const auto& desc : command.GetDescription(helpParams, 0)) {
-            lastDescriptionIsNewline =
-                std::get<0>(desc).empty() && std::get<1>(desc).empty();
-            const auto groupindent =
-                std::get<2>(desc) * helpParams.eachgroupindent;
-            const auto flags = Wrap(
-                std::get<0>(desc),
-                helpParams.width - (helpParams.flagindent +
-                                    helpParams.helpindent + helpParams.gutter));
-            const auto info =
-                Wrap(std::get<1>(desc),
-                     helpParams.width - (helpParams.helpindent + groupindent));
+            lastDescriptionIsNewline = std::get<0>(desc).empty() && std::get<1>(desc).empty();
+            const auto groupindent = std::get<2>(desc) * helpParams.eachgroupindent;
+            const auto flags = Wrap(std::get<0>(desc), helpParams.width - (helpParams.flagindent + helpParams.helpindent + helpParams.gutter));
+            const auto info = Wrap(std::get<1>(desc), helpParams.width - (helpParams.helpindent + groupindent));
 
             std::string::size_type flagssize = 0;
-            for (auto flagsit = std::begin(flags); flagsit != std::end(flags);
-                 ++flagsit) {
+            for (auto flagsit = std::begin(flags); flagsit != std::end(flags); ++flagsit) {
                 if (flagsit != std::begin(flags)) {
                     help_ << '\n';
                 }
-                help_ << std::string(groupindent + helpParams.flagindent, ' ')
-                      << *flagsit;
+                help_ << std::string(groupindent + helpParams.flagindent, ' ') << *flagsit;
                 flagssize = Glyphs(*flagsit);
             }
 
             auto infoit = std::begin(info);
             // groupindent is on both sides of this inequality, and therefore
             // can be removed
-            if ((helpParams.flagindent + flagssize + helpParams.gutter) >
-                    helpParams.helpindent ||
-                infoit == std::end(info) ||
+            if ((helpParams.flagindent + flagssize + helpParams.gutter) > helpParams.helpindent || infoit == std::end(info) ||
                 helpParams.addNewlineBeforeDescription) {
                 help_ << '\n';
             } else {
                 // groupindent is on both sides of the minus sign, and therefore
                 // doesn't actually need to be in here
-                help_ << std::string(helpParams.helpindent -
-                                         (helpParams.flagindent + flagssize),
-                                     ' ')
-                      << *infoit << '\n';
+                help_ << std::string(helpParams.helpindent - (helpParams.flagindent + flagssize), ' ') << *infoit << '\n';
                 ++infoit;
             }
             for (; infoit != std::end(info); ++infoit) {
-                help_ << std::string(groupindent + helpParams.helpindent, ' ')
-                      << *infoit << '\n';
+                help_ << std::string(groupindent + helpParams.helpindent, ' ') << *infoit << '\n';
             }
         }
         if (hasoptions && hasarguments && helpParams.showTerminator) {
             lastDescriptionIsNewline = false;
-            for (const auto& item :
-                 Wrap(std::string("\"") + terminator +
-                          "\" can be used to terminate flag options and force "
-                          "all "
-                          "following arguments to be treated as positional "
-                          "options",
-                      helpParams.width - helpParams.flagindent)) {
-                help_ << std::string(helpParams.flagindent, ' ') << item
-                      << '\n';
+            for (const auto& item : Wrap(std::string("\"") + terminator +
+                                             "\" can be used to terminate flag options and force "
+                                             "all "
+                                             "following arguments to be treated as positional "
+                                             "options",
+                                         helpParams.width - helpParams.flagindent)) {
+                help_ << std::string(helpParams.flagindent, ' ') << item << '\n';
             }
         }
 
@@ -2775,8 +2488,7 @@ class ArgumentParser : public Command {
         }
 
         for (const auto& line : epilog_text) {
-            help_ << std::string(helpParams.descriptionindent, ' ') << line
-                  << "\n";
+            help_ << std::string(helpParams.descriptionindent, ' ') << line << "\n";
         }
     }
 
@@ -2850,19 +2562,13 @@ class ArgumentParser : public Command {
     }
 };
 
-inline Command::RaiiSubparser::RaiiSubparser(ArgumentParser& parser_,
-                                             std::vector<std::string> args_)
-    : command(parser_.SelectedCommand()),
-      parser(std::move(args_), parser_, command, parser_.helpParams),
-      oldSubparser(command.subparser) {
+inline Command::RaiiSubparser::RaiiSubparser(ArgumentParser& parser_, std::vector<std::string> args_)
+    : command(parser_.SelectedCommand()), parser(std::move(args_), parser_, command, parser_.helpParams), oldSubparser(command.subparser) {
     command.subparser = &parser;
 }
 
-inline Command::RaiiSubparser::RaiiSubparser(const Command& command_,
-                                             const HelpParams& params_)
-    : command(command_),
-      parser(command, params_),
-      oldSubparser(command.subparser) {
+inline Command::RaiiSubparser::RaiiSubparser(const Command& command_, const HelpParams& params_)
+    : command(command_), parser(command, params_), oldSubparser(command.subparser) {
     command.subparser = &parser;
 }
 
@@ -2892,8 +2598,7 @@ inline void Subparser::Parse() {
 #endif
 }
 
-inline std::ostream& operator<<(std::ostream& os,
-                                const ArgumentParser& parser) {
+inline std::ostream& operator<<(std::ostream& os, const ArgumentParser& parser) {
     parser.Help(os);
     return os;
 }
@@ -2902,16 +2607,13 @@ inline std::ostream& operator<<(std::ostream& os,
  */
 class Flag : public FlagBase {
    public:
-    Flag(Group& group_, const std::string& name_, const std::string& help_,
-         Matcher&& matcher_, Options options_)
+    Flag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, Options options_)
         : FlagBase(name_, help_, std::move(matcher_), options_) {
         group_.Add(*this);
     }
 
-    Flag(Group& group_, const std::string& name_, const std::string& help_,
-         Matcher&& matcher_, const bool extraError_ = false)
-        : Flag(group_, name_, help_, std::move(matcher_),
-               extraError_ ? Options::Single : Options::None) {}
+    Flag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, const bool extraError_ = false)
+        : Flag(group_, name_, help_, std::move(matcher_), extraError_ ? Options::Single : Options::None) {}
 
     virtual ~Flag() {}
 
@@ -2930,8 +2632,7 @@ class Flag : public FlagBase {
  */
 class HelpFlag : public Flag {
    public:
-    HelpFlag(Group& group_, const std::string& name_, const std::string& help_,
-             Matcher&& matcher_, Options options_ = {})
+    HelpFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, Options options_ = {})
         : Flag(group_, name_, help_, std::move(matcher_), options_) {}
 
     virtual ~HelpFlag() {}
@@ -2958,12 +2659,9 @@ class CounterFlag : public Flag {
     int count;
 
    public:
-    CounterFlag(Group& group_, const std::string& name_,
-                const std::string& help_, Matcher&& matcher_,
-                const int startcount_ = 0, Options options_ = {})
-        : Flag(group_, name_, help_, std::move(matcher_), options_),
-          startcount(startcount_),
-          count(startcount_) {}
+    CounterFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, const int startcount_ = 0,
+                Options options_ = {})
+        : Flag(group_, name_, help_, std::move(matcher_), options_), startcount(startcount_), count(startcount_) {}
 
     virtual ~CounterFlag() {}
 
@@ -2997,42 +2695,29 @@ class ActionFlag : public FlagBase {
     Nargs nargs;
 
    public:
-    ActionFlag(Group& group_, const std::string& name_,
-               const std::string& help_, Matcher&& matcher_, Nargs nargs_,
-               std::function<void(const std::vector<std::string>&)> action_,
-               Options options_ = {})
-        : FlagBase(name_, help_, std::move(matcher_), options_),
-          action(std::move(action_)),
-          nargs(nargs_) {
+    ActionFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, Nargs nargs_,
+               std::function<void(const std::vector<std::string>&)> action_, Options options_ = {})
+        : FlagBase(name_, help_, std::move(matcher_), options_), action(std::move(action_)), nargs(nargs_) {
         group_.Add(*this);
     }
 
-    ActionFlag(Group& group_, const std::string& name_,
-               const std::string& help_, Matcher&& matcher_,
-               std::function<void(const std::string&)> action_,
+    ActionFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, std::function<void(const std::string&)> action_,
                Options options_ = {})
         : FlagBase(name_, help_, std::move(matcher_), options_), nargs(1) {
         group_.Add(*this);
-        action = [action_](const std::vector<std::string>& a) {
-            return action_(a.at(0));
-        };
+        action = [action_](const std::vector<std::string>& a) { return action_(a.at(0)); };
     }
 
-    ActionFlag(Group& group_, const std::string& name_,
-               const std::string& help_, Matcher&& matcher_,
-               std::function<void()> action_, Options options_ = {})
+    ActionFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, std::function<void()> action_,
+               Options options_ = {})
         : FlagBase(name_, help_, std::move(matcher_), options_), nargs(0) {
         group_.Add(*this);
-        action = [action_](const std::vector<std::string>&) {
-            return action_();
-        };
+        action = [action_](const std::vector<std::string>&) { return action_(); };
     }
 
     virtual Nargs NumberOfArguments() const noexcept override { return nargs; }
 
-    virtual void ParseValue(const std::vector<std::string>& value) override {
-        action(value);
-    }
+    virtual void ParseValue(const std::vector<std::string>& value) override { action(value); }
 };
 
 /** A default Reader class for argument classes
@@ -3044,10 +2729,8 @@ class ActionFlag : public FlagBase {
  */
 struct ValueReader {
     template <typename T>
-    typename std::enable_if<!std::is_assignable<T, std::string>::value,
-                            bool>::type
-    operator()(const std::string& name, const std::string& value,
-               T& destination) {
+    typename std::enable_if<!std::is_assignable<T, std::string>::value, bool>::type operator()(const std::string& name, const std::string& value,
+                                                                                               T& destination) {
         std::istringstream ss(value);
         bool failed = !(ss >> destination);
 
@@ -3061,8 +2744,7 @@ struct ValueReader {
             return false;
 #else
             std::ostringstream problem;
-            problem << "Argument '" << name << "' received invalid value type '"
-                    << value << "'";
+            problem << "Argument '" << name << "' received invalid value type '" << value << "'";
             throw ParseError(problem.str());
 #endif
         }
@@ -3070,9 +2752,8 @@ struct ValueReader {
     }
 
     template <typename T>
-    typename std::enable_if<std::is_assignable<T, std::string>::value,
-                            bool>::type
-    operator()(const std::string&, const std::string& value, T& destination) {
+    typename std::enable_if<std::is_assignable<T, std::string>::value, bool>::type operator()(const std::string&, const std::string& value,
+                                                                                              T& destination) {
         destination = value;
         return true;
     }
@@ -3091,30 +2772,22 @@ class ValueFlag : public ValueFlagBase {
     T value;
     T defaultValue;
 
-    virtual std::string GetDefaultString(const HelpParams&) const override {
-        return detail::ToString(defaultValue);
-    }
+    virtual std::string GetDefaultString(const HelpParams&) const override { return detail::ToString(defaultValue); }
 
    private:
     Reader reader;
 
    public:
-    ValueFlag(Group& group_, const std::string& name_, const std::string& help_,
-              Matcher&& matcher_, const T& defaultValue_, Options options_)
-        : ValueFlagBase(name_, help_, std::move(matcher_), options_),
-          value(defaultValue_),
-          defaultValue(defaultValue_) {
+    ValueFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, const T& defaultValue_, Options options_)
+        : ValueFlagBase(name_, help_, std::move(matcher_), options_), value(defaultValue_), defaultValue(defaultValue_) {
         group_.Add(*this);
     }
 
-    ValueFlag(Group& group_, const std::string& name_, const std::string& help_,
-              Matcher&& matcher_, const T& defaultValue_ = T(),
+    ValueFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, const T& defaultValue_ = T(),
               const bool extraError_ = false)
-        : ValueFlag(group_, name_, help_, std::move(matcher_), defaultValue_,
-                    extraError_ ? Options::Single : Options::None) {}
+        : ValueFlag(group_, name_, help_, std::move(matcher_), defaultValue_, extraError_ ? Options::Single : Options::None) {}
 
-    ValueFlag(Group& group_, const std::string& name_, const std::string& help_,
-              Matcher&& matcher_, Options options_)
+    ValueFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, Options options_)
         : ValueFlag(group_, name_, help_, std::move(matcher_), T(), options_) {}
 
     virtual ~ValueFlag() {}
@@ -3174,27 +2847,16 @@ class ImplicitValueFlag : public ValueFlag<T, Reader> {
     T implicitValue;
 
    public:
-    ImplicitValueFlag(Group& group_, const std::string& name_,
-                      const std::string& help_, Matcher&& matcher_,
-                      const T& implicitValue_, const T& defaultValue_ = T(),
-                      Options options_ = {})
-        : ValueFlag<T, Reader>(group_, name_, help_, std::move(matcher_),
-                               defaultValue_, options_),
-          implicitValue(implicitValue_) {}
-
-    ImplicitValueFlag(Group& group_, const std::string& name_,
-                      const std::string& help_, Matcher&& matcher_,
+    ImplicitValueFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, const T& implicitValue_,
                       const T& defaultValue_ = T(), Options options_ = {})
-        : ValueFlag<T, Reader>(group_, name_, help_, std::move(matcher_),
-                               defaultValue_, options_),
-          implicitValue(defaultValue_) {}
+        : ValueFlag<T, Reader>(group_, name_, help_, std::move(matcher_), defaultValue_, options_), implicitValue(implicitValue_) {}
 
-    ImplicitValueFlag(Group& group_, const std::string& name_,
-                      const std::string& help_, Matcher&& matcher_,
-                      Options options_)
-        : ValueFlag<T, Reader>(group_, name_, help_, std::move(matcher_), {},
-                               options_),
-          implicitValue() {}
+    ImplicitValueFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, const T& defaultValue_ = T(),
+                      Options options_ = {})
+        : ValueFlag<T, Reader>(group_, name_, help_, std::move(matcher_), defaultValue_, options_), implicitValue(defaultValue_) {}
+
+    ImplicitValueFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, Options options_)
+        : ValueFlag<T, Reader>(group_, name_, help_, std::move(matcher_), {}, options_), implicitValue() {}
 
     virtual ~ImplicitValueFlag() {}
 
@@ -3217,8 +2879,7 @@ class ImplicitValueFlag : public ValueFlag<T, Reader> {
  * value, and destination reference with operator(), and returning a bool (if
  * ARGS_NOEXCEPT is defined)
  */
-template <typename T, template <typename...> class List = detail::vector,
-          typename Reader = ValueReader>
+template <typename T, template <typename...> class List = detail::vector, typename Reader = ValueReader>
 class NargsValueFlag : public FlagBase {
    protected:
     List<T> values;
@@ -3241,13 +2902,9 @@ class NargsValueFlag : public FlagBase {
     typedef std::reverse_iterator<iterator> reverse_iterator;
     typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
-    NargsValueFlag(Group& group_, const std::string& name_,
-                   const std::string& help_, Matcher&& matcher_, Nargs nargs_,
+    NargsValueFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, Nargs nargs_,
                    const List<T>& defaultValues_ = {}, Options options_ = {})
-        : FlagBase(name_, help_, std::move(matcher_), options_),
-          values(defaultValues_),
-          defaultValues(defaultValues_),
-          nargs(nargs_) {
+        : FlagBase(name_, help_, std::move(matcher_), options_), values(defaultValues_), defaultValues(defaultValues_), nargs(nargs_) {
         group_.Add(*this);
     }
 
@@ -3324,8 +2981,7 @@ class NargsValueFlag : public FlagBase {
  * value, and destination reference with operator(), and returning a bool (if
  * ARGS_NOEXCEPT is defined)
  */
-template <typename T, template <typename...> class List = detail::vector,
-          typename Reader = ValueReader>
+template <typename T, template <typename...> class List = detail::vector, typename Reader = ValueReader>
 class ValueFlagList : public ValueFlagBase {
    private:
     using Container = List<T>;
@@ -3347,13 +3003,9 @@ class ValueFlagList : public ValueFlagBase {
     typedef std::reverse_iterator<iterator> reverse_iterator;
     typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
-    ValueFlagList(Group& group_, const std::string& name_,
-                  const std::string& help_, Matcher&& matcher_,
-                  const Container& defaultValues_ = Container(),
-                  Options options_ = {})
-        : ValueFlagBase(name_, help_, std::move(matcher_), options_),
-          values(defaultValues_),
-          defaultValues(defaultValues_) {
+    ValueFlagList(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_,
+                  const Container& defaultValues_ = Container(), Options options_ = {})
+        : ValueFlagBase(name_, help_, std::move(matcher_), options_), values(defaultValues_), defaultValues(defaultValues_) {
         group_.Add(*this);
     }
 
@@ -3393,9 +3045,7 @@ class ValueFlagList : public ValueFlagBase {
      */
     const Container* operator->() const noexcept { return &values; }
 
-    virtual std::string Name() const override {
-        return name + std::string("...");
-    }
+    virtual std::string Name() const override { return name + std::string("..."); }
 
     virtual void Reset() noexcept override {
         ValueFlagBase::Reset();
@@ -3433,8 +3083,7 @@ class ValueFlagList : public ValueFlagBase {
  * ARGS_NOEXCEPT is defined)
  * \tparam Map The Map type.  Should operate like std::map or std::unordered_map
  */
-template <typename K, typename T, typename Reader = ValueReader,
-          template <typename...> class Map = detail::unordered_map>
+template <typename K, typename T, typename Reader = ValueReader, template <typename...> class Map = detail::unordered_map>
 class MapFlag : public ValueFlagBase {
    private:
     const Map<K, T> map;
@@ -3443,33 +3092,21 @@ class MapFlag : public ValueFlagBase {
     Reader reader;
 
    protected:
-    virtual std::vector<std::string> GetChoicesStrings(
-        const HelpParams&) const override {
-        return detail::MapKeysToStrings(map);
-    }
+    virtual std::vector<std::string> GetChoicesStrings(const HelpParams&) const override { return detail::MapKeysToStrings(map); }
 
    public:
-    MapFlag(Group& group_, const std::string& name_, const std::string& help_,
-            Matcher&& matcher_, const Map<K, T>& map_, const T& defaultValue_,
+    MapFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, const Map<K, T>& map_, const T& defaultValue_,
             Options options_)
-        : ValueFlagBase(name_, help_, std::move(matcher_), options_),
-          map(map_),
-          value(defaultValue_),
-          defaultValue(defaultValue_) {
+        : ValueFlagBase(name_, help_, std::move(matcher_), options_), map(map_), value(defaultValue_), defaultValue(defaultValue_) {
         group_.Add(*this);
     }
 
-    MapFlag(Group& group_, const std::string& name_, const std::string& help_,
-            Matcher&& matcher_, const Map<K, T>& map_,
+    MapFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, const Map<K, T>& map_,
             const T& defaultValue_ = T(), const bool extraError_ = false)
-        : MapFlag(group_, name_, help_, std::move(matcher_), map_,
-                  defaultValue_,
-                  extraError_ ? Options::Single : Options::None) {}
+        : MapFlag(group_, name_, help_, std::move(matcher_), map_, defaultValue_, extraError_ ? Options::Single : Options::None) {}
 
-    MapFlag(Group& group_, const std::string& name_, const std::string& help_,
-            Matcher&& matcher_, const Map<K, T>& map_, Options options_)
-        : MapFlag(group_, name_, help_, std::move(matcher_), map_, T(),
-                  options_) {}
+    MapFlag(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, const Map<K, T>& map_, Options options_)
+        : MapFlag(group_, name_, help_, std::move(matcher_), map_, T(), options_) {}
 
     virtual ~MapFlag() {}
 
@@ -3487,8 +3124,7 @@ class MapFlag : public ValueFlagBase {
         auto it = map.find(key);
         if (it == std::end(map)) {
             std::ostringstream problem;
-            problem << "Could not find key '" << key << "' in map for arg '"
-                    << name << "'";
+            problem << "Could not find key '" << key << "' in map for arg '" << name << "'";
 #ifdef ARGS_NOEXCEPT
             error = Error::Map;
             errorMsg = problem.str();
@@ -3536,9 +3172,7 @@ class MapFlag : public ValueFlagBase {
  * ARGS_NOEXCEPT is defined)
  * \tparam Map The Map type.  Should operate like std::map or std::unordered_map
  */
-template <typename K, typename T,
-          template <typename...> class List = detail::vector,
-          typename Reader = ValueReader,
+template <typename K, typename T, template <typename...> class List = detail::vector, typename Reader = ValueReader,
           template <typename...> class Map = detail::unordered_map>
 class MapFlagList : public ValueFlagBase {
    private:
@@ -3549,10 +3183,7 @@ class MapFlagList : public ValueFlagBase {
     Reader reader;
 
    protected:
-    virtual std::vector<std::string> GetChoicesStrings(
-        const HelpParams&) const override {
-        return detail::MapKeysToStrings(map);
-    }
+    virtual std::vector<std::string> GetChoicesStrings(const HelpParams&) const override { return detail::MapKeysToStrings(map); }
 
    public:
     typedef T value_type;
@@ -3568,14 +3199,9 @@ class MapFlagList : public ValueFlagBase {
     typedef std::reverse_iterator<iterator> reverse_iterator;
     typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
-    MapFlagList(Group& group_, const std::string& name_,
-                const std::string& help_, Matcher&& matcher_,
-                const Map<K, T>& map_,
+    MapFlagList(Group& group_, const std::string& name_, const std::string& help_, Matcher&& matcher_, const Map<K, T>& map_,
                 const Container& defaultValues_ = Container())
-        : ValueFlagBase(name_, help_, std::move(matcher_)),
-          map(map_),
-          values(defaultValues_),
-          defaultValues(defaultValues_) {
+        : ValueFlagBase(name_, help_, std::move(matcher_)), map(map_), values(defaultValues_), defaultValues(defaultValues_) {
         group_.Add(*this);
     }
 
@@ -3595,8 +3221,7 @@ class MapFlagList : public ValueFlagBase {
         auto it = map.find(key);
         if (it == std::end(map)) {
             std::ostringstream problem;
-            problem << "Could not find key '" << key << "' in map for arg '"
-                    << name << "'";
+            problem << "Could not find key '" << key << "' in map for arg '" << name << "'";
 #ifdef ARGS_NOEXCEPT
             error = Error::Map;
             errorMsg = problem.str();
@@ -3628,9 +3253,7 @@ class MapFlagList : public ValueFlagBase {
      */
     const Container* operator->() const noexcept { return &values; }
 
-    virtual std::string Name() const override {
-        return name + std::string("...");
-    }
+    virtual std::string Name() const override { return name + std::string("..."); }
 
     virtual void Reset() noexcept override {
         ValueFlagBase::Reset();
@@ -3674,17 +3297,12 @@ class Positional : public PositionalBase {
     Reader reader;
 
    public:
-    Positional(Group& group_, const std::string& name_,
-               const std::string& help_, const T& defaultValue_ = T(),
-               Options options_ = {})
-        : PositionalBase(name_, help_, options_),
-          value(defaultValue_),
-          defaultValue(defaultValue_) {
+    Positional(Group& group_, const std::string& name_, const std::string& help_, const T& defaultValue_ = T(), Options options_ = {})
+        : PositionalBase(name_, help_, options_), value(defaultValue_), defaultValue(defaultValue_) {
         group_.Add(*this);
     }
 
-    Positional(Group& group_, const std::string& name_,
-               const std::string& help_, Options options_)
+    Positional(Group& group_, const std::string& name_, const std::string& help_, Options options_)
         : Positional(group_, name_, help_, T(), options_) {}
 
     virtual ~Positional() {}
@@ -3735,8 +3353,7 @@ class Positional : public PositionalBase {
  * value, and destination reference with operator(), and returning a bool (if
  * ARGS_NOEXCEPT is defined)
  */
-template <typename T, template <typename...> class List = detail::vector,
-          typename Reader = ValueReader>
+template <typename T, template <typename...> class List = detail::vector, typename Reader = ValueReader>
 class PositionalList : public PositionalBase {
    private:
     using Container = List<T>;
@@ -3758,18 +3375,13 @@ class PositionalList : public PositionalBase {
     typedef std::reverse_iterator<iterator> reverse_iterator;
     typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
-    PositionalList(Group& group_, const std::string& name_,
-                   const std::string& help_,
-                   const Container& defaultValues_ = Container(),
+    PositionalList(Group& group_, const std::string& name_, const std::string& help_, const Container& defaultValues_ = Container(),
                    Options options_ = {})
-        : PositionalBase(name_, help_, options_),
-          values(defaultValues_),
-          defaultValues(defaultValues_) {
+        : PositionalBase(name_, help_, options_), values(defaultValues_), defaultValues(defaultValues_) {
         group_.Add(*this);
     }
 
-    PositionalList(Group& group_, const std::string& name_,
-                   const std::string& help_, Options options_)
+    PositionalList(Group& group_, const std::string& name_, const std::string& help_, Options options_)
         : PositionalList(group_, name_, help_, {}, options_) {}
 
     virtual ~PositionalList() {}
@@ -3787,9 +3399,7 @@ class PositionalList : public PositionalBase {
         matched = true;
     }
 
-    virtual std::string Name() const override {
-        return name + std::string("...");
-    }
+    virtual std::string Name() const override { return name + std::string("..."); }
 
     /** Get the values
      */
@@ -3847,8 +3457,7 @@ class PositionalList : public PositionalBase {
  * ARGS_NOEXCEPT is defined)
  * \tparam Map The Map type.  Should operate like std::map or std::unordered_map
  */
-template <typename K, typename T, typename Reader = ValueReader,
-          template <typename...> class Map = detail::unordered_map>
+template <typename K, typename T, typename Reader = ValueReader, template <typename...> class Map = detail::unordered_map>
 class MapPositional : public PositionalBase {
    private:
     const Map<K, T> map;
@@ -3857,19 +3466,12 @@ class MapPositional : public PositionalBase {
     Reader reader;
 
    protected:
-    virtual std::vector<std::string> GetChoicesStrings(
-        const HelpParams&) const override {
-        return detail::MapKeysToStrings(map);
-    }
+    virtual std::vector<std::string> GetChoicesStrings(const HelpParams&) const override { return detail::MapKeysToStrings(map); }
 
    public:
-    MapPositional(Group& group_, const std::string& name_,
-                  const std::string& help_, const Map<K, T>& map_,
-                  const T& defaultValue_ = T(), Options options_ = {})
-        : PositionalBase(name_, help_, options_),
-          map(map_),
-          value(defaultValue_),
-          defaultValue(defaultValue_) {
+    MapPositional(Group& group_, const std::string& name_, const std::string& help_, const Map<K, T>& map_, const T& defaultValue_ = T(),
+                  Options options_ = {})
+        : PositionalBase(name_, help_, options_), map(map_), value(defaultValue_), defaultValue(defaultValue_) {
         group_.Add(*this);
     }
 
@@ -3887,8 +3489,7 @@ class MapPositional : public PositionalBase {
         auto it = map.find(key);
         if (it == std::end(map)) {
             std::ostringstream problem;
-            problem << "Could not find key '" << key << "' in map for arg '"
-                    << name << "'";
+            problem << "Could not find key '" << key << "' in map for arg '" << name << "'";
 #ifdef ARGS_NOEXCEPT
             error = Error::Map;
             errorMsg = problem.str();
@@ -3938,9 +3539,7 @@ class MapPositional : public PositionalBase {
  * ARGS_NOEXCEPT is defined)
  * \tparam Map The Map type.  Should operate like std::map or std::unordered_map
  */
-template <typename K, typename T,
-          template <typename...> class List = detail::vector,
-          typename Reader = ValueReader,
+template <typename K, typename T, template <typename...> class List = detail::vector, typename Reader = ValueReader,
           template <typename...> class Map = detail::unordered_map>
 class MapPositionalList : public PositionalBase {
    private:
@@ -3952,10 +3551,7 @@ class MapPositionalList : public PositionalBase {
     Reader reader;
 
    protected:
-    virtual std::vector<std::string> GetChoicesStrings(
-        const HelpParams&) const override {
-        return detail::MapKeysToStrings(map);
-    }
+    virtual std::vector<std::string> GetChoicesStrings(const HelpParams&) const override { return detail::MapKeysToStrings(map); }
 
    public:
     typedef T value_type;
@@ -3971,14 +3567,9 @@ class MapPositionalList : public PositionalBase {
     typedef std::reverse_iterator<iterator> reverse_iterator;
     typedef std::reverse_iterator<const_iterator> const_reverse_iterator;
 
-    MapPositionalList(Group& group_, const std::string& name_,
-                      const std::string& help_, const Map<K, T>& map_,
-                      const Container& defaultValues_ = Container(),
-                      Options options_ = {})
-        : PositionalBase(name_, help_, options_),
-          map(map_),
-          values(defaultValues_),
-          defaultValues(defaultValues_) {
+    MapPositionalList(Group& group_, const std::string& name_, const std::string& help_, const Map<K, T>& map_,
+                      const Container& defaultValues_ = Container(), Options options_ = {})
+        : PositionalBase(name_, help_, options_), map(map_), values(defaultValues_), defaultValues(defaultValues_) {
         group_.Add(*this);
     }
 
@@ -3996,8 +3587,7 @@ class MapPositionalList : public PositionalBase {
         auto it = map.find(key);
         if (it == std::end(map)) {
             std::ostringstream problem;
-            problem << "Could not find key '" << key << "' in map for arg '"
-                    << name << "'";
+            problem << "Could not find key '" << key << "' in map for arg '" << name << "'";
 #ifdef ARGS_NOEXCEPT
             error = Error::Map;
             errorMsg = problem.str();
@@ -4030,9 +3620,7 @@ class MapPositionalList : public PositionalBase {
      */
     const Container* operator->() const noexcept { return &values; }
 
-    virtual std::string Name() const override {
-        return name + std::string("...");
-    }
+    virtual std::string Name() const override { return name + std::string("..."); }
 
     virtual void Reset() noexcept override {
         PositionalBase::Reset();

@@ -79,10 +79,7 @@ extern volatile int global_terminate;
 struct time_keeper {
     [[nodiscard]]
     double get_time() const {
-        return (static_cast<double>(
-                   std::chrono::duration_cast<std::chrono::milliseconds>(
-                       std::chrono::steady_clock::now() - this->timer)
-                       .count())) /
+        return (static_cast<double>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - this->timer).count())) /
                1'000;
     }
     explicit time_keeper() { this->timer = std::chrono::steady_clock::now(); }
@@ -95,21 +92,11 @@ struct time_keeper {
 enum class solution_status { OPT = 0, FEAS = 1, INFEAS = 2, NOTFOUND = 404 };
 
 /** Execution status for execution monitoring */
-enum class exec_status {
-    START = 0,
-    READ_INPUT = 1,
-    PROBLEM_SIMPL = 10,
-    HEURISTIC = 20,
-    MODEL_BUILD = 30,
-    STOP_TL = 40,
-    CPX_EXEC = 50,
-    EXIT = 100
-};
+enum class exec_status { START = 0, READ_INPUT = 1, PROBLEM_SIMPL = 10, HEURISTIC = 20, MODEL_BUILD = 30, STOP_TL = 40, CPX_EXEC = 50, EXIT = 100 };
 
 /** Split the string str using del as delimiter */
 [[nodiscard]]
-inline std::vector<std::string> split_string(const std::string& str,
-                                             const char del) {
+inline std::vector<std::string> split_string(const std::string& str, const char del) {
     std::vector<std::string> tokens;
     tokens.reserve(std::count(str.begin(), str.end(), del) + 1);
 
@@ -129,9 +116,7 @@ inline std::vector<std::string> split_string(const std::string& str,
 
 /** Check if str is an integer between from and to (inclusive) */
 [[nodiscard]]
-inline bool isint(const std::string& str,
-                  const int from = std::numeric_limits<int>::min(),
-                  const int to = std::numeric_limits<int>::max()) {
+inline bool isint(const std::string& str, const int from = std::numeric_limits<int>::min(), const int to = std::numeric_limits<int>::max()) {
     // Handle empty string
     if (str.empty()) return false;
 
@@ -196,13 +181,12 @@ class timelimit_exception final : public std::exception {
 
 /** Define an assert function */
 #ifndef ASSERT
-#define ASSERT(cond)                                                    \
-    {                                                                   \
-        if (!(cond)) [[unlikely]] {                                     \
-            std::cerr << "Assert check failed at " << __func__          \
-                      << "(): " << __FILE__ << ":" << __LINE__ << "\n"; \
-            exit(1);                                                    \
-        }                                                               \
+#define ASSERT(cond)                                                                                             \
+    {                                                                                                            \
+        if (!(cond)) [[unlikely]] {                                                                              \
+            std::cerr << "Assert check failed at " << __func__ << "(): " << __FILE__ << ":" << __LINE__ << "\n"; \
+            exit(1);                                                                                             \
+        }                                                                                                        \
     }
 #endif
 

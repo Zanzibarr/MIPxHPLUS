@@ -21,8 +21,7 @@ template <typename score_type>
 class priority_queue {
    public:
     /** Construct a priority queue for the integer form 0 to n - 1 */
-    explicit priority_queue(const size_t n)
-        : n(n), cnt(0), data(n), prior(n), position(n, -1) {}
+    explicit priority_queue(const size_t n) : n(n), cnt(0), data(n), prior(n), position(n, -1) {}
     /** Return the integer with minimal priority (throws exception if empty) */
     [[nodiscard]]
     size_t top() const {
@@ -59,13 +58,10 @@ class priority_queue {
         }
     }
     /** Insert integer j into the queue with a priority p */
-    void push(const size_t j, const score_type p,
-              const bool mantain_heap = true) {
+    void push(const size_t j, const score_type p, const bool mantain_heap = true) {
         validate_element(j);
 #if INTCHECK_PQ
-        if (position[j] != -1)
-            throw std::invalid_argument(
-                "Element was already in the priority queue.");
+        if (position[j] != -1) throw std::invalid_argument("Element was already in the priority queue.");
 #endif
         prior[j] = p;
         // put gap at last position
@@ -84,24 +80,17 @@ class priority_queue {
     /** Removes integer j from the queue */
     void remove(const size_t j, const bool mantain_heap = true) {
 #if INTCHECK_PQ
-        if (position[j] < 0)
-            throw std::invalid_argument(
-                "Element wasn't in the priority queue.");
+        if (position[j] < 0) throw std::invalid_argument("Element wasn't in the priority queue.");
 #endif
         remove_at(position[j], mantain_heap);
 #if INTCHECK_PQ
-        if (position[j] != -1)
-            throw std::invalid_argument(
-                "Element hasn't been removed from the priority queue.");
+        if (position[j] != -1) throw std::invalid_argument("Element hasn't been removed from the priority queue.");
 #endif
     }
     /** Changes the score of an integer j already in the queue to p */
-    void change(const size_t j, const score_type p,
-                const bool mantain_heap = true) {
+    void change(const size_t j, const score_type p, const bool mantain_heap = true) {
 #if INTCHECK_PQ
-        if (position[j] < 0)
-            throw std::invalid_argument(
-                "Element wasn't in the priority queue.");
+        if (position[j] < 0) throw std::invalid_argument("Element wasn't in the priority queue.");
 #endif
         int gap{position[j]};
         if (mantain_heap) {
@@ -215,9 +204,7 @@ class priority_queue {
     }
     void validate_element(const size_t j) const {
 #if INTCHECK_PQ
-        if (j >= n)
-            throw std::invalid_argument(
-                "Element is outside of predefined range.");
+        if (j >= n) throw std::invalid_argument("Element is outside of predefined range.");
 #endif
     }
 };

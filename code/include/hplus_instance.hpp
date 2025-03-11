@@ -86,8 +86,7 @@ void print_stats(const statistics& stats, const logger& log);
  * false if it detects that the problem is infeasible (no assumptions can be
  * made if it returns true) */
 [[nodiscard]]
-bool create_instance(instance& inst, environment& env, statistics& stats,
-                     const logger& log);
+bool create_instance(instance& inst, environment& env, statistics& stats, const logger& log);
 /** Update the best solution of inst with a new solution sol (with cost cost):
  * if the solution is not better, the solution won't be updated */
 void update_sol(instance& inst, const solution& sol, const logger& log);

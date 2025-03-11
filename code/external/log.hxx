@@ -19,8 +19,7 @@
 #include <string_view>  // For std::string_view
 
 #define LINE "------------------------------------------------------------"
-#define THICK_LINE \
-    "############################################################"
+#define THICK_LINE "############################################################"
 
 // Enum for log level types
 enum class log_level { print, info, warning, error };
@@ -46,23 +45,19 @@ constexpr std::string_view error{"\033[91m\033[1m"};
 constexpr std::string_view reset_bold{"\033[22m"};
 }  // namespace colors
 
-inline std::pair<std::string, std::string> format_prefix(
-    const log_level level, const bool include_time) {
+inline std::pair<std::string, std::string> format_prefix(const log_level level, const bool include_time) {
     std::string terminal_prefix, file_prefix;
     switch (level) {
         case log_level::info:
-            terminal_prefix = std::string(colors::info) + "[ INFO ] " +
-                              std::string(colors::reset_bold) + "-- ";
+            terminal_prefix = std::string(colors::info) + "[ INFO ] " + std::string(colors::reset_bold) + "-- ";
             file_prefix = "[ INFO ] -- ";
             break;
         case log_level::warning:
-            terminal_prefix = std::string(colors::warn) + "[ WARN ] " +
-                              std::string(colors::reset_bold) + "-- ";
+            terminal_prefix = std::string(colors::warn) + "[ WARN ] " + std::string(colors::reset_bold) + "-- ";
             file_prefix = "[ WARN ] -- ";
             break;
         case log_level::error:
-            terminal_prefix = std::string(colors::error) + "[ ERROR ] " +
-                              std::string(colors::reset_bold) + "-- ";
+            terminal_prefix = std::string(colors::error) + "[ ERROR ] " + std::string(colors::reset_bold) + "-- ";
             file_prefix = "[ ERROR ] -- ";
             break;
         default:
@@ -113,25 +108,19 @@ class logger {
      *
      * @throw std::runtime_error If any problem with opening the log file occurs
      */
-    explicit logger(const bool log_enabled, const std::string_view log_name,
-                    const std::string_view run_title = "")
+    explicit logger(const bool log_enabled, const std::string_view log_name, const std::string_view run_title = "")
         : log_file_path_(log_name), log_enabled_(log_enabled) {
         if (log_enabled_) {
             try {
                 std::ofstream file(log_file_path_.c_str(), std::ios::app);
-                if (!file.is_open())
-                    throw std::runtime_error("Failed to open log file: " +
-                                             std::string(log_name));
+                if (!file.is_open()) throw std::runtime_error("Failed to open log file: " + std::string(log_name));
 
                 if (!run_title.empty()) {
-                    file << '\n'
-                         << THICK_LINE << "\nRUN_NAME: " << run_title << '\n'
-                         << THICK_LINE << '\n';
+                    file << '\n' << THICK_LINE << "\nRUN_NAME: " << run_title << '\n' << THICK_LINE << '\n';
                 }
                 file.close();
             } catch (const std::exception& e) {
-                throw std::runtime_error(
-                    std::string("logger initialization error: ") + e.what());
+                throw std::runtime_error(std::string("logger initialization error: ") + e.what());
             }
         }
     }
@@ -206,25 +195,17 @@ class logger {
     /**
      * @brief Internal implementation for logging messages
      */
-    void log_message(const log_level level, const bool include_time,
-                     const char* format, va_list args) const {
+    void log_message(const log_level level, const bool include_time, const char* format, va_list args) const {
         try {
             std::string message{format_string(format, args)};
-            auto [terminal_prefix,
-                  file_prefix]{format_prefix(level, include_time)};
+            auto [terminal_prefix, file_prefix]{format_prefix(level, include_time)};
 
-            std::ostream& out_stream =
-                (level == log_level::warning || level == log_level::error)
-                    ? std::cerr
-                    : std::cout;
+            std::ostream& out_stream = (level == log_level::warning || level == log_level::error) ? std::cerr : std::cout;
             out_stream << terminal_prefix << message << std::endl;
 
             if (log_enabled_) {
                 std::ofstream file(log_file_path_.c_str(), std::ios::app);
-                if (!file.is_open())
-                    throw std::runtime_error(
-                        "Failed to open log file for writing: " +
-                        log_file_path_);
+                if (!file.is_open()) throw std::runtime_error("Failed to open log file for writing: " + log_file_path_);
 
                 file << file_prefix << message << std::endl;
                 file.close();

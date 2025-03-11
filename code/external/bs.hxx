@@ -13,10 +13,10 @@
 #define INTCHECK_BS true
 #endif
 
-#include <deque>  // For std::deque
+#include <deque>      // For std::deque
 #include <stdexcept>  // For std::invalid_argument, std::domain_error, std::out_of_range
-#include <string>  // For std::string
-#include <vector>  // For std::vector
+#include <string>     // For std::string
+#include <vector>     // For std::vector
 
 /**
  * @brief binary_set class for compact binary sets.
@@ -46,20 +46,14 @@ class binary_set {
      *
      * @throw std::invalid_argument If capacity is 0
      */
-    explicit binary_set(const size_t capacity, const bool fill = false)
-        : capacity_(capacity) {
+    explicit binary_set(const size_t capacity, const bool fill = false) : capacity_(capacity) {
 #if INTCHECK_BS
-        if (capacity == 0)
-            throw std::invalid_argument(
-                "Cannot explicitly create a binary_set with capacity 0.");
+        if (capacity == 0) throw std::invalid_argument("Cannot explicitly create a binary_set with capacity 0.");
 #endif
 
-        set_.resize((capacity_ + 7) / 8,
-                    fill ? static_cast<unsigned char>(~0u) : 0);
+        set_.resize((capacity_ + 7) / 8, fill ? static_cast<unsigned char>(~0u) : 0);
         // Set appropriate bits in last byte if capacity is not a multiple of 8
-        if (fill && capacity_ % 8 != 0)
-            set_[set_.size() - 1] &=
-                static_cast<unsigned char>((1u << (capacity_ % 8)) - 1);
+        if (fill && capacity_ % 8 != 0) set_[set_.size() - 1] &= static_cast<unsigned char>((1u << (capacity_ % 8)) - 1);
     }
 
     /**
@@ -113,9 +107,7 @@ class binary_set {
     void fill() {
         std::fill(set_.begin(), set_.end(), static_cast<unsigned char>(~0u));
         // Set appropriate bits in last byte if capacity is not a multiple of 8
-        if (capacity_ % 8 != 0 && capacity_ != 0)
-            set_[set_.size() - 1] &=
-                static_cast<unsigned char>((1u << (capacity_ % 8)) - 1);
+        if (capacity_ % 8 != 0 && capacity_ != 0) set_[set_.size() - 1] &= static_cast<unsigned char>((1u << (capacity_ % 8)) - 1);
     }
 
     /**
@@ -170,8 +162,7 @@ class binary_set {
      */
     [[nodiscard]]
     bool empty() const noexcept {
-        return std::all_of(set_.begin(), set_.end(),
-                           [](unsigned char byte) { return byte == 0; });
+        return std::all_of(set_.begin(), set_.end(), [](unsigned char byte) { return byte == 0; });
     }
 
     /**
@@ -185,8 +176,7 @@ class binary_set {
     [[nodiscard]]
     std::vector<size_t> sparse() const {
 #if INTCHECK_BS
-        if (capacity_ == 0)
-            throw std::domain_error("This binary set has a size of 0.");
+        if (capacity_ == 0) throw std::domain_error("This binary set has a size of 0.");
 #endif
 
         return {this->begin(), this->end()};
@@ -227,8 +217,7 @@ class binary_set {
         validate_same_capacity(other);
 
         binary_set result{*this};
-        for (size_t i = 0; i < set_.size(); i++)
-            result.set_[i] &= other.set_[i];
+        for (size_t i = 0; i < set_.size(); i++) result.set_[i] &= other.set_[i];
 
         return result;
     }
@@ -265,8 +254,7 @@ class binary_set {
         validate_same_capacity(other);
 
         binary_set result{*this};
-        for (size_t i = 0; i < set_.size(); i++)
-            result.set_[i] |= other.set_[i];
+        for (size_t i = 0; i < set_.size(); i++) result.set_[i] |= other.set_[i];
 
         return result;
     }
@@ -302,8 +290,7 @@ class binary_set {
         validate_same_capacity(other);
 
         binary_set result{*this};
-        for (size_t i = 0; i < set_.size(); i++)
-            result.set_[i] &= ~other.set_[i];
+        for (size_t i = 0; i < set_.size(); i++) result.set_[i] &= ~other.set_[i];
 
         return result;
     }
@@ -338,9 +325,7 @@ class binary_set {
         for (size_t i = 0; i < set_.size(); i++) result.set_[i] = ~set_[i];
 
         // Mask extra bits in the last byte if needed
-        if (capacity_ % 8 != 0 && capacity_ != 0)
-            result.set_[set_.size() - 1] &=
-                static_cast<unsigned char>((1u << (capacity_ % 8)) - 1);
+        if (capacity_ % 8 != 0 && capacity_ != 0) result.set_[set_.size() - 1] &= static_cast<unsigned char>((1u << (capacity_ % 8)) - 1);
 
         return result;
     }
@@ -454,18 +439,15 @@ class binary_set {
         using pointer = const value_type*;
         using reference = const value_type&;
 
-        iterator(const binary_set* bs, const size_t pos) noexcept
-            : bs_(bs), current_pos_(pos) {
+        iterator(const binary_set* bs, const size_t pos) noexcept : bs_(bs), current_pos_(pos) {
             // Advance to first set element if starting position is not set
-            if (current_pos_ < bs_->capacity() && !bs_->contains(current_pos_))
-                ++(*this);
+            if (current_pos_ < bs_->capacity() && !bs_->contains(current_pos_)) ++(*this);
         }
 
         iterator& operator++() {
             do {
                 ++current_pos_;
-            } while (current_pos_ < bs_->capacity() &&
-                     !bs_->contains(current_pos_));
+            } while (current_pos_ < bs_->capacity() && !bs_->contains(current_pos_));
 
             return *this;
         }
@@ -516,9 +498,7 @@ class binary_set {
 
     void validate_same_capacity(const binary_set& other) const {
 #if INTCHECK_BS
-        if (capacity_ != other.capacity_)
-            throw std::invalid_argument(
-                "The two binary_set don't have the same capacity.");
+        if (capacity_ != other.capacity_) throw std::invalid_argument("The two binary_set don't have the same capacity.");
 #endif
     }
 };
@@ -543,8 +523,7 @@ class bs_searcher {
      *
      * @param capacity The capacity of the binary_set that are going to be used
      */
-    explicit bs_searcher(const size_t capacity)
-        : root_(std::make_unique<treenode>()), capacity_(capacity) {}
+    explicit bs_searcher(const size_t capacity) : root_(std::make_unique<treenode>()), capacity_(capacity) {}
 
     /**
      * @brief Add a binary_set to the search tree
@@ -599,9 +578,7 @@ class bs_searcher {
 
         // Helper function to check if a node is empty (no values and no
         // children)
-        auto is_empty_node = [](const treenode* node) -> bool {
-            return node && node->values.empty() && !node->left && !node->right;
-        };
+        auto is_empty_node = [](const treenode* node) -> bool { return node && node->values.empty() && !node->left && !node->right; };
 
         // Helper function to remove value from a vector
         auto remove_value = [](std::vector<size_t>& values, size_t v) -> bool {
@@ -642,17 +619,13 @@ class bs_searcher {
             auto [parent_ptr, current_node]{*it};
 
             // If both children are empty and this node has no values, remove it
-            if (is_empty_node(current_node->left.get()) &&
-                is_empty_node(current_node->right.get()) &&
-                current_node->values.empty()) {
+            if (is_empty_node(current_node->left.get()) && is_empty_node(current_node->right.get()) && current_node->values.empty()) {
                 // Reset unique_ptr will invoke destructor
                 if (current_node->left) current_node->left.reset();
                 if (current_node->right) current_node->right.reset();
 
                 // Only reset if it's not the root node
-                if (parent_ptr != &root_ ||
-                    (parent_ptr == &root_ && current_node != root_.get()))
-                    parent_ptr->reset();
+                if (parent_ptr != &root_ || (parent_ptr == &root_ && current_node != root_.get())) parent_ptr->reset();
             }
         }
 
@@ -704,9 +677,7 @@ class bs_searcher {
         // Open nodes are now all leaves whose binary_set is a subset of the
         // target one (bs)
         std::vector<size_t> result;
-        for (const auto& node : open_nodes)
-            result.insert(result.end(), node->values.begin(),
-                          node->values.end());
+        for (const auto& node : open_nodes) result.insert(result.end(), node->values.begin(), node->values.end());
 
         return result;
     }
@@ -718,9 +689,7 @@ class bs_searcher {
     // Helper method for validation
     void validate_capacity(const binary_set& bs) const {
 #if INTCHECK_BS
-        if (capacity_ != bs.capacity())
-            throw std::invalid_argument(
-                "The binary_set has an unexpected capacity.");
+        if (capacity_ != bs.capacity()) throw std::invalid_argument("The binary_set has an unexpected capacity.");
 #endif
     }
 };
