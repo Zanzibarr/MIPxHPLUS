@@ -13,7 +13,7 @@
 // ############################ CODE VERSION ########################### //
 // ##################################################################### //
 
-#define CODE_VERSION "1.1.0"
+#define CODE_VERSION "1.1.1"
 
 // ##################################################################### //
 // ############################## IMPORTS ############################## //
@@ -43,8 +43,7 @@
 
 #define HPLUS_CLI_ALG_IMAI "imai"
 #define HPLUS_CLI_ALG_RANKOOH "rankooh"
-#define HPLUS_CLI_ALG_DYNAMIC_SMALL "dynamic-s"
-#define HPLUS_CLI_ALG_DYNAMIC_LARGE "dynamic-l"
+#define HPLUS_CLI_ALG_DYNAMIC_TIME "dynamic_t"
 #define HPLUS_CLI_ALG_HEUR "heur"
 
 // ##################################################################### //

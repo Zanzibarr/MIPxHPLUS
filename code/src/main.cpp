@@ -69,7 +69,7 @@ static void parse_cli(const int& argc, const char** argv, hplus::environment& en
     args::Positional<std::string> input_file(parser, "input_file",
                                              "Specify the input file (a .sas file provided by the FastDownward "
                                              "translator).");
-    args::ValueFlag<std::string> algorithm(parser, "algorithm", "Specify the algorithm to use (rankooh, imai, dynamic-s, dynamic-l).", {"a", "alg"});
+    args::ValueFlag<std::string> algorithm(parser, "algorithm", "Specify the algorithm to use (heur, rankooh, imai, dynamic_t).", {"a", "alg"});
     args::Flag no_optimization(parser, "optimization", "Tell to not optimize the problem.", {"no-op"});
     args::Flag no_tightbounds(parser, "tight bounds", "Tell to not use tighter bounds for imai variable timestamps.", {"no-tb"});
     args::ValueFlag<std::string> heur(parser, "heuristic",
@@ -128,8 +128,7 @@ static void parse_cli(const int& argc, const char** argv, hplus::environment& en
         env.log_name = args::get(logname);
     }
     if (runname) env.run_name = args::get(runname);
-    if (env.alg != HPLUS_CLI_ALG_IMAI && env.alg != HPLUS_CLI_ALG_RANKOOH && env.alg != HPLUS_CLI_ALG_DYNAMIC_LARGE &&
-        env.alg != HPLUS_CLI_ALG_DYNAMIC_SMALL) {
+    if (env.alg != HPLUS_CLI_ALG_IMAI && env.alg != HPLUS_CLI_ALG_RANKOOH && env.alg != HPLUS_CLI_ALG_DYNAMIC_TIME) {
         env.warm_start = false;
         env.using_cplex = false;
     }
@@ -191,8 +190,8 @@ static void run(hplus::instance& inst, hplus::environment& env, hplus::statistic
 
     try {
         double start_time;
-        if (env.alg != HPLUS_CLI_ALG_IMAI && env.alg != HPLUS_CLI_ALG_RANKOOH && env.alg != HPLUS_CLI_ALG_DYNAMIC_SMALL &&
-            env.alg != HPLUS_CLI_ALG_DYNAMIC_LARGE && env.alg != HPLUS_CLI_ALG_HEUR)
+        if (env.alg != HPLUS_CLI_ALG_IMAI && env.alg != HPLUS_CLI_ALG_RANKOOH && env.alg != HPLUS_CLI_ALG_DYNAMIC_TIME &&
+            env.alg != HPLUS_CLI_ALG_HEUR)
 
             log.raise_error(
                 "The algorithm specified (%s) is not on the list of possible "
@@ -249,7 +248,7 @@ static void run(hplus::instance& inst, hplus::environment& env, hplus::statistic
             stats.heuristic = static_cast<double>(env.time_limit) - env.timer.get_time();
             start_time = env.timer.get_time();
 
-            find_heuristic(inst, env, log);
+            run_heur(inst, env, log);
 
             stats.heuristic = env.timer.get_time() - start_time;
         }
@@ -262,76 +261,7 @@ static void run(hplus::instance& inst, hplus::environment& env, hplus::statistic
             return;
         }
 
-        // ~~~~~~~~~~~~ MODEL BUILDING ~~~~~~~~~~~ //
-
-        PRINT_INFO(log, "Building model.");
-        env.exec_s = exec_status::MODEL_BUILD;
-
-        stats.build = static_cast<double>(env.time_limit) - env.timer.get_time();
-        start_time = env.timer.get_time();
-
-        CPXENVptr cpxenv = nullptr;
-        CPXLPptr cpxlp = nullptr;
-
-        cpx_init(cpxenv, cpxlp, env, log);
-        stopchk();
-
-        if (env.alg == HPLUS_CLI_ALG_IMAI)
-            cpx_build_imai(cpxenv, cpxlp, inst, env, log);
-        else if (env.alg == HPLUS_CLI_ALG_RANKOOH)
-            cpx_build_rankooh(cpxenv, cpxlp, inst, env, log);
-        else if (env.alg == HPLUS_CLI_ALG_DYNAMIC_SMALL)
-            cpx_build_dynamic_small(cpxenv, cpxlp, inst, env, log);
-        else if (env.alg == HPLUS_CLI_ALG_DYNAMIC_LARGE)
-            cpx_build_dynamic_large(cpxenv, cpxlp, inst, env, log);
-        stopchk();
-
-        // time limit
-        if (static_cast<double>(env.time_limit) > env.timer.get_time()) {
-            ASSERT_LOG(log, !CPXsetdblparam(cpxenv, CPXPARAM_TimeLimit, static_cast<double>(env.time_limit) - env.timer.get_time()));
-        } else
-            throw timelimit_exception("Reached the time limit");
-
-        if (env.warm_start) {  // Post warm starto to CPLEX
-
-            PRINT_INFO(log, "Posting warm start.");
-
-            if (env.alg == HPLUS_CLI_ALG_IMAI)
-                cpx_post_warmstart_imai(cpxenv, cpxlp, inst, env, log);
-            else if (env.alg == HPLUS_CLI_ALG_RANKOOH)
-                cpx_post_warmstart_rankooh(cpxenv, cpxlp, inst, env, log);
-            else if (env.alg == HPLUS_CLI_ALG_DYNAMIC_SMALL)
-                cpx_post_warmstart_dynamic_small(cpxenv, cpxlp, inst, env, log);
-            else if (env.alg == HPLUS_CLI_ALG_DYNAMIC_LARGE)
-                cpx_post_warmstart_dynamic_large(cpxenv, cpxlp, inst, env, log);
-        }
-
-        stats.build = env.timer.get_time() - start_time;
-
-        // ~~~~~~~~~~~ MODEL EXECUTION ~~~~~~~~~~~ //
-
-        PRINT_INFO(log, "Running CPLEX.");
-        env.exec_s = exec_status::CPX_EXEC;
-
-        stats.execution = static_cast<double>(env.time_limit) - env.timer.get_time();
-        start_time = env.timer.get_time();
-
-        ASSERT_LOG(log, !CPXmipopt(cpxenv, cpxlp));
-
-        if (parse_cpx_status(cpxenv, cpxlp, env, log)) {  // If CPLEX has found a solution
-            if (env.alg == HPLUS_CLI_ALG_IMAI)
-                store_imai_sol(cpxenv, cpxlp, inst, log);
-            else if (env.alg == HPLUS_CLI_ALG_RANKOOH)
-                store_rankooh_sol(cpxenv, cpxlp, inst, log);
-            else if (env.alg == HPLUS_CLI_ALG_DYNAMIC_SMALL)
-                store_dynamic_small_sol(cpxenv, cpxlp, inst, log);
-            else if (env.alg == HPLUS_CLI_ALG_DYNAMIC_LARGE)
-                store_dynamic_large_sol(cpxenv, cpxlp, inst, log);
-        }
-
-        cpx_close(cpxenv, cpxlp);
-
-        stats.execution = env.timer.get_time() - start_time;
+        run_model(inst, env, stats, log);
 
     } catch (timelimit_exception&) {
     }

@@ -25,6 +25,18 @@ HOW I DO VERSIONING:
 ### :curly_loop: Other
 -->
 
+## [1.1.1] - 2025/03/11
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+<!-- ### :heavy_exclamation_mark: Changed -->
+### :heavy_plus_sign: Added
+- Added dynamic time model
+    - [~/code/src/algorithms.hpp](code/src/algorithms.hpp)
+    - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+
+
 ## [1.1.0] - 2025/03/11
 ### Tested all features added in 1.0.*
 <!-- ### :warning: Known issues -->
