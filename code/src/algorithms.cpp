@@ -19,11 +19,14 @@
 #endif
 #include "pq.hxx"  // For priority_queue
 
+void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log,
+                    bool relaxed = false);
+
 // ##################################################################### //
 // ############################ CPLEX UTILS ############################ //
 // ##################################################################### //
 
-void cpx_init(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::environment& env, const logger& log, bool log_file) {
+void cpx_init(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::environment& env, const logger& log, bool log_file = true) {
     PRINT_VERBOSE(log, "Initializing CPLEX.");
     int cpxerror;
     cpxenv = CPXopenCPLEX(&cpxerror);
@@ -49,6 +52,7 @@ void cpx_close(CPXENVptr& cpxenv, CPXLPptr& cpxlp) {
     CPXcloseCPLEX(&cpxenv);
 }
 
+[[nodiscard]]
 bool parse_cpx_status(const CPXENVptr& cpxenv, const CPXLPptr& cpxlp, hplus::environment& env, const logger& log) {
     PRINT_VERBOSE(log, "Parsing CPLEX status code.");
     switch (const int cpxstatus{CPXgetstat(cpxenv, cpxlp)}) {
@@ -648,24 +652,6 @@ void run_heur(hplus::instance& inst, hplus::environment& env, const logger& log)
             "The heuristic specified (%s) is not on the list of possible "
             "heuristics... Please read the Readme.md for instructions.",
             env.heur.c_str());
-}
-
-double find_hmax_goal(const hplus::instance& inst, const logger& log) {
-    PRINT_VERBOSE(log, "Calculating hmax heuristic.");
-    std::vector<double> values(inst.n, std::numeric_limits<double>::infinity());
-    priority_queue<double> pq{inst.n};
-
-    // binary_set searcher for faster actions lookup
-    bs_searcher feasible_actions{inst.n};
-    for (const auto& act_i : inst.act_rem) feasible_actions.add(act_i, inst.actions[act_i].pre);
-
-    auto hmax_formula = [](double a, double b) { return a > b ? a : b; };
-
-    // initialize values and priority queue (needs to be done manually since
-    // here the initial state will always be empty)
-    init_htype(inst, feasible_actions.find_subsets(binary_set(inst.n)), values, pq, hmax_formula);
-
-    return evaluate_htype_state(inst.goal, values, hmax_formula);
 }
 
 // ##################################################################### //
@@ -1573,7 +1559,7 @@ static void store_rankooh_sol(const CPXENVptr& cpxenv, const CPXLPptr& cpxlp, hp
 // ##################################################################### //
 
 // straight from Johnson's paper
-void unblock(size_t u, std::vector<bool>& blocked, std::vector<std::set<size_t>>& block_map) {
+static void unblock(size_t u, std::vector<bool>& blocked, std::vector<std::set<size_t>>& block_map) {
     blocked[u] = false;
     for (int w : block_map[u])
         if (blocked[w]) unblock(w, blocked, block_map);
@@ -1581,8 +1567,8 @@ void unblock(size_t u, std::vector<bool>& blocked, std::vector<std::set<size_t>>
 }
 
 // straight from Johnson's paper
-bool circuit(size_t v, size_t start, std::vector<std::vector<size_t>>& graph, std::vector<bool>& blocked, std::vector<std::set<size_t>>& block_map,
-             std::stack<size_t>& path, std::vector<std::vector<size_t>>& cycles) {
+static bool circuit(size_t v, size_t start, std::vector<std::vector<size_t>>& graph, std::vector<bool>& blocked,
+                    std::vector<std::set<size_t>>& block_map, std::stack<size_t>& path, std::vector<std::vector<size_t>>& cycles) {
     bool found_cycle = false;
     path.push(v);
     blocked[v] = true;
@@ -1612,19 +1598,14 @@ bool circuit(size_t v, size_t start, std::vector<std::vector<size_t>>& graph, st
 }
 
 typedef struct {
-    hplus::instance inst;
-    hplus::environment env;
-    hplus::statistics stats;
-    logger log;
+    hplus::instance& inst;
+    hplus::environment& env;
+    hplus::statistics& stats;
+    const logger& log;
 } dynamic_time_user_handle;
 
 static int CPXPUBLIC cpx_dynamic_time_callback(CPXCALLBACKCONTEXTptr context, CPXLONG context_id, void* user_handle) {
-    dynamic_time_user_handle tmp = *static_cast<dynamic_time_user_handle*>(user_handle);
-
-    hplus::instance inst = tmp.inst;
-    hplus::environment env = tmp.env;
-    hplus::statistics stats = tmp.stats;
-    logger log = tmp.log;
+    auto& [inst, env, stats, log] = *static_cast<dynamic_time_user_handle*>(user_handle);
 
     ASSERT_LOG(log, context_id == CPX_CALLBACKCONTEXT_CANDIDATE);
     double start_time{env.timer.get_time()};
@@ -1688,7 +1669,7 @@ static int CPXPUBLIC cpx_dynamic_time_callback(CPXCALLBACKCONTEXTptr context, CP
 #if HPLUS_VERBOSE >= 20
     int itcount = 0;
     ASSERT_LOG(log, !CPXcallbackgetinfoint(context, CPXCALLBACKINFO_ITCOUNT, &itcount));
-    if (itcount % 100 == 0) {
+    if (itcount % 10 == 0) {
         double lower_bound = CPX_INFBOUND;
         ASSERT_LOG(log, !CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_BND, &lower_bound));
         double incumbent = CPX_INFBOUND;
@@ -1990,9 +1971,8 @@ static void cpx_build_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hpl
     // ASSERT_LOG(log, !CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR "/lp/" + env.run_name + ".lp").c_str(), "LP"));
 }
 
-static void cpx_post_warmstart_dynamic_time([[maybe_unused]] CPXENVptr& cpxenv, [[maybe_unused]] CPXLPptr& cpxlp,
-                                            [[maybe_unused]] const hplus::instance& inst, [[maybe_unused]] const hplus::environment& env,
-                                            [[maybe_unused]] const logger& log) {
+static void cpx_post_warmstart_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env,
+                                            const logger& log) {
     INTCHECK_ASSERT_LOG(log, env.sol_s != solution_status::INFEAS && env.sol_s != solution_status::NOTFOUND);
 
     binary_set state{inst.n};
@@ -2058,8 +2038,7 @@ static void cpx_post_warmstart_dynamic_time([[maybe_unused]] CPXENVptr& cpxenv, 
     cpx_sol_val = nullptr;
 }
 
-static void store_dynamic_time_sol([[maybe_unused]] const CPXENVptr& cpxenv, [[maybe_unused]] const CPXLPptr& cpxlp,
-                                   [[maybe_unused]] hplus::instance& inst, [[maybe_unused]] const logger& log) {
+static void store_dynamic_time_sol(const CPXENVptr& cpxenv, const CPXLPptr& cpxlp, hplus::instance& inst, const logger& log) {
     PRINT_VERBOSE(log, "Storing the dynamic small solution.");
     PRINT_VERBOSE(log, "Storing rankooh's solution.");
 
