@@ -10,9 +10,9 @@
 
 #include <algorithm>  // For std::transform
 #include <numeric>    // For std::accumulate
-#include <queue>      // For std::priority_queue (// TODO remove when substituted with priority_queue)
 #include <random>     // For random number generators
 #include <set>        // For std::set
+#include <stack>      // For std::stack
 
 #if HPLUS_INTCHECK == 0
 #define INTCHECK_PQ false
@@ -56,14 +56,12 @@ void cpx_close(CPXENVptr& cpxenv, CPXLPptr& cpxlp) {
 bool parse_cpx_status(const CPXENVptr& cpxenv, const CPXLPptr& cpxlp, hplus::environment& env, const logger& log) {
     PRINT_VERBOSE(log, "Parsing CPLEX status code.");
     switch (const int cpxstatus{CPXgetstat(cpxenv, cpxlp)}) {
-        case CPXMIP_TIME_LIM_FEAS:  // exceeded time limit, found intermediate
-                                    // solution
+        case CPXMIP_TIME_LIM_FEAS:  // exceeded time limit, found intermediate solution
             [[fallthrough]];
         case CPXMIP_ABORT_FEAS:  // terminated by user, found solution
             env.sol_s = solution_status::FEAS;
             return true;
-        case CPXMIP_TIME_LIM_INFEAS:  // exceeded time limit, no intermediate
-                                      // solution found
+        case CPXMIP_TIME_LIM_INFEAS:  // exceeded time limit, no intermediate solution found
             [[fallthrough]];
         case CPXMIP_ABORT_INFEAS:  // terminated by user, not found solution
             if (!env.warm_start) env.sol_s = solution_status::NOTFOUND;
@@ -332,9 +330,8 @@ static void update_htype_values(const hplus::instance& inst, const binary_set& s
 static void init_htype(const hplus::instance& inst, const std::vector<size_t>& initial_actions, std::vector<double>& values,
                        priority_queue<double>& pq, double (*h_eqtype)(double, double)) {
     for (const auto& act_i : initial_actions) {
-        // preconditions of these variables are already met -> hmax/hadd
-        // (act.pre) = 0 -> need only the cost of the action to set the
-        // hmax/hadd of the effects
+        // preconditions of these variables are already met -> hmax/hadd (act.pre) = 0 -> need only the cost of the action to set the hmax/hadd of the
+        // effects
         const double cost{static_cast<double>(inst.actions[act_i].cost)};
         for (const auto& p : inst.actions[act_i].eff_sparse) {
             if (cost >= values[p]) continue;
@@ -558,16 +555,14 @@ static void relax(hplus::instance& inst, hplus::environment& env, const logger& 
 
     // parse cplex status to see what it found
     switch (int cpxstatus = CPXgetstat(cpxenv, cpxlp)) {
-        case CPXMIP_TIME_LIM_INFEAS:  // exceeded time limit, no intermediate
-                                      // solution found
+        case CPXMIP_TIME_LIM_INFEAS:  // exceeded time limit, no intermediate solution found
             [[fallthrough]];
         case CPXMIP_ABORT_INFEAS:  // terminated by user, not found solution
             [[fallthrough]];
         case CPXMIP_INFEASIBLE:  // proven to be unfeasible
             env.sol_s = solution_status::INFEAS;
             return;
-        case CPXMIP_TIME_LIM_FEAS:  // exceeded time limit, found intermediate
-                                    // solution
+        case CPXMIP_TIME_LIM_FEAS:  // exceeded time limit, found intermediate solution
             [[fallthrough]];
         case CPXMIP_ABORT_FEAS:  // terminated by user, found solution
             [[fallthrough]];
@@ -587,8 +582,7 @@ static void relax(hplus::instance& inst, hplus::environment& env, const logger& 
     heur_sol.cost = 0;
     double* plan{new double[inst.m_opt]};
     ASSERT_LOG(log, !CPXgetx(cpxenv, cpxlp, plan, 0, inst.m_opt - 1));
-    // TODO: Rethink how we reconstruct our solution... this one isn't a good
-    // approximate solution
+    // TODO: Rethink how we reconstruct our solution... this one isn't a good approximate solution
     if (!random_walk(inst, heur_sol, plan, log)) {
         delete[] plan;
         env.sol_s = solution_status::INFEAS;
@@ -615,43 +609,6 @@ static void localsearch(hplus::instance& inst, void (*heuristic)(hplus::instance
     todo(log, "Local Search");
 
     hplus::update_sol(inst, heur_sol, log);
-}
-
-void run_heur(hplus::instance& inst, hplus::environment& env, const logger& log) {
-    srand(time(nullptr));
-    if (env.heur == "greedycost")
-        greedycost(inst, env, log);
-    else if (env.heur == "greedycxe")
-        greedycxe(inst, env, log);
-    else if (env.heur == "rand")
-        randheur(inst, env, log);
-    else if (env.heur == "randr")
-        randr(inst, env, log);
-    else if (env.heur == "hmax")
-        hmax(inst, env, log);
-    else if (env.heur == "hadd")
-        hadd(inst, env, log);
-    else if (env.heur == "relax")
-        relax(inst, env, log);
-    else if (env.heur == "local-greedycost")
-        localsearch(inst, greedycost, env, log);
-    else if (env.heur == "local-greedycxe")
-        localsearch(inst, greedycxe, env, log);
-    else if (env.heur == "local-rand")
-        localsearch(inst, randheur, env, log);
-    else if (env.heur == "local-randr")
-        localsearch(inst, randr, env, log);
-    else if (env.heur == "local-hmax")
-        localsearch(inst, hmax, env, log);
-    else if (env.heur == "local-hadd")
-        localsearch(inst, hadd, env, log);
-    else if (env.heur == "local-relax")
-        localsearch(inst, relax, env, log);
-    else
-        log.raise_error(
-            "The heuristic specified (%s) is not on the list of possible "
-            "heuristics... Please read the Readme.md for instructions.",
-            env.heur.c_str());
 }
 
 // ##################################################################### //
@@ -785,8 +742,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
     count = 0;
     for (const auto& i : inst.var_rem) {
         objs[count] = 0;
-        lbs[count] = (inst.var_t[i] >= 0 ? inst.var_t[i] : 1);  // 1 since with no initial state, each
-                                                                // variable needs to be archieved first
+        lbs[count] = (inst.var_t[i] >= 0 ? inst.var_t[i] : 1);  // 1 since with no initial state, each variable needs to be archieved first
         ubs[count] = (inst.var_t[i] >= 0 ? inst.var_t[i] : timestamps_ubound);
         types[count++] = 'I';
     }
@@ -941,8 +897,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
     delete[] ind_c1;
     ind_c1 = nullptr;
 
-    // ASSERT_LOG(log, !CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR
-    // "/lp/" + env.run_name + ".lp").c_str(), "LP"));
+    // ASSERT_LOG(log, !CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR"/lp/" + env.run_name + ".lp").c_str(), "LP"));
 }
 
 static void cpx_post_warmstart_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env,
@@ -958,7 +913,7 @@ static void cpx_post_warmstart_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hp
     double* cpx_sol_val{new double[ncols]};
 
     constexpr int izero{0};
-    constexpr int effortlevel{CPX_MIPSTART_AUTO};  // FIXME: Why can't I use NOCHECK???
+    constexpr int effortlevel{CPX_MIPSTART_AUTO};
     size_t nnz{0};
     unsigned int timestamp{0};
 
@@ -1016,8 +971,7 @@ static void cpx_post_warmstart_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hp
 static void store_imai_sol(const CPXENVptr& cpxenv, const CPXLPptr& cpxlp, hplus::instance& inst, const logger& log) {
     PRINT_VERBOSE(log, "Storing imai's solution.");
 
-    // get cplex result (interested only in the sequence of actions
-    // [0/inst.m_opt-1] used and its ordering [inst.m_opt/2nact-1])
+    // get cplex result (interested only in the sequence of actions [0/inst.m_opt-1] used and its ordering [inst.m_opt/2nact-1])
     double* plan{new double[2 * inst.m_opt]};
     ASSERT_LOG(log, !CPXgetx(cpxenv, cpxlp, plan, 0, 2 * inst.m_opt - 1));
 
@@ -1079,8 +1033,7 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
     std::vector<binary_set> cumulative_graph(inst.n, binary_set(inst.n));
     std::vector<triangle> triangles_list;
 
-    // TODO: (maybe) Implement using pq.hxx
-    std::priority_queue<node, std::vector<node>, compare_node> nodes_queue;
+    priority_queue<size_t> nodes_queue(2 * inst.n);
     std::vector<size_t> degree_counter(inst.n, 0);
 
     // G_0
@@ -1103,27 +1056,15 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
 
     for (size_t node_i = 0; node_i < inst.n; node_i++) {
         if (degree_counter[node_i] > 0) [[likely]]
-            nodes_queue.emplace(node_i, degree_counter[node_i]);
+            nodes_queue.push(node_i, degree_counter[node_i]);
     }
 
-    // finding minimum degree node
-    const auto find_min = [&degree_counter](std::priority_queue<node, std::vector<node>, compare_node>& nodes_queue) {
-        int idx{-1};
-        while (!nodes_queue.empty() && idx < 0) {
-            const node tmp{nodes_queue.top()};
-            nodes_queue.pop();
-            if (degree_counter[tmp.id] == tmp.deg) idx = static_cast<int>(tmp.id);
-        }
-        return idx;
-    };
-
     // G_i (min degree heuristics)
-    for ([[maybe_unused]]
-         size_t _ = inst.var_rem.size();
-         _--;) {
-        int idx{find_min(nodes_queue)};
-        if (idx == -1) [[unlikely]]
+    for ([[maybe_unused]] size_t _ = inst.var_rem.size(); _--;) {
+        if (nodes_queue.empty()) [[unlikely]]
             break;
+        size_t idx{nodes_queue.top()};
+        nodes_queue.pop();
 
         // graph structure:
         // | \       > |
@@ -1173,7 +1114,7 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
 
         // Update the priority queue
         for (const auto& x : new_nodes) {
-            if (degree_counter[x] > 0) nodes_queue.emplace(x, degree_counter[x]);
+            if (degree_counter[x] > 0 && nodes_queue.has(x)) nodes_queue.change(x, degree_counter[x]);
         }
 
 #if HPLUS_INTCHECK  // care: this takes HUGE amount of time
@@ -1602,10 +1543,10 @@ typedef struct {
     hplus::environment& env;
     hplus::statistics& stats;
     const logger& log;
-} dynamic_time_user_handle;
+} cpx_callback_user_handle;
 
 static int CPXPUBLIC cpx_dynamic_time_callback(CPXCALLBACKCONTEXTptr context, CPXLONG context_id, void* user_handle) {
-    auto& [inst, env, stats, log] = *static_cast<dynamic_time_user_handle*>(user_handle);
+    auto& [inst, env, stats, log] = *static_cast<cpx_callback_user_handle*>(user_handle);
 
     ASSERT_LOG(log, context_id == CPX_CALLBACKCONTEXT_CANDIDATE);
     double start_time{env.timer.get_time()};
@@ -2039,8 +1980,7 @@ static void cpx_post_warmstart_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, 
 }
 
 static void store_dynamic_time_sol(const CPXENVptr& cpxenv, const CPXLPptr& cpxlp, hplus::instance& inst, const logger& log) {
-    PRINT_VERBOSE(log, "Storing the dynamic small solution.");
-    PRINT_VERBOSE(log, "Storing rankooh's solution.");
+    PRINT_VERBOSE(log, "Storing the dynamic time solution.");
 
     double* plan{new double[inst.m_opt + inst.m_opt * inst.n_opt]};
     ASSERT_LOG(log, !CPXgetx(cpxenv, cpxlp, plan, 0, inst.m_opt + inst.m_opt * inst.n_opt - 1));
@@ -2090,11 +2030,50 @@ static void store_dynamic_time_sol(const CPXENVptr& cpxenv, const CPXLPptr& cpxl
     }
 
     // store solution
-    hplus::solution rankooh_sol{
+    hplus::solution dynamic_t_sol{
         solution, static_cast<unsigned int>(std::accumulate(solution.begin(), solution.end(), 0, [&inst](const unsigned int acc, const size_t index) {
             return acc + inst.actions[index].cost;
         }))};
-    hplus::update_sol(inst, rankooh_sol, log);
+    hplus::update_sol(inst, dynamic_t_sol, log);
+}
+
+// ##################################################################### //
+// ######################### ALGORITHM HANDLERS ######################## //
+// ##################################################################### //
+
+void run_heur(hplus::instance& inst, hplus::environment& env, const logger& log) {
+    srand(time(nullptr));
+    if (env.heur == "greedycost")
+        greedycost(inst, env, log);
+    else if (env.heur == "greedycxe")
+        greedycxe(inst, env, log);
+    else if (env.heur == "rand")
+        randheur(inst, env, log);
+    else if (env.heur == "randr")
+        randr(inst, env, log);
+    else if (env.heur == "hmax")
+        hmax(inst, env, log);
+    else if (env.heur == "hadd")
+        hadd(inst, env, log);
+    else if (env.heur == "relax")
+        relax(inst, env, log);
+    else if (env.heur == "local-greedycost")
+        localsearch(inst, greedycost, env, log);
+    else if (env.heur == "local-greedycxe")
+        localsearch(inst, greedycxe, env, log);
+    else if (env.heur == "local-rand")
+        localsearch(inst, randheur, env, log);
+    else if (env.heur == "local-randr")
+        localsearch(inst, randr, env, log);
+    else if (env.heur == "local-hmax")
+        localsearch(inst, hmax, env, log);
+    else if (env.heur == "local-hadd")
+        localsearch(inst, hadd, env, log);
+    else if (env.heur == "local-relax")
+        localsearch(inst, relax, env, log);
+    else
+        log.raise_error("The heuristic specified (%s) is not on the list of possible heuristics... Please read the Readme.md for instructions.",
+                        env.heur.c_str());
 }
 
 void run_model(hplus::instance& inst, hplus::environment& env, hplus::statistics& stats, const logger& log) {
@@ -2144,7 +2123,7 @@ void run_model(hplus::instance& inst, hplus::environment& env, hplus::statistics
             cpx_post_warmstart_dynamic_time(cpxenv, cpxlp, inst, env, log);
     }
 
-    dynamic_time_user_handle callback_data{.inst = inst, .env = env, .stats = stats, .log = log};
+    cpx_callback_user_handle callback_data{.inst = inst, .env = env, .stats = stats, .log = log};
     if (env.alg == HPLUS_CLI_ALG_DYNAMIC_TIME)
         ASSERT_LOG(log, !CPXcallbacksetfunc(cpxenv, cpxlp, CPX_CALLBACKCONTEXT_CANDIDATE, cpx_dynamic_time_callback, &callback_data));
 

@@ -64,7 +64,8 @@ static void init(hplus::statistics& stats) {
 }
 
 static void parse_cli(const int& argc, const char** argv, hplus::environment& env) {
-    args::ArgumentParser parser("// TODO: HEADER.", "// TODO: FOOTER.");
+    args::ArgumentParser parser("Find a solution / the optimal solution to the deletefree relaxation of any SAS+ planning task.",
+                                "Copyright 2025 Matteo Zanella, Domenico Salvagnin");
     args::HelpFlag help(parser, "help", "Display the help menu", {"h", "help"});
     args::Positional<std::string> input_file(parser, "input_file", "Specify the input file (a .sas file provided by the FastDownward translator).");
     args::ValueFlag<std::string> algorithm(parser, "algorithm", "Specify the algorithm to use (heur, rankooh, imai, dynamic-t).", {"a", "alg"});
@@ -184,10 +185,8 @@ static void run(hplus::instance& inst, hplus::environment& env, hplus::statistic
         if (env.alg != HPLUS_CLI_ALG_IMAI && env.alg != HPLUS_CLI_ALG_RANKOOH && env.alg != HPLUS_CLI_ALG_DYNAMIC_TIME &&
             env.alg != HPLUS_CLI_ALG_HEUR)
 
-            log.raise_error(
-                "The algorithm specified (%s) is not on the list of possible "
-                "algorithms... Please read the Readme.md for instructions.",
-                env.alg.c_str());
+            log.raise_error("The algorithm specified (%s) is not on the list of possible algorithms... Please use the --h flag for instructions.",
+                            env.alg.c_str());
 
         auto stopchk = [&env]() {
             if (CHECK_STOP()) {
@@ -224,10 +223,7 @@ static void run(hplus::instance& inst, hplus::environment& env, hplus::statistic
                      heur[1] != "hadd" && heur[1] != "relax"))
 
                     log.raise_error(
-                        "The heuristic specified (%s) is not on the list of "
-                        "possible "
-                        "heuristics... Please read the Readme.md for "
-                        "instructions.",
+                        "The heuristic specified (%s) is not on the list of possible heuristics... Please use the --h flag for instructions.",
                         env.heur.c_str());
             }
 
@@ -260,10 +256,7 @@ static void end(const hplus::instance& inst, hplus::environment& env, hplus::sta
     if (env.timer.get_time() >= static_cast<double>(env.time_limit)) {
         switch (env.exec_s) {
             case exec_status::START:
-                log.print(
-                    "Reached time limit before the program could read the "
-                    "instance "
-                    "file.");
+                log.print("Reached time limit before the program could read the instance file.");
                 break;
             case exec_status::READ_INPUT:
                 log.print("Reached time limit while parsing the instance file.");

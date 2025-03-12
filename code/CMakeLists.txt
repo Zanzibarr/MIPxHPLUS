@@ -9,7 +9,7 @@ if (CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
     message(FATAL_ERROR "Out-of-source build required. Create a 'build' directory and run cmake from there.")
 endif()
 
-project(main)
+project(hplus)
 
 # Set default build type
 if(NOT CMAKE_BUILD_TYPE)
@@ -106,12 +106,12 @@ endif()
 
 # Main executable
 add_executable(
-    main
+    hplus
     src/main.cpp
 )
 
 target_link_libraries(
-    main
+    hplus
     hplus_instance
     algorithms
     ${CPLEX_LIBRARY}

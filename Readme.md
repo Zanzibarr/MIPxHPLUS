@@ -1,11 +1,11 @@
 # HPLUS THESIS
 ![C++](https://img.shields.io/badge/C%2B%2B-00599C?style=for-the-badge&logo=c%2B%2B&logoColor=white)
 
-### Version: 1.1.1  
+### Version: 1.1.2  
 _Refer to the [Changelog](Changelog.md) for info about versions._  
 
 
-Using a MIP solver (CPLEX) to solve the delete free relaxation of a planning task.  
+Using a MIP solver (CPLEX) to solve the (optimal) delete free relaxation of a planning task.  
 
 This software requires as input the SAS file produced by the [Fast Downward translator](https://www.fast-downward.org/).
 
@@ -17,8 +17,6 @@ This software requires as input the SAS file produced by the [Fast Downward tran
   - [CMake](#cmake-flags)
   - [Make](#make-flags)
   - [Execution](#run-options)
-    - [Execution](#code-execution)
-    - [Logging](#logging)
 
 ## Requirements
 

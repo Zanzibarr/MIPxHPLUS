@@ -108,9 +108,7 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
         std::getline(ifs, line);  // variable name (ignored)
         std::getline(ifs, line);  // axiom layer (ignored)
         if (line != "-1") [[unlikely]]
-            log.raise_error(
-                "Axiom layer is not -1, this software is not made for this "
-                "instance.");
+            log.raise_error("Axiom layer is not -1, this software is not made for this instance.");
         std::getline(ifs, line);  // range of variable
         if (!isint(line, 0)) [[unlikely]]
             log.raise_error("Corrupted file");
@@ -232,20 +230,9 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
             std::vector<std::string> tokens;
             tokens = split_string(line, ' ');
             if (tokens.size() != 4) [[unlikely]]
-                log.raise_error("This program won't handle effect conditions.");  // not
-                                                                                  // expecting
-                                                                                  // effect
-                                                                                  // conditions
+                log.raise_error("This program won't handle effect conditions.");  // not expecting effect conditions
             if (!isint(tokens[0], 0, 0)) [[unlikely]]
-                log.raise_error("This program won't handle effect conditions.");  // number
-                                                                                  // of
-                                                                                  // effect
-                                                                                  // conditions
-                                                                                  // (ignored
-                                                                                  // and
-                                                                                  // check
-                                                                                  // to be
-                                                                                  // 0)
+                log.raise_error("This program won't handle effect conditions.");  // number of effect conditions (ignored and check to be 0)
             if (!isint(tokens[1], 0, static_cast<int>(inst.n) - 1)) [[unlikely]]
                 log.raise_error("Corrupted file");  // variable affected by the action
             const size_t var{static_cast<size_t>(stoi(tokens[1]))};
@@ -407,9 +394,7 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
     // ====================================================== //
     if (inst.equal_costs && env.heur == "greedycost") {
         env.heur = "greedycxe";
-        PRINT_WARN(log,
-                   "Detected instance with equal costs actions, switching to "
-                   "'greedycxe' heuristic.");
+        PRINT_WARN(log, "Detected instance with equal costs actions, switching to 'greedycxe' heuristic.");
     }
 
     // return

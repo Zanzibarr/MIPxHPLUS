@@ -25,6 +25,19 @@ HOW I DO VERSIONING:
 ### :curly_loop: Other
 -->
 
+
+## [1.1.2] - 2025/03/12
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+### :heavy_exclamation_mark: Changed
+- Executable name changed from main to hplus
+    - [~/code/CMakeLists.txt](code/CMakeLists.txt)
+- Using pq.hxx insthead of std::priority_queue to build the vertex elimination graph
+    - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
+<!-- ### :heavy_plus_sign: Added -->
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+
 ## [1.1.1] - 2025/03/11
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->
