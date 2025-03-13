@@ -35,7 +35,7 @@ cmake <build_options> ..
 make <target_option>
 
 # to run
-./main <input_file> <parameters>
+./hplus <input_file> <parameters>
 ```
 
 ## Build options (CMake parameters)
@@ -69,5 +69,5 @@ make <target_option>
 See the help page:
 ```shell
 # to view commands available
-./main --h
+./hplus --h
 ```

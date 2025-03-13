@@ -40,7 +40,7 @@ def main():
         exit(0)
     if (
         input(
-            f"The execution will have the following structure:\n>> ./main <instance> {example_parameters}\nInsert y if it's correct: "
+            f"The execution will have the following structure:\n>> ./hplus <instance> {example_parameters}\nInsert y if it's correct: "
         )
         != "y"
     ):
@@ -101,7 +101,7 @@ ulimit -v 16777216
 
 #####################
 
-{exec_dir}/./main {inst_path} {execution_parameters} --t=900 --l={inst_name}.log --run={inst_name}
+{exec_dir}/./hplus {inst_path} {execution_parameters} --t=900 --l={inst_name}.log --run={inst_name}
 
 #####################
 

@@ -26,7 +26,7 @@ HOW I DO VERSIONING:
 -->
 
 
-## [1.1.2] - 2025/03/12
+## [1.1.2] - 2025/03/13
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->
 ### :heavy_exclamation_mark: Changed
