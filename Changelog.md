@@ -15,15 +15,27 @@ HOW I DO VERSIONING:
 
 ## Versions
 
-<!-- 
-## [x.y.z] - YYYY/MM/DD
-### :warning: Known issues
-### :ballot_box_with_check: Fixed
-### :heavy_exclamation_mark: Changed
+
+<!-- ## [x.y.z] - YYYY/MM/DD -->
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+<!-- ### :heavy_exclamation_mark: Changed -->
+<!-- ### :heavy_plus_sign: Added -->
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+
+
+## [1.1.3] - 2025/03/14
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+<!-- ### :heavy_exclamation_mark: Changed -->
 ### :heavy_plus_sign: Added
-### :x: Removed
-### :curly_loop: Other
--->
+- Removing radundant constraints from Rankooh's and Dynamic model
+    - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
+- Showing number of fixed variables in high verbosity settings
+    - [~/code/src/hplus_instance.cpp](code/src/hplus_instance.cpp)
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
 
 
 ## [1.1.2] - 2025/03/13

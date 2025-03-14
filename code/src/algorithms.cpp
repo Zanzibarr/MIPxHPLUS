@@ -639,7 +639,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
             for (const auto& act : inst.actions) {
                 if (act.cost == 0)
                     n_act_zerocost++;
-                else if (act.cost < min_act_cost) [[unlikely]]
+                else if (act.cost < min_act_cost)
                     min_act_cost = act.cost;
             }
             const unsigned int nsteps{inst.best_sol.cost / min_act_cost + n_act_zerocost};
@@ -1282,32 +1282,69 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
         }
     };
 
+    // p = \sum_{a\in A,p\in eff(a)}(fadd(a, p)), \forall p \in V
     for (const auto& var_i : inst.var_rem) {
         nnz = 0;
         ind[nnz] = get_var_idx(var_i);
         val[nnz++] = 1;
 
+        bool fixed = false;
         for (const auto& act_i : inst.act_with_eff[var_i]) {
+            // if one first adder is fixed, then also the variable should be fixed
+            if (inst.fadd_f[act_i][var_i]) {
+                const char fix = 'B';
+                const double one = 1;
+                fixed = true;
+                ASSERT_LOG(log, !CPXchgbds(cpxenv, cpxlp, 1, ind, &fix, &one));
+                break;
+            }
+            // if the first adder we're about to add to the constraint was eliminated, it's useless to the constraint
+            else if (inst.fadd_e[act_i][var_i])
+                continue;
             ind[nnz] = get_fa_idx(act_i, var_i);
             val[nnz++] = -1;
         }
+        // if we fixed the variable due to a fixed first adder (note also that if we had a fixed first adder, we already have all other first adders
+        // for that effect eliminated), we don't need the constraint we're adding.
+        if (fixed) continue;
 
-        ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_e, &begin, ind, val, nullptr, nullptr));
+        // if nnz == 1, then we'd have p = 0, meaning we could simply fix this variable to 0
+        if (nnz == 1) {
+            const char fix = 'B';
+            const double zero = 0;
+            ASSERT_LOG(log, !CPXchgbds(cpxenv, cpxlp, 1, ind, &fix, &zero));
+        } else
+            ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_e, &begin, ind, val, nullptr, nullptr));
         stopchk3();
     }
 
+    // \sum_{a\in A, p\in eff(a), q\in pre(a)}(fadd(a, p)) <= q, \forall p,q\in V
     for (const auto& var_i : inst.var_rem) {
         for (const auto& var_j : inst.var_rem) {
             nnz = 0;
             ind[nnz] = get_var_idx(var_j);
             val[nnz++] = -1;
+            bool fixed = false;
             for (const auto& act_i : inst.act_with_eff[var_i]) {
-                if (inst.actions[act_i].pre[var_j]) [[unlikely]] {
-                    ind[nnz] = get_fa_idx(act_i, var_i);
-                    val[nnz++] = 1;
+                if (!inst.actions[act_i].pre[var_j]) continue;
+                // if the first adder is fixed, than we have 1 <= q, hence we can directly fix q
+                if (inst.fadd_f[act_i][var_i]) {
+                    const char fix = 'B';
+                    const double one = 1;
+                    fixed = true;
+                    ASSERT_LOG(log, !CPXchgbds(cpxenv, cpxlp, 1, ind, &fix, &one));
+                    break;
                 }
+                // if the first adder we're about to add to the constraint was eliminated, it's useless to the constraint
+                else if (inst.fadd_e[act_i][var_i])
+                    continue;
+                ind[nnz] = get_fa_idx(act_i, var_i);
+                val[nnz++] = 1;
             }
-            ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_l, &begin, ind, val, nullptr, nullptr));
+            // since we have a fixed first adder, all other first adder for that effect are eliminated, so we don't need the constraint
+            if (fixed) continue;
+            // if nnz == 1 than we have -p <= 0, hence it's always true, we can ignore this constraint
+            if (nnz != 1) ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_l, &begin, ind, val, nullptr, nullptr));
             stopchk3();
         }
     }
@@ -1320,10 +1357,21 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
     int ind_c5_c6_c7[2], ind_c8[3];
     double val_c5_c6_c7[2], val_c8[3];
 
+    // fadd(a, p) <= a, \forall a\in A, p\in eff(a)
     for (const auto& act_i : inst.act_rem) {
         for (const auto& var_i : inst.actions[act_i].eff_sparse) {
             ind_c5_c6_c7[0] = get_act_idx(act_i);
             val_c5_c6_c7[0] = -1;
+            // if the first adder was fixed, we can directly fix the action insthead of adding the constraint
+            if (inst.fadd_f[act_i][var_i]) {
+                const char fix = 'B';
+                const double one = 1;
+                ASSERT_LOG(log, !CPXchgbds(cpxenv, cpxlp, 1, ind_c5_c6_c7, &fix, &one));
+                continue;
+            }
+            // if the first adder was eliminated, we can skip the constraint
+            else if (inst.fadd_e[act_i][var_i])
+                continue;
             ind_c5_c6_c7[1] = get_fa_idx(act_i, var_i);
             val_c5_c6_c7[1] = 1;
             ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
@@ -1331,6 +1379,7 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
         stopchk1();
     }
 
+    // fadd(a, q) <= veg(p, q) \forall a\in A, \forall p\in pre(a), \forall q\in eff(a) (V.E.G.)
     for (const auto& act_i : inst.act_rem) {
         for (const auto& var_i : inst.actions[act_i].pre_sparse) {
             for (const auto& var_j : inst.actions[act_i].eff_sparse) {
@@ -1338,14 +1387,31 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
                 val_c5_c6_c7[0] = -1;
                 ind_c5_c6_c7[1] = get_fa_idx(act_i, var_j);
                 val_c5_c6_c7[1] = 1;
+                // if the first adder was fixed, we can directly fix also the VEG variable
+                if (inst.fadd_f[act_i][var_j]) {
+                    const char fix = 'B';
+                    const double one = 1;
+                    ASSERT_LOG(log, !CPXchgbds(cpxenv, cpxlp, 1, ind_c5_c6_c7, &fix, &one));
+                    continue;
+                }
+                // if the VEG variable was eliminated, we can directly eliminate the first adder too
+                else if (!cumulative_graph[var_i][var_j]) {
+                    const char fix = 'B';
+                    const double zero = 0;
+                    ASSERT_LOG(log, !CPXchgbds(cpxenv, cpxlp, 1, &(ind_c5_c6_c7[1]), &fix, &zero));
+                    continue;
+                }
                 ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
             }
             stopchk1();
         }
     }
 
+    // veg(p, q) + veg(q, p) <= 1 (V.E.G.)
     for (const auto& var_i : inst.var_rem) {
         for (const auto& var_j : cumulative_graph[var_i]) {
+            // if either VEG variable was eliminated, we can skip the constraint
+            if (!cumulative_graph[var_i][var_j] || !cumulative_graph[var_j][var_i]) continue;
             ind_c5_c6_c7[0] = get_veg_idx(var_i, var_j);
             val_c5_c6_c7[0] = 1;
             ind_c5_c6_c7[1] = get_veg_idx(var_j, var_i);
@@ -1355,6 +1421,7 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
         }
     }
 
+    // veg(a, b) + veg(b, c) <= veg(a, c) (V.E.G.)
     for (const auto& [a, b, c] : triangles_list) {
         ind_c8[0] = get_veg_idx(a, b);
         val_c8[0] = 1;
@@ -1362,12 +1429,22 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
         val_c8[1] = 1;
         ind_c8[2] = get_veg_idx(a, c);
         val_c8[2] = -1;
+        // if veg(a, c) is eliminated, we can simply eliminate the other two VEG varliables
+        if (!cumulative_graph[a][c]) {
+            char fix[2];
+            fix[0] = 'B';
+            fix[1] = 'B';
+            double zero[2];
+            zero[0] = 0;
+            zero[1] = 0;
+            ASSERT_LOG(log, !CPXchgbds(cpxenv, cpxlp, 2, ind_c8, fix, zero));
+            continue;
+        }
         ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, 3, &rhs_1, &sense_l, &begin, ind_c8, val_c8, nullptr, nullptr));
         stopchk1();
     }
 
-    // ASSERT_LOG(log, !CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR
-    // "/lp/" + env.run_name + ".lp").c_str(), "LP"));
+    ASSERT_LOG(log, !CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR "/lp/" + env.run_name + ".lp").c_str(), "LP"));
 }
 
 static void cpx_post_warmstart_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env,
@@ -1846,32 +1923,69 @@ static void cpx_build_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hpl
         }
     };
 
+    // p = \sum_{a\in A,p\in eff(a)}(fadd(a, p)), \forall p \in V
     for (const auto& var_i : inst.var_rem) {
         nnz = 0;
         ind[nnz] = get_var_idx(var_i);
         val[nnz++] = 1;
 
+        bool fixed = false;
         for (const auto& act_i : inst.act_with_eff[var_i]) {
+            // if one first adder is fixed, then also the variable should be fixed
+            if (inst.fadd_f[act_i][var_i]) {
+                const char fix = 'B';
+                const double one = 1;
+                fixed = true;
+                ASSERT_LOG(log, !CPXchgbds(cpxenv, cpxlp, 1, ind, &fix, &one));
+                break;
+            }
+            // if the first adder we're about to add to the constraint was eliminated, it's useless to the constraint
+            else if (inst.fadd_e[act_i][var_i])
+                continue;
             ind[nnz] = get_fa_idx(act_i, var_i);
             val[nnz++] = -1;
         }
+        // if we fixed the variable due to a fixed first adder (note also that if we had a fixed first adder, we already have all other first adders
+        // for that effect eliminated), we don't need the constraint we're adding.
+        if (fixed) continue;
 
-        ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_e, &begin, ind, val, nullptr, nullptr));
+        // if nnz == 1, then we'd have p = 0, meaning we could simply fix this variable to 0
+        if (nnz == 1) {
+            const char fix = 'B';
+            const double zero = 0;
+            ASSERT_LOG(log, !CPXchgbds(cpxenv, cpxlp, 1, ind, &fix, &zero));
+        } else
+            ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_e, &begin, ind, val, nullptr, nullptr));
         stopchk3();
     }
 
+    // \sum_{a\in A, p\in eff(a), q\in pre(a)}(fadd(a, p)) <= q, \forall p,q\in V
     for (const auto& var_i : inst.var_rem) {
         for (const auto& var_j : inst.var_rem) {
             nnz = 0;
             ind[nnz] = get_var_idx(var_j);
             val[nnz++] = -1;
+            bool fixed = false;
             for (const auto& act_i : inst.act_with_eff[var_i]) {
-                if (inst.actions[act_i].pre[var_j]) [[unlikely]] {
-                    ind[nnz] = get_fa_idx(act_i, var_i);
-                    val[nnz++] = 1;
+                if (!inst.actions[act_i].pre[var_j]) continue;
+                // if the first adder is fixed, than we have 1 <= q, hence we can directly fix q
+                if (inst.fadd_f[act_i][var_i]) {
+                    const char fix = 'B';
+                    const double one = 1;
+                    fixed = true;
+                    ASSERT_LOG(log, !CPXchgbds(cpxenv, cpxlp, 1, ind, &fix, &one));
+                    break;
                 }
+                // if the first adder we're about to add to the constraint was eliminated, it's useless to the constraint
+                else if (inst.fadd_e[act_i][var_i])
+                    continue;
+                ind[nnz] = get_fa_idx(act_i, var_i);
+                val[nnz++] = 1;
             }
-            ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_l, &begin, ind, val, nullptr, nullptr));
+            // since we have a fixed first adder, all other first adder for that effect are eliminated, so we don't need the constraint
+            if (fixed) continue;
+            // if nnz == 1 than we have -p <= 0, hence it's always true, we can ignore this constraint
+            if (nnz != 1) ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_l, &begin, ind, val, nullptr, nullptr));
             stopchk3();
         }
     }
@@ -1898,10 +2012,21 @@ static void cpx_build_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hpl
     int ind_c5_c6_c7[2], ind_c8[3];
     double val_c5_c6_c7[2], val_c8[3];
 
+    // fadd(a, p) <= a, \forall a\in A, p\in eff(a)
     for (const auto& act_i : inst.act_rem) {
         for (const auto& var_i : inst.actions[act_i].eff_sparse) {
             ind_c5_c6_c7[0] = get_act_idx(act_i);
             val_c5_c6_c7[0] = -1;
+            // if the first adder was fixed, we can directly fix the action insthead of adding the constraint
+            if (inst.fadd_f[act_i][var_i]) {
+                const char fix = 'B';
+                const double one = 1;
+                ASSERT_LOG(log, !CPXchgbds(cpxenv, cpxlp, 1, ind_c5_c6_c7, &fix, &one));
+                continue;
+            }
+            // if the first adder was eliminated, we can skip the constraint
+            else if (inst.fadd_e[act_i][var_i])
+                continue;
             ind_c5_c6_c7[1] = get_fa_idx(act_i, var_i);
             val_c5_c6_c7[1] = 1;
             ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
@@ -1909,7 +2034,7 @@ static void cpx_build_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hpl
         stopchk1();
     }
 
-    // ASSERT_LOG(log, !CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR "/lp/" + env.run_name + ".lp").c_str(), "LP"));
+    ASSERT_LOG(log, !CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR "/lp/" + env.run_name + ".lp").c_str(), "LP"));
 }
 
 static void cpx_post_warmstart_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env,

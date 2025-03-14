@@ -827,6 +827,14 @@ void hplus::instance_optimization(instance& inst, const logger& log) {
     immediate_action_application(inst, act_landmarks, log);
     inverse_actions_extraction(inst, log);
     finish_opt(inst, log);
+#if HPLUS_VERBOSE >= 100
+    size_t count = 0;
+    for (const auto& x : inst.var_f | inst.var_e) count++;
+    log.print_info("# variables: %d - %d = %d.", inst.n, count, inst.n - count);
+    count = 0;
+    for (const auto& x : inst.act_f | inst.act_e) count++;
+    log.print_info("# actions: %d - %d = %d.", inst.m, count, inst.m - count);
+#endif
 }
 
 void hplus::prepare_faster_actsearch(instance& inst, const logger& log) {
