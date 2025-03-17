@@ -829,10 +829,10 @@ void hplus::instance_optimization(instance& inst, const logger& log) {
     finish_opt(inst, log);
 #if HPLUS_VERBOSE >= 100
     size_t count = 0;
-    for (const auto& x : inst.var_f | inst.var_e) count++;
+    for (const auto& x [[maybe_unused]] : inst.var_f | inst.var_e) count++;
     log.print_info("# variables: %d - %d = %d.", inst.n, count, inst.n - count);
     count = 0;
-    for (const auto& x : inst.act_f | inst.act_e) count++;
+    for (const auto& x [[maybe_unused]] : inst.act_f | inst.act_e) count++;
     log.print_info("# actions: %d - %d = %d.", inst.m, count, inst.m - count);
 #endif
 }

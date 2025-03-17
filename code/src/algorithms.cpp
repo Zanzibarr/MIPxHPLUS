@@ -1784,7 +1784,7 @@ static int CPXPUBLIC cpx_dynamic_time_callback(CPXCALLBACKCONTEXTptr context, CP
 }
 
 static void cpx_build_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env,
-                                   hplus::statistics& stats, const logger& log) {
+                                   const logger& log) {
     PRINT_VERBOSE(log, "Building dynamic time model.");
 
     const auto stopchk1 = []() {
@@ -2009,8 +2009,8 @@ static void cpx_build_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hpl
     delete[] ind;
     ind = nullptr;
 
-    int ind_c5_c6_c7[2], ind_c8[3];
-    double val_c5_c6_c7[2], val_c8[3];
+    int ind_c5_c6_c7[2];
+    double val_c5_c6_c7[2];
 
     // fadd(a, p) <= a, \forall a\in A, p\in eff(a)
     for (const auto& act_i : inst.act_rem) {
@@ -2227,7 +2227,7 @@ void run_model(hplus::instance& inst, hplus::environment& env, hplus::statistics
     else if (env.alg == HPLUS_CLI_ALG_RANKOOH)
         cpx_build_rankooh(cpxenv, cpxlp, inst, env, log);
     else if (env.alg == HPLUS_CLI_ALG_DYNAMIC_TIME)
-        cpx_build_dynamic_time(cpxenv, cpxlp, inst, env, stats, log);
+        cpx_build_dynamic_time(cpxenv, cpxlp, inst, env, log);
     stopchk();
 
     // time limit
