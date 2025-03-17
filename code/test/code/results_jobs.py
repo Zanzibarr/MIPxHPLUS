@@ -28,7 +28,7 @@ def main():
     if input(f"Run name will be '{run_name}'\nInsert y if it's correct: ") != "y":
         exit(0)
 
-    logsdir = os.path.abspath("../../../logs/AAA_output_logs")
+    logsdir = os.path.abspath("../../../logs/output_logs")
     save_logs_dir = Path(f"{Path(logsdir).parent}/saved_logs/{run_name}")
     if os.path.exists(save_logs_dir):
         print(f"Path {save_logs_dir} already exists.")

@@ -24,6 +24,20 @@ HOW I DO VERSIONING:
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
 
+## [1.2.0] - 2025/03/17
+### Tested all features added in 1.1.*
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+### :heavy_exclamation_mark: Changed
+- Changed output logs folder name
+    - [~/code/include/utils.hpp](code/include/utils.hpp)
+    - [~/code/src/main.cpp](code/src/main.cpp)
+    - [~/code/CMakeLists.txt](code/CMakeLists.txt)
+    - [~/code/tst/code/results_jobs.py](code/test/code/results_jobs.py)
+<!-- ### :heavy_plus_sign: Added -->
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+
 
 ## [1.1.3] - 2025/03/14
 <!-- ### :warning: Known issues -->

@@ -61,7 +61,7 @@ include_directories(${CPLEX_INCLUDE_DIR})
 # Directory setup
 cmake_path(GET CMAKE_HOME_DIRECTORY PARENT_PATH HOME_DIR)
 set(LOGS_DIR "${HOME_DIR}/logs")
-foreach(DIR ${LOGS_DIR} ${LOGS_DIR}/cpxout ${LOGS_DIR}/cpxout/log ${LOGS_DIR}/cpxout/lp)
+foreach(DIR ${LOGS_DIR} ${LOGS_DIR}/output_logs ${LOGS_DIR}/cpxout ${LOGS_DIR}/cpxout/log ${LOGS_DIR}/cpxout/lp)
     if(NOT EXISTS ${DIR})
         file(MAKE_DIRECTORY ${DIR})
         if(NOT EXISTS ${DIR})

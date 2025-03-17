@@ -13,7 +13,7 @@
 // ############################ CODE VERSION ########################### //
 // ##################################################################### //
 
-#define CODE_VERSION "1.1.3"
+#define CODE_VERSION "1.2.0"
 
 // ##################################################################### //
 // ############################## IMPORTS ############################## //
@@ -34,7 +34,7 @@
 #ifndef HPLUS_HOME_DIR
 #define HPLUS_HOME_DIR "placeholder"  // overwritten by cmake
 #endif
-#define HPLUS_LOG_DIR HPLUS_HOME_DIR "/logs/AAA_output_logs"
+#define HPLUS_LOG_DIR HPLUS_HOME_DIR "/logs/output_logs"
 #define HPLUS_CPLEX_OUTPUT_DIR HPLUS_HOME_DIR "/logs/cpxout"
 
 // ##################################################################### //
