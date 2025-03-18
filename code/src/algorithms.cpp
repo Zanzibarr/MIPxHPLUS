@@ -411,7 +411,12 @@ static bool htype(const hplus::instance& inst, hplus::solution& sol, double (*h_
     init_htype(inst, feasible_actions.find_subsets(binary_set(inst.n)), values, pq, h_eqtype);
 
     while (!state.contains(inst.goal)) {
-        const auto& candidates{feasible_actions.find_subsets(state)};
+        std::vector<size_t> candidates;
+        for (const auto& act_i : inst.act_rem) {
+            if (used_actions[act_i]) continue;
+            if (state.contains(inst.actions[act_i].pre)) candidates.push_back(act_i);
+        }
+        // const auto& candidates{feasible_actions.find_subsets(state)};
         if (candidates.empty()) [[unlikely]]
             return false;
 
@@ -425,7 +430,7 @@ static bool htype(const hplus::instance& inst, hplus::solution& sol, double (*h_
         sol.plan.push_back(choice);
         sol.cost += inst.actions[choice].cost;
         state |= inst.actions[choice].eff;
-        feasible_actions.remove(choice, inst.actions[choice].pre);
+        // feasible_actions.remove(choice, inst.actions[choice].pre);
         timestamp++;
 
         if (CHECK_STOP()) [[unlikely]]
