@@ -295,13 +295,16 @@ static double evaluate_htype_state(const binary_set& state, const std::vector<do
 }
 
 static void update_htype_values(const hplus::instance& inst, const binary_set& state, std::vector<double>& values, priority_queue<double>& pq,
-                                const binary_set& used_actions, double (*h_eqtype)(double, double)) {
+                                const binary_set& used_actions, double (*h_eqtype)(double, double),
+                                std::stack<std::pair<size_t, double>>* trail = nullptr) {
+    binary_set trail_flags{inst.n};
     for (const auto& p : state) {
+        if (trail != nullptr && !trail_flags[p]) {
+            trail->emplace(p, values[p]);
+            trail_flags.add(p);
+        }
         values[p] = 0;
-        if (!pq.has(p))
-            pq.push(p, 0);
-        else
-            pq.change(p, 0);
+        pq.push(p, 0);
     }
 
     while (!pq.empty()) {
@@ -317,6 +320,10 @@ static void update_htype_values(const hplus::instance& inst, const binary_set& s
             for (const auto& p_eff : inst.actions[act_i].eff_sparse) {
                 if (new_cost >= values[p_eff]) continue;
 
+                if (trail != nullptr && !trail_flags[p_eff]) {
+                    trail->emplace(p_eff, values[p_eff]);
+                    trail_flags.add(p_eff);
+                }
                 values[p_eff] = new_cost;
                 if (pq.has(p_eff))
                     pq.change(p_eff, new_cost);
@@ -359,11 +366,12 @@ static bool htype(const hplus::instance& inst, hplus::solution& sol, double (*h_
     priority_queue<double> pq{inst.n};
 
     unsigned int timestamp{0};
-    const auto find_best_act_v2 = [&inst, &h_eqtype, &used_actions, &pq, timestamp](const std::vector<size_t>& candidates,
-                                                                                    const std::vector<double>& values, const binary_set& state) {
+    const auto find_best_act = [&inst, &h_eqtype, &used_actions, &pq, timestamp](const std::vector<size_t>& candidates, std::vector<double>& values,
+                                                                                 const binary_set& state) {
         size_t choice{0};
         bool found{false};
         double best_goal_cost{std::numeric_limits<double>::infinity()};
+        std::stack<std::pair<size_t, double>> trail;  // leave a trail for the action simulation to be reverted
         for (const auto& act_i : candidates) {
             if (inst.act_t[act_i] >= 0 && static_cast<unsigned int>(inst.act_t[act_i]) == timestamp) return std::pair(true, act_i);
             if (inst.act_f[act_i]) {
@@ -375,9 +383,15 @@ static bool htype(const hplus::instance& inst, hplus::solution& sol, double (*h_
 
             if (best_goal_cost < 0) continue;
 
-            std::vector<double> values_copy{values};
-            update_htype_values(inst, inst.actions[act_i].eff - state, values_copy, pq, used_actions, h_eqtype);
-            const double goal_cost{evaluate_htype_state(inst.goal, values_copy, h_eqtype)};
+            update_htype_values(inst, inst.actions[act_i].eff - state, values, pq, used_actions, h_eqtype, &trail);
+            const double goal_cost{evaluate_htype_state(inst.goal, values, h_eqtype)};
+
+            // reset values according to the trail
+            while (!trail.empty()) {
+                const auto& [idx, value] = trail.top();
+                trail.pop();
+                values[idx] = value;
+            }
 
             if (goal_cost >= best_goal_cost) continue;
 
@@ -401,7 +415,7 @@ static bool htype(const hplus::instance& inst, hplus::solution& sol, double (*h_
         if (candidates.empty()) [[unlikely]]
             return false;
 
-        const auto [found, choice]{find_best_act_v2(candidates, values, state)};
+        const auto [found, choice]{find_best_act(candidates, values, state)};
         if (!found) [[unlikely]]
             return false;
 

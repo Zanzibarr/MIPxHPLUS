@@ -36,13 +36,10 @@ class binary_set {
     binary_set() noexcept = default;
 
     /**
-     * @brief Construct a new binary set object with elements identified as
-     * integers from 0 to capacity-1
+     * @brief Construct a new binary set object with elements identified as integers from 0 to capacity-1
      *
-     * @param capacity Capacity of the binary set (elements will range in [0,
-     * capacity-1])
-     * @param fill Full flag: if true, the set will be constructed as full (all
-     * elements present)
+     * @param capacity Capacity of the binary set (elements will range in [0, capacity-1])
+     * @param fill Full flag: if true, the set will be constructed as full (all elements present)
      *
      * @throw std::invalid_argument If capacity is 0
      */
@@ -64,8 +61,7 @@ class binary_set {
      * @return false If the set didn't change (element was in the set)
      *
      * @throw std::domain_error If this binary_set's capacity is 0
-     * @throw std::out_of_range If the specified element is outside of the
-     * possible range for this binary_set
+     * @throw std::out_of_range If the specified element is outside of the possible range for this binary_set
      */
     bool add(const size_t element) {
         validate_element(element);
@@ -84,8 +80,7 @@ class binary_set {
      * @return false If the set didn't change (element wasn't in the set)
      *
      * @throw std::domain_error If this binary_set's capacity is 0
-     * @throw std::out_of_range If the specified element is outside of the
-     * possible range for this binary_set
+     * @throw std::out_of_range If the specified element is outside of the possible range for this binary_set
      */
     bool remove(const size_t element) {
         validate_element(element);
@@ -118,8 +113,7 @@ class binary_set {
      * @return false If the element isn't in the set
      *
      * @throw std::domain_error If this binary_set's capacity is 0
-     * @throw std::out_of_range If the specified element is outside of the
-     * possible range for this binary_set
+     * @throw std::out_of_range If the specified element is outside of the possible range for this binary_set
      */
     [[nodiscard]]
     bool contains(const size_t element) const {
@@ -136,8 +130,7 @@ class binary_set {
      * @return false If the element isn't in the set
      *
      * @throw std::domain_error If this binary_set's capacity is 0
-     * @throw std::out_of_range If the specified element is outside of the
-     * possible range for this binary_set
+     * @throw std::out_of_range If the specified element is outside of the possible range for this binary_set
      */
     [[nodiscard]]
     bool operator[](const size_t element) const {
@@ -168,8 +161,7 @@ class binary_set {
     /**
      * @brief Get the sparse version of this binary_set
      *
-     * @return std::vector<size_t> The sparse version of this binary_set
-     * (ascending order)
+     * @return std::vector<size_t> The sparse version of this binary_set (ascending order)
      *
      * @throw std::domain_error If this binary_set's capacity is 0
      */
@@ -209,8 +201,7 @@ class binary_set {
      * @param other Binary set to perform intersection with
      * @return binary_set The result of the intersection
      *
-     * @throw std::invalid_argument If the two binary_set don't have the same
-     * capacity
+     * @throw std::invalid_argument If the two binary_set don't have the same capacity
      */
     [[nodiscard]]
     binary_set operator&(const binary_set& other) const {
@@ -223,14 +214,12 @@ class binary_set {
     }
 
     /**
-     * @brief Perform set intersection between two sets and stores it in the
-     * first set
+     * @brief Perform set intersection between two sets and stores it in the first set
      *
      * @param other Binary set to perform the intersection with
      * @return binary_set& Reference to this set after the operation
      *
-     * @throw std::invalid_argument If the two binary_set don't have the same
-     * capacity
+     * @throw std::invalid_argument If the two binary_set don't have the same capacity
      */
     binary_set& operator&=(const binary_set& other) {
         validate_same_capacity(other);
@@ -246,8 +235,7 @@ class binary_set {
      * @param other Binary set to perform union with
      * @return binary_set The result of the union
      *
-     * @throw std::invalid_argument If the two binary_set don't have the same
-     * capacity
+     * @throw std::invalid_argument If the two binary_set don't have the same capacity
      */
     [[nodiscard]]
     binary_set operator|(const binary_set& other) const {
@@ -265,8 +253,7 @@ class binary_set {
      * @param other Binary set to perform the union with
      * @return binary_set& Reference to this set after the operation
      *
-     * @throw std::invalid_argument If the two binary_set don't have the same
-     * capacity
+     * @throw std::invalid_argument If the two binary_set don't have the same capacity
      */
     binary_set& operator|=(const binary_set& other) {
         validate_same_capacity(other);
@@ -282,8 +269,7 @@ class binary_set {
      * @param other Binary set to perform difference with
      * @return binary_set The result of the difference
      *
-     * @throw std::invalid_argument If the two binary_set don't have the same
-     * capacity
+     * @throw std::invalid_argument If the two binary_set don't have the same capacity
      */
     [[nodiscard]]
     binary_set operator-(const binary_set& other) const {
@@ -296,14 +282,12 @@ class binary_set {
     }
 
     /**
-     * @brief Perform set difference between two sets and stores it in the first
-     * set
+     * @brief Perform set difference between two sets and stores it in the first set
      *
      * @param other Binary set to perform the difference with
      * @return binary_set& Reference to this set after the operation
      *
-     * @throw std::invalid_argument If the two binary_set don't have the same
-     * capacity
+     * @throw std::invalid_argument If the two binary_set don't have the same capacity
      */
     binary_set& operator-=(const binary_set& other) {
         validate_same_capacity(other);
@@ -337,8 +321,7 @@ class binary_set {
      * @return true If the binary_set are equal
      * @return false If the binary_set are different
      *
-     * @throw std::invalid_argument If the two binary_set don't have the same
-     * capacity
+     * @throw std::invalid_argument If the two binary_set don't have the same capacity
      */
     [[nodiscard]]
     bool operator==(const binary_set& other) const {
@@ -348,15 +331,13 @@ class binary_set {
     }
 
     /**
-     * @brief Check if two binary_set are different (if they don't have the same
-     * elements)
+     * @brief Check if two binary_set are different (if they don't have the same elements)
      *
      * @param other binary_set to compare to
      * @return true If the binary_set are different
      * @return false If the binary_set are equal
      *
-     * @throw std::invalid_argument If the two binary_set don't have the same
-     * capacity
+     * @throw std::invalid_argument If the two binary_set don't have the same capacity
      */
     [[nodiscard]]
     bool operator!=(const binary_set& other) const {
@@ -372,8 +353,7 @@ class binary_set {
      * @return true If the two sets have an intersection
      * @return false Otherwise
      *
-     * @throw std::invalid_argument If the two binary_set don't have the same
-     * capacity
+     * @throw std::invalid_argument If the two binary_set don't have the same capacity
      */
     [[nodiscard]]
     bool intersects(const binary_set& other) const {
@@ -392,8 +372,7 @@ class binary_set {
      * @return true If other is a subset of this binary_set
      * @return false If other isn't a subset of this binary_set
      *
-     * @throw std::invalid_argument If the two binary_set don't have the same
-     * capacity
+     * @throw std::invalid_argument If the two binary_set don't have the same capacity
      */
     [[nodiscard]]
     bool contains(const binary_set& other) const {
@@ -409,8 +388,7 @@ class binary_set {
     }
 
     /**
-     * @brief Get the begin() iterator of this binary_set to loop through
-     * elements that are in this set
+     * @brief Get the begin() iterator of this binary_set to loop through elements that are in this set
      *
      * @return iterator The begin() iterator
      */
@@ -420,8 +398,7 @@ class binary_set {
     }
 
     /**
-     * @brief Get the end() iterator of this binary_set to loop through elements
-     * that are in this set
+     * @brief Get the end() iterator of this binary_set to loop through elements that are in this set
      *
      * @return iterator The end() iterator
      */
@@ -489,9 +466,7 @@ class binary_set {
             if (capacity_ == 0)
                 throw std::domain_error("This binary set has a size of 0.");
             else
-                throw std::out_of_range(
-                    "Specified element is outside of the possible range for "
-                    "this binary_set.");
+                throw std::out_of_range("Specified element is outside of the possible range for this binary_set.");
         }
 #endif
     }
@@ -504,8 +479,7 @@ class binary_set {
 };
 
 /**
- * @brief Class used to find, among a predefined list of binary_set, all those
- * that are subsets of a specified one.
+ * @brief Class used to find, among a predefined list of binary_set, all those that are subsets of a specified one.
  */
 class bs_searcher {
    private:
@@ -529,11 +503,9 @@ class bs_searcher {
      * @brief Add a binary_set to the search tree
      *
      * @param value The alias of that binary_set (not necessarily unique)
-     * @param bs The binary_set to add to the search tree (not necessarily
-     * unique)
+     * @param bs The binary_set to add to the search tree (not necessarily unique)
      *
-     * @throw std::invalid_argument If the binary_set has a different capacity
-     * than the one specified in the constructor
+     * @throw std::invalid_argument If the binary_set has a different capacity than the one specified in the constructor
      */
     void add(const size_t value, const binary_set& bs) {
         validate_capacity(bs);
@@ -541,9 +513,8 @@ class bs_searcher {
         // Start from the root node...
         treenode* leaf = root_.get();
 
-        // ... traverse the tree according to the binary_set (true -> right,
-        // false -> left) ...
-        for (size_t i = 0; i < bs.capacity(); i++) {
+        // ... traverse the tree according to the binary_set (true -> right, false -> left) ...
+        for (size_t i = 0; i < this->capacity_; i++) {
             if (bs[i]) {
                 if (!leaf->right)  // ... create a new node if necessary ...
                     leaf->right = std::make_unique<treenode>();
@@ -562,16 +533,12 @@ class bs_searcher {
     /**
      * @brief Remove a binary_set from the search tree
      *
-     * @param value The alias of that binary_set (if duplicates are present,
-     * only the first occurrence it finds is removed)
-     * @param bs The binary_set to remove to the search tree (if duplicates are
-     * present, only the first occurrence it finds is removed)
-     * @return true If a matching binary_set was in the search tree, hence
-     * removed
+     * @param value The alias of that binary_set (if duplicates are present, only the first occurrence it finds is removed)
+     * @param bs The binary_set to remove to the search tree (if duplicates are present, only the first occurrence it finds is removed)
+     * @return true If a matching binary_set was in the search tree, hence removed
      * @return false If there was no matching binary_set in the search tree
      *
-     * @throw std::invalid_argument If the binary_set has a different capacity
-     * than the one specified in the constructor
+     * @throw std::invalid_argument If the binary_set has a different capacity than the one specified in the constructor
      */
     bool remove(const size_t value, const binary_set& bs) {
         validate_capacity(bs);
@@ -591,41 +558,29 @@ class bs_searcher {
         };
 
         // Stack to keep track of nodes we've visited for pruning
-        std::vector<std::pair<std::unique_ptr<treenode>*, treenode*>> path;
-        path.reserve(bs.capacity());
+        std::vector<treenode*> path;
+        path.reserve(this->capacity_);
 
-        std::unique_ptr<treenode>* current = &root_;
         treenode* node = root_.get();
 
         // Traverse to the leaf node containing the value
-        for (size_t i = 0; i < bs.capacity() && node; i++) {
-            path.emplace_back(current, node);
-
-            if (bs[i]) {
-                current = &(node->right);
-                node = node->right.get();
-            } else {
-                current = &(node->left);
-                node = node->left.get();
-            }
+        for (size_t i = 0; i < this->capacity_ && node; i++) {
+            path.emplace_back(node);
+            node = (bs[i] ? node->right.get() : node->left.get());
         }
 
-        // If we didn't reach a node or value isn't in the leaf, the element
-        // wasn't in the tree
+        // If we didn't reach a node or value isn't in the leaf, the element wasn't in the tree
         if (!node || !remove_value(node->values, value)) return false;
 
         // Prune empty branches by walking back up the path
         for (auto it = path.rbegin(); it != path.rend(); ++it) {
-            auto [parent_ptr, current_node]{*it};
+            auto node{*it};
 
             // If both children are empty and this node has no values, remove it
-            if (is_empty_node(current_node->left.get()) && is_empty_node(current_node->right.get()) && current_node->values.empty()) {
+            if (is_empty_node(node->left.get()) && is_empty_node(node->right.get()) && node->values.empty()) {
                 // Reset unique_ptr will invoke destructor
-                if (current_node->left) current_node->left.reset();
-                if (current_node->right) current_node->right.reset();
-
-                // Only reset if it's not the root node
-                if (parent_ptr != &root_ || (parent_ptr == &root_ && current_node != root_.get())) parent_ptr->reset();
+                if (node->left) node->left.reset();
+                if (node->right) node->right.reset();
             }
         }
 
@@ -633,15 +588,12 @@ class bs_searcher {
     }
 
     /**
-     * @brief Find all subsets of a specified binary_set among the ones added to
-     * the search tree
+     * @brief Find all subsets of a specified binary_set among the ones added to the search tree
      *
      * @param bs The binary_set whose subset we want to find
-     * @return std::vector<size_t> The list of aliases of the binary_set that
-     * are subsets of bs
+     * @return std::vector<size_t> The list of aliases of the binary_set that are subsets of bs
      *
-     * @throw std::invalid_argument If the binary_set has a different capacity
-     * than the one specified in the constructor
+     * @throw std::invalid_argument If the binary_set has a different capacity than the one specified in the constructor
      */
     [[nodiscard]]
     std::vector<size_t> find_subsets(const binary_set& bs) const {
@@ -651,9 +603,8 @@ class bs_searcher {
         std::deque<treenode*> open_nodes;
         if (root_) open_nodes.push_back(root_.get());
 
-        // Reach the end of the tree (i < capacity) until we have open nodes to
-        // explore
-        for (size_t i = 0; i < bs.capacity() && !open_nodes.empty(); i++) {
+        // Reach the end of the tree (i < capacity) until we have open nodes to explore
+        for (size_t i = 0; i < this->capacity_ && !open_nodes.empty(); i++) {
             const size_t level_size{open_nodes.size()};
 
             // Look among past iteration's open nodes and expand them
@@ -662,20 +613,17 @@ class bs_searcher {
                 open_nodes.pop_front();
 
                 if (bs[i]) {
-                    // If element is in the queried set, we can follow both
-                    // paths
+                    // If element is in the queried set, we can follow both paths
                     if (node->left) open_nodes.push_back(node->left.get());
                     if (node->right) open_nodes.push_back(node->right.get());
                 } else {
-                    // If element is not in the queried set, we can only follow
-                    // the left path (binary_set didn't contain this element)
+                    // If element is not in the queried set, we can only follow the left path (bs didn't contain this element)
                     if (node->left) open_nodes.push_back(node->left.get());
                 }
             }
         }
 
-        // Open nodes are now all leaves whose binary_set is a subset of the
-        // target one (bs)
+        // Open nodes are now all leaves whose binary_set is a subset of the target one (bs)
         std::vector<size_t> result;
         for (const auto& node : open_nodes) result.insert(result.end(), node->values.begin(), node->values.end());
 
