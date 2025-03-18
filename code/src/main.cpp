@@ -74,7 +74,7 @@ static void parse_cli(const int& argc, const char** argv, hplus::environment& en
     args::ValueFlag<std::string> heur(
         parser, "heuristic",
         "Specify which heuristic to compute before running cplex (default: 'greedycxe', options: [greedycost, greedycxe, rand, randr, hmax, hadd, "
-        "relax, local-<one of the other heuristics>], 'none' to not compute an heuristic).",
+        "local-<one of the other heuristics>], 'none' to not compute an heuristic).",
         {"heur"});
     args::Flag no_warmstart(parser, "warm start", "Tell to not give (if computed) the heuristic to cplex as warm start.", {"no-ws"});
     args::ValueFlag<int> timelimit(parser, "timelimit", "Specify the time limit (default: 60s).", {"t", "time", "tl"});
@@ -216,11 +216,11 @@ static void run(hplus::instance& inst, hplus::environment& env, hplus::statistic
 
         if (env.heur != "none" || env.alg == HPLUS_CLI_ALG_HEUR) {
             if (env.heur != "greedycost" && env.heur != "greedycxe" && env.heur != "rand" && env.heur != "randr" && env.heur != "hmax" &&
-                env.heur != "hadd" && env.heur != "relax") {
+                env.heur != "hadd") {
                 const auto& heur{split_string(env.heur, '-')};
                 if (heur.size() != 2 || heur[0] != "local" ||
                     (heur[1] != "greedycost" && heur[1] != "greedycxe" && heur[1] != "rand" && heur[1] != "randr" && heur[1] != "hmax" &&
-                     heur[1] != "hadd" && heur[1] != "relax"))
+                     heur[1] != "hadd"))
 
                     log.raise_error(
                         "The heuristic specified (%s) is not on the list of possible heuristics... Please use the --h flag for instructions.",

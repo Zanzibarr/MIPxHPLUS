@@ -33,7 +33,12 @@ HOW I DO VERSIONING:
 ### :heavy_plus_sign: Added
 - Trail to restore values after action simulation in hadd-based lookahead heuristic
     - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
-<!-- ### :x: Removed -->
+- Incremental candidate actions in greedy-based heuristics for faster feasible action lookup
+    - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
+### :x: Removed
+- Removed relax heuristic
+    - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
+    - [~/code/src/main.cpp](code/src/main.cpp)
 ### :curly_loop: Other
 - Minor changes to the binary_set related classes
     - [~/code/external/bs.hxx](code/external/bs.hxx)

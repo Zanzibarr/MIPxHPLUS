@@ -9,6 +9,7 @@
 #include "algorithms.hpp"
 
 #include <algorithm>  // For std::transform
+#include <list>       // For std::list
 #include <numeric>    // For std::accumulate
 #include <random>     // For random number generators
 #include <set>        // For std::set
@@ -90,7 +91,7 @@ static void greedycost(hplus::instance& inst, hplus::environment& env, const log
 
     unsigned int timestamp{0};
     // greedy choice
-    const auto find_best_act = [&inst, &timestamp](const std::vector<size_t>& candidates) {
+    const auto find_best_act = [&inst, &timestamp](const std::list<size_t>& candidates) {
         size_t choice{0};
         int best_cost{std::numeric_limits<int>::max()};
         for (const auto& act_i : candidates) {
@@ -121,8 +122,11 @@ static void greedycost(hplus::instance& inst, hplus::environment& env, const log
     bs_searcher feasible_actions{inst.n};
     for (const auto& act_i : inst.act_rem) feasible_actions.add(act_i, inst.actions[act_i].pre);
 
+    std::vector<size_t> tmp{feasible_actions.find_subsets(binary_set(inst.n))};
+    std::list<size_t> candidates{tmp.begin(), tmp.end()};
+    binary_set used_actions{inst.m};
+
     while (!state.contains(inst.goal)) {
-        const auto& candidates{feasible_actions.find_subsets(state)};
         if (candidates.empty()) [[unlikely]] {
             env.sol_s = solution_status::INFEAS;
             return;
@@ -130,10 +134,21 @@ static void greedycost(hplus::instance& inst, hplus::environment& env, const log
 
         const auto [_, choice]{find_best_act(candidates)};
 
+        used_actions.add(choice);
+        const auto& new_state = state | inst.actions[choice].eff;
+        // remove the action just used from the candidates
+        candidates.erase(std::find(candidates.begin(), candidates.end(), choice));
+        // check possible new entries to the candidates list
+        for (const auto& p : inst.actions[choice].eff - state) {
+            for (const auto& act_i : inst.act_with_pre[p]) {
+                if (std::find(candidates.begin(), candidates.end(), act_i) != candidates.end() || used_actions[act_i]) continue;
+                if (new_state.contains(inst.actions[act_i].pre)) candidates.push_back(act_i);
+            }
+        }
+
         heur_sol.plan.push_back(choice);
         heur_sol.cost += inst.actions[choice].cost;
         state |= inst.actions[choice].eff;
-        feasible_actions.remove(choice, inst.actions[choice].pre);
         timestamp++;
 
         if (CHECK_STOP()) [[unlikely]]
@@ -149,7 +164,7 @@ static void greedycxe(hplus::instance& inst, hplus::environment& env, const logg
 
     unsigned int timestamp{0};
     // greedy choice
-    const auto find_best_act = [&inst, &timestamp](const std::vector<size_t>& candidates, const binary_set& state) {
+    const auto find_best_act = [&inst, &timestamp](const std::list<size_t>& candidates, const binary_set& state) {
         size_t choice{0};
         bool found{false};
         double best_cxe{std::numeric_limits<double>::infinity()};
@@ -189,8 +204,11 @@ static void greedycxe(hplus::instance& inst, hplus::environment& env, const logg
     bs_searcher feasible_actions{inst.n};
     for (const auto& act_i : inst.act_rem) feasible_actions.add(act_i, inst.actions[act_i].pre);
 
+    std::vector<size_t> tmp{feasible_actions.find_subsets(binary_set(inst.n))};
+    std::list<size_t> candidates{tmp.begin(), tmp.end()};
+    binary_set used_actions{inst.m};
+
     while (!state.contains(inst.goal)) {
-        const auto& candidates{feasible_actions.find_subsets(state)};
         if (candidates.empty()) [[unlikely]] {
             env.sol_s = solution_status::INFEAS;
             return;
@@ -202,10 +220,21 @@ static void greedycxe(hplus::instance& inst, hplus::environment& env, const logg
             return;
         }
 
+        used_actions.add(choice);
+        const auto& new_state = state | inst.actions[choice].eff;
+        // remove the action just used from the candidates
+        candidates.erase(std::find(candidates.begin(), candidates.end(), choice));
+        // check possible new entries to the candidates list
+        for (const auto& p : inst.actions[choice].eff - state) {
+            for (const auto& act_i : inst.act_with_pre[p]) {
+                if (std::find(candidates.begin(), candidates.end(), act_i) != candidates.end() || used_actions[act_i]) continue;
+                if (new_state.contains(inst.actions[act_i].pre)) candidates.push_back(act_i);
+            }
+        }
+
         heur_sol.plan.push_back(choice);
         heur_sol.cost += inst.actions[choice].cost;
         state |= inst.actions[choice].eff;
-        feasible_actions.remove(choice, inst.actions[choice].pre);
         timestamp++;
 
         if (CHECK_STOP()) [[unlikely]]
@@ -221,7 +250,7 @@ static void randheur(hplus::instance& inst, hplus::environment& env, const logge
 
     unsigned int timestamp{0};
     // greedy choice
-    const auto find_best_act = [&inst, &timestamp](const std::vector<size_t>& candidates) {
+    const auto find_best_act = [&inst, &timestamp](const std::list<size_t>& candidates) {
         size_t choice{0};
         bool found{false};
         for (const auto& act_i : candidates) {
@@ -232,7 +261,7 @@ static void randheur(hplus::instance& inst, hplus::environment& env, const logge
             }
         }
         if (found) return std::pair(true, choice);
-        return std::pair(true, candidates[rand() % candidates.size()]);
+        return std::pair(true, *candidates.begin());
     };
 
     hplus::solution heur_sol;
@@ -245,8 +274,11 @@ static void randheur(hplus::instance& inst, hplus::environment& env, const logge
     bs_searcher feasible_actions{inst.n};
     for (const auto& act_i : inst.act_rem) feasible_actions.add(act_i, inst.actions[act_i].pre);
 
+    std::vector<size_t> tmp{feasible_actions.find_subsets(binary_set(inst.n))};
+    std::list<size_t> candidates{tmp.begin(), tmp.end()};
+    binary_set used_actions{inst.m};
+
     while (!state.contains(inst.goal)) {
-        const auto& candidates{feasible_actions.find_subsets(state)};
         if (candidates.empty()) [[unlikely]] {
             env.sol_s = solution_status::INFEAS;
             return;
@@ -254,10 +286,21 @@ static void randheur(hplus::instance& inst, hplus::environment& env, const logge
 
         const auto [_, choice]{find_best_act(candidates)};
 
+        used_actions.add(choice);
+        const auto& new_state = state | inst.actions[choice].eff;
+        // remove the action just used from the candidates
+        candidates.erase(std::find(candidates.begin(), candidates.end(), choice));
+        // check possible new entries to the candidates list
+        for (const auto& p : inst.actions[choice].eff - state) {
+            for (const auto& act_i : inst.act_with_pre[p]) {
+                if (std::find(candidates.begin(), candidates.end(), act_i) != candidates.end() || used_actions[act_i]) continue;
+                if (new_state.contains(inst.actions[act_i].pre)) candidates.push_back(act_i);
+            }
+        }
+
         heur_sol.plan.push_back(choice);
         heur_sol.cost += inst.actions[choice].cost;
-        state |= inst.actions[choice].eff;
-        feasible_actions.remove(choice, inst.actions[choice].pre);
+        state = new_state;
         timestamp++;
 
         if (CHECK_STOP()) [[unlikely]]
@@ -334,8 +377,8 @@ static void update_htype_values(const hplus::instance& inst, const binary_set& s
     }
 }
 
-static void init_htype(const hplus::instance& inst, const std::vector<size_t>& initial_actions, std::vector<double>& values,
-                       priority_queue<double>& pq, double (*h_eqtype)(double, double)) {
+static void init_htype(const hplus::instance& inst, const std::list<size_t>& initial_actions, std::vector<double>& values, priority_queue<double>& pq,
+                       double (*h_eqtype)(double, double)) {
     for (const auto& act_i : initial_actions) {
         // preconditions of these variables are already met -> hmax/hadd (act.pre) = 0 -> need only the cost of the action to set the hmax/hadd of the
         // effects
@@ -366,7 +409,7 @@ static bool htype(const hplus::instance& inst, hplus::solution& sol, double (*h_
     priority_queue<double> pq{inst.n};
 
     unsigned int timestamp{0};
-    const auto find_best_act = [&inst, &h_eqtype, &used_actions, &pq, timestamp](const std::vector<size_t>& candidates, std::vector<double>& values,
+    const auto find_best_act = [&inst, &h_eqtype, &used_actions, &pq, timestamp](const std::list<size_t>& candidates, std::vector<double>& values,
                                                                                  const binary_set& state) {
         size_t choice{0};
         bool found{false};
@@ -406,17 +449,12 @@ static bool htype(const hplus::instance& inst, hplus::solution& sol, double (*h_
     bs_searcher feasible_actions{inst.n};
     for (const auto& act_i : inst.act_rem) feasible_actions.add(act_i, inst.actions[act_i].pre);
 
-    // initialize values and priority queue (needs to be done manually since
-    // here the initial state will always be empty)
-    init_htype(inst, feasible_actions.find_subsets(binary_set(inst.n)), values, pq, h_eqtype);
+    // initialize values and priority queue (needs to be done manually since here the initial state will always be empty)
+    std::vector<size_t> tmp{feasible_actions.find_subsets(binary_set(inst.n))};
+    std::list<size_t> candidates{tmp.begin(), tmp.end()};
+    init_htype(inst, candidates, values, pq, h_eqtype);
 
     while (!state.contains(inst.goal)) {
-        std::vector<size_t> candidates;
-        for (const auto& act_i : inst.act_rem) {
-            if (used_actions[act_i]) continue;
-            if (state.contains(inst.actions[act_i].pre)) candidates.push_back(act_i);
-        }
-        // const auto& candidates{feasible_actions.find_subsets(state)};
         if (candidates.empty()) [[unlikely]]
             return false;
 
@@ -426,11 +464,21 @@ static bool htype(const hplus::instance& inst, hplus::solution& sol, double (*h_
 
         used_actions.add(choice);
         update_htype_values(inst, inst.actions[choice].eff - state, values, pq, used_actions, h_eqtype);
+        const auto& new_state = state | inst.actions[choice].eff;
+
+        // remove the action just used from the candidates
+        candidates.erase(std::find(candidates.begin(), candidates.end(), choice));
+        // check possible new entries to the candidates list
+        for (const auto& p : inst.actions[choice].eff - state) {
+            for (const auto& act_i : inst.act_with_pre[p]) {
+                if (std::find(candidates.begin(), candidates.end(), act_i) != candidates.end() || used_actions[act_i]) continue;
+                if (new_state.contains(inst.actions[act_i].pre)) candidates.push_back(act_i);
+            }
+        }
 
         sol.plan.push_back(choice);
         sol.cost += inst.actions[choice].cost;
-        state |= inst.actions[choice].eff;
-        // feasible_actions.remove(choice, inst.actions[choice].pre);
+        state = new_state;
         timestamp++;
 
         if (CHECK_STOP()) [[unlikely]]
@@ -467,148 +515,6 @@ static void hadd(hplus::instance& inst, hplus::environment& env, const logger& l
         env.sol_s = solution_status::INFEAS;
         return;
     }
-
-    hplus::update_sol(inst, heur_sol, log);
-    env.sol_s = solution_status::FEAS;
-}
-
-[[nodiscard]]
-static bool random_walk(const hplus::instance& inst, hplus::solution& sol, const double* plan, const logger& log) {
-    PRINT_VERBOSE(log, "Running random walk algorithm.");
-    binary_set state{inst.n};
-
-    // to be sure
-    sol.plan.reserve(inst.m_opt);
-    sol.cost = 0;
-
-    unsigned int timestamp{0};
-    // greedy choice
-    const auto find_best_act = [&inst, &plan, &timestamp](const std::vector<size_t>& candidates) {
-        double weight_sum{0};
-        size_t choice{0};
-        bool found{false};
-        for (const auto& act_i : candidates) {
-            if (inst.act_t[act_i] >= 0 && static_cast<unsigned int>(inst.act_t[act_i]) == timestamp) return std::pair(true, act_i);
-            if (inst.act_f[act_i]) {
-                choice = act_i;
-                found = true;
-                continue;
-            }
-            weight_sum += plan[inst.act_cpxtoidx[act_i]];
-        }
-        if (found) return std::pair(true, choice);
-
-        if (weight_sum <= 0) return std::pair(true, candidates[rand() % candidates.size()]);
-
-        std::random_device rd;
-        std::mt19937 gen{rd()};
-        std::uniform_real_distribution<> dis{0.0, weight_sum};
-        const double random_value{dis(gen)};
-        double cumulative_weight{0};
-        for (const auto& x : candidates) {
-            cumulative_weight += plan[inst.act_cpxtoidx[x]];
-            if (random_value <= cumulative_weight) return std::pair(true, x);
-        }
-
-        return std::pair(true, candidates.back());
-    };
-
-    // binary_set searcher for faster actions lookup
-    bs_searcher feasible_actions{inst.n};
-    for (const auto& act_i : inst.act_rem) feasible_actions.add(act_i, inst.actions[act_i].pre);
-
-    while (!state.contains(inst.goal)) {
-        const auto& candidates{feasible_actions.find_subsets(state)};
-        if (candidates.empty()) [[unlikely]]
-            return false;
-
-        const auto [found, choice]{find_best_act(candidates)};
-        if (!found) [[unlikely]]
-            return false;
-
-        sol.plan.push_back(choice);
-        sol.cost += inst.actions[choice].cost;
-        state |= inst.actions[choice].eff;
-        feasible_actions.remove(choice, inst.actions[choice].pre);
-        timestamp++;
-
-        if (CHECK_STOP()) [[unlikely]]
-            throw timelimit_exception("Reached time limit.");
-    }
-
-    return true;
-}
-
-static void relax(hplus::instance& inst, hplus::environment& env, const logger& log) {
-    PRINT_VERBOSE(log, "Running relax algorithm (linear relaxation of Imai's model).");
-
-    // build cplex model
-    CPXENVptr cpxenv = nullptr;
-    CPXLPptr cpxlp = nullptr;
-    cpx_init(cpxenv, cpxlp, env, log, false);
-    cpx_build_imai(cpxenv, cpxlp, inst, env, log, true);
-
-    // change bounds of variables
-    int* indices{new int[inst.n_opt + inst.m_opt + inst.n_opt * inst.m_opt]};
-    char* ctypes{new char[inst.n_opt + inst.m_opt + inst.n_opt * inst.m_opt]};
-    for (size_t i = 0; i < inst.m_opt; i++) {
-        indices[i] = static_cast<int>(i);
-        ctypes[i] = 'C';
-    }
-    for (size_t i = 0; i < inst.n_opt; i++) {
-        indices[inst.m_opt + i] = static_cast<int>(2 * inst.m_opt + i);
-        ctypes[inst.m_opt + i] = 'C';
-    }
-    for (size_t i = 0; i < inst.m_opt * inst.n_opt; i++) {
-        indices[inst.m_opt + inst.n_opt + i] = static_cast<int>(2 * inst.m_opt + 2 * inst.n_opt + i);
-        ctypes[inst.m_opt + inst.n_opt + i] = 'C';
-    }
-    ASSERT_LOG(log, !CPXchgctype(cpxenv, cpxlp, inst.n_opt + inst.m_opt + inst.n_opt * inst.m_opt, indices, ctypes));
-    delete[] ctypes;
-    ctypes = nullptr;
-    delete[] indices;
-    indices = nullptr;
-
-    // solve model
-    ASSERT_LOG(log, !CPXmipopt(cpxenv, cpxlp));
-
-    // parse cplex status to see what it found
-    switch (int cpxstatus = CPXgetstat(cpxenv, cpxlp)) {
-        case CPXMIP_TIME_LIM_INFEAS:  // exceeded time limit, no intermediate solution found
-            [[fallthrough]];
-        case CPXMIP_ABORT_INFEAS:  // terminated by user, not found solution
-            [[fallthrough]];
-        case CPXMIP_INFEASIBLE:  // proven to be unfeasible
-            env.sol_s = solution_status::INFEAS;
-            return;
-        case CPXMIP_TIME_LIM_FEAS:  // exceeded time limit, found intermediate solution
-            [[fallthrough]];
-        case CPXMIP_ABORT_FEAS:  // terminated by user, found solution
-            [[fallthrough]];
-        case CPXMIP_OPTIMAL_TOL:  // found optimal
-            [[fallthrough]];
-        case CPXMIP_OPTIMAL:
-            [[fallthrough]];
-        case CPX_STAT_OPTIMAL:
-            break;
-        default:  // unhandled status
-            log.raise_error("Error in parse_cpx_status: unhandled cplex status: %d.", cpxstatus);
-    }
-
-    // build a solution from the relaxation
-    hplus::solution heur_sol;
-    heur_sol.plan.reserve(inst.m_opt);
-    heur_sol.cost = 0;
-    double* plan{new double[inst.m_opt]};
-    ASSERT_LOG(log, !CPXgetx(cpxenv, cpxlp, plan, 0, inst.m_opt - 1));
-    // TODO: Rethink how we reconstruct our solution... this one isn't a good approximate solution
-    if (!random_walk(inst, heur_sol, plan, log)) {
-        delete[] plan;
-        env.sol_s = solution_status::INFEAS;
-        return;
-    }
-    delete[] plan;
-    cpx_close(cpxenv, cpxlp);
 
     hplus::update_sol(inst, heur_sol, log);
     env.sol_s = solution_status::FEAS;
@@ -1323,8 +1229,8 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
             ind[nnz] = get_fa_idx(act_i, var_i);
             val[nnz++] = -1;
         }
-        // if we fixed the variable due to a fixed first adder (note also that if we had a fixed first adder, we already have all other first adders
-        // for that effect eliminated), we don't need the constraint we're adding.
+        // if we fixed the variable due to a fixed first adder (note also that if we had a fixed first adder, we already have all other first
+        // adders for that effect eliminated), we don't need the constraint we're adding.
         if (fixed) continue;
 
         // if nnz == 1, then we'd have p = 0, meaning we could simply fix this variable to 0
@@ -1747,8 +1653,8 @@ static int CPXPUBLIC cpx_dynamic_time_callback(CPXCALLBACKCONTEXTptr context, CP
         for (size_t u = 0; u < n; u++) graph[u].erase(act_i_cpx);
     }
 
-    int* ind = new int[inst.n_opt];  // the size is inst.n_opt since we know that there can't be more that one first archiever selected per variable,
-                                     // hence the used first archievers are at most inst.n_opt
+    int* ind = new int[inst.n_opt];  // the size is inst.n_opt since we know that there can't be more that one first archiever selected per
+                                     // variable, hence the used first archievers are at most inst.n_opt
     double* val = new double[inst.n_opt];
     int nnz = 0;
     double rhs = 0;
@@ -1964,8 +1870,8 @@ static void cpx_build_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hpl
             ind[nnz] = get_fa_idx(act_i, var_i);
             val[nnz++] = -1;
         }
-        // if we fixed the variable due to a fixed first adder (note also that if we had a fixed first adder, we already have all other first adders
-        // for that effect eliminated), we don't need the constraint we're adding.
+        // if we fixed the variable due to a fixed first adder (note also that if we had a fixed first adder, we already have all other first
+        // adders for that effect eliminated), we don't need the constraint we're adding.
         if (fixed) continue;
 
         // if nnz == 1, then we'd have p = 0, meaning we could simply fix this variable to 0
@@ -2199,8 +2105,6 @@ void run_heur(hplus::instance& inst, hplus::environment& env, const logger& log)
         hmax(inst, env, log);
     else if (env.heur == "hadd")
         hadd(inst, env, log);
-    else if (env.heur == "relax")
-        relax(inst, env, log);
     else if (env.heur == "local-greedycost")
         localsearch(inst, greedycost, env, log);
     else if (env.heur == "local-greedycxe")
@@ -2213,8 +2117,6 @@ void run_heur(hplus::instance& inst, hplus::environment& env, const logger& log)
         localsearch(inst, hmax, env, log);
     else if (env.heur == "local-hadd")
         localsearch(inst, hadd, env, log);
-    else if (env.heur == "local-relax")
-        localsearch(inst, relax, env, log);
     else
         log.raise_error("The heuristic specified (%s) is not on the list of possible heuristics... Please read the Readme.md for instructions.",
                         env.heur.c_str());
