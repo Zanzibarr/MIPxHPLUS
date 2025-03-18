@@ -25,15 +25,17 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 ## [1.2.1] - 2025/03/18
-### :warning: Known issues
-- bs_searcher::find_subsets method in hadd-based heuristic takes too much time to get all feasible actions (we branch too much in bs_searcher tree)
+<!-- ### :warning: Known issues -->
+### :ballot_box_with_check: Fixed
+- better candidate actions lookup in greedy-based heuristics
     - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
-<!-- ### :ballot_box_with_check: Fixed -->
 <!-- ### :heavy_exclamation_mark: Changed -->
 ### :heavy_plus_sign: Added
 - Trail to restore values after action simulation in hadd-based lookahead heuristic
     - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
 - Incremental candidate actions in greedy-based heuristics for faster feasible action lookup
+    - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
+- CPLEX log showing every new incumbent
     - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
 ### :x: Removed
 - Removed relax heuristic

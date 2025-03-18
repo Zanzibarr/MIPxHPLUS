@@ -38,6 +38,8 @@ void cpx_init(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::environment& env,
     ASSERT_LOG(log, !CPXsetintparam(cpxenv, CPXPARAM_ScreenOutput, CPX_OFF));
     if (log_file) ASSERT_LOG(log, !CPXsetlogfilename(cpxenv, (HPLUS_CPLEX_OUTPUT_DIR "/log/" + env.run_name + ".log").c_str(), "w"));
     ASSERT_LOG(log, !CPXsetintparam(cpxenv, CPX_PARAM_CLONELOG, -1));
+    ASSERT_LOG(log, !CPXsetintparam(cpxenv, CPXPARAM_MIP_Display, 3));
+    // ASSERT_LOG(log, !CPXsetintparam(cpxenv, CPXPARAM_MIP_Limits_Solutions, 1));
     // tolerance
     ASSERT_LOG(log, !CPXsetdblparam(cpxenv, CPXPARAM_MIP_Tolerances_MIPGap, 0));
     // memory/size limits
