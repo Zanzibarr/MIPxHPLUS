@@ -27,11 +27,12 @@ HOW I DO VERSIONING:
 ## [1.2.2] - 2025/03/19
 ### :warning: Known issues
 - Imai's model wont validate warm starts for some instances
-    - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
 <!-- ### :ballot_box_with_check: Fixed -->
 <!-- ### :heavy_exclamation_mark: Changed -->
 ### :heavy_plus_sign: Added
 - Stricter integrity checks in computing heuristic solutions
+    - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
+- Faster greedy-based heuristics
     - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->

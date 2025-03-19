@@ -126,10 +126,19 @@ static void greedycost(hplus::instance& inst, hplus::environment& env, const log
 
     std::vector<size_t> tmp{feasible_actions.find_subsets(binary_set(inst.n))};
     std::list<size_t> candidates{tmp.begin(), tmp.end()};
+#if HPLUS_INTCHECK
+    for (const auto& act_i : candidates) ASSERT_LOG(log, state.contains(inst.actions[act_i].pre));
+    for (const auto& act_i : inst.act_rem) {
+        if (state.contains(inst.actions[act_i].pre)) ASSERT_LOG(log, std::find(candidates.begin(), candidates.end(), act_i) != candidates.end());
+    }
+#endif
 
     while (!state.contains(inst.goal)) {
 #if HPLUS_INTCHECK
-        ASSERT_LOG(log, candidates.size() == feasible_actions.find_subsets(state).size());
+        const auto& check = feasible_actions.find_subsets(state);
+        ASSERT_LOG(log, candidates.size() == check.size());
+        for (const auto& x : candidates) ASSERT_LOG(log, std::find(check.begin(), check.end(), x) != check.end());
+        for (const auto& x : check) ASSERT_LOG(log, std::find(candidates.begin(), candidates.end(), x) != candidates.end());
 #endif
         if (candidates.empty()) [[unlikely]] {
             env.sol_s = solution_status::INFEAS;
@@ -142,24 +151,36 @@ static void greedycost(hplus::instance& inst, hplus::environment& env, const log
             return;
         }
 
-        const auto& new_state = state | inst.actions[choice].eff;
-        // remove the action just used from the candidates
         candidates.remove(choice);
-        // check possible new entries to the candidates list
+#if HPLUS_INTCHECK
+        feasible_actions.remove(choice, inst.actions[choice].pre);
+#endif
+
+        // add new actions to the candidates
+        const auto& new_state = state | inst.actions[choice].eff;
         for (const auto& p : inst.actions[choice].eff - state) {
             for (const auto& act_i : inst.act_with_pre[p]) {
-                if (new_state.contains(inst.actions[act_i].pre)) candidates.push_back(act_i);
+                if (new_state.contains(inst.actions[act_i].pre) && std::find(candidates.begin(), candidates.end(), act_i) == candidates.end())
+                    candidates.push_back(act_i);
             }
         }
+
+        // purge unnecessary actions from candidates
+        std::vector<size_t> purged_actions;
+        for (const auto& act_i : candidates) {
+            if (new_state.contains(inst.actions[act_i].eff) && !inst.act_f[act_i]) {
+                purged_actions.push_back(act_i);
+#if HPLUS_INTCHECK
+                feasible_actions.remove(act_i, inst.actions[act_i].pre);
+#endif
+            }
+        }
+        for (const auto& act_i : purged_actions) candidates.remove(act_i);
 
         heur_sol.plan.push_back(choice);
         heur_sol.cost += inst.actions[choice].cost;
         state = new_state;
         timestamp++;
-
-#if HPLUS_INTCHECK
-        feasible_actions.remove(choice, inst.actions[choice].pre);
-#endif
 
         if (CHECK_STOP()) [[unlikely]]
             throw timelimit_exception("Reached time limit.");
@@ -171,7 +192,8 @@ static void greedycost(hplus::instance& inst, hplus::environment& env, const log
         if (inst.act_f[i]) ASSERT_LOG(log, std::find(heur_sol.plan.begin(), heur_sol.plan.end(), i) != heur_sol.plan.end());
         if (inst.act_t[i] < 0) continue;
         ASSERT_LOG(log, inst.act_f[i]);
-        ASSERT_LOG(log, *(heur_sol.plan.begin() + inst.act_t[i]) == i);
+        ASSERT_LOG(log, std::find(heur_sol.plan.begin(), heur_sol.plan.end(), i) != heur_sol.plan.end());
+        ASSERT_LOG(log, heur_sol.plan[inst.act_t[i]] == i);
     }
 #endif
 
@@ -226,10 +248,19 @@ static void greedycxe(hplus::instance& inst, hplus::environment& env, const logg
 
     std::vector<size_t> tmp{feasible_actions.find_subsets(binary_set(inst.n))};
     std::list<size_t> candidates{tmp.begin(), tmp.end()};
+#if HPLUS_INTCHECK
+    for (const auto& act_i : candidates) ASSERT_LOG(log, state.contains(inst.actions[act_i].pre));
+    for (const auto& act_i : inst.act_rem) {
+        if (state.contains(inst.actions[act_i].pre)) ASSERT_LOG(log, std::find(candidates.begin(), candidates.end(), act_i) != candidates.end());
+    }
+#endif
 
     while (!state.contains(inst.goal)) {
 #if HPLUS_INTCHECK
-        ASSERT_LOG(log, candidates.size() == feasible_actions.find_subsets(state).size());
+        const auto& check = feasible_actions.find_subsets(state);
+        ASSERT_LOG(log, candidates.size() == check.size());
+        for (const auto& x : candidates) ASSERT_LOG(log, std::find(check.begin(), check.end(), x) != check.end());
+        for (const auto& x : check) ASSERT_LOG(log, std::find(candidates.begin(), candidates.end(), x) != candidates.end());
 #endif
         if (candidates.empty()) [[unlikely]] {
             env.sol_s = solution_status::INFEAS;
@@ -242,24 +273,36 @@ static void greedycxe(hplus::instance& inst, hplus::environment& env, const logg
             return;
         }
 
-        const auto& new_state = state | inst.actions[choice].eff;
-        // remove the action just used from the candidates
         candidates.remove(choice);
-        // check possible new entries to the candidates list
+#if HPLUS_INTCHECK
+        feasible_actions.remove(choice, inst.actions[choice].pre);
+#endif
+
+        // add new actions to the candidates
+        const auto& new_state = state | inst.actions[choice].eff;
         for (const auto& p : inst.actions[choice].eff - state) {
             for (const auto& act_i : inst.act_with_pre[p]) {
-                if (new_state.contains(inst.actions[act_i].pre)) candidates.push_back(act_i);
+                if (new_state.contains(inst.actions[act_i].pre) && std::find(candidates.begin(), candidates.end(), act_i) == candidates.end())
+                    candidates.push_back(act_i);
             }
         }
+
+        // purge unnecessary actions from candidates
+        std::vector<size_t> purged_actions;
+        for (const auto& act_i : candidates) {
+            if (new_state.contains(inst.actions[act_i].eff) && !inst.act_f[act_i]) {
+                purged_actions.push_back(act_i);
+#if HPLUS_INTCHECK
+                feasible_actions.remove(act_i, inst.actions[act_i].pre);
+#endif
+            }
+        }
+        for (const auto& act_i : purged_actions) candidates.remove(act_i);
 
         heur_sol.plan.push_back(choice);
         heur_sol.cost += inst.actions[choice].cost;
         state = new_state;
         timestamp++;
-
-#if HPLUS_INTCHECK
-        feasible_actions.remove(choice, inst.actions[choice].pre);
-#endif
 
         if (CHECK_STOP()) [[unlikely]]
             throw timelimit_exception("Reached time limit.");
@@ -271,7 +314,8 @@ static void greedycxe(hplus::instance& inst, hplus::environment& env, const logg
         if (inst.act_f[i]) ASSERT_LOG(log, std::find(heur_sol.plan.begin(), heur_sol.plan.end(), i) != heur_sol.plan.end());
         if (inst.act_t[i] < 0) continue;
         ASSERT_LOG(log, inst.act_f[i]);
-        ASSERT_LOG(log, *(heur_sol.plan.begin() + inst.act_t[i]) == i);
+        ASSERT_LOG(log, std::find(heur_sol.plan.begin(), heur_sol.plan.end(), i) != heur_sol.plan.end());
+        ASSERT_LOG(log, heur_sol.plan[inst.act_t[i]] == i);
     }
 #endif
 
@@ -295,7 +339,9 @@ static void randheur(hplus::instance& inst, hplus::environment& env, const logge
             }
         }
         if (found) return std::pair(true, choice);
-        return std::pair(true, *candidates.begin());
+        auto it = candidates.begin();
+        std::advance(it, rand() % candidates.size());
+        return std::pair(true, *it);
     };
 
     hplus::solution heur_sol;
@@ -310,10 +356,19 @@ static void randheur(hplus::instance& inst, hplus::environment& env, const logge
 
     std::vector<size_t> tmp{feasible_actions.find_subsets(binary_set(inst.n))};
     std::list<size_t> candidates{tmp.begin(), tmp.end()};
+#if HPLUS_INTCHECK
+    for (const auto& act_i : candidates) ASSERT_LOG(log, state.contains(inst.actions[act_i].pre));
+    for (const auto& act_i : inst.act_rem) {
+        if (state.contains(inst.actions[act_i].pre)) ASSERT_LOG(log, std::find(candidates.begin(), candidates.end(), act_i) != candidates.end());
+    }
+#endif
 
     while (!state.contains(inst.goal)) {
 #if HPLUS_INTCHECK
-        ASSERT_LOG(log, candidates.size() == feasible_actions.find_subsets(state).size());
+        const auto& check = feasible_actions.find_subsets(state);
+        ASSERT_LOG(log, candidates.size() == check.size());
+        for (const auto& x : candidates) ASSERT_LOG(log, std::find(check.begin(), check.end(), x) != check.end());
+        for (const auto& x : check) ASSERT_LOG(log, std::find(candidates.begin(), candidates.end(), x) != candidates.end());
 #endif
         if (candidates.empty()) [[unlikely]] {
             env.sol_s = solution_status::INFEAS;
@@ -326,24 +381,36 @@ static void randheur(hplus::instance& inst, hplus::environment& env, const logge
             return;
         }
 
-        const auto& new_state = state | inst.actions[choice].eff;
-        // remove the action just used from the candidates
         candidates.remove(choice);
-        // check possible new entries to the candidates list
+#if HPLUS_INTCHECK
+        feasible_actions.remove(choice, inst.actions[choice].pre);
+#endif
+
+        // add new actions to the candidates
+        const auto& new_state = state | inst.actions[choice].eff;
         for (const auto& p : inst.actions[choice].eff - state) {
             for (const auto& act_i : inst.act_with_pre[p]) {
-                if (new_state.contains(inst.actions[act_i].pre)) candidates.push_back(act_i);
+                if (new_state.contains(inst.actions[act_i].pre) && std::find(candidates.begin(), candidates.end(), act_i) == candidates.end())
+                    candidates.push_back(act_i);
             }
         }
+
+        // purge unnecessary actions from candidates
+        std::vector<size_t> purged_actions;
+        for (const auto& act_i : candidates) {
+            if (new_state.contains(inst.actions[act_i].eff) && !inst.act_f[act_i]) {
+                purged_actions.push_back(act_i);
+#if HPLUS_INTCHECK
+                feasible_actions.remove(act_i, inst.actions[act_i].pre);
+#endif
+            }
+        }
+        for (const auto& act_i : purged_actions) candidates.remove(act_i);
 
         heur_sol.plan.push_back(choice);
         heur_sol.cost += inst.actions[choice].cost;
         state = new_state;
         timestamp++;
-
-#if HPLUS_INTCHECK
-        feasible_actions.remove(choice, inst.actions[choice].pre);
-#endif
 
         if (CHECK_STOP()) [[unlikely]]
             throw timelimit_exception("Reached time limit.");
@@ -355,7 +422,8 @@ static void randheur(hplus::instance& inst, hplus::environment& env, const logge
         if (inst.act_f[i]) ASSERT_LOG(log, std::find(heur_sol.plan.begin(), heur_sol.plan.end(), i) != heur_sol.plan.end());
         if (inst.act_t[i] < 0) continue;
         ASSERT_LOG(log, inst.act_f[i]);
-        ASSERT_LOG(log, *(heur_sol.plan.begin() + inst.act_t[i]) == i);
+        ASSERT_LOG(log, std::find(heur_sol.plan.begin(), heur_sol.plan.end(), i) != heur_sol.plan.end());
+        ASSERT_LOG(log, heur_sol.plan[inst.act_t[i]] == i);
     }
 #endif
 
@@ -461,12 +529,13 @@ static bool htype(const hplus::instance& inst, hplus::solution& sol, double (*h_
     priority_queue<double> pq{inst.n};
 
     unsigned int timestamp{0};
-    const auto find_best_act = [&inst, &h_eqtype, &used_actions, &pq, timestamp](const std::list<size_t>& candidates, std::vector<double>& values,
-                                                                                 const binary_set& state) {
+    std::stack<std::pair<size_t, double>> trail;  // leave a trail for the action simulation to be reverted
+    const auto find_best_act = [&inst, &h_eqtype, &used_actions, &trail, &pq, &timestamp, &log](
+                                   const std::list<size_t>& candidates, std::vector<double>& values, const binary_set& state) {
         size_t choice{0};
         bool found{false};
         double best_goal_cost{std::numeric_limits<double>::infinity()};
-        std::stack<std::pair<size_t, double>> trail;  // leave a trail for the action simulation to be reverted
+        double current_goal_cost{evaluate_htype_state(inst.goal, values, h_eqtype)};
         for (const auto& act_i : candidates) {
             if (inst.act_t[act_i] >= 0 && static_cast<unsigned int>(inst.act_t[act_i]) == timestamp) return std::pair(true, act_i);
             if (inst.act_f[act_i]) {
@@ -479,14 +548,22 @@ static bool htype(const hplus::instance& inst, hplus::solution& sol, double (*h_
             if (best_goal_cost < 0) continue;
 
             update_htype_values(inst, inst.actions[act_i].eff - state, values, pq, used_actions, h_eqtype, &trail);
-            const double goal_cost{evaluate_htype_state(inst.goal, values, h_eqtype)};
+#if HPLUS_INTCHECK
+            const double goal_cost_check{evaluate_htype_state(inst.goal, values, h_eqtype)};
+#endif
 
+            double goal_cost{h_eqtype(1, 1) == 1 ? /*hmax*/ evaluate_htype_state(inst.goal, values, h_eqtype) : current_goal_cost};
             // reset values according to the trail
             while (!trail.empty()) {
                 const auto& [idx, value] = trail.top();
                 trail.pop();
+                if (inst.goal[idx] && h_eqtype(1, 1) != 1) {  // hadd
+                    goal_cost -= (value - values[idx]);
+                }
                 values[idx] = value;
             }
+
+            INTCHECK_ASSERT_LOG(log, goal_cost == goal_cost_check);
 
             if (goal_cost >= best_goal_cost) continue;
 
@@ -494,6 +571,7 @@ static bool htype(const hplus::instance& inst, hplus::solution& sol, double (*h_
             best_goal_cost = goal_cost;
             found = true;
         }
+        INTCHECK_ASSERT_LOG(log, std::find(candidates.begin(), candidates.end(), choice) != candidates.end());
         return std::pair(found, choice);
     };
 
@@ -504,11 +582,20 @@ static bool htype(const hplus::instance& inst, hplus::solution& sol, double (*h_
     // initialize values and priority queue (needs to be done manually since here the initial state will always be empty)
     std::vector<size_t> tmp{feasible_actions.find_subsets(binary_set(inst.n))};
     std::list<size_t> candidates{tmp.begin(), tmp.end()};
+#if HPLUS_INTCHECK
+    for (const auto& act_i : candidates) ASSERT_LOG(log, state.contains(inst.actions[act_i].pre));
+    for (const auto& act_i : inst.act_rem) {
+        if (state.contains(inst.actions[act_i].pre)) ASSERT_LOG(log, std::find(candidates.begin(), candidates.end(), act_i) != candidates.end());
+    }
+#endif
     init_htype(inst, candidates, values, pq, h_eqtype);
 
     while (!state.contains(inst.goal)) {
 #if HPLUS_INTCHECK
-        ASSERT_LOG(log, candidates.size() == feasible_actions.find_subsets(state).size());
+        const auto& check = feasible_actions.find_subsets(state);
+        ASSERT_LOG(log, candidates.size() == check.size());
+        for (const auto& x : candidates) ASSERT_LOG(log, std::find(check.begin(), check.end(), x) != check.end());
+        for (const auto& x : check) ASSERT_LOG(log, std::find(candidates.begin(), candidates.end(), x) != candidates.end());
 #endif
         if (candidates.empty()) [[unlikely]]
             return false;
@@ -518,26 +605,37 @@ static bool htype(const hplus::instance& inst, hplus::solution& sol, double (*h_
             return false;
 
         used_actions.add(choice);
+        candidates.remove(choice);
+#if HPLUS_INTCHECK
+        feasible_actions.remove(choice, inst.actions[choice].pre);
+#endif
         update_htype_values(inst, inst.actions[choice].eff - state, values, pq, used_actions, h_eqtype);
 
+        // add new actions to the candidates
         const auto& new_state = state | inst.actions[choice].eff;
-        // remove the action just used from the candidates
-        candidates.remove(choice);
-        // check possible new entries to the candidates list
         for (const auto& p : inst.actions[choice].eff - state) {
             for (const auto& act_i : inst.act_with_pre[p]) {
-                if (new_state.contains(inst.actions[act_i].pre)) candidates.push_back(act_i);
+                if (new_state.contains(inst.actions[act_i].pre) && std::find(candidates.begin(), candidates.end(), act_i) == candidates.end())
+                    candidates.push_back(act_i);
             }
         }
+
+        // purge unnecessary actions from candidates
+        std::vector<size_t> purged_actions;
+        for (const auto& act_i : candidates) {
+            if (new_state.contains(inst.actions[act_i].eff) && !inst.act_f[act_i]) {
+                purged_actions.push_back(act_i);
+#if HPLUS_INTCHECK
+                feasible_actions.remove(act_i, inst.actions[act_i].pre);
+#endif
+            }
+        }
+        for (const auto& act_i : purged_actions) candidates.remove(act_i);
 
         sol.plan.push_back(choice);
         sol.cost += inst.actions[choice].cost;
         state = new_state;
         timestamp++;
-
-#if HPLUS_INTCHECK
-        feasible_actions.remove(choice, inst.actions[choice].pre);
-#endif
 
         if (CHECK_STOP()) [[unlikely]]
             throw timelimit_exception("Reached time limit.");
@@ -549,7 +647,8 @@ static bool htype(const hplus::instance& inst, hplus::solution& sol, double (*h_
         if (inst.act_f[i]) ASSERT_LOG(log, std::find(sol.plan.begin(), sol.plan.end(), i) != sol.plan.end());
         if (inst.act_t[i] < 0) continue;
         ASSERT_LOG(log, inst.act_f[i]);
-        ASSERT_LOG(log, *(sol.plan.begin() + inst.act_t[i]) == i);
+        ASSERT_LOG(log, std::find(sol.plan.begin(), sol.plan.end(), i) != sol.plan.end());
+        ASSERT_LOG(log, sol.plan[inst.act_t[i]] == i);
     }
 #endif
 
