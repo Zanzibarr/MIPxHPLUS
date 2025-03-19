@@ -685,11 +685,13 @@ static void dominated_actions_elimination(hplus::instance& inst, const std::vect
             throw timelimit_exception("Reached time limit.");
     }
 
-    // find efficently all actions that satisfy point 1) of Proposition 4 of in
-    // Imai's Paper
+    // find efficently all actions that satisfy point 1) of Proposition 4 of in Imai's Paper
     const auto& rem_act{(!inst.act_e).sparse()};
     bs_searcher candidates{inst.n};
-    for (const auto& act_i : rem_act) candidates.add(act_i, first_adders[act_i]);
+    for (const auto& act_i : rem_act) {
+        if (inst.act_f[act_i]) continue;
+        candidates.add(act_i, first_adders[act_i]);
+    }
 
     binary_set dominated_actions{inst.m};
 
@@ -698,7 +700,7 @@ static void dominated_actions_elimination(hplus::instance& inst, const std::vect
         if (dominated_actions[dominant_act]) continue;
 
         for (const auto& dominated_act : candidates.find_subsets(first_adders[dominant_act])) {
-            if (inst.act_f[dominated_act] || dominant_act == dominated_act || inst.actions[dominant_act].cost > inst.actions[dominated_act].cost ||
+            if (dominant_act == dominated_act || inst.actions[dominant_act].cost > inst.actions[dominated_act].cost ||
                 !act_flm[dominated_act].contains(inst.actions[dominant_act].pre)) [[likely]]
                 continue;
 
