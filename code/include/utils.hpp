@@ -13,7 +13,7 @@
 // ############################ CODE VERSION ########################### //
 // ##################################################################### //
 
-#define CODE_VERSION "1.2.1"
+#define CODE_VERSION "1.2.2"
 
 // ##################################################################### //
 // ############################## IMPORTS ############################## //
@@ -57,13 +57,13 @@
 // ##################################################################### //
 
 #ifndef HPLUS_VERBOSE
-#define HPLUS_VERBOSE 5  // overwritten by cmake
+#define HPLUS_VERBOSE 100  // overwritten by cmake
 #endif
 #ifndef HPLUS_WARN
-#define HPLUS_WARN 1  // overwritten by cmake
+#define HPLUS_WARN 0  // overwritten by cmake
 #endif
 #ifndef HPLUS_INTCHECK
-#define HPLUS_INTCHECK 1  // overwritten by cmake
+#define HPLUS_INTCHECK 0  // overwritten by cmake
 #endif
 
 // ##################################################################### //
