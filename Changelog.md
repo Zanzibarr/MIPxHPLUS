@@ -24,10 +24,20 @@ HOW I DO VERSIONING:
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
 
+## [1.2.3] - 2025/03/20
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+### :heavy_exclamation_mark: Changed
+- Faster problem simplification
+    - [~/code/src/hplus_instance.cpp](code/src/hplus_instance.cpp)
+<!-- ### :heavy_plus_sign: Added -->
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+
 ## [1.2.2] - 2025/03/19
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed
-- Imai's model wont validate warm starts for some instances
+- Imai's model won't validate warm starts for some instances
     - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
 <!-- ### :heavy_exclamation_mark: Changed -->
 ### :heavy_plus_sign: Added

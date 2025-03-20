@@ -10,6 +10,7 @@
 
 #include <algorithm>  // For std::set_difference
 #include <fstream>    // For std::ifstream
+#include <list>       // For std::list
 
 void hplus::print_stats(const statistics& stats, const logger& log) {
 #if HPLUS_VERBOSE < 5
@@ -696,13 +697,23 @@ static void dominated_actions_elimination(hplus::instance& inst, const std::vect
 static void immediate_action_application(hplus::instance& inst, const binary_set& act_landmarks, const logger& log) {
     PRINT_VERBOSE(log, "Immediate action application.");
 
-    binary_set current_state{inst.n}, used_actions{inst.m};
+    binary_set current_state{inst.n};
     const auto& rem_act{(!inst.act_e).sparse()};
 
     // find efficiently all actions that satisfy point 2) of the Definition 1 in
     // section 4.6 of Imai's paper
     bs_searcher subset_finder{inst.n};
     for (const auto& act_i : rem_act) subset_finder.add(act_i, inst.actions[act_i].pre - inst.var_e);
+    std::vector<size_t> tmp{subset_finder.find_subsets(binary_set(inst.n))};
+    std::list<size_t> candidates{tmp.begin(), tmp.end()};
+
+    std::vector<std::vector<size_t>> act_with_pre(inst.n);
+    for (const auto& act_i : rem_act) {
+        for (const auto& pre_i : inst.actions[act_i].pre_sparse) {
+            if (inst.var_e[pre_i]) continue;
+            act_with_pre[pre_i].push_back(act_i);
+        }
+    }
 
     // keep looking until no more actions can be applied
     unsigned int counter{0};
@@ -710,18 +721,17 @@ static void immediate_action_application(hplus::instance& inst, const binary_set
     while (found_next_action) {
         found_next_action = false;
 
-        for (const auto& act_i : subset_finder.find_subsets(current_state)) {
-            if (used_actions[act_i]) continue;
-
+        std::vector<size_t> removed_actions;
+        binary_set prev_state{current_state};
+        for (const auto& act_i : candidates) {
             const auto& pre{inst.actions[act_i].pre - inst.var_e};
             const auto& eff{inst.actions[act_i].eff - inst.var_e};
 
             if (!act_landmarks[act_i] && inst.actions[act_i].cost != 0) [[likely]] {
-                subset_finder.remove(act_i, pre);
+                removed_actions.push_back(act_i);
                 continue;
             }
 
-            used_actions.add(act_i);
             inst.act_f.add(act_i);
             inst.act_t[act_i] = counter;
             counter++;
@@ -737,9 +747,17 @@ static void immediate_action_application(hplus::instance& inst, const binary_set
             }
             inst.var_f |= eff;
             current_state |= eff;
-            subset_finder.remove(act_i, pre);
+            removed_actions.push_back(act_i);
             found_next_action = true;
         }
+        for (const auto& p : current_state - prev_state) {
+            for (const auto& act_i : act_with_pre[p]) {
+                if (current_state.contains(inst.actions[act_i].pre - inst.var_e) &&
+                    std::find(candidates.begin(), candidates.end(), act_i) == candidates.end())
+                    candidates.push_back(act_i);
+            }
+        }
+        for (const auto& act_i : removed_actions) candidates.remove(act_i);
         if (CHECK_STOP()) [[unlikely]]
             throw timelimit_exception("Reached time limit.");
     }
@@ -748,16 +766,15 @@ static void immediate_action_application(hplus::instance& inst, const binary_set
 static void inverse_actions_extraction(hplus::instance& inst, const logger& log) {
     PRINT_VERBOSE(log, "Extracting inverse actions.");
 
-    bs_searcher subset_finder{inst.n};
-
-    // find efficiently all actions that satisfy point 2) of the Definition 1 in
-    // section 4.6 of Imai's paper
     const auto& rem_act{(!inst.act_e).sparse()};
-    for (const auto& act_i : rem_act) subset_finder.add(act_i, inst.actions[act_i].eff);
+
+    // find efficiently all actions that satisfy point 2) of the Definition 1 in section 4.6 of Imai's paper
+    bs_searcher subset_finder{inst.n};
+    for (const auto& act_i : rem_act) subset_finder.add(act_i, inst.actions[act_i].eff - inst.var_e);
 
     for (const auto& act_i : rem_act) {
-        const auto& pre{inst.actions[act_i].pre};
-        const auto& eff{inst.actions[act_i].eff};
+        const auto& pre{inst.actions[act_i].pre - inst.var_e};
+        const auto& eff{inst.actions[act_i].eff - inst.var_e};
         for (const auto& act_j : subset_finder.find_subsets(pre)) {
             if (!inst.actions[act_j].pre.contains(eff)) [[likely]]
                 continue;
@@ -793,8 +810,12 @@ static void finish_opt(hplus::instance& inst, const logger& log) {
     for (size_t i = 0; i < inst.m; i++) {
         INTCHECK_ASSERT_LOG(log, !inst.fadd_f[i].intersects(inst.fadd_e[i]));
         INTCHECK_ASSERT_LOG(log, !(inst.act_e[i] && inst.act_t[i] >= 0));
+        INTCHECK_ASSERT_LOG(log, !(!inst.act_f[i] && inst.act_t[i] >= 0));
     }
-    for (size_t i = 0; i < inst.n; i++) INTCHECK_ASSERT_LOG(log, !(inst.var_e[i] && inst.var_t[i] >= 0));
+    for (size_t i = 0; i < inst.n; i++) {
+        INTCHECK_ASSERT_LOG(log, !(inst.var_e[i] && inst.var_t[i] >= 0));
+        INTCHECK_ASSERT_LOG(log, !(!inst.var_f[i] && inst.var_t[i] >= 0));
+    }
 }
 
 void hplus::instance_optimization(instance& inst, const logger& log) {
@@ -810,11 +831,9 @@ void hplus::instance_optimization(instance& inst, const logger& log) {
     inverse_actions_extraction(inst, log);
     finish_opt(inst, log);
 #if HPLUS_VERBOSE >= 100
-    size_t count = 0;
-    for (const auto& x [[maybe_unused]] : inst.var_f | inst.var_e) count++;
+    size_t count{(inst.var_f | inst.var_e).sparse().size()};
     log.print_info("# variables: %d - %d = %d.", inst.n, count, inst.n - count);
-    count = 0;
-    for (const auto& x [[maybe_unused]] : inst.act_f | inst.act_e) count++;
+    count = (inst.act_f | inst.act_e).sparse().size();
     log.print_info("# actions: %d - %d = %d.", inst.m, count, inst.m - count);
 #endif
 }
