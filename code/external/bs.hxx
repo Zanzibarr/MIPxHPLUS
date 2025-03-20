@@ -543,44 +543,44 @@ class bs_searcher {
     bool remove(const size_t value, const binary_set& bs) {
         validate_capacity(bs);
 
-        // Helper function to check if a node is empty (no values and no
-        // children)
-        auto is_empty_node = [](const treenode* node) -> bool { return node && node->values.empty() && !node->left && !node->right; };
-
-        // Helper function to remove value from a vector
-        auto remove_value = [](std::vector<size_t>& values, size_t v) -> bool {
-            auto it{std::find(values.begin(), values.end(), v)};
-            if (it != values.end()) {
-                values.erase(it);
-                return true;
-            }
-            return false;
-        };
-
-        // Stack to keep track of nodes we've visited for pruning
-        std::vector<treenode*> path;
-        path.reserve(this->capacity_);
+        std::vector<treenode*> path(this->capacity_);
+        std::vector<bool> is_right_child(this->capacity_);
+        size_t path_size = 0;
 
         treenode* node = root_.get();
 
         // Traverse to the leaf node containing the value
-        for (size_t i = 0; i < this->capacity_ && node; i++) {
-            path.emplace_back(node);
+        for (size_t i = 0; i < capacity_ && node; i++) {
+            path[path_size] = node;
+            is_right_child[path_size] = bs[i];
+            path_size++;
             node = (bs[i] ? node->right.get() : node->left.get());
         }
 
-        // If we didn't reach a node or value isn't in the leaf, the element wasn't in the tree
-        if (!node || !remove_value(node->values, value)) return false;
+        // If we didn't reach a node, the element wasn't in the tree
+        if (!node) return false;
 
-        // Prune empty branches by walking back up the path
-        for (auto it = path.rbegin(); it != path.rend(); ++it) {
-            auto node{*it};
+        // Find and remove the value using efficient swap-and-pop
+        auto it = std::find(node->values.begin(), node->values.end(), value);
+        if (it == node->values.end()) return false;
 
-            // If both children are empty and this node has no values, remove it
-            if (is_empty_node(node->left.get()) && is_empty_node(node->right.get()) && node->values.empty()) {
-                // Reset unique_ptr will invoke destructor
-                if (node->left) node->left.reset();
-                if (node->right) node->right.reset();
+        if (it != node->values.end() - 1) *it = node->values.back();
+        node->values.pop_back();
+
+        // Prune empty branches
+        if (node->values.empty() && !node->left && !node->right) {
+            // Start from the end of the path and work backwards
+            for (size_t i = path_size - 1; i > 0; --i) {
+                treenode* parent = path[i - 1];
+                bool is_right = is_right_child[i - 1];
+
+                if (is_right)
+                    parent->right.reset();  // This will delete the child
+                else
+                    parent->left.reset();  // This will delete the child
+
+                // Stop pruning if parent has values or other children
+                if (!parent->values.empty() || parent->left || parent->right) break;
             }
         }
 
@@ -599,33 +599,43 @@ class bs_searcher {
     std::vector<size_t> find_subsets(const binary_set& bs) const {
         validate_capacity(bs);
 
-        // Keep track of nodes to be expanded
-        std::deque<treenode*> open_nodes;
-        if (root_) open_nodes.push_back(root_.get());
+        // Use two vectors to avoid reallocations and erasing operations
+        std::vector<const treenode*> current_level;
+        std::vector<const treenode*> next_level;
+        current_level.reserve(capacity_);   // Reasonable initial size
+        next_level.reserve(capacity_ * 2);  // Worst case growth
 
-        // Reach the end of the tree (i < capacity) until we have open nodes to explore
-        for (size_t i = 0; i < this->capacity_ && !open_nodes.empty(); i++) {
-            const size_t level_size{open_nodes.size()};
+        if (root_) current_level.push_back(root_.get());
 
-            // Look among past iteration's open nodes and expand them
-            for (size_t j = 0; j < level_size; j++) {
-                const treenode* node{open_nodes.front()};
-                open_nodes.pop_front();
+        // Traverse the tree level by level
+        for (size_t i = 0; i < capacity_ && !current_level.empty(); i++) {
+            next_level.clear();
 
+            for (const auto* node : current_level) {
                 if (bs[i]) {
-                    // If element is in the queried set, we can follow both paths
-                    if (node->left) open_nodes.push_back(node->left.get());
-                    if (node->right) open_nodes.push_back(node->right.get());
+                    // If element is in the queried set, follow both paths
+                    if (node->left) next_level.push_back(node->left.get());
+                    if (node->right) next_level.push_back(node->right.get());
                 } else {
-                    // If element is not in the queried set, we can only follow the left path (bs didn't contain this element)
-                    if (node->left) open_nodes.push_back(node->left.get());
+                    // If element is not in the queried set, only follow the left path
+                    if (node->left) next_level.push_back(node->left.get());
                 }
             }
+
+            // Swap for next iteration
+            current_level.swap(next_level);
         }
 
-        // Open nodes are now all leaves whose binary_set is a subset of the target one (bs)
+        // Calculate total size needed for result vector
+        size_t total_values = 0;
+        for (const auto* node : current_level) total_values += node->values.size();
+
+        // Pre-allocate result vector
         std::vector<size_t> result;
-        for (const auto& node : open_nodes) result.insert(result.end(), node->values.begin(), node->values.end());
+        result.reserve(total_values);
+
+        // Collect all values from leaves
+        for (const auto* node : current_level) result.insert(result.end(), node->values.begin(), node->values.end());
 
         return result;
     }

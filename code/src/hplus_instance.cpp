@@ -476,66 +476,58 @@ static void landmark_extraction(hplus::instance& inst, std::vector<binary_set>& 
                                 const logger& log) {
     PRINT_VERBOSE(log, "Extracting landmarks.");
 
+    // use the last bit as a flag to tell the binary_set is full
     for (size_t var_i = 0; var_i < inst.n; var_i++) landmarks[var_i].add(inst.n);
 
     binary_set s_set{inst.n};
 
+    // add to the queue all initial actions...
     std::deque<size_t> actions_queue;
     for (size_t act_i = 0; act_i < inst.m; act_i++) {
-        if (s_set.contains(inst.actions[act_i].pre)) actions_queue.push_back(act_i);
+        // ... and since the initial state is empty, the initial actions are those with no preconditions (pre.empty() is O(n) while pre_sparse.empty()
+        // is O(1))
+        if (inst.actions[act_i].pre_sparse.empty()) actions_queue.push_back(act_i);
     }
 
     // list of actions that have as precondition variable p
     std::vector<std::vector<size_t>> act_with_pre(inst.n);
-    for (size_t var_i = 0; var_i < inst.n; var_i++) {
-        act_with_pre[var_i].reserve(inst.m);
-        for (size_t act_i = 0; act_i < inst.m; act_i++) {
-            if (inst.actions[act_i].pre[var_i]) act_with_pre[var_i].push_back(act_i);
-        }
+    for (size_t act_i = 0; act_i < inst.m; act_i++) {
+        for (const auto& var_i : inst.actions[act_i].pre_sparse) act_with_pre[var_i].push_back(act_i);
     }
 
     while (!actions_queue.empty()) {
         const hplus::action& a{inst.actions[actions_queue.front()]};
         actions_queue.pop_front();
 
-        const auto& pre_sparse{a.pre_sparse};
-        const auto& add_sparse{a.eff_sparse};
+        binary_set x_a{inst.n + 1};
+        for (const auto& var_i : a.eff_sparse) x_a.add(var_i);
+        for (const auto& p : a.eff_sparse) {
+            s_set.add(p);
 
-        for (const auto& var_i : add_sparse) {
-            s_set.add(var_i);
-
-            binary_set x{inst.n + 1};
-            for (const auto& var_j : add_sparse) x.add(var_j);
-
-            for (const auto& var_j : pre_sparse) {
-                // if variable var_i' has the "full" flag then the unification
-                // generates a "full" bitfield -> no need to unificate, just set
-                // the flag
+            binary_set x{x_a};
+            for (const auto& var_j : a.pre_sparse) {
+                // if variable p' has the "full" flag then the unification generates a "full" bitfield -> no need to unificate, just set the flag
                 if (landmarks[var_j][inst.n]) {
                     x.add(inst.n);
-                    // if x is now full we can exit, since all further unions
-                    // won't change x
+                    // if x is now full we can exit, since all further unions won't change x
                     break;
                 } else
                     x |= landmarks[var_j];
             }
 
-            // we then check if L[var_i] != X, and if they are the same we skip,
-            // if X = P, then (X intersection L[P]) = L[P], hence we can already
-            // skip
+            // we then check if L[p] != X, and if they are the same we skip... since X will be the intersection between L[p] and (the current) x, if x
+            // is full, then X = L[P], so we can already skip
             if (x[inst.n]) continue;
 
-            // if the set for variable var_i is the full set of variables,
-            // the intersection generates back x -> we can skip the intersection
-            if (!landmarks[var_i][inst.n]) x &= landmarks[var_i];
+            // if the set for variable p is the full set of variables, the intersection generates back x -> we can skip the intersection
+            if (!landmarks[p][inst.n]) x &= landmarks[p];
 
-            // we already know that x is not the full set now, so if
-            // the set for variable var_i is the full set, we know that x is not
-            // equal to the set for variable var_i -> we can skip the check
-            if (!landmarks[var_i][inst.n] && x == landmarks[var_i]) continue;
+            // we already know that x is not the full set now, so if the set for variable p is the full set, we know that x is not equal to the
+            // set for variable p -> we can skip the check
+            if (!landmarks[p][inst.n] && x == landmarks[p]) continue;
 
-            landmarks[var_i] = x;
-            for (const auto& act_i : act_with_pre[var_i]) {
+            landmarks[p] = x;
+            for (const auto& act_i : act_with_pre[p]) {
                 if (s_set.contains(inst.actions[act_i].pre) && std::find(actions_queue.begin(), actions_queue.end(), act_i) == actions_queue.end())
                     actions_queue.push_back(act_i);
             }
@@ -546,11 +538,8 @@ static void landmark_extraction(hplus::instance& inst, std::vector<binary_set>& 
 
     // list of actions that have as effect variable p
     std::vector<std::vector<size_t>> act_with_eff(inst.n);
-    for (const auto& var_i : !fact_landmarks) {
-        act_with_eff[var_i].reserve(inst.m);
-        for (size_t act_i = 0; act_i < inst.m; act_i++) {
-            if (inst.actions[act_i].eff[var_i]) act_with_eff[var_i].push_back(act_i);
-        }
+    for (size_t act_i = 0; act_i < inst.m; act_i++) {
+        for (const auto& var_i : inst.actions[act_i].eff_sparse) act_with_eff[var_i].push_back(act_i);
     }
 
     // popolate fact_landmarks and act_landmarks sets
@@ -590,17 +579,16 @@ static void fadd_extraction(hplus::instance& inst, const std::vector<binary_set>
     // compute the set of first adders
     for (size_t act_i = 0; act_i < inst.m; act_i++) {
         // f_lm_a is the set of fact landmarks of action act_i
-        binary_set f_lm_a{inst.n};
+        binary_set not_f_lm_a{inst.n, true};
         for (const auto& var_i : inst.actions[act_i].pre) {
-            for (const auto& i : var_flm_sparse[var_i]) f_lm_a.add(i);
+            for (const auto& i : var_flm_sparse[var_i]) not_f_lm_a.remove(i);
         }
-        // first_adders[a] := { p in add(a) s.t. p is not a fact landmark for a
-        // }
-        first_adders[act_i] |= (inst.actions[act_i].eff & !f_lm_a);
+        // first_adders[a] := { p in add(a) s.t. p is not a fact landmark for a }
+        first_adders[act_i] |= (inst.actions[act_i].eff & not_f_lm_a);
         if (CHECK_STOP()) [[unlikely]]
             throw timelimit_exception("Reached time limit.");
     }
-    for (size_t act_i = 0; act_i < inst.m; act_i++) inst.fadd_e[act_i] |= (inst.actions[act_i].eff & !first_adders[act_i]);
+    for (size_t act_i = 0; act_i < inst.m; act_i++) inst.fadd_e[act_i] |= (inst.actions[act_i].eff - first_adders[act_i]);
 }
 
 static void relevance_analysis(hplus::instance& inst, const binary_set& fact_landmarks, const std::vector<binary_set>& first_adders,
@@ -623,8 +611,7 @@ static void relevance_analysis(hplus::instance& inst, const binary_set& fact_lan
     // list of actions yet to check
     auto cand_actions_sparse{(!relevant_actions).sparse()};
 
-    // keep looking for other relevant actions/variables until no more can be
-    // found
+    // keep looking for other relevant actions/variables until no more can be found
     bool new_act{true};
     while (new_act) {
         new_act = false;
@@ -647,7 +634,7 @@ static void relevance_analysis(hplus::instance& inst, const binary_set& fact_lan
     relevant_variables |= inst.goal;
 
     // eliminate actions and variables that are not relevant (or landmarks)
-    inst.var_e |= (!relevant_variables - fact_landmarks);
+    inst.var_e |= !(relevant_variables | fact_landmarks);
     inst.act_e |= !relevant_actions;
 }
 
@@ -670,7 +657,8 @@ static void dominated_actions_elimination(hplus::instance& inst, const std::vect
     }
 
     // compute the landmarks for each action remaining
-    for (size_t act_i = 0; act_i < inst.m; act_i++) {
+    const auto& rem_act{(!inst.act_e).sparse()};
+    for (const auto& act_i : rem_act) {
         for (const auto& var_i : inst.actions[act_i].pre_sparse) {
             for (const auto& i : var_flm_sparse[var_i]) act_flm[act_i].add(i);
         }
@@ -679,7 +667,6 @@ static void dominated_actions_elimination(hplus::instance& inst, const std::vect
     }
 
     // find efficently all actions that satisfy point 1) of Proposition 4 of in Imai's Paper
-    const auto& rem_act{(!inst.act_e).sparse()};
     bs_searcher candidates{inst.n};
     for (const auto& act_i : rem_act) {
         if (inst.act_f[act_i]) continue;
@@ -836,12 +823,8 @@ void hplus::prepare_faster_actsearch(instance& inst, const logger& log) {
     PRINT_VERBOSE(log, "Initializing data structures for faster actions lookup.");
     inst.act_with_pre = std::vector<std::vector<size_t>>(inst.n);
     inst.act_with_eff = std::vector<std::vector<size_t>>(inst.n);
-    for (const auto& var_i : inst.var_rem) {
-        inst.act_with_pre[var_i].reserve(inst.m_opt);
-        inst.act_with_eff[var_i].reserve(inst.m_opt);
-        for (const auto& act_i : inst.act_rem) {
-            if (inst.actions[act_i].pre[var_i]) inst.act_with_pre[var_i].push_back(act_i);
-            if (inst.actions[act_i].eff[var_i]) inst.act_with_eff[var_i].push_back(act_i);
-        }
+    for (const auto& act_i : inst.act_rem) {
+        for (const auto& pre_i : inst.actions[act_i].pre_sparse) inst.act_with_pre[pre_i].push_back(act_i);
+        for (const auto& eff_i : inst.actions[act_i].eff_sparse) inst.act_with_eff[eff_i].push_back(act_i);
     }
 }

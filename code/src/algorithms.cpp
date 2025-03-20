@@ -653,7 +653,7 @@ static bool htype(const hplus::instance& inst, hplus::solution& sol, double (*h_
             throw timelimit_exception("Reached time limit.");
 
 #if HPLUS_VERBOSE >= 100
-        log.print_update("%s", std::string(state).c_str());
+        // log.print_update("%s", std::string(state).c_str());
 #endif
     }
 
