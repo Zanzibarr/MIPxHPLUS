@@ -442,26 +442,19 @@ void hplus::update_sol(instance& inst, const solution& sol, const logger& log) {
     const auto& [sol_plan, sol_cost]{sol};
     binary_set dbcheck{inst.m};
     unsigned int costcheck{0};
-    ASSERT_LOG(log,
-               sol_plan.size() <= inst.m_opt);  // check that there aren't more
-                                                // actions that there exists
+    ASSERT_LOG(log, sol_plan.size() <= inst.m_opt);  // check that there aren't more actions that there exists
     binary_set feas_checker{inst.n};
     for (const auto& act_i : sol_plan) {
-        ASSERT_LOG(log, act_i < inst.m);   // check that the solution only
-                                           // contains existing actions
-        ASSERT_LOG(log, !dbcheck[act_i]);  // check that there are no duplicates
-        ASSERT_LOG(log,
-                   !inst.act_e[act_i])  // check that the action was not eliminated
+        ASSERT_LOG(log, act_i < inst.m);     // check that the solution only contains existing actions
+        ASSERT_LOG(log, !dbcheck[act_i]);    // check that there are no duplicates
+        ASSERT_LOG(log, !inst.act_e[act_i])  // check that the action was not eliminated
         dbcheck.add(act_i);
-        ASSERT_LOG(log,
-                   feas_checker.contains(inst.actions[act_i].pre));  // check if the preconditions
-                                                                     // are respected at each step
+        ASSERT_LOG(log, feas_checker.contains(inst.actions[act_i].pre));  // check if the preconditions are respected at each step
         feas_checker |= inst.actions[act_i].eff;
         costcheck += inst.actions[act_i].cost;
     }
     ASSERT_LOG(log, feas_checker.contains(inst.goal));  // check if the solution leads to the goal state
-    ASSERT_LOG(log,
-               costcheck == sol_cost);  // check if the cost is the declared one
+    ASSERT_LOG(log, costcheck == sol_cost);             // check if the cost is the declared one
 
     if (sol_cost >= inst.best_sol.cost) return;
 

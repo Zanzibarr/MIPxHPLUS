@@ -24,18 +24,6 @@
 // Enum for log level types
 enum class log_level { print, info, warning, error };
 
-// Get formatted current time using C time functions
-inline std::string get_current_time() {
-    const time_t time_now{std::time(nullptr)};
-
-    char buffer[26];
-    struct tm timeinfo{};
-    localtime_r(&time_now, &timeinfo);
-
-    strftime(buffer, sizeof(buffer), "%Y-%m-%d.%X", &timeinfo);
-    return {buffer};
-}
-
 // ANSI color codes
 namespace colors {
 constexpr std::string_view reset{"\033[0m"};
@@ -44,38 +32,6 @@ constexpr std::string_view warn{"\033[38;5;215m\033[1m"};
 constexpr std::string_view error{"\033[91m\033[1m"};
 constexpr std::string_view reset_bold{"\033[22m"};
 }  // namespace colors
-
-inline std::pair<std::string, std::string> format_prefix(const log_level level, const bool include_time) {
-    std::string terminal_prefix, file_prefix;
-    switch (level) {
-        case log_level::info:
-            terminal_prefix = std::string(colors::info) + "[ INFO ] " + std::string(colors::reset_bold) + "-- ";
-            file_prefix = "[ INFO ] -- ";
-            break;
-        case log_level::warning:
-            terminal_prefix = std::string(colors::warn) + "[ WARN ] " + std::string(colors::reset_bold) + "-- ";
-            file_prefix = "[ WARN ] -- ";
-            break;
-        case log_level::error:
-            terminal_prefix = std::string(colors::error) + "[ ERROR ] " + std::string(colors::reset_bold) + "-- ";
-            file_prefix = "[ ERROR ] -- ";
-            break;
-        default:
-            // No prefix for regular print
-            break;
-    }
-    if (include_time) {
-        const std::string& time_str{get_current_time() + " : "};
-        if (!terminal_prefix.empty()) {
-            terminal_prefix = terminal_prefix + time_str;
-            file_prefix = file_prefix + time_str;
-        } else {
-            terminal_prefix = time_str;
-            file_prefix = time_str;
-        }
-    }
-    return {terminal_prefix, file_prefix};
-}
 
 inline std::string format_string(const char* format, va_list args) {
     // Make a copy of the va_list to avoid potential corruption
@@ -109,7 +65,7 @@ class logger {
      * @throw std::runtime_error If any problem with opening the log file occurs
      */
     explicit logger(const bool log_enabled, const std::string_view log_name, const std::string_view run_title = "")
-        : log_file_path_(log_name), log_enabled_(log_enabled) {
+        : log_file_path_(log_name), log_enabled_(log_enabled), timer(std::chrono::steady_clock::now()) {
         if (log_enabled_) {
             try {
                 std::ofstream file(log_file_path_.c_str(), std::ios::app);
@@ -138,6 +94,7 @@ class logger {
         va_start(args, msg);
         log_message(log_level::print, false, msg, args);
         va_end(args);
+        std::cout << "\033[s";
     }
 
     /**
@@ -151,6 +108,15 @@ class logger {
     void print_info(const char* msg, ...) const {
         va_list args;
         va_start(args, msg);
+        log_message(log_level::info, true, msg, args);
+        va_end(args);
+        std::cout << "\033[s";
+    }
+
+    void print_update(const char* msg, ...) const {
+        va_list args;
+        va_start(args, msg);
+        std::cout << "\033[u" << "\033[s";
         log_message(log_level::info, true, msg, args);
         va_end(args);
     }
@@ -168,6 +134,7 @@ class logger {
         va_start(args, msg);
         log_message(log_level::warning, true, msg, args);
         va_end(args);
+        std::cout << "\033[s";
     }
 
     /**
@@ -186,15 +153,51 @@ class logger {
         va_end(args);
         std::cerr << colors::reset;
         std::exit(1);
+        std::cout << "\033[s";
     }
 
    private:
     std::string log_file_path_;
     bool log_enabled_;
+    std::chrono::steady_clock::time_point timer;
 
-    /**
-     * @brief Internal implementation for logging messages
-     */
+    std::pair<std::string, std::string> format_prefix(const log_level level, const bool include_time) const {
+        std::string terminal_prefix, file_prefix;
+        switch (level) {
+            case log_level::info:
+                terminal_prefix = std::string(colors::info) + "[ INFO ] " + std::string(colors::reset_bold) + "-- ";
+                file_prefix = "[ INFO ] -- ";
+                break;
+            case log_level::warning:
+                terminal_prefix = std::string(colors::warn) + "[ WARN ] " + std::string(colors::reset_bold) + "-- ";
+                file_prefix = "[ WARN ] -- ";
+                break;
+            case log_level::error:
+                terminal_prefix = std::string(colors::error) + "[ ERROR ] " + std::string(colors::reset_bold) + "-- ";
+                file_prefix = "[ ERROR ] -- ";
+                break;
+            default:
+                // No prefix for regular print
+                break;
+        }
+        if (include_time) {
+            double time_passed =
+                static_cast<double>((std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - this->timer).count())) /
+                1'000;
+            char buf[32];
+            snprintf(buf, 32, "%9.3f", time_passed);
+            const std::string& time_str{std::string(buf) + " : "};
+            if (!terminal_prefix.empty()) {
+                terminal_prefix = terminal_prefix + time_str;
+                file_prefix = file_prefix + time_str;
+            } else {
+                terminal_prefix = time_str;
+                file_prefix = time_str;
+            }
+        }
+        return {terminal_prefix, file_prefix};
+    }
+
     void log_message(const log_level level, const bool include_time, const char* format, va_list args) const {
         try {
             std::string message{format_string(format, args)};

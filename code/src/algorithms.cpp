@@ -184,6 +184,10 @@ static void greedycost(hplus::instance& inst, hplus::environment& env, const log
 
         if (CHECK_STOP()) [[unlikely]]
             throw timelimit_exception("Reached time limit.");
+
+#if HPLUS_VERBOSE >= 100
+        log.print_update("%s", std::string(state).c_str());
+#endif
     }
 
 #if HPLUS_INTCHECK
@@ -306,6 +310,10 @@ static void greedycxe(hplus::instance& inst, hplus::environment& env, const logg
 
         if (CHECK_STOP()) [[unlikely]]
             throw timelimit_exception("Reached time limit.");
+
+#if HPLUS_VERBOSE >= 100
+        log.print_update("%s", std::string(state).c_str());
+#endif
     }
 
 #if HPLUS_INTCHECK
@@ -414,6 +422,10 @@ static void randheur(hplus::instance& inst, hplus::environment& env, const logge
 
         if (CHECK_STOP()) [[unlikely]]
             throw timelimit_exception("Reached time limit.");
+
+#if HPLUS_VERBOSE >= 100
+        log.print_update("%s", std::string(state).c_str());
+#endif
     }
 
 #if HPLUS_INTCHECK
@@ -639,6 +651,10 @@ static bool htype(const hplus::instance& inst, hplus::solution& sol, double (*h_
 
         if (CHECK_STOP()) [[unlikely]]
             throw timelimit_exception("Reached time limit.");
+
+#if HPLUS_VERBOSE >= 100
+        log.print_update("%s", std::string(state).c_str());
+#endif
     }
 
 #if HPLUS_INTCHECK
