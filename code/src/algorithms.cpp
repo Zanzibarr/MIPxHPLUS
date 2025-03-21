@@ -631,11 +631,11 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
     };
 
     // ====================================================== //
-    // ============== TIGHTER TIMESTAMPS BOUNDS ============= //
+    // =================== TIGHTER BOUNDS =================== //
     // ====================================================== //
 
     unsigned int timestamps_ubound{static_cast<unsigned int>(inst.m_opt)};
-    if (env.imai_tight_bounds) {
+    if (env.tight_bounds) {
         // number of variables
         if (inst.n_opt < timestamps_ubound) timestamps_ubound = inst.n_opt;
 
@@ -804,7 +804,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
     double* val_c1{new double[inst.m_opt + 1]};
     int ind_c2_4[2], ind_c5[3];
     double val_c2_4[2], val_c5[3];
-    constexpr char sensel{'L'}, sensee{'E'};
+    constexpr char sense_l{'L'}, sense_e{'E'};
     constexpr double rhs_c1_2_4{0};
     const double rhs_c5{static_cast<double>(timestamps_ubound)};
     constexpr int begin{0};
@@ -857,13 +857,13 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
                     val_c1[nnz0++] = 1;
                 }
             }
-            ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz0, &rhs_c1_2_4, &sensel, &begin, ind_c1, val_c1, nullptr, nullptr));
+            ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz0, &rhs_c1_2_4, &sense_l, &begin, ind_c1, val_c1, nullptr, nullptr));
             // constraint 4: t_vj <= t_a, vj in pre(a)
             ind_c2_4[0] = get_tvar_idx(var_i);
             val_c2_4[0] = 1;
             ind_c2_4[1] = get_tact_idx(act_i);
             val_c2_4[1] = -1;
-            ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c2_4, &rhs_c1_2_4, &sensel, &begin, ind_c2_4, val_c2_4, nullptr, nullptr));
+            ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c2_4, &rhs_c1_2_4, &sense_l, &begin, ind_c2_4, val_c2_4, nullptr, nullptr));
         }
         for (const auto& var_i : inst.actions[act_i].eff_sparse) {
             constexpr int nnz_c5{3};
@@ -872,7 +872,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
             val_c2_4[0] = 1;
             ind_c2_4[1] = get_act_idx(act_i);
             val_c2_4[1] = -1;
-            ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c2_4, &rhs_c1_2_4, &sensel, &begin, ind_c2_4, val_c2_4, nullptr, nullptr));
+            ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c2_4, &rhs_c1_2_4, &sense_l, &begin, ind_c2_4, val_c2_4, nullptr, nullptr));
             // constraint 5: t_a + 1 <= t_vj + (|A|+1)(1-z_avj), vj in eff(a)
             ind_c5[0] = get_tact_idx(act_i);
             val_c5[0] = 1;
@@ -880,7 +880,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
             val_c5[1] = -1;
             ind_c5[2] = get_fa_idx(act_i, var_i);
             val_c5[2] = timestamps_ubound + 1;
-            ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c5, &rhs_c5, &sensel, &begin, ind_c5, val_c5, nullptr, nullptr));
+            ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c5, &rhs_c5, &sense_l, &begin, ind_c5, val_c5, nullptr, nullptr));
             // constraint 3: I(v_j) + sum(z_avj) = y_vj
             ind_c3[inst.var_opt_conv[var_i]][nnz_c3[inst.var_opt_conv[var_i]]] = get_fa_idx(act_i, var_i);
             val_c3[inst.var_opt_conv[var_i]][nnz_c3[inst.var_opt_conv[var_i]]] = -1;
@@ -891,7 +891,17 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
 
     for (size_t var_i = 0; var_i < inst.n_opt; var_i++)
         ASSERT_LOG(log,
-                   !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c3[var_i], &rhs_c3[var_i], &sensee, &begin, ind_c3[var_i], val_c3[var_i], nullptr, nullptr));
+                   !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c3[var_i], &rhs_c3[var_i], &sense_e, &begin, ind_c3[var_i], val_c3[var_i], nullptr, nullptr));
+
+    if (env.tight_bounds) {
+        size_t nnz = 0;
+        double rhs = static_cast<double>(timestamps_ubound);
+        for (const auto& act_i : inst.act_rem) {
+            ind_c1[nnz] = get_act_idx(act_i);
+            val_c1[nnz++] = 1;
+        }
+        ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs, &sense_l, &begin, ind_c1, val_c1, nullptr, nullptr));
+    }
 
     for (size_t var_i = 0; var_i < inst.n_opt; var_i++) {
         delete[] ind_c3[var_i];
@@ -1156,6 +1166,31 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
     }
 
     // ====================================================== //
+    // =================== TIGHTER BOUNDS =================== //
+    // ====================================================== //
+
+    unsigned int timestamps_ubound{static_cast<unsigned int>(inst.m_opt)};
+    if (env.tight_bounds) {
+        // number of variables
+        if (inst.n_opt < timestamps_ubound) timestamps_ubound = inst.n_opt;
+
+        // max number of steps to reach heuristic
+        if (env.heur != "none") {
+            unsigned int min_act_cost{inst.actions[0].cost + 1};  // +1 to avoid it being 0
+            unsigned int n_act_zerocost{0};
+            for (const auto& act : inst.actions) {
+                if (act.cost == 0)
+                    n_act_zerocost++;
+                else if (act.cost < min_act_cost)
+                    min_act_cost = act.cost;
+            }
+            const unsigned int nsteps{static_cast<unsigned int>(std::ceil(static_cast<double>(inst.best_sol.cost) / min_act_cost)) + n_act_zerocost};
+            if (nsteps < timestamps_ubound) timestamps_ubound = nsteps;
+        }
+    }
+    stopchk1();
+
+    // ====================================================== //
     // =================== CPLEX VARIABLES ================== //
     // ====================================================== //
 
@@ -1372,6 +1407,15 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
         }
     }
 
+    if (env.tight_bounds) {
+        double rhs = static_cast<double>(timestamps_ubound);
+        for (const auto& act_i : inst.act_rem) {
+            ind[nnz] = get_act_idx(act_i);
+            val[nnz++] = 1;
+        }
+        ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs, &sense_l, &begin, ind, val, nullptr, nullptr));
+    }
+
     delete[] val;
     val = nullptr;
     delete[] ind;
@@ -1558,8 +1602,7 @@ static void store_rankooh_sol(const CPXENVptr& cpxenv, const CPXLPptr& cpxlp, hp
     double* plan{new double[inst.m_opt + inst.m_opt * inst.n_opt]};
     ASSERT_LOG(log, !CPXgetx(cpxenv, cpxlp, plan, 0, inst.m_opt + inst.m_opt * inst.n_opt - 1));
 
-    // fixing the solution to read the plan (some actions are set to 1 even if
-    // they are not a first archiever of anything)
+    // fixing the solution to read the plan (some actions are set to 1 even if they are not a first archiever of anything)
     for (size_t act_i_cpx = 0, fadd_i = inst.m_opt; act_i_cpx < inst.m_opt; act_i_cpx++, fadd_i += inst.n_opt) {
         bool set_zero{true};
         for (size_t var_i_cpx = 0; var_i_cpx < inst.n_opt; var_i_cpx++) {
@@ -1831,6 +1874,31 @@ static void cpx_build_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hpl
     };
 
     // ====================================================== //
+    // =================== TIGHTER BOUNDS =================== //
+    // ====================================================== //
+
+    unsigned int timestamps_ubound{static_cast<unsigned int>(inst.m_opt)};
+    if (env.tight_bounds) {
+        // number of variables
+        if (inst.n_opt < timestamps_ubound) timestamps_ubound = inst.n_opt;
+
+        // max number of steps to reach heuristic
+        if (env.heur != "none") {
+            unsigned int min_act_cost{inst.actions[0].cost + 1};  // +1 to avoid it being 0
+            unsigned int n_act_zerocost{0};
+            for (const auto& act : inst.actions) {
+                if (act.cost == 0)
+                    n_act_zerocost++;
+                else if (act.cost < min_act_cost)
+                    min_act_cost = act.cost;
+            }
+            const unsigned int nsteps{static_cast<unsigned int>(std::ceil(static_cast<double>(inst.best_sol.cost) / min_act_cost)) + n_act_zerocost};
+            if (nsteps < timestamps_ubound) timestamps_ubound = nsteps;
+        }
+    }
+    stopchk1();
+
+    // ====================================================== //
     // =================== CPLEX VARIABLES ================== //
     // ====================================================== //
 
@@ -2042,6 +2110,15 @@ static void cpx_build_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hpl
         ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_1, &sense_l, &begin, ind, val, nullptr, nullptr));
     }
 
+    if (env.tight_bounds) {
+        double rhs = static_cast<double>(timestamps_ubound);
+        for (const auto& act_i : inst.act_rem) {
+            ind[nnz] = get_act_idx(act_i);
+            val[nnz++] = 1;
+        }
+        ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs, &sense_l, &begin, ind, val, nullptr, nullptr));
+    }
+
     delete[] val;
     val = nullptr;
     delete[] ind;
@@ -2158,8 +2235,7 @@ static void store_dynamic_time_sol(const CPXENVptr& cpxenv, const CPXLPptr& cpxl
     double* plan{new double[inst.m_opt + inst.m_opt * inst.n_opt]};
     ASSERT_LOG(log, !CPXgetx(cpxenv, cpxlp, plan, 0, inst.m_opt + inst.m_opt * inst.n_opt - 1));
 
-    // fixing the solution to read the plan (some actions are set to 1 even if
-    // they are not a first archiever of anything)
+    // fixing the solution to read the plan (some actions are set to 1 even if they are not a first archiever of anything)
     for (size_t act_i_cpx = 0, fadd_i = inst.m_opt; act_i_cpx < inst.m_opt; act_i_cpx++, fadd_i += inst.n_opt) {
         bool set_zero{true};
         for (size_t var_i_cpx = 0; var_i_cpx < inst.n_opt; var_i_cpx++) {

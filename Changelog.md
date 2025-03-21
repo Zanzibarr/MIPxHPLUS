@@ -27,14 +27,20 @@ HOW I DO VERSIONING:
 ## [1.2.4] - 2025/03/21
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed
-- Infeasible warm start in Imai's model
+- Infeasible warm start in Imai's model (sometimes)
     - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
-- Infeasible warm start in Rankooh's model
+- Infeasible warm start in Rankooh's model (sometimes)
+    - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
+- Infeasible warm start in dynamic model (sometimes)
     - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
 ### :heavy_exclamation_mark: Changed
 - Hadd heuristic is now the default one
     - [~/code/src/main.cpp](code/src/main.cpp)
-<!-- ### :heavy_plus_sign: Added -->
+- Changed flag for tighter bounds option
+    - [~/code/src/main.cpp](code/src/main.cpp)
+### :heavy_plus_sign: Added
+- Tight bounds on every model
+    - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
 

@@ -46,7 +46,7 @@ static void init(hplus::environment& env) {
                              .log = false,
                              .problem_opt = true,
                              .warm_start = true,
-                             .imai_tight_bounds = true,
+                             .tight_bounds = false,
                              .using_cplex = true,
                              .time_limit = 60,
                              .timer = time_keeper()};
@@ -70,7 +70,7 @@ static void parse_cli(const int& argc, const char** argv, hplus::environment& en
     args::Positional<std::string> input_file(parser, "input_file", "Specify the input file (a .sas file provided by the FastDownward translator).");
     args::ValueFlag<std::string> algorithm(parser, "algorithm", "Specify the algorithm to use (heur, rankooh, imai, dynamic-t).", {"a", "alg"});
     args::Flag no_optimization(parser, "optimization", "Tell to not optimize the problem.", {"no-op"});
-    args::Flag no_tightbounds(parser, "tight bounds", "Tell to not use tighter bounds for imai variable timestamps.", {"no-tb"});
+    args::Flag tightbounds(parser, "tight bounds", "Tell to use tighter bounds.", {"tb"});
     args::ValueFlag<std::string> heur(
         parser, "heuristic",
         "Specify which heuristic to compute before running cplex (default: 'hadd', options: [greedycost, greedycxe, rand, randr, hmax, hadd, "
@@ -109,7 +109,7 @@ static void parse_cli(const int& argc, const char** argv, hplus::environment& en
     }
     if (algorithm) env.alg = args::get(algorithm);
     env.problem_opt = !no_optimization;
-    env.imai_tight_bounds = !no_tightbounds;
+    env.tight_bounds = tightbounds;
     if (heur) env.heur = args::get(heur);
     env.warm_start = !no_warmstart;
     if (timelimit) {
@@ -170,7 +170,7 @@ static void show_info(const hplus::instance& inst, const hplus::environment& env
 
     log.print("Algorithm:                                       %10s.", env.alg.c_str());
     log.print("Problem simplification:                          %10s.", env.problem_opt ? "Y" : "N");
-    if (env.alg == HPLUS_CLI_ALG_IMAI) log.print("Tighter bounds on variable timestamps:           %10s.", env.imai_tight_bounds ? "Y" : "N");
+    log.print("Tighter bounds:                                  %10s.", env.tight_bounds ? "Y" : "N");
     if (env.heur != "none") log.print("Heuristic:                                       %10s.", env.heur.c_str());
     if (env.using_cplex) log.print("Warm start:                                      %10s.", env.warm_start ? "Y" : "N");
     log.print("Time limit:                                     %10us.", env.time_limit);
