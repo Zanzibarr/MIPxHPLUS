@@ -1467,7 +1467,7 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
         stopchk1();
     }
 
-    ASSERT_LOG(log, !CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR "/lp/" + env.run_name + ".lp").c_str(), "LP"));
+    // ASSERT_LOG(log, !CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR "/lp/" + env.run_name + ".lp").c_str(), "LP"));
 }
 
 static void cpx_post_warmstart_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env,
@@ -2072,7 +2072,7 @@ static void cpx_build_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hpl
         stopchk1();
     }
 
-    ASSERT_LOG(log, !CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR "/lp/" + env.run_name + ".lp").c_str(), "LP"));
+    // ASSERT_LOG(log, !CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR "/lp/" + env.run_name + ".lp").c_str(), "LP"));
 }
 
 static void cpx_post_warmstart_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env,
@@ -2086,16 +2086,23 @@ static void cpx_post_warmstart_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, 
     const size_t ncols{static_cast<size_t>(CPXgetnumcols(cpxenv, cpxlp))};
     int* cpx_sol_ind{new int[ncols]};
     double* cpx_sol_val{new double[ncols]};
+    for (size_t i = 0; i < ncols; i++) {
+        cpx_sol_ind[i] = i;
+        cpx_sol_val[i] = 0;
+    }
 
     constexpr int izero{0};
-    constexpr int effortlevel{CPX_MIPSTART_AUTO};
-    size_t nnz{0};
+    constexpr int effortlevel{CPX_MIPSTART_NOCHECK};
 
 #if HPLUS_INTCHECK
-    unsigned int timestamp{0};
-    binary_set fixed_act_check{inst.act_f}, fixed_var_check{inst.var_f};
+    binary_set fixed_act_check{inst.act_f}, fixed_var_check{inst.var_f}, fixed_t_act_check{inst.m}, fixed_t_var_check{inst.n};
     std::vector<binary_set> fixed_fadd_check(inst.m);
     for (size_t i = 0; i < inst.m; i++) fixed_fadd_check[i] = inst.fadd_f[i];
+    for (size_t i = 0; i < inst.m; i++)
+        if (inst.act_t[i] >= 0) fixed_t_act_check.add(i);
+    for (size_t i = 0; i < inst.n; i++)
+        if (inst.var_t[i] >= 0) fixed_t_var_check.add(i);
+    unsigned int timestamp{0};
 #endif
 
     for (const auto& act_i : warm_start) {
@@ -2103,11 +2110,12 @@ static void cpx_post_warmstart_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, 
         ASSERT_LOG(log, !(inst.act_t[act_i] >= 0 && timestamp != static_cast<unsigned int>(inst.act_t[act_i])));
         ASSERT_LOG(log, !inst.act_e[act_i]);
         fixed_act_check.remove(act_i);
+        fixed_t_act_check.remove(act_i);
         timestamp++;
 #endif
-        // set the action indicator variable
-        cpx_sol_ind[nnz] = static_cast<int>(inst.act_opt_conv[act_i]);
-        cpx_sol_val[nnz++] = 1;
+        size_t cpx_act_idx = inst.act_opt_conv[act_i];
+        cpx_sol_ind[cpx_act_idx] = static_cast<int>(cpx_act_idx);
+        cpx_sol_val[cpx_act_idx] = 1;
         for (const auto& var_i : inst.actions[act_i].eff_sparse) {
             if (state[var_i]) continue;
 
@@ -2116,15 +2124,15 @@ static void cpx_post_warmstart_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, 
             ASSERT_LOG(log, !inst.var_e[var_i]);
             ASSERT_LOG(log, !inst.fadd_e[act_i][var_i]);
             fixed_var_check.remove(var_i);
-            fixed_fadd_check[act_i].remove(var_i);
+            fixed_t_var_check.remove(var_i);
 #endif
 
-            // set the fact indicator variable
-            cpx_sol_ind[nnz] = static_cast<int>(inst.m_opt + inst.m_opt * inst.n_opt + inst.var_opt_conv[var_i]);
-            cpx_sol_val[nnz++] = 1;
-            // set the fadd indicator variable
-            cpx_sol_ind[nnz] = static_cast<int>(inst.m_opt + inst.act_opt_conv[act_i] * inst.n_opt + inst.var_opt_conv[var_i]);
-            cpx_sol_val[nnz++] = 1;
+            size_t cpx_var_idx = inst.m_opt * (1 + inst.n_opt) + inst.var_opt_conv[var_i];
+            cpx_sol_ind[cpx_var_idx] = static_cast<int>(cpx_var_idx);
+            cpx_sol_val[cpx_var_idx] = 1;
+            size_t cpx_fad_idx = inst.m_opt + inst.act_opt_conv[act_i] * inst.n_opt + inst.var_opt_conv[var_i];
+            cpx_sol_ind[cpx_fad_idx] = static_cast<int>(cpx_fad_idx);
+            cpx_sol_val[cpx_fad_idx] = 1;
         }
         state |= inst.actions[act_i].eff;
     }
@@ -2132,10 +2140,12 @@ static void cpx_post_warmstart_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, 
 #if HPLUS_INTCHECK
     ASSERT_LOG(log, fixed_act_check.empty());
     ASSERT_LOG(log, fixed_var_check.empty());
+    ASSERT_LOG(log, fixed_t_act_check.empty());
+    ASSERT_LOG(log, fixed_t_var_check.empty());
     for (size_t i = 0; i < inst.m; i++) ASSERT_LOG(log, fixed_fadd_check[i].empty());
 #endif
 
-    ASSERT_LOG(log, !CPXaddmipstarts(cpxenv, cpxlp, 1, nnz, &izero, cpx_sol_ind, cpx_sol_val, &effortlevel, nullptr));
+    ASSERT_LOG(log, !CPXaddmipstarts(cpxenv, cpxlp, 1, ncols, &izero, cpx_sol_ind, cpx_sol_val, &effortlevel, nullptr));
     delete[] cpx_sol_ind;
     cpx_sol_ind = nullptr;
     delete[] cpx_sol_val;
