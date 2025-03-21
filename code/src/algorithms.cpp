@@ -1226,18 +1226,18 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
             if (degree_counter[x] > 0 && nodes_queue.has(x)) nodes_queue.change(x, degree_counter[x]);
         }
 
-        // #if HPLUS_INTCHECK  // care: this takes HUGE amount of time
-        //         for (size_t node_i = 0; node_i < inst.n; node_i++) {
-        //             size_t i_cnt{0};
-        //             i_cnt += graph[node_i].size();
-        //             for (size_t tmp_j = 0; tmp_j < inst.n; tmp_j++) {
-        //                 for (const auto& tmp_k : graph[tmp_j]) {
-        //                     if (tmp_k == node_i) i_cnt += 1;
-        //                 }
-        //             }
-        //             ASSERT_LOG(log, i_cnt == degree_counter[node_i]);
-        //         }
-        // #endif
+#if HPLUS_INTCHECK  // care: this takes HUGE amount of time
+        for (size_t node_i = 0; node_i < inst.n; node_i++) {
+            size_t i_cnt{0};
+            i_cnt += graph[node_i].size();
+            for (size_t tmp_j = 0; tmp_j < inst.n; tmp_j++) {
+                for (const auto& tmp_k : graph[tmp_j]) {
+                    if (tmp_k == node_i) i_cnt += 1;
+                }
+            }
+            ASSERT_LOG(log, i_cnt == degree_counter[node_i]);
+        }
+#endif
         stopchk1();
     }
 
