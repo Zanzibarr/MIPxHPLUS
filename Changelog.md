@@ -24,6 +24,20 @@ HOW I DO VERSIONING:
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
 
+## [1.2.4] - 2025/03/21
+<!-- ### :warning: Known issues -->
+### :ballot_box_with_check: Fixed
+- Infeasible warm start in Imai's model
+    - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
+- Infeasible warm start in Rankooh's model
+    - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
+### :heavy_exclamation_mark: Changed
+- Hadd heuristic is now the default one
+    - [~/code/src/main.cpp](code/src/main.cpp)
+<!-- ### :heavy_plus_sign: Added -->
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+
 ## [1.2.3] - 2025/03/20
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->

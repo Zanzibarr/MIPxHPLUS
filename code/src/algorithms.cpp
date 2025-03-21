@@ -20,9 +20,6 @@
 #endif
 #include "pq.hxx"  // For priority_queue
 
-void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log,
-                    bool relaxed = false);
-
 // ##################################################################### //
 // ############################ CPLEX UTILS ############################ //
 // ##################################################################### //
@@ -176,6 +173,7 @@ static void greedycost(hplus::instance& inst, hplus::environment& env, const log
             }
         }
         for (const auto& act_i : purged_actions) candidates.remove(act_i);
+        for (const auto& act_i : inst.act_inv[choice]) candidates.remove(act_i);
 
         heur_sol.plan.push_back(choice);
         heur_sol.cost += inst.actions[choice].cost;
@@ -184,10 +182,6 @@ static void greedycost(hplus::instance& inst, hplus::environment& env, const log
 
         if (CHECK_STOP()) [[unlikely]]
             throw timelimit_exception("Reached time limit.");
-
-#if HPLUS_VERBOSE >= 100
-        log.print_update("%s", std::string(state).c_str());
-#endif
     }
 
 #if HPLUS_INTCHECK
@@ -302,6 +296,7 @@ static void greedycxe(hplus::instance& inst, hplus::environment& env, const logg
             }
         }
         for (const auto& act_i : purged_actions) candidates.remove(act_i);
+        for (const auto& act_i : inst.act_inv[choice]) candidates.remove(act_i);
 
         heur_sol.plan.push_back(choice);
         heur_sol.cost += inst.actions[choice].cost;
@@ -310,10 +305,6 @@ static void greedycxe(hplus::instance& inst, hplus::environment& env, const logg
 
         if (CHECK_STOP()) [[unlikely]]
             throw timelimit_exception("Reached time limit.");
-
-#if HPLUS_VERBOSE >= 100
-        log.print_update("%s", std::string(state).c_str());
-#endif
     }
 
 #if HPLUS_INTCHECK
@@ -414,6 +405,7 @@ static void randheur(hplus::instance& inst, hplus::environment& env, const logge
             }
         }
         for (const auto& act_i : purged_actions) candidates.remove(act_i);
+        for (const auto& act_i : inst.act_inv[choice]) candidates.remove(act_i);
 
         heur_sol.plan.push_back(choice);
         heur_sol.cost += inst.actions[choice].cost;
@@ -422,10 +414,6 @@ static void randheur(hplus::instance& inst, hplus::environment& env, const logge
 
         if (CHECK_STOP()) [[unlikely]]
             throw timelimit_exception("Reached time limit.");
-
-#if HPLUS_VERBOSE >= 100
-        log.print_update("%s", std::string(state).c_str());
-#endif
     }
 
 #if HPLUS_INTCHECK
@@ -643,6 +631,7 @@ static bool htype(const hplus::instance& inst, hplus::solution& sol, double (*h_
             }
         }
         for (const auto& act_i : purged_actions) candidates.remove(act_i);
+        for (const auto& act_i : inst.act_inv[choice]) candidates.remove(act_i);
 
         sol.plan.push_back(choice);
         sol.cost += inst.actions[choice].cost;
@@ -651,10 +640,6 @@ static bool htype(const hplus::instance& inst, hplus::solution& sol, double (*h_
 
         if (CHECK_STOP()) [[unlikely]]
             throw timelimit_exception("Reached time limit.");
-
-#if HPLUS_VERBOSE >= 100
-        // log.print_update("%s", std::string(state).c_str());
-#endif
     }
 
 #if HPLUS_INTCHECK
@@ -723,8 +708,8 @@ static void localsearch(hplus::instance& inst, void (*heuristic)(hplus::instance
 // ################################ IMAI ############################### //
 // ##################################################################### //
 
-void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log, bool relaxed) {
-    if (!relaxed) PRINT_VERBOSE(log, "Building imai's model.");
+void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log) {
+    PRINT_VERBOSE(log, "Building imai's model.");
 
     const auto stopchk1 = []() {
         if (CHECK_STOP()) [[unlikely]]
@@ -741,7 +726,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
         if (inst.n_opt < timestamps_ubound) timestamps_ubound = inst.n_opt;
 
         // max number of steps to reach heuristic
-        if (env.heur != "none" && !relaxed) {
+        if (env.heur != "none") {
             unsigned int min_act_cost{inst.actions[0].cost + 1};  // +1 to avoid it being 0
             unsigned int n_act_zerocost{0};
             for (const auto& act : inst.actions) {
@@ -750,7 +735,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
                 else if (act.cost < min_act_cost)
                     min_act_cost = act.cost;
             }
-            const unsigned int nsteps{inst.best_sol.cost / min_act_cost + n_act_zerocost};
+            const unsigned int nsteps{static_cast<unsigned int>(std::ceil(static_cast<double>(inst.best_sol.cost) / min_act_cost)) + n_act_zerocost};
             if (nsteps < timestamps_ubound) timestamps_ubound = nsteps;
         }
     }
@@ -819,7 +804,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
     for (const auto& act_i : inst.act_rem) {
         objs[count] = 0;
         lbs[count] = (inst.act_t[act_i] >= 0 ? inst.act_t[act_i] : 0);
-        ubs[count] = (inst.act_t[act_i] >= 0 ? inst.act_t[act_i] : timestamps_ubound - 1);
+        ubs[count] = (inst.act_t[act_i] >= 0 ? inst.act_t[act_i] : timestamps_ubound);
         types[count++] = 'I';
     }
     INTCHECK_ASSERT_LOG(log, count == inst.m_opt);
@@ -1019,16 +1004,23 @@ static void cpx_post_warmstart_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hp
     const size_t ncols{static_cast<size_t>(CPXgetnumcols(cpxenv, cpxlp))};
     int* cpx_sol_ind{new int[ncols]};
     double* cpx_sol_val{new double[ncols]};
+    for (size_t i = 0; i < ncols; i++) {
+        cpx_sol_ind[i] = i;
+        cpx_sol_val[i] = 0;
+    }
 
     constexpr int izero{0};
-    constexpr int effortlevel{CPX_MIPSTART_AUTO};
-    size_t nnz{0};
+    constexpr int effortlevel{CPX_MIPSTART_NOCHECK};
     unsigned int timestamp{0};
 
 #if HPLUS_INTCHECK
-    binary_set fixed_act_check{inst.act_f}, fixed_var_check{inst.var_f};
+    binary_set fixed_act_check{inst.act_f}, fixed_var_check{inst.var_f}, fixed_t_act_check{inst.m}, fixed_t_var_check{inst.n};
     std::vector<binary_set> fixed_fadd_check(inst.m);
     for (size_t i = 0; i < inst.m; i++) fixed_fadd_check[i] = inst.fadd_f[i];
+    for (size_t i = 0; i < inst.m; i++)
+        if (inst.act_t[i] >= 0) fixed_t_act_check.add(i);
+    for (size_t i = 0; i < inst.n; i++)
+        if (inst.var_t[i] >= 0) fixed_t_var_check.add(i);
 #endif
 
     for (const auto& act_i : warm_start) {
@@ -1036,11 +1028,14 @@ static void cpx_post_warmstart_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hp
         ASSERT_LOG(log, !(inst.act_t[act_i] >= 0 && timestamp != static_cast<unsigned int>(inst.act_t[act_i])));
         ASSERT_LOG(log, !inst.act_e[act_i]);
         fixed_act_check.remove(act_i);
+        fixed_t_act_check.remove(act_i);
 #endif
-        cpx_sol_ind[nnz] = static_cast<int>(inst.act_opt_conv[act_i]);
-        cpx_sol_val[nnz++] = 1;
-        cpx_sol_ind[nnz] = static_cast<int>(inst.m_opt + inst.act_opt_conv[act_i]);
-        cpx_sol_val[nnz++] = static_cast<int>(timestamp);
+        size_t cpx_act_idx = inst.act_opt_conv[act_i];
+        cpx_sol_ind[cpx_act_idx] = static_cast<int>(cpx_act_idx);
+        cpx_sol_val[cpx_act_idx] = 1;
+        size_t cpx_tact_idx = inst.m_opt + inst.act_opt_conv[act_i];
+        cpx_sol_ind[cpx_tact_idx] = static_cast<int>(cpx_tact_idx);
+        cpx_sol_val[cpx_tact_idx] = static_cast<int>(timestamp);
         timestamp++;
         for (const auto& var_i : inst.actions[act_i].eff_sparse) {
             if (state[var_i]) continue;
@@ -1050,15 +1045,19 @@ static void cpx_post_warmstart_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hp
             ASSERT_LOG(log, !inst.var_e[var_i]);
             ASSERT_LOG(log, !inst.fadd_e[act_i][var_i]);
             fixed_var_check.remove(var_i);
+            fixed_t_var_check.remove(var_i);
             fixed_fadd_check[act_i].remove(var_i);
 #endif
 
-            cpx_sol_ind[nnz] = static_cast<int>(2 * inst.m_opt + inst.var_opt_conv[var_i]);
-            cpx_sol_val[nnz++] = 1;
-            cpx_sol_ind[nnz] = static_cast<int>(2 * inst.m_opt + inst.n_opt + inst.var_opt_conv[var_i]);
-            cpx_sol_val[nnz++] = static_cast<int>(timestamp);
-            cpx_sol_ind[nnz] = static_cast<int>(2 * inst.m_opt + 2 * inst.n_opt + inst.act_opt_conv[act_i] * inst.n_opt + inst.var_opt_conv[var_i]);
-            cpx_sol_val[nnz++] = 1;
+            size_t cpx_var_idx = 2 * inst.m_opt + inst.var_opt_conv[var_i];
+            cpx_sol_ind[cpx_var_idx] = static_cast<int>(cpx_var_idx);
+            cpx_sol_val[cpx_var_idx] = 1;
+            size_t cpx_tvar_idx = 2 * inst.m_opt + inst.n_opt + inst.var_opt_conv[var_i];
+            cpx_sol_ind[cpx_tvar_idx] = static_cast<int>(cpx_tvar_idx);
+            cpx_sol_val[cpx_tvar_idx] = static_cast<int>(timestamp);
+            size_t cpx_fad_idx = 2 * inst.m_opt + inst.n_opt * (2 + inst.act_opt_conv[act_i]) + inst.var_opt_conv[var_i];
+            cpx_sol_ind[cpx_fad_idx] = static_cast<int>(cpx_fad_idx);
+            cpx_sol_val[cpx_fad_idx] = 1;
         }
         state |= inst.actions[act_i].eff;
     }
@@ -1066,9 +1065,11 @@ static void cpx_post_warmstart_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hp
 #if HPLUS_INTCHECK
     ASSERT_LOG(log, fixed_act_check.empty());
     ASSERT_LOG(log, fixed_var_check.empty());
+    ASSERT_LOG(log, fixed_t_act_check.empty());
+    ASSERT_LOG(log, fixed_t_var_check.empty());
     for (size_t i = 0; i < inst.m; i++) ASSERT_LOG(log, fixed_fadd_check[i].empty());
 #endif
-    ASSERT_LOG(log, !CPXaddmipstarts(cpxenv, cpxlp, 1, nnz, &izero, cpx_sol_ind, cpx_sol_val, &effortlevel, nullptr));
+    ASSERT_LOG(log, !CPXaddmipstarts(cpxenv, cpxlp, 1, ncols, &izero, cpx_sol_ind, cpx_sol_val, &effortlevel, nullptr));
 
     delete[] cpx_sol_ind;
     cpx_sol_ind = nullptr;
@@ -1566,16 +1567,22 @@ static void cpx_post_warmstart_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const
     const size_t ncols{static_cast<size_t>(CPXgetnumcols(cpxenv, cpxlp))};
     int* cpx_sol_ind{new int[ncols]};
     double* cpx_sol_val{new double[ncols]};
+    for (size_t i = 0; i < ncols; i++) {
+        cpx_sol_ind[i] = i;
+        cpx_sol_val[i] = 0;
+    }
 
     constexpr int izero{0};
-    constexpr int effortlevel{CPX_MIPSTART_AUTO};
-    size_t nnz{0};
+    constexpr int effortlevel{CPX_MIPSTART_NOCHECK};
 
 #if HPLUS_INTCHECK
-    unsigned int timestamp{0};
-    binary_set fixed_act_check{inst.act_f}, fixed_var_check{inst.var_f};
+    binary_set fixed_act_check{inst.act_f}, fixed_var_check{inst.var_f}, fixed_t_act_check{inst.m}, fixed_t_var_check{inst.n};
     std::vector<binary_set> fixed_fadd_check(inst.m);
     for (size_t i = 0; i < inst.m; i++) fixed_fadd_check[i] = inst.fadd_f[i];
+    for (size_t i = 0; i < inst.m; i++)
+        if (inst.act_t[i] >= 0) fixed_t_act_check.add(i);
+    for (size_t i = 0; i < inst.n; i++)
+        if (inst.var_t[i] >= 0) fixed_t_var_check.add(i);
 #endif
 
     for (const auto& act_i : warm_start) {
@@ -1583,11 +1590,12 @@ static void cpx_post_warmstart_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const
         ASSERT_LOG(log, !(inst.act_t[act_i] >= 0 && timestamp != static_cast<unsigned int>(inst.act_t[act_i])));
         ASSERT_LOG(log, !inst.act_e[act_i]);
         fixed_act_check.remove(act_i);
+        fixed_t_act_check.remove(act_i);
         timestamp++;
 #endif
-        // set the action indicator variable
-        cpx_sol_ind[nnz] = static_cast<int>(inst.act_opt_conv[act_i]);
-        cpx_sol_val[nnz++] = 1;
+        size_t cpx_act_idx = inst.act_opt_conv[act_i];
+        cpx_sol_ind[cpx_act_idx] = static_cast<int>(cpx_act_idx);
+        cpx_sol_val[cpx_act_idx] = 1;
         for (const auto& var_i : inst.actions[act_i].eff_sparse) {
             if (state[var_i]) continue;
 
@@ -1596,15 +1604,20 @@ static void cpx_post_warmstart_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const
             ASSERT_LOG(log, !inst.var_e[var_i]);
             ASSERT_LOG(log, !inst.fadd_e[act_i][var_i]);
             fixed_var_check.remove(var_i);
-            fixed_fadd_check[act_i].remove(var_i);
+            fixed_t_var_check.remove(var_i);
 #endif
 
-            // set the fact indicator variable
-            cpx_sol_ind[nnz] = static_cast<int>(inst.m_opt + inst.m_opt * inst.n_opt + inst.var_opt_conv[var_i]);
-            cpx_sol_val[nnz++] = 1;
-            // set the fadd indicator variable
-            cpx_sol_ind[nnz] = static_cast<int>(inst.m_opt + inst.act_opt_conv[act_i] * inst.n_opt + inst.var_opt_conv[var_i]);
-            cpx_sol_val[nnz++] = 1;
+            size_t cpx_var_idx = inst.m_opt * (1 + inst.n_opt) + inst.var_opt_conv[var_i];
+            cpx_sol_ind[cpx_var_idx] = static_cast<int>(cpx_var_idx);
+            cpx_sol_val[cpx_var_idx] = 1;
+            size_t cpx_fad_idx = inst.m_opt + inst.act_opt_conv[act_i] * inst.n_opt + inst.var_opt_conv[var_i];
+            cpx_sol_ind[cpx_fad_idx] = static_cast<int>(cpx_fad_idx);
+            cpx_sol_val[cpx_fad_idx] = 1;
+            for (const auto& var_j : inst.actions[act_i].pre_sparse) {
+                size_t cpx_veg_idx = inst.m_opt * (1 + inst.n_opt) + inst.n_opt * (1 + inst.var_opt_conv[var_j]) + inst.var_opt_conv[var_i];
+                cpx_sol_ind[cpx_veg_idx] = static_cast<int>(cpx_veg_idx);
+                cpx_sol_val[cpx_veg_idx] = 1;
+            }
         }
         state |= inst.actions[act_i].eff;
     }
@@ -1612,10 +1625,12 @@ static void cpx_post_warmstart_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const
 #if HPLUS_INTCHECK
     ASSERT_LOG(log, fixed_act_check.empty());
     ASSERT_LOG(log, fixed_var_check.empty());
+    ASSERT_LOG(log, fixed_t_act_check.empty());
+    ASSERT_LOG(log, fixed_t_var_check.empty());
     for (size_t i = 0; i < inst.m; i++) ASSERT_LOG(log, fixed_fadd_check[i].empty());
 #endif
 
-    ASSERT_LOG(log, !CPXaddmipstarts(cpxenv, cpxlp, 1, nnz, &izero, cpx_sol_ind, cpx_sol_val, &effortlevel, nullptr));
+    ASSERT_LOG(log, !CPXaddmipstarts(cpxenv, cpxlp, 1, ncols, &izero, cpx_sol_ind, cpx_sol_val, &effortlevel, nullptr));
     delete[] cpx_sol_ind;
     cpx_sol_ind = nullptr;
     delete[] cpx_sol_val;

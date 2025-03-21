@@ -42,7 +42,7 @@ static void init(hplus::environment& env) {
                              .log_name = HPLUS_LOG_DIR "/hplus_log.log",
                              .run_name = "DEFAULT RUN NAME",
                              .alg = "rankooh",
-                             .heur = "greedycxe",
+                             .heur = "hadd",
                              .log = false,
                              .problem_opt = true,
                              .warm_start = true,
@@ -73,7 +73,7 @@ static void parse_cli(const int& argc, const char** argv, hplus::environment& en
     args::Flag no_tightbounds(parser, "tight bounds", "Tell to not use tighter bounds for imai variable timestamps.", {"no-tb"});
     args::ValueFlag<std::string> heur(
         parser, "heuristic",
-        "Specify which heuristic to compute before running cplex (default: 'greedycxe', options: [greedycost, greedycxe, rand, randr, hmax, hadd, "
+        "Specify which heuristic to compute before running cplex (default: 'hadd', options: [greedycost, greedycxe, rand, randr, hmax, hadd, "
         "local-<one of the other heuristics>], 'none' to not compute an heuristic).",
         {"heur"});
     args::Flag no_warmstart(parser, "warm start", "Tell to not give (if computed) the heuristic to cplex as warm start.", {"no-ws"});
