@@ -1564,6 +1564,7 @@ static void cpx_post_warmstart_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const
             ASSERT_LOG(log, !inst.fadd_e[act_i][var_i]);
             fixed_var_check.remove(var_i);
             fixed_t_var_check.remove(var_i);
+            fixed_fadd_check[act_i].remove(var_i);
 #endif
 
             size_t cpx_var_idx = inst.m_opt * (1 + inst.n_opt) + inst.var_opt_conv[var_i];
