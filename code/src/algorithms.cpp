@@ -28,6 +28,7 @@ void cpx_init(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::environment& env,
     PRINT_VERBOSE(log, "Initializing CPLEX.");
     int cpxerror;
     cpxenv = CPXopenCPLEX(&cpxerror);
+    // FIXME: Create a macro that checks the cplex status returned by a cplex function: handle memory issues for meaningful output in cluster testing
     ASSERT_LOG(log, !cpxerror);
     cpxlp = CPXcreateprob(cpxenv, &cpxerror, env.run_name.c_str());
     ASSERT_LOG(log, !cpxerror);
@@ -760,6 +761,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
     stopchk2();
 
     // --- first archievers --- //
+    // FIXME: Find a way to add only necessary first archievers...
     const size_t fa_start{curr_col};
     count = 0;
     for (const auto& act_i : inst.act_rem) {
@@ -1254,6 +1256,7 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
     resize_cpx_arrays(inst.n_opt);
 
     // --- first archievers --- //
+    // FIXME: Find a way to add only necessary first archievers...
     const size_t fa_start{curr_col};
     std::vector<size_t> fa_individual_start(inst.m_opt);
     count = 0;
@@ -1710,6 +1713,7 @@ typedef struct {
     const logger& log;
 } cpx_callback_user_handle;
 
+// TODO: Remake with hybrid dynamic-rankooh
 static int CPXPUBLIC cpx_dynamic_time_callback(CPXCALLBACKCONTEXTptr context, CPXLONG context_id, void* user_handle) {
     auto& [inst, env, stats, log] = *static_cast<cpx_callback_user_handle*>(user_handle);
 
@@ -1871,6 +1875,7 @@ static int CPXPUBLIC cpx_dynamic_time_callback(CPXCALLBACKCONTEXTptr context, CP
     return 0;
 }
 
+// TODO: Remake with hybrid dynamic-rankooh
 static void cpx_build_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env,
                                    const logger& log) {
     PRINT_VERBOSE(log, "Building dynamic time model.");
@@ -1964,6 +1969,7 @@ static void cpx_build_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hpl
     resize_cpx_arrays(inst.n_opt);
 
     // --- first archievers --- //
+    // FIXME: Find a way to add only necessary first archievers...
     const size_t fa_start{curr_col};
     std::vector<size_t> fa_individual_start(inst.m_opt);
     count = 0;
@@ -2164,6 +2170,7 @@ static void cpx_build_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hpl
     // ASSERT_LOG(log, !CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR "/lp/" + env.run_name + ".lp").c_str(), "LP"));
 }
 
+// TODO: Remake with hybrid dynamic-rankooh
 static void cpx_post_warmstart_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env,
                                             const logger& log) {
     ASSERT_LOG(log, env.sol_s != solution_status::INFEAS && env.sol_s != solution_status::NOTFOUND);

@@ -29,7 +29,9 @@ def main():
         exit(0)
 
     logsdir = os.path.abspath("../../../logs/output_logs")
+    cpxlogsdir = os.path.abspath("../../../logs/cpxout/log")
     save_logs_dir = Path(f"{Path(logsdir).parent}/saved_logs/{run_name}")
+    save_cpxlogs_dir = Path(f"{Path(logsdir).parent}/saved_logs/{run_name}/cpxout")
     if os.path.exists(save_logs_dir):
         print(f"Path {save_logs_dir} already exists.")
         exit(1)
@@ -49,9 +51,12 @@ def main():
     runsum["other"] = ""
     runsum["results"] = {}
     os.mkdir(save_logs_dir)
+    os.mkdir(save_cpxlogs_dir)
 
     print(f"Logs dir: {logsdir}")
+    print(f"CPX logs dir: {cpxlogsdir}")
     print(f"Saved logs dir: {save_logs_dir}")
+    print(f"Saved cpx logs dir: {save_cpxlogs_dir}")
     if input("Check those paths.\nInsert y if it's all correct: ") != "y":
         exit(0)
 
@@ -190,6 +195,9 @@ def main():
                     runsum["results"][instance_name]["fcost"] = fcost
 
         move_file(filepath, save_logs_dir)
+
+        cpxfilepath = os.path.join(cpxlogsdir, file)
+        move_file(cpxfilepath, save_cpxlogs_dir)
 
     runsum["stats"]["avg_ptime"] /= n_good
     runsum["stats"]["avg_stime"] /= n_good

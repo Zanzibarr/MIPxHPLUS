@@ -26,12 +26,15 @@ HOW I DO VERSIONING:
 
 
 ## [1.2.5] - 2025/03/23
-<!-- ### :warning: Known issues -->
+### :warning: Known issues
+- If the code runs out of memory in the cluster it's signaled as an error
 ### :ballot_box_with_check: Fixed
 - Broken tight bounds in Rankooh's and Dynamic model
     - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
 <!-- ### :heavy_exclamation_mark: Changed -->
-<!-- ### :heavy_plus_sign: Added -->
+### :heavy_plus_sign: Added
+- Saving cplex logs after tests on cluster
+    - [~/code/test/code/results_jobs.py](code/test/code/results_jobs.py)
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
 
