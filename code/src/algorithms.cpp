@@ -634,23 +634,23 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
     // =================== TIGHTER BOUNDS =================== //
     // ====================================================== //
 
-    unsigned int timestamps_ubound{static_cast<unsigned int>(inst.m_opt)};
+    unsigned int max_steps{static_cast<unsigned int>(inst.m_opt)};
     if (env.tight_bounds) {
         // number of variables
-        if (inst.n_opt < timestamps_ubound) timestamps_ubound = inst.n_opt;
+        if (inst.n_opt < max_steps) max_steps = inst.n_opt;
 
         // max number of steps to reach heuristic
         if (env.heur != "none") {
             unsigned int min_act_cost{inst.actions[0].cost + 1};  // +1 to avoid it being 0
             unsigned int n_act_zerocost{0};
-            for (const auto& act : inst.actions) {
-                if (act.cost == 0)
+            for (const auto& act_i : inst.act_rem) {
+                if (inst.actions[act_i].cost == 0)
                     n_act_zerocost++;
-                else if (act.cost < min_act_cost)
-                    min_act_cost = act.cost;
+                else if (inst.actions[act_i].cost < min_act_cost)
+                    min_act_cost = inst.actions[act_i].cost;
             }
             const unsigned int nsteps{static_cast<unsigned int>(std::ceil(static_cast<double>(inst.best_sol.cost) / min_act_cost)) + n_act_zerocost};
-            if (nsteps < timestamps_ubound) timestamps_ubound = nsteps;
+            if (nsteps < max_steps) max_steps = nsteps;
         }
     }
     stopchk1();
@@ -718,7 +718,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
     for (const auto& act_i : inst.act_rem) {
         objs[count] = 0;
         lbs[count] = (inst.act_t[act_i] >= 0 ? inst.act_t[act_i] : 0);
-        ubs[count] = (inst.act_t[act_i] >= 0 ? inst.act_t[act_i] : timestamps_ubound);
+        ubs[count] = (inst.act_t[act_i] >= 0 ? inst.act_t[act_i] : max_steps);
         types[count++] = 'I';
     }
     INTCHECK_ASSERT_LOG(log, count == inst.m_opt);
@@ -750,7 +750,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
     for (const auto& i : inst.var_rem) {
         objs[count] = 0;
         lbs[count] = (inst.var_t[i] >= 0 ? inst.var_t[i] : 1);  // 1 since with no initial state, each variable needs to be archieved first
-        ubs[count] = (inst.var_t[i] >= 0 ? inst.var_t[i] : timestamps_ubound);
+        ubs[count] = (inst.var_t[i] >= 0 ? inst.var_t[i] : max_steps);
         types[count++] = 'I';
     }
     INTCHECK_ASSERT_LOG(log, count == inst.n_opt);
@@ -806,7 +806,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
     double val_c2_4[2], val_c5[3];
     constexpr char sense_l{'L'}, sense_e{'E'};
     constexpr double rhs_c1_2_4{0};
-    const double rhs_c5{static_cast<double>(timestamps_ubound)};
+    const double rhs_c5{static_cast<double>(max_steps)};
     constexpr int begin{0};
 
     std::vector<int*> ind_c3(inst.n_opt);
@@ -879,7 +879,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
             ind_c5[1] = get_tvar_idx(var_i);
             val_c5[1] = -1;
             ind_c5[2] = get_fa_idx(act_i, var_i);
-            val_c5[2] = timestamps_ubound + 1;
+            val_c5[2] = max_steps + 1;
             ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c5, &rhs_c5, &sense_l, &begin, ind_c5, val_c5, nullptr, nullptr));
             // constraint 3: I(v_j) + sum(z_avj) = y_vj
             ind_c3[inst.var_opt_conv[var_i]][nnz_c3[inst.var_opt_conv[var_i]]] = get_fa_idx(act_i, var_i);
@@ -893,22 +893,27 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
         ASSERT_LOG(log,
                    !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c3[var_i], &rhs_c3[var_i], &sense_e, &begin, ind_c3[var_i], val_c3[var_i], nullptr, nullptr));
 
-    if (env.tight_bounds) {
-        size_t nnz = 0;
-        double rhs = static_cast<double>(timestamps_ubound);
-        for (const auto& act_i : inst.act_rem) {
-            ind_c1[nnz] = get_act_idx(act_i);
-            val_c1[nnz++] = 1;
-        }
-        ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs, &sense_l, &begin, ind_c1, val_c1, nullptr, nullptr));
-    }
-
     for (size_t var_i = 0; var_i < inst.n_opt; var_i++) {
         delete[] ind_c3[var_i];
         ind_c3[var_i] = nullptr;
         delete[] val_c3[var_i];
         val_c3[var_i] = nullptr;
     }
+
+    if (env.tight_bounds) {
+        double rhs{static_cast<double>(max_steps)};
+        size_t nnz{0};
+        for (const auto& act_i : inst.act_rem) {
+            if (inst.act_f[act_i]) {
+                rhs--;
+                continue;
+            }
+            ind_c1[nnz] = get_act_idx(act_i);
+            val_c1[nnz++] = 1;
+        }
+        ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs, &sense_l, &begin, ind_c1, val_c1, nullptr, nullptr));
+    }
+
     delete[] val_c1;
     val_c1 = nullptr;
     delete[] ind_c1;
@@ -919,7 +924,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
 
 static void cpx_post_warmstart_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env,
                                     const logger& log) {
-    INTCHECK_ASSERT_LOG(log, env.sol_s != solution_status::INFEAS && env.sol_s != solution_status::NOTFOUND);
+    ASSERT_LOG(log, env.sol_s != solution_status::INFEAS && env.sol_s != solution_status::NOTFOUND);
 
     binary_set state{inst.n};
 
@@ -1169,23 +1174,23 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
     // =================== TIGHTER BOUNDS =================== //
     // ====================================================== //
 
-    unsigned int timestamps_ubound{static_cast<unsigned int>(inst.m_opt)};
+    unsigned int max_steps{static_cast<unsigned int>(inst.m_opt)};
     if (env.tight_bounds) {
         // number of variables
-        if (inst.n_opt < timestamps_ubound) timestamps_ubound = inst.n_opt;
+        if (inst.n_opt < max_steps) max_steps = inst.n_opt;
 
         // max number of steps to reach heuristic
         if (env.heur != "none") {
             unsigned int min_act_cost{inst.actions[0].cost + 1};  // +1 to avoid it being 0
             unsigned int n_act_zerocost{0};
-            for (const auto& act : inst.actions) {
-                if (act.cost == 0)
+            for (const auto& act_i : inst.act_rem) {
+                if (inst.actions[act_i].cost == 0)
                     n_act_zerocost++;
-                else if (act.cost < min_act_cost)
-                    min_act_cost = act.cost;
+                else if (inst.actions[act_i].cost < min_act_cost)
+                    min_act_cost = inst.actions[act_i].cost;
             }
             const unsigned int nsteps{static_cast<unsigned int>(std::ceil(static_cast<double>(inst.best_sol.cost) / min_act_cost)) + n_act_zerocost};
-            if (nsteps < timestamps_ubound) timestamps_ubound = nsteps;
+            if (nsteps < max_steps) max_steps = nsteps;
         }
     }
     stopchk1();
@@ -1235,7 +1240,7 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
     size_t count{0};
     for (const auto& act_i : inst.act_rem) {
         objs[count] = static_cast<double>(inst.actions[act_i].cost);
-        lbs[count] = inst.act_f[act_i] ? 1 : 0;
+        lbs[count] = (inst.act_f[act_i] ? 1 : 0);
         ubs[count] = 1;
         types[count++] = 'B';
     }
@@ -1408,8 +1413,13 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
     }
 
     if (env.tight_bounds) {
-        double rhs = static_cast<double>(timestamps_ubound);
+        double rhs{static_cast<double>(max_steps)};
+        nnz = 0;
         for (const auto& act_i : inst.act_rem) {
+            if (inst.act_f[act_i]) {
+                rhs--;
+                continue;
+            }
             ind[nnz] = get_act_idx(act_i);
             val[nnz++] = 1;
         }
@@ -1516,7 +1526,7 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
 
 static void cpx_post_warmstart_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env,
                                        const logger& log) {
-    INTCHECK_ASSERT_LOG(log, env.sol_s != solution_status::INFEAS && env.sol_s != solution_status::NOTFOUND);
+    ASSERT_LOG(log, env.sol_s != solution_status::INFEAS && env.sol_s != solution_status::NOTFOUND);
 
     binary_set state{inst.n};
 
@@ -1630,20 +1640,16 @@ static void store_rankooh_sol(const CPXENVptr& cpxenv, const CPXLPptr& cpxlp, hp
     binary_set remaining{cpx_result.size(), true}, state{inst.n};
 
     while (!remaining.empty()) {
-#if HPLUS_INTCHECK
         bool intcheck{false};
-#endif
         for (const auto& i : remaining) {
             if (!state.contains(inst.actions[cpx_result[i]].pre)) continue;
 
             remaining.remove(i);
             state |= inst.actions[cpx_result[i]].eff;
             solution.push_back(cpx_result[i]);
-#if HPLUS_INTCHECK
             intcheck = true;
-#endif
         }
-        INTCHECK_ASSERT_LOG(log, intcheck);
+        ASSERT_LOG(log, intcheck);
     }
 
     // store solution
@@ -1878,23 +1884,23 @@ static void cpx_build_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hpl
     // =================== TIGHTER BOUNDS =================== //
     // ====================================================== //
 
-    unsigned int timestamps_ubound{static_cast<unsigned int>(inst.m_opt)};
+    unsigned int max_steps{static_cast<unsigned int>(inst.m_opt)};
     if (env.tight_bounds) {
         // number of variables
-        if (inst.n_opt < timestamps_ubound) timestamps_ubound = inst.n_opt;
+        if (inst.n_opt < max_steps) max_steps = inst.n_opt;
 
         // max number of steps to reach heuristic
         if (env.heur != "none") {
             unsigned int min_act_cost{inst.actions[0].cost + 1};  // +1 to avoid it being 0
             unsigned int n_act_zerocost{0};
-            for (const auto& act : inst.actions) {
-                if (act.cost == 0)
+            for (const auto& act_i : inst.act_rem) {
+                if (inst.actions[act_i].cost == 0)
                     n_act_zerocost++;
-                else if (act.cost < min_act_cost)
-                    min_act_cost = act.cost;
+                else if (inst.actions[act_i].cost < min_act_cost)
+                    min_act_cost = inst.actions[act_i].cost;
             }
             const unsigned int nsteps{static_cast<unsigned int>(std::ceil(static_cast<double>(inst.best_sol.cost) / min_act_cost)) + n_act_zerocost};
-            if (nsteps < timestamps_ubound) timestamps_ubound = nsteps;
+            if (nsteps < max_steps) max_steps = nsteps;
         }
     }
     stopchk1();
@@ -1944,7 +1950,7 @@ static void cpx_build_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hpl
     size_t count{0};
     for (const auto& act_i : inst.act_rem) {
         objs[count] = static_cast<double>(inst.actions[act_i].cost);
-        lbs[count] = inst.act_f[act_i] ? 1 : 0;
+        lbs[count] = (inst.act_f[act_i] ? 1 : 0);
         ubs[count] = 1;
         types[count++] = 'B';
     }
@@ -2112,8 +2118,13 @@ static void cpx_build_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hpl
     }
 
     if (env.tight_bounds) {
-        double rhs = static_cast<double>(timestamps_ubound);
+        double rhs{static_cast<double>(max_steps)};
+        nnz = 0;
         for (const auto& act_i : inst.act_rem) {
+            if (inst.act_f[act_i]) {
+                rhs--;
+                continue;
+            }
             ind[nnz] = get_act_idx(act_i);
             val[nnz++] = 1;
         }
@@ -2155,7 +2166,7 @@ static void cpx_build_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hpl
 
 static void cpx_post_warmstart_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env,
                                             const logger& log) {
-    INTCHECK_ASSERT_LOG(log, env.sol_s != solution_status::INFEAS && env.sol_s != solution_status::NOTFOUND);
+    ASSERT_LOG(log, env.sol_s != solution_status::INFEAS && env.sol_s != solution_status::NOTFOUND);
 
     binary_set state{inst.n};
 
@@ -2263,20 +2274,16 @@ static void store_dynamic_time_sol(const CPXENVptr& cpxenv, const CPXLPptr& cpxl
     binary_set remaining{cpx_result.size(), true}, state{inst.n};
 
     while (!remaining.empty()) {
-#if HPLUS_INTCHECK
         bool intcheck{false};
-#endif
         for (const auto& i : remaining) {
             if (!state.contains(inst.actions[cpx_result[i]].pre)) continue;
 
             remaining.remove(i);
             state |= inst.actions[cpx_result[i]].eff;
             solution.push_back(cpx_result[i]);
-#if HPLUS_INTCHECK
             intcheck = true;
-#endif
         }
-        INTCHECK_ASSERT_LOG(log, intcheck);
+        ASSERT_LOG(log, intcheck);
     }
 
     // store solution

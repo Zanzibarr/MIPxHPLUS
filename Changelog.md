@@ -24,6 +24,17 @@ HOW I DO VERSIONING:
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
 
+
+## [1.2.5] - 2025/03/23
+<!-- ### :warning: Known issues -->
+### :ballot_box_with_check: Fixed
+- Broken tight bounds in Rankooh's and Dynamic model
+    - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
+<!-- ### :heavy_exclamation_mark: Changed -->
+<!-- ### :heavy_plus_sign: Added -->
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+
 ## [1.2.4] - 2025/03/21
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed

@@ -842,6 +842,10 @@ void hplus::prepare_faster_actsearch(instance& inst, const logger& log) {
     PRINT_VERBOSE(log, "Initializing data structures for faster actions lookup.");
     inst.act_with_pre = std::vector<std::vector<size_t>>(inst.n);
     inst.act_with_eff = std::vector<std::vector<size_t>>(inst.n);
+    for (const auto& var_i : inst.var_rem) {
+        inst.act_with_pre[var_i].reserve(inst.m_opt);
+        inst.act_with_eff[var_i].reserve(inst.m_opt);
+    }
     for (const auto& act_i : inst.act_rem) {
         for (const auto& pre_i : inst.actions[act_i].pre_sparse) inst.act_with_pre[pre_i].push_back(act_i);
         for (const auto& eff_i : inst.actions[act_i].eff_sparse) inst.act_with_eff[eff_i].push_back(act_i);
