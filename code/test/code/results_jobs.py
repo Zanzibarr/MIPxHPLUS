@@ -12,7 +12,6 @@ def move_file(fromfilepath: Path, todir: Path):
 
 
 # TODO: Read data from cplex log to create the primal gap
-# TODO: Handle out of memory error
 def main():
     runsum = {}
 
