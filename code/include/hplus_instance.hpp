@@ -62,7 +62,7 @@ typedef struct {
     solution_status sol_s;
     /** Parameters for execution */
     std::string input_file, log_name, run_name, alg, heur;
-    bool log;
+    bool log, write_lp;
     /** Execution flags */
     bool problem_opt, warm_start, tight_bounds, using_cplex;
     /** Time limit */

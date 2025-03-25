@@ -44,6 +44,7 @@ static void init(hplus::environment& env) {
                              .alg = "rankooh",
                              .heur = "hadd",
                              .log = false,
+                             .write_lp = false,
                              .problem_opt = true,
                              .warm_start = true,
                              .tight_bounds = false,
@@ -71,6 +72,7 @@ static void parse_cli(const int& argc, const char** argv, hplus::environment& en
     args::ValueFlag<std::string> algorithm(parser, "algorithm", "Specify the algorithm to use (heur, rankooh, imai, dynamic-t).", {"a", "alg"});
     args::Flag no_optimization(parser, "optimization", "Tell to not optimize the problem.", {"no-op"});
     args::Flag tightbounds(parser, "tight bounds", "Tell to use tighter bounds.", {"tb"});
+    args::Flag write_lp(parser, "write lp", "Write the lp file.", {"lp"});
     args::ValueFlag<std::string> heur(
         parser, "heuristic",
         "Specify which heuristic to compute before running cplex (default: 'hadd', options: [greedycost, greedycxe, rand, randr, hmax, hadd, "
@@ -110,6 +112,7 @@ static void parse_cli(const int& argc, const char** argv, hplus::environment& en
     if (algorithm) env.alg = args::get(algorithm);
     env.problem_opt = !no_optimization;
     env.tight_bounds = tightbounds;
+    env.write_lp = write_lp;
     if (heur) env.heur = args::get(heur);
     env.warm_start = !no_warmstart;
     if (timelimit) {

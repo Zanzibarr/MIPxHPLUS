@@ -38,6 +38,8 @@ HOW I DO VERSIONING:
     - [~/code/test/code/results_jobs.py](code/test/code/results_jobs.py)
 - Storing cplex incumbents update in run results
     - [~/code/test/code/results_jobs.py](code/test/code/results_jobs.py)
+- Added option to write the lp file
+    - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
 ### :x: Removed
 - Removed tighter bounds in Rankooh's and Dynamic models
     - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
