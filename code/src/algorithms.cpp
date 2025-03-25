@@ -373,9 +373,7 @@ static void randheur(hplus::instance& inst, hplus::environment& env, const logge
 
 static void randr(hplus::instance& inst, hplus::environment& env, const logger& log) {
     PRINT_VERBOSE(log, "Running randr algorithm.");
-    // TODO: (maybe) Choose on CLI
     constexpr size_t repetitions{100};
-    // TODO: Threads (if using threads, make hplus::update_sol thread safe.)
     for (size_t _ = 0; _ < repetitions; _++) {
         randheur(inst, env, log);
         if (env.sol_s == solution_status::INFEAS) [[unlikely]]
@@ -612,7 +610,6 @@ static void localsearch(hplus::instance& inst, void (*heuristic)(hplus::instance
 
     hplus::solution heur_sol{.plan = inst.best_sol.plan, .cost = inst.best_sol.cost};
 
-    // TODO: Local search on top of the initial solution
     todo(log, "Local Search");
 
     hplus::update_sol(inst, heur_sol, log);
@@ -1612,6 +1609,7 @@ static void store_rankooh_sol(const CPXENVptr& cpxenv, const CPXLPptr& cpxlp, hp
 // ##################################################################### //
 // ############################ DYNAMIC TIME ########################### //
 // ##################################################################### //
+// TODO: Remake whole model with hybrid dynamic-rankooh
 
 // straight from Johnson's paper
 static void unblock(size_t u, std::vector<bool>& blocked, std::vector<std::set<size_t>>& block_map) {
@@ -1659,7 +1657,6 @@ typedef struct {
     const logger& log;
 } cpx_callback_user_handle;
 
-// TODO: Remake with hybrid dynamic-rankooh
 static int CPXPUBLIC cpx_dynamic_time_callback(CPXCALLBACKCONTEXTptr context, CPXLONG context_id, void* user_handle) {
     auto& [inst, env, stats, log] = *static_cast<cpx_callback_user_handle*>(user_handle);
 
@@ -1804,8 +1801,6 @@ static int CPXPUBLIC cpx_dynamic_time_callback(CPXCALLBACKCONTEXTptr context, CP
         // cannot have all selected (at least one must come from outside the cycle)
         rhs = nnz - 1;
 
-        // TODO: try insthead of forcing a first archiever to be removed, to force an outside first archiever going into a variable in the cycle:
-        // 1/size(gamma) * sum_{a\in gamma}(xa) <= sum_{fa\in{first archievers of variables in the cycle}}(x_fa)
         CPX_HANDLE_CALL(log, CPXcallbackrejectcandidate(context, 1, nnz, &rhs, &sense_l, &izero, ind, val));
     }
 
@@ -1821,7 +1816,6 @@ static int CPXPUBLIC cpx_dynamic_time_callback(CPXCALLBACKCONTEXTptr context, CP
     return 0;
 }
 
-// TODO: Remake with hybrid dynamic-rankooh
 static void cpx_build_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env,
                                    const logger& log) {
     PRINT_VERBOSE(log, "Building dynamic time model.");
@@ -2077,7 +2071,6 @@ static void cpx_build_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hpl
     // CPX_HANDLE_CALL(log, CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR "/lp/" + env.run_name + ".lp").c_str(), "LP"));
 }
 
-// TODO: Remake with hybrid dynamic-rankooh
 static void cpx_post_warmstart_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env,
                                             const logger& log) {
     ASSERT_LOG(log, env.sol_s != solution_status::INFEAS && env.sol_s != solution_status::NOTFOUND);

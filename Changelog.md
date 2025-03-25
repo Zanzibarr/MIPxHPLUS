@@ -36,6 +36,8 @@ HOW I DO VERSIONING:
 - Handling out of memory CPLEX error
     - [~/code/include/utils.hpp](code/include/utils.hpp)
     - [~/code/test/code/results_jobs.py](code/test/code/results_jobs.py)
+- Storing cplex incumbents update in run results
+    - [~/code/test/code/results_jobs.py](code/test/code/results_jobs.py)
 ### :x: Removed
 - Removed tighter bounds in Rankooh's and Dynamic models
     - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)

@@ -3,7 +3,7 @@ import sys
 
 sys.dont_write_bytecode = True
 
-import subprocess, shlex, os, json
+import subprocess, shlex, os, json, re
 from pathlib import Path
 
 
@@ -11,7 +11,6 @@ def move_file(fromfilepath: Path, todir: Path):
     subprocess.run(shlex.split(f"mv {fromfilepath} {todir}/"))
 
 
-# TODO: Read data from cplex log to create the primal gap
 def main():
     runsum = {}
 
@@ -79,6 +78,7 @@ def main():
             "status": -1,
             "hcost": -1,
             "fcost": -1,
+            "incumb": [],
             "ptime": -1,
             "stime": -1,
             "htime": -1,
@@ -196,6 +196,36 @@ def main():
                         .strip()
                     )
                     runsum["results"][instance_name]["fcost"] = fcost
+
+                cpxlogfile = f"{cpxlogsdir}/{file}"
+                if os.path.isfile(cpxlogfile):
+                    with open(cpxlogfile, "r") as f:
+                        cpxlogcontent = f.read()
+                    if runsum["results"][instance_name]["hcost"] >= 0:
+                        runsum["results"][instance_name]["incumb"].append(
+                            [float(0), runsum["results"][instance_name]["hcost"]]
+                        )
+
+                    # Find all matches in the log content
+                    incumbent_pattern = re.compile(
+                        r"Found incumbent of value (\d+\.\d+) after (\d+\.\d+) sec\."
+                    )
+                    counter = 0
+                    for match in incumbent_pattern.finditer(cpxlogcontent):
+                        # Extract value and time, convert to float
+                        value = float(match.group(1))
+                        time = float(match.group(2))
+
+                        if (
+                            counter == 0
+                            and value > runsum["results"][instance_name]["hcost"]
+                        ):
+                            runsum["results"][instance_name]["incumb"] = []
+
+                        counter += 1
+
+                        # Append pair to the list
+                        runsum["results"][instance_name]["incumb"].append([time, value])
 
         move_file(filepath, save_logs_dir)
 
