@@ -27,7 +27,6 @@ HOW I DO VERSIONING:
 
 ## [1.2.5] - 2025/03/25
 ### :warning: Known issues
-- If the code runs out of memory in the cluster it's signaled as an error
 - "Optimal" solution provided by the model with tb might not be optimal if problem optimization is being used (max_steps might be smaller than the number of fixed actions (0 cost actions))
 <!-- ### :ballot_box_with_check: Fixed -->
 <!-- ### :heavy_exclamation_mark: Changed -->
