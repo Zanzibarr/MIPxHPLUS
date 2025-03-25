@@ -35,6 +35,8 @@ HOW I DO VERSIONING:
 - Saving cplex logs after tests on cluster
     - [~/code/test/code/results_jobs.py](code/test/code/results_jobs.py)
 - Handling out of memory CPLEX error
+    - [~/code/include/utils.hpp](code/include/utils.hpp)
+    - [~/code/test/code/results_jobs.py](code/test/code/results_jobs.py)
 ### :x: Removed
 - Removed tighter bounds in Rankooh's and Imai's models
     - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)

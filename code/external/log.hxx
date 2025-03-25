@@ -173,8 +173,8 @@ class logger {
                 file_prefix = "[ WARN ] -- ";
                 break;
             case log_level::error:
-                terminal_prefix = std::string(colors::error) + "[ ERROR ] " + std::string(colors::reset_bold) + "-- ";
-                file_prefix = "[ ERROR ] -- ";
+                terminal_prefix = std::string(colors::error) + "[ ERR  ] " + std::string(colors::reset_bold) + "-- ";
+                file_prefix = "[ ERR  ] -- ";
                 break;
             default:
                 // No prefix for regular print

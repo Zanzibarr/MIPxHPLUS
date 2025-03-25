@@ -11,6 +11,8 @@ def move_file(fromfilepath: Path, todir: Path):
     subprocess.run(shlex.split(f"mv {fromfilepath} {todir}/"))
 
 
+# TODO: Read data from cplex log to create the primal gap
+# TODO: Handle out of memory error
 def main():
     runsum = {}
 
@@ -90,7 +92,9 @@ def main():
 
         if "Axiom layer is" in content:
             runsum["results"][instance_name]["status"] = -2
-        elif "[ ERROR ]" in content:
+        elif "OUT OF MEMORY" in content:
+            runsum["results"][instance_name]["status"] = -3
+        elif "[ ERR  ]" in content:
             runsum["results"][instance_name]["status"] = -1
             runsum["results"][instance_name]["other"] = "\n".join(
                 content.splitlines()[-5:]
