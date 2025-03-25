@@ -28,24 +28,23 @@ void cpx_init(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::environment& env,
     PRINT_VERBOSE(log, "Initializing CPLEX.");
     int cpxerror;
     cpxenv = CPXopenCPLEX(&cpxerror);
-    // FIXME: Create a macro that checks the cplex status returned by a cplex function: handle memory issues for meaningful output in cluster testing
-    ASSERT_LOG(log, !cpxerror);
+    CPX_HANDLE_CALL(log, cpxerror);
     cpxlp = CPXcreateprob(cpxenv, &cpxerror, env.run_name.c_str());
-    ASSERT_LOG(log, !cpxerror);
+    CPX_HANDLE_CALL(log, cpxerror);
     // log file
-    ASSERT_LOG(log, !CPXsetintparam(cpxenv, CPXPARAM_ScreenOutput, CPX_OFF));
-    if (log_file) ASSERT_LOG(log, !CPXsetlogfilename(cpxenv, (HPLUS_CPLEX_OUTPUT_DIR "/log/" + env.run_name + ".log").c_str(), "w"));
-    ASSERT_LOG(log, !CPXsetintparam(cpxenv, CPX_PARAM_CLONELOG, -1));
-    ASSERT_LOG(log, !CPXsetintparam(cpxenv, CPXPARAM_MIP_Display, 3));
-    // ASSERT_LOG(log, !CPXsetintparam(cpxenv, CPXPARAM_MIP_Limits_Solutions, 1));
+    CPX_HANDLE_CALL(log, CPXsetintparam(cpxenv, CPXPARAM_ScreenOutput, CPX_OFF));
+    if (log_file) CPX_HANDLE_CALL(log, CPXsetlogfilename(cpxenv, (HPLUS_CPLEX_OUTPUT_DIR "/log/" + env.run_name + ".log").c_str(), "w"));
+    CPX_HANDLE_CALL(log, CPXsetintparam(cpxenv, CPX_PARAM_CLONELOG, -1));
+    CPX_HANDLE_CALL(log, CPXsetintparam(cpxenv, CPXPARAM_MIP_Display, 3));
+    // CPX_HANDLE_CALL(log, CPXsetintparam(cpxenv, CPXPARAM_MIP_Limits_Solutions, 1));
     // tolerance
-    ASSERT_LOG(log, !CPXsetdblparam(cpxenv, CPXPARAM_MIP_Tolerances_MIPGap, 0));
+    CPX_HANDLE_CALL(log, CPXsetdblparam(cpxenv, CPXPARAM_MIP_Tolerances_MIPGap, 0));
     // memory/size limits
-    ASSERT_LOG(log, !CPXsetdblparam(cpxenv, CPXPARAM_MIP_Limits_TreeMemory, 12000));
-    ASSERT_LOG(log, !CPXsetdblparam(cpxenv, CPXPARAM_WorkMem, 4096));
-    ASSERT_LOG(log, !CPXsetintparam(cpxenv, CPXPARAM_MIP_Strategy_File, 3));
+    CPX_HANDLE_CALL(log, CPXsetdblparam(cpxenv, CPXPARAM_MIP_Limits_TreeMemory, 12000));
+    CPX_HANDLE_CALL(log, CPXsetdblparam(cpxenv, CPXPARAM_WorkMem, 4096));
+    CPX_HANDLE_CALL(log, CPXsetintparam(cpxenv, CPXPARAM_MIP_Strategy_File, 3));
     // terminate condition
-    ASSERT_LOG(log, !CPXsetterminate(cpxenv, &global_terminate));
+    CPX_HANDLE_CALL(log, CPXsetterminate(cpxenv, &global_terminate));
 }
 
 void cpx_close(CPXENVptr& cpxenv, CPXLPptr& cpxlp) {
@@ -67,7 +66,7 @@ bool parse_cpx_status(const CPXENVptr& cpxenv, const CPXLPptr& cpxlp, hplus::env
         case CPXMIP_ABORT_INFEAS:  // terminated by user, not found solution
             if (!env.warm_start) env.sol_s = solution_status::NOTFOUND;
             return false;
-        case CPXMIP_INFEASIBLE:  // proven to be unfeasible
+        case CPXMIP_INFEASIBLE:  // proven to be infeasible
             env.sol_s = solution_status::INFEAS;
             return false;
         case CPXMIP_OPTIMAL_TOL:  // found optimal within the tollerance
@@ -710,7 +709,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
     INTCHECK_ASSERT_LOG(log, count == inst.m_opt);
     curr_col += inst.m_opt;
 
-    ASSERT_LOG(log, !CPXnewcols(cpxenv, cpxlp, inst.m_opt, objs, lbs, ubs, types, nullptr));
+    CPX_HANDLE_CALL(log, CPXnewcols(cpxenv, cpxlp, inst.m_opt, objs, lbs, ubs, types, nullptr));
     stopchk2();
 
     // --- action timestamps -- //
@@ -725,7 +724,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
     INTCHECK_ASSERT_LOG(log, count == inst.m_opt);
     curr_col += inst.m_opt;
 
-    ASSERT_LOG(log, !CPXnewcols(cpxenv, cpxlp, inst.m_opt, objs, lbs, ubs, types, nullptr));
+    CPX_HANDLE_CALL(log, CPXnewcols(cpxenv, cpxlp, inst.m_opt, objs, lbs, ubs, types, nullptr));
     stopchk2();
 
     resize_cpx_arrays(inst.n_opt);
@@ -742,7 +741,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
     INTCHECK_ASSERT_LOG(log, count == inst.n_opt);
     curr_col += inst.n_opt;
 
-    ASSERT_LOG(log, !CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
+    CPX_HANDLE_CALL(log, CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
     stopchk2();
 
     // -- variable timestamps - //
@@ -757,7 +756,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
     INTCHECK_ASSERT_LOG(log, count == inst.n_opt);
     curr_col += inst.n_opt;
 
-    ASSERT_LOG(log, !CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
+    CPX_HANDLE_CALL(log, CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
     stopchk2();
 
     // --- first archievers --- //
@@ -774,7 +773,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
         }
         INTCHECK_ASSERT_LOG(log, count_var == inst.n_opt);
         curr_col += inst.n_opt;
-        ASSERT_LOG(log, !CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
+        CPX_HANDLE_CALL(log, CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
         count++;
         stopchk2();
     }
@@ -859,13 +858,13 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
                     val_c1[nnz0++] = 1;
                 }
             }
-            ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz0, &rhs_c1_2_4, &sense_l, &begin, ind_c1, val_c1, nullptr, nullptr));
+            CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz0, &rhs_c1_2_4, &sense_l, &begin, ind_c1, val_c1, nullptr, nullptr));
             // constraint 4: t_vj <= t_a, vj in pre(a)
             ind_c2_4[0] = get_tvar_idx(var_i);
             val_c2_4[0] = 1;
             ind_c2_4[1] = get_tact_idx(act_i);
             val_c2_4[1] = -1;
-            ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c2_4, &rhs_c1_2_4, &sense_l, &begin, ind_c2_4, val_c2_4, nullptr, nullptr));
+            CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c2_4, &rhs_c1_2_4, &sense_l, &begin, ind_c2_4, val_c2_4, nullptr, nullptr));
         }
         for (const auto& var_i : inst.actions[act_i].eff_sparse) {
             constexpr int nnz_c5{3};
@@ -874,7 +873,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
             val_c2_4[0] = 1;
             ind_c2_4[1] = get_act_idx(act_i);
             val_c2_4[1] = -1;
-            ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c2_4, &rhs_c1_2_4, &sense_l, &begin, ind_c2_4, val_c2_4, nullptr, nullptr));
+            CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c2_4, &rhs_c1_2_4, &sense_l, &begin, ind_c2_4, val_c2_4, nullptr, nullptr));
             // constraint 5: t_a + 1 <= t_vj + (|A|+1)(1-z_avj), vj in eff(a)
             ind_c5[0] = get_tact_idx(act_i);
             val_c5[0] = 1;
@@ -882,7 +881,7 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
             val_c5[1] = -1;
             ind_c5[2] = get_fa_idx(act_i, var_i);
             val_c5[2] = max_steps + 1;
-            ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c5, &rhs_c5, &sense_l, &begin, ind_c5, val_c5, nullptr, nullptr));
+            CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c5, &rhs_c5, &sense_l, &begin, ind_c5, val_c5, nullptr, nullptr));
             // constraint 3: I(v_j) + sum(z_avj) = y_vj
             ind_c3[inst.var_opt_conv[var_i]][nnz_c3[inst.var_opt_conv[var_i]]] = get_fa_idx(act_i, var_i);
             val_c3[inst.var_opt_conv[var_i]][nnz_c3[inst.var_opt_conv[var_i]]] = -1;
@@ -902,26 +901,12 @@ void cpx_build_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& i
         val_c3[var_i] = nullptr;
     }
 
-    if (env.tight_bounds) {
-        double rhs{static_cast<double>(max_steps)};
-        size_t nnz{0};
-        for (const auto& act_i : inst.act_rem) {
-            if (inst.act_f[act_i]) {
-                rhs--;
-                continue;
-            }
-            ind_c1[nnz] = get_act_idx(act_i);
-            val_c1[nnz++] = 1;
-        }
-        ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs, &sense_l, &begin, ind_c1, val_c1, nullptr, nullptr));
-    }
-
     delete[] val_c1;
     val_c1 = nullptr;
     delete[] ind_c1;
     ind_c1 = nullptr;
 
-    // ASSERT_LOG(log, !CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR"/lp/" + env.run_name + ".lp").c_str(), "LP"));
+    // CPX_HANDLE_CALL(log, CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR"/lp/" + env.run_name + ".lp").c_str(), "LP"));
 }
 
 static void cpx_post_warmstart_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env,
@@ -1000,7 +985,7 @@ static void cpx_post_warmstart_imai(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hp
     ASSERT_LOG(log, fixed_t_var_check.empty());
     for (size_t i = 0; i < inst.m; i++) ASSERT_LOG(log, fixed_fadd_check[i].empty());
 #endif
-    ASSERT_LOG(log, !CPXaddmipstarts(cpxenv, cpxlp, 1, ncols, &izero, cpx_sol_ind, cpx_sol_val, &effortlevel, nullptr));
+    CPX_HANDLE_CALL(log, CPXaddmipstarts(cpxenv, cpxlp, 1, ncols, &izero, cpx_sol_ind, cpx_sol_val, &effortlevel, nullptr));
 
     delete[] cpx_sol_ind;
     cpx_sol_ind = nullptr;
@@ -1013,7 +998,7 @@ static void store_imai_sol(const CPXENVptr& cpxenv, const CPXLPptr& cpxlp, hplus
 
     // get cplex result (interested only in the sequence of actions [0/inst.m_opt-1] used and its ordering [inst.m_opt/2nact-1])
     double* plan{new double[2 * inst.m_opt]};
-    ASSERT_LOG(log, !CPXgetx(cpxenv, cpxlp, plan, 0, 2 * inst.m_opt - 1));
+    CPX_HANDLE_CALL(log, CPXgetx(cpxenv, cpxlp, plan, 0, 2 * inst.m_opt - 1));
 
     // convert to std collections for easier parsing
     std::vector<std::pair<double, size_t>> cpx_result;
@@ -1157,45 +1142,20 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
             if (degree_counter[x] > 0 && nodes_queue.has(x)) nodes_queue.change(x, degree_counter[x]);
         }
 
-#if HPLUS_INTCHECK  // care: this takes HUGE amount of time
-        for (size_t node_i = 0; node_i < inst.n; node_i++) {
-            size_t i_cnt{0};
-            i_cnt += graph[node_i].size();
-            for (size_t tmp_j = 0; tmp_j < inst.n; tmp_j++) {
-                for (const auto& tmp_k : graph[tmp_j]) {
-                    if (tmp_k == node_i) i_cnt += 1;
-                }
-            }
-            ASSERT_LOG(log, i_cnt == degree_counter[node_i]);
-        }
-#endif
+        // #if HPLUS_INTCHECK  // care: this takes HUGE amount of time
+        //         for (size_t node_i = 0; node_i < inst.n; node_i++) {
+        //             size_t i_cnt{0};
+        //             i_cnt += graph[node_i].size();
+        //             for (size_t tmp_j = 0; tmp_j < inst.n; tmp_j++) {
+        //                 for (const auto& tmp_k : graph[tmp_j]) {
+        //                     if (tmp_k == node_i) i_cnt += 1;
+        //                 }
+        //             }
+        //             ASSERT_LOG(log, i_cnt == degree_counter[node_i]);
+        //         }
+        // #endif
         stopchk1();
     }
-
-    // ====================================================== //
-    // =================== TIGHTER BOUNDS =================== //
-    // ====================================================== //
-
-    unsigned int max_steps{static_cast<unsigned int>(inst.m_opt)};
-    if (env.tight_bounds) {
-        // number of variables
-        if (inst.n_opt < max_steps) max_steps = inst.n_opt;
-
-        // max number of steps to reach heuristic
-        if (env.heur != "none") {
-            unsigned int min_act_cost{inst.actions[0].cost + 1};  // +1 to avoid it being 0
-            unsigned int n_act_zerocost{0};
-            for (const auto& act_i : inst.act_rem) {
-                if (inst.actions[act_i].cost == 0)
-                    n_act_zerocost++;
-                else if (inst.actions[act_i].cost < min_act_cost)
-                    min_act_cost = inst.actions[act_i].cost;
-            }
-            const unsigned int nsteps{static_cast<unsigned int>(std::ceil(static_cast<double>(inst.best_sol.cost) / min_act_cost)) + n_act_zerocost};
-            if (nsteps < max_steps) max_steps = nsteps;
-        }
-    }
-    stopchk1();
 
     // ====================================================== //
     // =================== CPLEX VARIABLES ================== //
@@ -1250,7 +1210,7 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
 
     curr_col += inst.m_opt;
 
-    ASSERT_LOG(log, !CPXnewcols(cpxenv, cpxlp, inst.m_opt, objs, lbs, ubs, types, nullptr));
+    CPX_HANDLE_CALL(log, CPXnewcols(cpxenv, cpxlp, inst.m_opt, objs, lbs, ubs, types, nullptr));
     stopchk2();
 
     resize_cpx_arrays(inst.n_opt);
@@ -1271,7 +1231,7 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
         }
         INTCHECK_ASSERT_LOG(log, count_var == inst.n_opt);
         curr_col += inst.n_opt;
-        ASSERT_LOG(log, !CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
+        CPX_HANDLE_CALL(log, CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
         count++;
         stopchk2();
     }
@@ -1289,7 +1249,7 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
     INTCHECK_ASSERT_LOG(log, count == inst.n_opt);
     curr_col += inst.n_opt;
 
-    ASSERT_LOG(log, !CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
+    CPX_HANDLE_CALL(log, CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
     stopchk2();
 
     // vertex elimination graph edges
@@ -1303,7 +1263,7 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
             types[count++] = 'B';
         }
         INTCHECK_ASSERT_LOG(log, count == inst.n_opt);
-        ASSERT_LOG(log, !CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
+        CPX_HANDLE_CALL(log, CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
         stopchk2();
     }
     curr_col += inst.n_opt * inst.n_opt;
@@ -1361,7 +1321,7 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
                 const char fix = 'B';
                 const double one = 1;
                 fixed = true;
-                ASSERT_LOG(log, !CPXchgbds(cpxenv, cpxlp, 1, ind, &fix, &one));
+                CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 1, ind, &fix, &one));
                 break;
             }
             // if the first adder we're about to add to the constraint was eliminated, it's useless to the constraint
@@ -1378,55 +1338,41 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
         if (nnz == 1) {
             const char fix = 'B';
             const double zero = 0;
-            ASSERT_LOG(log, !CPXchgbds(cpxenv, cpxlp, 1, ind, &fix, &zero));
+            CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 1, ind, &fix, &zero));
         } else
-            ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_e, &begin, ind, val, nullptr, nullptr));
+            CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_e, &begin, ind, val, nullptr, nullptr));
         stopchk3();
     }
 
     // \sum_{a\in A, p\in eff(a), q\in pre(a)}(fadd(a, p)) <= q, \forall p,q\in V
-    for (const auto& var_i : inst.var_rem) {
-        for (const auto& var_j : inst.var_rem) {
+    for (const auto& p : inst.var_rem) {
+        for (const auto& q : inst.var_rem) {
             nnz = 0;
-            ind[nnz] = get_var_idx(var_j);
+            ind[nnz] = get_var_idx(q);
             val[nnz++] = -1;
             bool fixed = false;
-            for (const auto& act_i : inst.act_with_eff[var_i]) {
-                if (!inst.actions[act_i].pre[var_j]) continue;
+            for (const auto& act_i : inst.act_with_eff[p]) {
+                if (!inst.actions[act_i].pre[q]) continue;
                 // if the first adder is fixed, than we have 1 <= q, hence we can directly fix q
-                if (inst.fadd_f[act_i][var_i]) {
+                if (inst.fadd_f[act_i][p]) {
                     const char fix = 'B';
                     const double one = 1;
                     fixed = true;
-                    ASSERT_LOG(log, !CPXchgbds(cpxenv, cpxlp, 1, ind, &fix, &one));
+                    CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 1, ind, &fix, &one));
                     break;
                 }
                 // if the first adder we're about to add to the constraint was eliminated, it's useless to the constraint
-                else if (inst.fadd_e[act_i][var_i])
+                else if (inst.fadd_e[act_i][p])
                     continue;
-                ind[nnz] = get_fa_idx(act_i, var_i);
+                ind[nnz] = get_fa_idx(act_i, p);
                 val[nnz++] = 1;
             }
             // since we have a fixed first adder, all other first adder for that effect are eliminated, so we don't need the constraint
             if (fixed) continue;
             // if nnz == 1 than we have -p <= 0, hence it's always true, we can ignore this constraint
-            if (nnz != 1) ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_l, &begin, ind, val, nullptr, nullptr));
+            if (nnz != 1) CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_l, &begin, ind, val, nullptr, nullptr));
             stopchk3();
         }
-    }
-
-    if (env.tight_bounds) {
-        double rhs{static_cast<double>(max_steps)};
-        nnz = 0;
-        for (const auto& act_i : inst.act_rem) {
-            if (inst.act_f[act_i]) {
-                rhs--;
-                continue;
-            }
-            ind[nnz] = get_act_idx(act_i);
-            val[nnz++] = 1;
-        }
-        ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs, &sense_l, &begin, ind, val, nullptr, nullptr));
     }
 
     delete[] val;
@@ -1446,7 +1392,7 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
             if (inst.fadd_f[act_i][var_i]) {
                 const char fix = 'B';
                 const double one = 1;
-                ASSERT_LOG(log, !CPXchgbds(cpxenv, cpxlp, 1, ind_c5_c6_c7, &fix, &one));
+                CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 1, ind_c5_c6_c7, &fix, &one));
                 continue;
             }
             // if the first adder was eliminated, we can skip the constraint
@@ -1454,7 +1400,7 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
                 continue;
             ind_c5_c6_c7[1] = get_fa_idx(act_i, var_i);
             val_c5_c6_c7[1] = 1;
-            ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
+            CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
         }
         stopchk1();
     }
@@ -1471,17 +1417,17 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
                 if (inst.fadd_f[act_i][var_j]) {
                     const char fix = 'B';
                     const double one = 1;
-                    ASSERT_LOG(log, !CPXchgbds(cpxenv, cpxlp, 1, ind_c5_c6_c7, &fix, &one));
+                    CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 1, ind_c5_c6_c7, &fix, &one));
                     continue;
                 }
                 // if the VEG variable was eliminated, we can directly eliminate the first adder too
                 else if (!cumulative_graph[var_i][var_j]) {
                     const char fix = 'B';
                     const double zero = 0;
-                    ASSERT_LOG(log, !CPXchgbds(cpxenv, cpxlp, 1, &(ind_c5_c6_c7[1]), &fix, &zero));
+                    CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 1, &(ind_c5_c6_c7[1]), &fix, &zero));
                     continue;
                 }
-                ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
+                CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
             }
             stopchk1();
         }
@@ -1496,7 +1442,7 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
             val_c5_c6_c7[0] = 1;
             ind_c5_c6_c7[1] = get_veg_idx(var_j, var_i);
             val_c5_c6_c7[1] = 1;
-            ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_1, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
+            CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_1, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
             stopchk1();
         }
     }
@@ -1517,14 +1463,14 @@ static void cpx_build_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
             double zero[2];
             zero[0] = 0;
             zero[1] = 0;
-            ASSERT_LOG(log, !CPXchgbds(cpxenv, cpxlp, 2, ind_c8, fix, zero));
+            CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 2, ind_c8, fix, zero));
             continue;
         }
-        ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, 3, &rhs_1, &sense_l, &begin, ind_c8, val_c8, nullptr, nullptr));
+        CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 3, &rhs_1, &sense_l, &begin, ind_c8, val_c8, nullptr, nullptr));
         stopchk1();
     }
 
-    // ASSERT_LOG(log, !CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR "/lp/" + env.run_name + ".lp").c_str(), "LP"));
+    // CPX_HANDLE_CALL(log, CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR "/lp/" + env.run_name + ".lp").c_str(), "LP"));
 }
 
 static void cpx_post_warmstart_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env,
@@ -1603,7 +1549,7 @@ static void cpx_post_warmstart_rankooh(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const
     for (size_t i = 0; i < inst.m; i++) ASSERT_LOG(log, fixed_fadd_check[i].empty());
 #endif
 
-    ASSERT_LOG(log, !CPXaddmipstarts(cpxenv, cpxlp, 1, ncols, &izero, cpx_sol_ind, cpx_sol_val, &effortlevel, nullptr));
+    CPX_HANDLE_CALL(log, CPXaddmipstarts(cpxenv, cpxlp, 1, ncols, &izero, cpx_sol_ind, cpx_sol_val, &effortlevel, nullptr));
     delete[] cpx_sol_ind;
     cpx_sol_ind = nullptr;
     delete[] cpx_sol_val;
@@ -1614,7 +1560,7 @@ static void store_rankooh_sol(const CPXENVptr& cpxenv, const CPXLPptr& cpxlp, hp
     PRINT_VERBOSE(log, "Storing rankooh's solution.");
 
     double* plan{new double[inst.m_opt + inst.m_opt * inst.n_opt]};
-    ASSERT_LOG(log, !CPXgetx(cpxenv, cpxlp, plan, 0, inst.m_opt + inst.m_opt * inst.n_opt - 1));
+    CPX_HANDLE_CALL(log, CPXgetx(cpxenv, cpxlp, plan, 0, inst.m_opt + inst.m_opt * inst.n_opt - 1));
 
     // fixing the solution to read the plan (some actions are set to 1 even if they are not a first archiever of anything)
     for (size_t act_i_cpx = 0, fadd_i = inst.m_opt; act_i_cpx < inst.m_opt; act_i_cpx++, fadd_i += inst.n_opt) {
@@ -1723,7 +1669,7 @@ static int CPXPUBLIC cpx_dynamic_time_callback(CPXCALLBACKCONTEXTptr context, CP
     // get candidate point
     double* xstar{new double[inst.m_opt + inst.m_opt * inst.n_opt]};
     double cost{CPX_INFBOUND};
-    ASSERT_LOG(log, !CPXcallbackgetcandidatepoint(context, xstar, 0, inst.m_opt + inst.m_opt * inst.n_opt - 1, &cost));
+    CPX_HANDLE_CALL(log, CPXcallbackgetcandidatepoint(context, xstar, 0, inst.m_opt + inst.m_opt * inst.n_opt - 1, &cost));
 
     // fixing the solution to read the plan (some actions are set to 1 even if they are not a first archiever of anything (null cost))
     std::vector<binary_set> cpx_var_archieved(inst.m_opt, binary_set(inst.n_opt));
@@ -1778,12 +1724,12 @@ static int CPXPUBLIC cpx_dynamic_time_callback(CPXCALLBACKCONTEXTptr context, CP
 
 #if HPLUS_VERBOSE >= 20
     int itcount = 0;
-    ASSERT_LOG(log, !CPXcallbackgetinfoint(context, CPXCALLBACKINFO_ITCOUNT, &itcount));
+    CPX_HANDLE_CALL(log, CPXcallbackgetinfoint(context, CPXCALLBACKINFO_ITCOUNT, &itcount));
     if (itcount % 10 == 0) {
         double lower_bound = CPX_INFBOUND;
-        ASSERT_LOG(log, !CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_BND, &lower_bound));
+        CPX_HANDLE_CALL(log, CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_BND, &lower_bound));
         double incumbent = CPX_INFBOUND;
-        ASSERT_LOG(log, !CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_SOL, &incumbent));
+        CPX_HANDLE_CALL(log, CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_SOL, &incumbent));
         double gap = (1 - lower_bound / incumbent) * 100;
         log.print_info("Pruned infeasible solution - cost : %7d - incumbent : %d - gap : %6.2f%%.", (int)cost, (int)incumbent, gap);
     }
@@ -1860,7 +1806,7 @@ static int CPXPUBLIC cpx_dynamic_time_callback(CPXCALLBACKCONTEXTptr context, CP
 
         // TODO: try insthead of forcing a first archiever to be removed, to force an outside first archiever going into a variable in the cycle:
         // 1/size(gamma) * sum_{a\in gamma}(xa) <= sum_{fa\in{first archievers of variables in the cycle}}(x_fa)
-        ASSERT_LOG(log, !CPXcallbackrejectcandidate(context, 1, nnz, &rhs, &sense_l, &izero, ind, val));
+        CPX_HANDLE_CALL(log, CPXcallbackrejectcandidate(context, 1, nnz, &rhs, &sense_l, &izero, ind, val));
     }
 
     delete[] val;
@@ -1884,31 +1830,6 @@ static void cpx_build_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hpl
         if (CHECK_STOP()) [[unlikely]]
             throw timelimit_exception("Reached time limit.");
     };
-
-    // ====================================================== //
-    // =================== TIGHTER BOUNDS =================== //
-    // ====================================================== //
-
-    unsigned int max_steps{static_cast<unsigned int>(inst.m_opt)};
-    if (env.tight_bounds) {
-        // number of variables
-        if (inst.n_opt < max_steps) max_steps = inst.n_opt;
-
-        // max number of steps to reach heuristic
-        if (env.heur != "none") {
-            unsigned int min_act_cost{inst.actions[0].cost + 1};  // +1 to avoid it being 0
-            unsigned int n_act_zerocost{0};
-            for (const auto& act_i : inst.act_rem) {
-                if (inst.actions[act_i].cost == 0)
-                    n_act_zerocost++;
-                else if (inst.actions[act_i].cost < min_act_cost)
-                    min_act_cost = inst.actions[act_i].cost;
-            }
-            const unsigned int nsteps{static_cast<unsigned int>(std::ceil(static_cast<double>(inst.best_sol.cost) / min_act_cost)) + n_act_zerocost};
-            if (nsteps < max_steps) max_steps = nsteps;
-        }
-    }
-    stopchk1();
 
     // ====================================================== //
     // =================== CPLEX VARIABLES ================== //
@@ -1963,7 +1884,7 @@ static void cpx_build_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hpl
 
     curr_col += inst.m_opt;
 
-    ASSERT_LOG(log, !CPXnewcols(cpxenv, cpxlp, inst.m_opt, objs, lbs, ubs, types, nullptr));
+    CPX_HANDLE_CALL(log, CPXnewcols(cpxenv, cpxlp, inst.m_opt, objs, lbs, ubs, types, nullptr));
     stopchk2();
 
     resize_cpx_arrays(inst.n_opt);
@@ -1984,7 +1905,7 @@ static void cpx_build_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hpl
         }
         INTCHECK_ASSERT_LOG(log, count_var == inst.n_opt);
         curr_col += inst.n_opt;
-        ASSERT_LOG(log, !CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
+        CPX_HANDLE_CALL(log, CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
         count++;
         stopchk2();
     }
@@ -2002,7 +1923,7 @@ static void cpx_build_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hpl
     INTCHECK_ASSERT_LOG(log, count == inst.n_opt);
     curr_col += inst.n_opt;
 
-    ASSERT_LOG(log, !CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
+    CPX_HANDLE_CALL(log, CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
     stopchk2();
 
     delete[] types;
@@ -2055,7 +1976,7 @@ static void cpx_build_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hpl
                 const char fix = 'B';
                 const double one = 1;
                 fixed = true;
-                ASSERT_LOG(log, !CPXchgbds(cpxenv, cpxlp, 1, ind, &fix, &one));
+                CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 1, ind, &fix, &one));
                 break;
             }
             // if the first adder we're about to add to the constraint was eliminated, it's useless to the constraint
@@ -2072,9 +1993,9 @@ static void cpx_build_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hpl
         if (nnz == 1) {
             const char fix = 'B';
             const double zero = 0;
-            ASSERT_LOG(log, !CPXchgbds(cpxenv, cpxlp, 1, ind, &fix, &zero));
+            CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 1, ind, &fix, &zero));
         } else
-            ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_e, &begin, ind, val, nullptr, nullptr));
+            CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_e, &begin, ind, val, nullptr, nullptr));
         stopchk3();
     }
 
@@ -2092,7 +2013,7 @@ static void cpx_build_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hpl
                     const char fix = 'B';
                     const double one = 1;
                     fixed = true;
-                    ASSERT_LOG(log, !CPXchgbds(cpxenv, cpxlp, 1, ind, &fix, &one));
+                    CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 1, ind, &fix, &one));
                     break;
                 }
                 // if the first adder we're about to add to the constraint was eliminated, it's useless to the constraint
@@ -2104,7 +2025,7 @@ static void cpx_build_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hpl
             // since we have a fixed first adder, all other first adder for that effect are eliminated, so we don't need the constraint
             if (fixed) continue;
             // if nnz == 1 than we have -p <= 0, hence it's always true, we can ignore this constraint
-            if (nnz != 1) ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_l, &begin, ind, val, nullptr, nullptr));
+            if (nnz != 1) CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_l, &begin, ind, val, nullptr, nullptr));
             stopchk3();
         }
     }
@@ -2120,21 +2041,7 @@ static void cpx_build_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hpl
             ind[nnz] = get_act_idx(act_j);
             val[nnz++] = 1.0 / inverse_actions.size();
         }
-        ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_1, &sense_l, &begin, ind, val, nullptr, nullptr));
-    }
-
-    if (env.tight_bounds) {
-        double rhs{static_cast<double>(max_steps)};
-        nnz = 0;
-        for (const auto& act_i : inst.act_rem) {
-            if (inst.act_f[act_i]) {
-                rhs--;
-                continue;
-            }
-            ind[nnz] = get_act_idx(act_i);
-            val[nnz++] = 1;
-        }
-        ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs, &sense_l, &begin, ind, val, nullptr, nullptr));
+        CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_1, &sense_l, &begin, ind, val, nullptr, nullptr));
     }
 
     delete[] val;
@@ -2154,7 +2061,7 @@ static void cpx_build_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hpl
             if (inst.fadd_f[act_i][var_i]) {
                 const char fix = 'B';
                 const double one = 1;
-                ASSERT_LOG(log, !CPXchgbds(cpxenv, cpxlp, 1, ind_c5_c6_c7, &fix, &one));
+                CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 1, ind_c5_c6_c7, &fix, &one));
                 continue;
             }
             // if the first adder was eliminated, we can skip the constraint
@@ -2162,12 +2069,12 @@ static void cpx_build_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hpl
                 continue;
             ind_c5_c6_c7[1] = get_fa_idx(act_i, var_i);
             val_c5_c6_c7[1] = 1;
-            ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
+            CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
         }
         stopchk1();
     }
 
-    // ASSERT_LOG(log, !CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR "/lp/" + env.run_name + ".lp").c_str(), "LP"));
+    // CPX_HANDLE_CALL(log, CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR "/lp/" + env.run_name + ".lp").c_str(), "LP"));
 }
 
 // TODO: Remake with hybrid dynamic-rankooh
@@ -2241,7 +2148,7 @@ static void cpx_post_warmstart_dynamic_time(CPXENVptr& cpxenv, CPXLPptr& cpxlp, 
     for (size_t i = 0; i < inst.m; i++) ASSERT_LOG(log, fixed_fadd_check[i].empty());
 #endif
 
-    ASSERT_LOG(log, !CPXaddmipstarts(cpxenv, cpxlp, 1, ncols, &izero, cpx_sol_ind, cpx_sol_val, &effortlevel, nullptr));
+    CPX_HANDLE_CALL(log, CPXaddmipstarts(cpxenv, cpxlp, 1, ncols, &izero, cpx_sol_ind, cpx_sol_val, &effortlevel, nullptr));
     delete[] cpx_sol_ind;
     cpx_sol_ind = nullptr;
     delete[] cpx_sol_val;
@@ -2252,7 +2159,7 @@ static void store_dynamic_time_sol(const CPXENVptr& cpxenv, const CPXLPptr& cpxl
     PRINT_VERBOSE(log, "Storing the dynamic time solution.");
 
     double* plan{new double[inst.m_opt + inst.m_opt * inst.n_opt]};
-    ASSERT_LOG(log, !CPXgetx(cpxenv, cpxlp, plan, 0, inst.m_opt + inst.m_opt * inst.n_opt - 1));
+    CPX_HANDLE_CALL(log, CPXgetx(cpxenv, cpxlp, plan, 0, inst.m_opt + inst.m_opt * inst.n_opt - 1));
 
     // fixing the solution to read the plan (some actions are set to 1 even if they are not a first archiever of anything)
     for (size_t act_i_cpx = 0, fadd_i = inst.m_opt; act_i_cpx < inst.m_opt; act_i_cpx++, fadd_i += inst.n_opt) {
@@ -2367,7 +2274,7 @@ void run_model(hplus::instance& inst, hplus::environment& env, hplus::statistics
 
     // time limit
     if (static_cast<double>(env.time_limit) > env.timer.get_time()) {
-        ASSERT_LOG(log, !CPXsetdblparam(cpxenv, CPXPARAM_TimeLimit, static_cast<double>(env.time_limit) - env.timer.get_time()));
+        CPX_HANDLE_CALL(log, CPXsetdblparam(cpxenv, CPXPARAM_TimeLimit, static_cast<double>(env.time_limit) - env.timer.get_time()));
     } else
         throw timelimit_exception("Reached the time limit");
 
@@ -2385,7 +2292,7 @@ void run_model(hplus::instance& inst, hplus::environment& env, hplus::statistics
 
     cpx_callback_user_handle callback_data{.inst = inst, .env = env, .stats = stats, .log = log};
     if (env.alg == HPLUS_CLI_ALG_DYNAMIC_TIME)
-        ASSERT_LOG(log, !CPXcallbacksetfunc(cpxenv, cpxlp, CPX_CALLBACKCONTEXT_CANDIDATE, cpx_dynamic_time_callback, &callback_data));
+        CPX_HANDLE_CALL(log, CPXcallbacksetfunc(cpxenv, cpxlp, CPX_CALLBACKCONTEXT_CANDIDATE, cpx_dynamic_time_callback, &callback_data));
 
     stats.build = env.timer.get_time() - start_time;
 
@@ -2397,7 +2304,7 @@ void run_model(hplus::instance& inst, hplus::environment& env, hplus::statistics
     stats.execution = static_cast<double>(env.time_limit) - env.timer.get_time();
     start_time = env.timer.get_time();
 
-    ASSERT_LOG(log, !CPXmipopt(cpxenv, cpxlp));
+    CPX_HANDLE_CALL(log, CPXmipopt(cpxenv, cpxlp));
 
     if (parse_cpx_status(cpxenv, cpxlp, env, log)) {  // If CPLEX has found a solution
         if (env.alg == HPLUS_CLI_ALG_IMAI)

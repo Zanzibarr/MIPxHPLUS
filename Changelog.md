@@ -25,17 +25,19 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
-## [1.2.5] - 2025/03/23
+## [1.2.5] - 2025/03/25
 ### :warning: Known issues
 - If the code runs out of memory in the cluster it's signaled as an error
-### :ballot_box_with_check: Fixed
-- Broken tight bounds in Rankooh's and Dynamic model
-    - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
+- "Optimal" solution provided by the model with tb might not be optimal if problem optimization is being used (max_steps might be smaller than the number of fixed actions (0 cost actions))
+<!-- ### :ballot_box_with_check: Fixed -->
 <!-- ### :heavy_exclamation_mark: Changed -->
 ### :heavy_plus_sign: Added
 - Saving cplex logs after tests on cluster
     - [~/code/test/code/results_jobs.py](code/test/code/results_jobs.py)
-<!-- ### :x: Removed -->
+- Handling out of memory CPLEX error
+### :x: Removed
+- Removed tighter bounds in Rankooh's and Imai's models
+    - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
 <!-- ### :curly_loop: Other -->
 
 ## [1.2.4] - 2025/03/21

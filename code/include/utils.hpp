@@ -203,6 +203,19 @@ class timelimit_exception final : public std::exception {
         }                                                \
     }
 
+#define CPX_HANDLE_CALL(log, code)                                        \
+    {                                                                     \
+        switch (code) {                                                   \
+            case 1001:                                                    \
+                log.raise_error("OUT OF MEMORY.");                        \
+                break;                                                    \
+            case 0:                                                       \
+                break;                                                    \
+            default:                                                      \
+                log.raise_error("Unhandled CPLEX error code: %d.", code); \
+        }                                                                 \
+    }
+
 /** Print a warning message only if the warn flag is set */
 #if HPLUS_WARN
 #define PRINT_WARN(log, msg) \
