@@ -37,7 +37,7 @@ HOW I DO VERSIONING:
     - [~/code/include/utils.hpp](code/include/utils.hpp)
     - [~/code/test/code/results_jobs.py](code/test/code/results_jobs.py)
 ### :x: Removed
-- Removed tighter bounds in Rankooh's and Imai's models
+- Removed tighter bounds in Rankooh's and Dynamic models
     - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
 <!-- ### :curly_loop: Other -->
 
