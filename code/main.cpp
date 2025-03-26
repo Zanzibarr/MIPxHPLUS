@@ -80,7 +80,7 @@ static void parse_cli(const int& argc, const char** argv, hplus::environment& en
         "UnnamedRun");
     args::ValueFlag<bool> write_lp(parser, "0/1", "Write the lp file (def: false; options: 0 (false), 1 (true)).", {"lp"}, false);
     args::ValueFlag<std::string> algorithm(parser, "alg_name",
-                                           "Specify the algorithm to use (def: rankooh; options: heur, imai, rankooh, dynamic-t).", {"a", "alg"},
+                                           "Specify the algorithm to use (def: rankooh; options: heur, imai, rankooh, rankooh-d).", {"a", "alg"},
                                            HPLUS_CLI_ALG_RANKOOH);
     args::ValueFlag<int> timelimit(parser, "int", "Specify the time limit (def: 60; options: >0 (set that as time limit)/<0 (no time limit)).",
                                    {"t", "time", "tl"}, 60);
@@ -88,12 +88,12 @@ static void parse_cli(const int& argc, const char** argv, hplus::environment& en
                                         true);
     args::ValueFlag<std::string> heur(parser, "heur_name",
                                       "Specify which heuristic to compute before running cplex (def: hadd; options: none, greedycost, greedycxe, "
-                                      "rand, randr, hmax, hadd, local-<one of the other heuristics>).",
+                                      "hmax, hadd).",
                                       {"heur"}, "hadd");
     args::ValueFlag<bool> warmstart(parser, "0/1", "Using (if computed) the heuristic as warm start (def: true; options: 0 (false), 1 (true)).",
                                     {"ws"}, true);
     args::ValueFlag<bool> tightbounds(parser, "0/1", "Using tighter bounds (def: false; options: 0 (false), 1 (true)).", {"tb"}, false);
-    args::ValueFlag<unsigned int> ddepth(parser, "uint", "Specify the depth of the vertex elimination graph in the dynamic-t model (def: 3)",
+    args::ValueFlag<unsigned int> ddepth(parser, "uint", "Specify the depth of the vertex elimination graph in the rankooh-d model (def: 3)",
                                          {"ddepth"}, 3);
 
     try {
@@ -136,9 +136,10 @@ static void parse_cli(const int& argc, const char** argv, hplus::environment& en
     if (ddepth) env.ddepth = args::get(ddepth);
 
     if (env.alg != HPLUS_CLI_ALG_IMAI && env.alg != HPLUS_CLI_ALG_RANKOOH && env.alg != HPLUS_CLI_ALG_DYNAMIC_TIME) {
-        env.warm_start = false;
-        env.using_cplex = false;
         env.write_lp = false;
+        env.using_cplex = false;
+        env.warm_start = false;
+        env.tight_bounds = false;
     }
     if (env.warm_start && env.heur == "none") {
         ACK_REQ("Warm start has been activated but heuristic has been disabled: disabling warm start");
@@ -233,16 +234,9 @@ static void run(hplus::instance& inst, hplus::environment& env, hplus::statistic
         // ~~~~~~~~~~~~~~ HEURISTIC ~~~~~~~~~~~~~~ //
 
         if (env.heur != "none" || env.alg == HPLUS_CLI_ALG_HEUR) {
-            if (env.heur != "greedycost" && env.heur != "greedycxe" && env.heur != "rand" && env.heur != "randr" && env.heur != "hmax" &&
-                env.heur != "hadd") {
-                const auto& heur{split_string(env.heur, '-')};
-                if (heur.size() != 2 || heur[0] != "local" ||
-                    (heur[1] != "greedycost" && heur[1] != "greedycxe" && heur[1] != "rand" && heur[1] != "randr" && heur[1] != "hmax" &&
-                     heur[1] != "hadd"))
-
-                    log.raise_error(
-                        "The heuristic specified (%s) is not on the list of possible heuristics... Please use the --h flag for instructions.",
-                        env.heur.c_str());
+            if (env.heur != "greedycost" && env.heur != "greedycxe" && env.heur != "hmax" && env.heur != "hadd") {
+                log.raise_error("The heuristic specified (%s) is not on the list of possible heuristics... Please use the --h flag for instructions.",
+                                env.heur.c_str());
             }
 
             PRINT_INFO(log, "Calculating heuristic solution.");

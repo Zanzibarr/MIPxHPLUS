@@ -84,7 +84,7 @@ void run_heur(hplus::instance& inst, hplus::environment& env, const logger& log)
     else if (env.heur == "hadd")
         hadd::run(inst, env, log);
     else
-        log.raise_error("The heuristic specified (%s) is not on the list of possible heuristics... Please read the Readme.md for instructions.",
+        log.raise_error("The heuristic specified (%s) is not on the list of possible heuristics... Please use the --h flag for instructions.",
                         env.heur.c_str());
 }
 
