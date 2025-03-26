@@ -245,6 +245,7 @@ void rankooh::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
     stopchk2();
 
     // vertex elimination graph edges
+    // FIXME: Find a way to add only necessary veg variables
     const size_t veg_edges_start{curr_col};
     for (const auto& var_i : inst.var_rem) {
         count = 0;
