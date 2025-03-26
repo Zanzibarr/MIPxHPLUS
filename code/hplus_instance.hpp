@@ -62,9 +62,9 @@ typedef struct {
     solution_status sol_s;
     /** Parameters for execution */
     std::string input_file, log_name, run_name, alg, heur;
-    bool log, write_lp;
+    unsigned int ddepth;
     /** Execution flags */
-    bool problem_opt, warm_start, tight_bounds, using_cplex;
+    bool preprocessing, warm_start, tight_bounds, using_cplex, log, write_lp;
     /** Time limit */
     unsigned int time_limit;
     time_keeper timer;
@@ -94,7 +94,7 @@ void update_sol(instance& inst, const solution& sol, const logger& log);
 void print_sol(const instance& inst, const logger& log);
 /** Perform instance optimization to inst using flags stored in the env
  * environment */
-void instance_optimization(instance& inst, const logger& log);
+void instance_optimization(instance& inst, const environment& env, const logger& log);
 /** Prepare helper data structure for faster action lookup on instance inst */
 void prepare_faster_actsearch(instance& inst, const logger& log);
 

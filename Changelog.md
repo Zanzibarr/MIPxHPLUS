@@ -25,6 +25,22 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
+## [1.2.6] - 2025/03/26
+<!-- ### :warning: Known issues -->
+### :ballot_box_with_check: Fixed
+- "Optimal" solution provided by the model with tb might not be optimal if problem optimization is being used
+### :heavy_exclamation_mark: Changed
+- Small changes to the CLI parser
+    - [~/code/src/main.cpp](code/src/main.cpp)
+### :heavy_plus_sign: Added
+- Added back tighter bounds in Rankooh's and Dynamic models
+    - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
+<!-- ### :x: Removed -->
+### :curly_loop: Other
+- Changed code organization
+- Better [CMakeLists.txt](code/CMakeLists.txt) file
+
+
 ## [1.2.5] - 2025/03/25
 ### :warning: Known issues
 - "Optimal" solution provided by the model with tb might not be optimal if problem optimization is being used (max_steps might be smaller than the number of fixed actions (0 cost actions))

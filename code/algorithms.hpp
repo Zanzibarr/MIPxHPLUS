@@ -12,6 +12,12 @@
 
 #include <cplex.h>  // For CPLEX C API
 
+#include "exact/imai.hpp"
+#include "exact/rankooh.hpp"
+#include "exact/rankooh_dynamic.hpp"
+#include "heuristics/greedycost.hpp"
+#include "heuristics/greedycxe.hpp"
+#include "heuristics/hmax_hadd.hpp"
 #include "hplus_instance.hpp"
 
 void run_heur(hplus::instance& inst, hplus::environment& env, const logger& log);

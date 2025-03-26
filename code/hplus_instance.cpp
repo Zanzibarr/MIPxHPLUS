@@ -724,7 +724,6 @@ static void immediate_action_application(hplus::instance& inst, const binary_set
         std::vector<size_t> removed_actions;
         binary_set prev_state{current_state};
         for (const auto& act_i : candidates) {
-            const auto& pre{inst.actions[act_i].pre - inst.var_e};
             const auto& eff{inst.actions[act_i].eff - inst.var_e};
 
             if (!act_landmarks[act_i] && inst.actions[act_i].cost != 0) [[likely]] {
@@ -818,7 +817,7 @@ static void finish_opt(hplus::instance& inst, const logger& log) {
     }
 }
 
-void hplus::instance_optimization(instance& inst, const logger& log) {
+void hplus::instance_optimization(instance& inst, const environment& env, const logger& log) {
     std::vector<binary_set> landmarks(inst.n, binary_set(inst.n + 1));
     binary_set fact_landmarks{inst.n};
     binary_set act_landmarks{inst.m};
@@ -827,7 +826,7 @@ void hplus::instance_optimization(instance& inst, const logger& log) {
     fadd_extraction(inst, landmarks, fadd, log);
     relevance_analysis(inst, fact_landmarks, fadd, log);
     dominated_actions_elimination(inst, landmarks, fadd, log);
-    immediate_action_application(inst, act_landmarks, log);
+    if (!env.tight_bounds) immediate_action_application(inst, act_landmarks, log);
     inverse_actions_extraction(inst, log);
     finish_opt(inst, log);
 #if HPLUS_VERBOSE >= 100

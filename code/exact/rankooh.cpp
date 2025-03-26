@@ -1,0 +1,616 @@
+#include "rankooh.hpp"
+
+#include <numeric>  // std::accumulate
+#include <set>
+#include <vector>
+
+#if HPLUS_INTCHECK == 0
+#define INTCHECK_PQ false
+#endif
+#include "pq.hxx"
+
+void rankooh::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log) {
+    PRINT_VERBOSE(log, "Building Rankooh's model.");
+
+    const auto stopchk1 = []() {
+        if (CHECK_STOP()) [[unlikely]]
+            throw timelimit_exception("Reached time limit.");
+    };
+
+    // ====================================================== //
+    // ================= VERTEX ELIMINATION ================= //
+    // ====================================================== //
+
+    struct node {
+        size_t id, deg;
+        node(const size_t id, const size_t deg) : id(id), deg(deg) {}
+    };
+    struct compare_node {
+        bool operator()(const node& n1, const node& n2) const { return n1.deg > n2.deg; }
+    };
+    struct triangle {
+        size_t first, second, third;
+        triangle(const size_t first, const size_t second, const size_t third) : first(first), second(second), third(third) {}
+    };
+
+    std::vector<std::set<size_t>> graph(inst.n);
+    std::vector<binary_set> cumulative_graph(inst.n, binary_set(inst.n));
+    std::vector<triangle> triangles_list;
+
+    priority_queue<size_t> nodes_queue(2 * inst.n);
+    std::vector<size_t> degree_counter(inst.n, 0);
+
+    // G_0
+    for (const auto& act_i : inst.act_rem) {
+        for (const auto& var_i : inst.actions[act_i].pre_sparse) {
+            for (const auto& var_j : inst.actions[act_i].eff_sparse) {
+                if (var_i == var_j) [[unlikely]]
+                    continue;
+
+                // added is true if the element was actually inserted in the set
+                if (graph[var_i].insert(var_j).second) {
+                    degree_counter[var_i] += 1;
+                    degree_counter[var_j] += 1;
+                }
+            }
+            cumulative_graph[var_i] |= (inst.actions[act_i].eff);
+        }
+    }
+    stopchk1();
+
+    for (size_t node_i = 0; node_i < inst.n; node_i++) {
+        if (degree_counter[node_i] > 0) [[likely]]
+            nodes_queue.push(node_i, degree_counter[node_i]);
+    }
+
+    // G_i (min degree heuristics)
+    for ([[maybe_unused]] size_t _ = 0; _ < inst.var_rem.size(); _++) {
+        if (nodes_queue.empty()) [[unlikely]]
+            break;
+        size_t idx{nodes_queue.top()};
+        nodes_queue.pop();
+
+        // graph structure:
+        // | \       > |
+        // p -> idx -> q
+        // | /       > |
+
+        std::set<size_t> new_nodes;
+
+        for (const auto& p : inst.var_rem) {
+            if (graph[p].find(idx) == graph[p].end()) continue;
+
+            for (const auto& q : graph[idx]) {
+                if (p == q) [[unlikely]]
+                    continue;
+
+                // add edge p - q
+                // check.second is true if the element was actually inserted in
+                // the set
+                if (graph[p].insert(q).second) {
+                    degree_counter[p] += 1;
+                    degree_counter[q] += 1;
+                }
+
+                // update the overall graph
+                cumulative_graph[p].add(q);
+            }
+
+            // remove the edge p - idx
+            graph[p].erase(idx);
+            degree_counter[p] -= 1;
+            new_nodes.insert(p);
+
+            // update triangles list
+            for (const auto& q : graph[idx]) {
+                if (p != q) [[likely]]
+                    triangles_list.emplace_back(p, idx, q);
+            }
+        }
+
+        // remove the edge idx - q
+        for (const auto& q : graph[idx]) {
+            degree_counter[q] -= 1;
+            new_nodes.insert(q);
+        }
+        graph[idx].clear();
+        degree_counter[idx] = 0;
+
+        // Update the priority queue
+        for (const auto& x : new_nodes) {
+            if (degree_counter[x] > 0 && nodes_queue.has(x)) nodes_queue.change(x, degree_counter[x]);
+        }
+
+        stopchk1();
+    }
+
+    // ====================================================== //
+    // =================== TIGHTER BOUNDS =================== //
+    // ====================================================== //
+
+    unsigned int max_steps{static_cast<unsigned int>(inst.m_opt)};
+    if (env.tight_bounds) {
+        // number of variables
+        if (inst.n_opt < max_steps) max_steps = inst.n_opt;
+
+        // max number of steps to reach heuristic
+        if (env.heur != "none") {
+            unsigned int min_act_cost{inst.actions[0].cost + 1};  // +1 to avoid it being 0
+            unsigned int n_act_zerocost{0};
+            for (const auto& act_i : inst.act_rem) {
+                if (inst.actions[act_i].cost == 0)
+                    n_act_zerocost++;
+                else if (inst.actions[act_i].cost < min_act_cost)
+                    min_act_cost = inst.actions[act_i].cost;
+            }
+            const unsigned int nsteps{static_cast<unsigned int>(std::ceil(static_cast<double>(inst.best_sol.cost) / min_act_cost)) + n_act_zerocost};
+            if (nsteps < max_steps) max_steps = nsteps;
+        }
+    }
+    stopchk1();
+
+    // ====================================================== //
+    // =================== CPLEX VARIABLES ================== //
+    // ====================================================== //
+
+    size_t curr_col{0};
+    double* objs{new double[inst.m_opt]};
+    double* lbs{new double[inst.m_opt]};
+    double* ubs{new double[inst.m_opt]};
+    char* types{new char[inst.m_opt]};
+
+    const auto resize_cpx_arrays = [&objs, &lbs, &ubs, &types](size_t new_size) {
+        delete[] types;
+        types = nullptr;
+        delete[] ubs;
+        ubs = nullptr;
+        delete[] lbs;
+        lbs = nullptr;
+        delete[] objs;
+        objs = nullptr;
+
+        objs = new double[new_size];
+        lbs = new double[new_size];
+        ubs = new double[new_size];
+        types = new char[new_size];
+    };
+
+    const auto stopchk2 = [&objs, &lbs, &ubs, &types]() {
+        if (CHECK_STOP()) [[unlikely]] {
+            delete[] types;
+            types = nullptr;
+            delete[] ubs;
+            ubs = nullptr;
+            delete[] lbs;
+            lbs = nullptr;
+            delete[] objs;
+            objs = nullptr;
+            throw timelimit_exception("Reached time limit.");
+        }
+    };
+
+    // -------- actions ------- //
+    const size_t act_start{curr_col};
+    size_t count{0};
+    for (const auto& act_i : inst.act_rem) {
+        objs[count] = static_cast<double>(inst.actions[act_i].cost);
+        lbs[count] = (inst.act_f[act_i] ? 1 : 0);
+        ubs[count] = 1;
+        types[count++] = 'B';
+    }
+    INTCHECK_ASSERT_LOG(log, count == inst.m_opt);
+
+    curr_col += inst.m_opt;
+
+    CPX_HANDLE_CALL(log, CPXnewcols(cpxenv, cpxlp, inst.m_opt, objs, lbs, ubs, types, nullptr));
+    stopchk2();
+
+    resize_cpx_arrays(inst.n_opt);
+
+    // --- first archievers --- //
+    // FIXME: Find a way to add only necessary first archievers...
+    const size_t fa_start{curr_col};
+    std::vector<size_t> fa_individual_start(inst.m_opt);
+    count = 0;
+    for (const auto& act_i : inst.act_rem) {
+        fa_individual_start[count] = count * inst.n_opt;
+        size_t count_var{0};
+        for (const auto& var_i : inst.var_rem) {
+            objs[count_var] = 0;
+            lbs[count_var] = inst.fadd_f[act_i][var_i] ? 1 : 0;
+            ubs[count_var] = (!inst.actions[act_i].eff[var_i] || inst.fadd_e[act_i][var_i]) ? 0 : 1;
+            types[count_var++] = 'B';
+        }
+        INTCHECK_ASSERT_LOG(log, count_var == inst.n_opt);
+        curr_col += inst.n_opt;
+        CPX_HANDLE_CALL(log, CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
+        count++;
+        stopchk2();
+    }
+
+    // ------- variables ------ //
+    const size_t var_start{curr_col};
+    count = 0;
+    for (const auto& var_i : inst.var_rem) {
+        objs[count] = 0;
+        lbs[count] = (inst.var_f[var_i] || inst.goal[var_i]) ? 1 : 0;
+        ubs[count] = 1;
+        types[count++] = 'B';
+    }
+
+    INTCHECK_ASSERT_LOG(log, count == inst.n_opt);
+    curr_col += inst.n_opt;
+
+    CPX_HANDLE_CALL(log, CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
+    stopchk2();
+
+    // vertex elimination graph edges
+    const size_t veg_edges_start{curr_col};
+    for (const auto& var_i : inst.var_rem) {
+        count = 0;
+        for (const auto& var_j : inst.var_rem) {
+            objs[count] = 0;
+            lbs[count] = 0;
+            ubs[count] = cumulative_graph[var_i][var_j] ? 1 : 0;
+            types[count++] = 'B';
+        }
+        INTCHECK_ASSERT_LOG(log, count == inst.n_opt);
+        CPX_HANDLE_CALL(log, CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
+        stopchk2();
+    }
+    curr_col += inst.n_opt * inst.n_opt;
+
+    delete[] types;
+    types = nullptr;
+    delete[] ubs;
+    ubs = nullptr;
+    delete[] lbs;
+    lbs = nullptr;
+    delete[] objs;
+    objs = nullptr;
+
+    // ====================================================== //
+    // ================== CPLEX CONSTRAINTS ================= //
+    // ====================================================== //
+
+    // accessing cplex variables
+    const auto get_act_idx = [&inst, &act_start](size_t idx) { return static_cast<int>(act_start + inst.act_opt_conv[idx]); };
+    const auto get_var_idx = [&inst, &var_start](size_t idx) { return static_cast<int>(var_start + inst.var_opt_conv[idx]); };
+    const auto get_fa_idx = [&inst, &fa_start](size_t act_idx, size_t var_idx) {
+        return static_cast<int>(fa_start + inst.act_opt_conv[act_idx] * inst.n_opt + inst.var_opt_conv[var_idx]);
+    };
+    const auto get_veg_idx = [&inst, &veg_edges_start](size_t idx_i, size_t idx_j) {
+        return static_cast<int>(veg_edges_start + inst.var_opt_conv[idx_i] * inst.n_opt + inst.var_opt_conv[idx_j]);
+    };
+
+    int* ind{new int[inst.m_opt + 1]};
+    double* val{new double[inst.m_opt + 1]};
+    int nnz{0};
+    constexpr char sense_e{'E'}, sense_l{'L'};
+    constexpr double rhs_0{0}, rhs_1{1};
+    constexpr int begin{0};
+
+    const auto stopchk3 = [&ind, &val]() {
+        if (CHECK_STOP()) [[unlikely]] {
+            delete[] val;
+            val = nullptr;
+            delete[] ind;
+            ind = nullptr;
+            throw timelimit_exception("Reached time limit.");
+        }
+    };
+
+    // p = \sum_{a\in A,p\in eff(a)}(fadd(a, p)), \forall p \in V
+    for (const auto& var_i : inst.var_rem) {
+        nnz = 0;
+        ind[nnz] = get_var_idx(var_i);
+        val[nnz++] = 1;
+
+        bool fixed = false;
+        for (const auto& act_i : inst.act_with_eff[var_i]) {
+            // if one first adder is fixed, then also the variable should be fixed
+            if (inst.fadd_f[act_i][var_i]) {
+                const char fix = 'B';
+                const double one = 1;
+                fixed = true;
+                CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 1, ind, &fix, &one));
+                break;
+            }
+            // if the first adder we're about to add to the constraint was eliminated, it's useless to the constraint
+            else if (inst.fadd_e[act_i][var_i])
+                continue;
+            ind[nnz] = get_fa_idx(act_i, var_i);
+            val[nnz++] = -1;
+        }
+        // if we fixed the variable due to a fixed first adder (note also that if we had a fixed first adder, we already have all other first
+        // adders for that effect eliminated), we don't need the constraint we're adding.
+        if (fixed) continue;
+
+        // if nnz == 1, then we'd have p = 0, meaning we could simply fix this variable to 0
+        if (nnz == 1) {
+            const char fix = 'B';
+            const double zero = 0;
+            CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 1, ind, &fix, &zero));
+        } else
+            CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_e, &begin, ind, val, nullptr, nullptr));
+        stopchk3();
+    }
+
+    // \sum_{a\in A, p\in eff(a), q\in pre(a)}(fadd(a, p)) <= q, \forall p,q\in V
+    for (const auto& p : inst.var_rem) {
+        for (const auto& q : inst.var_rem) {
+            nnz = 0;
+            ind[nnz] = get_var_idx(q);
+            val[nnz++] = -1;
+            bool fixed = false;
+            for (const auto& act_i : inst.act_with_eff[p]) {
+                if (!inst.actions[act_i].pre[q]) continue;
+                // if the first adder is fixed, than we have 1 <= q, hence we can directly fix q
+                if (inst.fadd_f[act_i][p]) {
+                    const char fix = 'B';
+                    const double one = 1;
+                    fixed = true;
+                    CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 1, ind, &fix, &one));
+                    break;
+                }
+                // if the first adder we're about to add to the constraint was eliminated, it's useless to the constraint
+                else if (inst.fadd_e[act_i][p])
+                    continue;
+                ind[nnz] = get_fa_idx(act_i, p);
+                val[nnz++] = 1;
+            }
+            // since we have a fixed first adder, all other first adder for that effect are eliminated, so we don't need the constraint
+            if (fixed) continue;
+            // if nnz == 1 than we have -p <= 0, hence it's always true, we can ignore this constraint
+            if (nnz != 1) CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_l, &begin, ind, val, nullptr, nullptr));
+            stopchk3();
+        }
+    }
+
+    if (env.tight_bounds) {
+        double rhs{static_cast<double>(max_steps)};
+        nnz = 0;
+        for (const auto& act_i : inst.act_rem) {
+            if (inst.act_f[act_i]) {
+                rhs--;
+                continue;
+            }
+            ind[nnz] = get_act_idx(act_i);
+            val[nnz++] = 1;
+        }
+        ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs, &sense_l, &begin, ind, val, nullptr, nullptr));
+    }
+
+    delete[] val;
+    val = nullptr;
+    delete[] ind;
+    ind = nullptr;
+
+    int ind_c5_c6_c7[2], ind_c8[3];
+    double val_c5_c6_c7[2], val_c8[3];
+
+    // fadd(a, p) <= a, \forall a\in A, p\in eff(a)
+    for (const auto& act_i : inst.act_rem) {
+        for (const auto& var_i : inst.actions[act_i].eff_sparse) {
+            ind_c5_c6_c7[0] = get_act_idx(act_i);
+            val_c5_c6_c7[0] = -1;
+            // if the first adder was fixed, we can directly fix the action insthead of adding the constraint
+            if (inst.fadd_f[act_i][var_i]) {
+                const char fix = 'B';
+                const double one = 1;
+                CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 1, ind_c5_c6_c7, &fix, &one));
+                continue;
+            }
+            // if the first adder was eliminated, we can skip the constraint
+            else if (inst.fadd_e[act_i][var_i])
+                continue;
+            ind_c5_c6_c7[1] = get_fa_idx(act_i, var_i);
+            val_c5_c6_c7[1] = 1;
+            CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
+        }
+        stopchk1();
+    }
+
+    // fadd(a, q) <= veg(p, q) \forall a\in A, \forall p\in pre(a), \forall q\in eff(a) (V.E.G.)
+    for (const auto& act_i : inst.act_rem) {
+        for (const auto& var_i : inst.actions[act_i].pre_sparse) {
+            for (const auto& var_j : inst.actions[act_i].eff_sparse) {
+                ind_c5_c6_c7[0] = get_veg_idx(var_i, var_j);
+                val_c5_c6_c7[0] = -1;
+                ind_c5_c6_c7[1] = get_fa_idx(act_i, var_j);
+                val_c5_c6_c7[1] = 1;
+                // if the first adder was fixed, we can directly fix also the VEG variable
+                if (inst.fadd_f[act_i][var_j]) {
+                    const char fix = 'B';
+                    const double one = 1;
+                    CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 1, ind_c5_c6_c7, &fix, &one));
+                    continue;
+                }
+                // if the VEG variable was eliminated, we can directly eliminate the first adder too
+                else if (!cumulative_graph[var_i][var_j]) {
+                    const char fix = 'B';
+                    const double zero = 0;
+                    CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 1, &(ind_c5_c6_c7[1]), &fix, &zero));
+                    continue;
+                }
+                CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
+            }
+            stopchk1();
+        }
+    }
+
+    // veg(p, q) + veg(q, p) <= 1 (V.E.G.)
+    for (const auto& var_i : inst.var_rem) {
+        for (const auto& var_j : cumulative_graph[var_i]) {
+            // if either VEG variable was eliminated, we can skip the constraint
+            if (!cumulative_graph[var_i][var_j] || !cumulative_graph[var_j][var_i]) continue;
+            ind_c5_c6_c7[0] = get_veg_idx(var_i, var_j);
+            val_c5_c6_c7[0] = 1;
+            ind_c5_c6_c7[1] = get_veg_idx(var_j, var_i);
+            val_c5_c6_c7[1] = 1;
+            CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_1, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
+            stopchk1();
+        }
+    }
+
+    // veg(a, b) + veg(b, c) <= veg(a, c) (V.E.G.)
+    for (const auto& [a, b, c] : triangles_list) {
+        ind_c8[0] = get_veg_idx(a, b);
+        val_c8[0] = 1;
+        ind_c8[1] = get_veg_idx(b, c);
+        val_c8[1] = 1;
+        ind_c8[2] = get_veg_idx(a, c);
+        val_c8[2] = -1;
+        // if veg(a, c) is eliminated, we can simply eliminate the other two VEG varliables
+        if (!cumulative_graph[a][c]) {
+            char fix[2];
+            fix[0] = 'B';
+            fix[1] = 'B';
+            double zero[2];
+            zero[0] = 0;
+            zero[1] = 0;
+            CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 2, ind_c8, fix, zero));
+            continue;
+        }
+        CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 3, &rhs_1, &sense_l, &begin, ind_c8, val_c8, nullptr, nullptr));
+        stopchk1();
+    }
+
+    if (env.write_lp) CPX_HANDLE_CALL(log, CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR "/lp/" + env.run_name + ".lp").c_str(), "LP"));
+}
+
+void rankooh::post_cpx_warmstart(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log) {
+    PRINT_VERBOSE(log, "Posting warm start to Rankooh's model.");
+    ASSERT_LOG(log, env.sol_s != solution_status::INFEAS && env.sol_s != solution_status::NOTFOUND);
+
+    binary_set state{inst.n};
+
+    const auto& warm_start{inst.best_sol.plan};
+
+    const size_t ncols{static_cast<size_t>(CPXgetnumcols(cpxenv, cpxlp))};
+    int* cpx_sol_ind{new int[ncols]};
+    double* cpx_sol_val{new double[ncols]};
+    for (size_t i = 0; i < ncols; i++) {
+        cpx_sol_ind[i] = i;
+        cpx_sol_val[i] = 0;
+    }
+
+    constexpr int izero{0};
+    constexpr int effortlevel{CPX_MIPSTART_NOCHECK};
+
+#if HPLUS_INTCHECK
+    binary_set fixed_act_check{inst.act_f}, fixed_var_check{inst.var_f}, fixed_t_act_check{inst.m}, fixed_t_var_check{inst.n};
+    std::vector<binary_set> fixed_fadd_check(inst.m);
+    for (size_t i = 0; i < inst.m; i++) fixed_fadd_check[i] = inst.fadd_f[i];
+    for (size_t i = 0; i < inst.m; i++)
+        if (inst.act_t[i] >= 0) fixed_t_act_check.add(i);
+    for (size_t i = 0; i < inst.n; i++)
+        if (inst.var_t[i] >= 0) fixed_t_var_check.add(i);
+    unsigned int timestamp{0};
+#endif
+
+    for (const auto& act_i : warm_start) {
+#if HPLUS_INTCHECK
+        ASSERT_LOG(log, !(inst.act_t[act_i] >= 0 && timestamp != static_cast<unsigned int>(inst.act_t[act_i])));
+        ASSERT_LOG(log, !inst.act_e[act_i]);
+        fixed_act_check.remove(act_i);
+        fixed_t_act_check.remove(act_i);
+        timestamp++;
+#endif
+        size_t cpx_act_idx = inst.act_opt_conv[act_i];
+        cpx_sol_ind[cpx_act_idx] = static_cast<int>(cpx_act_idx);
+        cpx_sol_val[cpx_act_idx] = 1;
+        for (const auto& var_i : inst.actions[act_i].eff_sparse) {
+            if (state[var_i]) continue;
+
+#if HPLUS_INTCHECK
+            ASSERT_LOG(log, !(inst.var_t[var_i] >= 0 && timestamp != static_cast<unsigned int>(inst.var_t[var_i])));
+            ASSERT_LOG(log, !inst.var_e[var_i]);
+            ASSERT_LOG(log, !inst.fadd_e[act_i][var_i]);
+            fixed_var_check.remove(var_i);
+            fixed_t_var_check.remove(var_i);
+            fixed_fadd_check[act_i].remove(var_i);
+#endif
+
+            size_t cpx_var_idx = inst.m_opt * (1 + inst.n_opt) + inst.var_opt_conv[var_i];
+            cpx_sol_ind[cpx_var_idx] = static_cast<int>(cpx_var_idx);
+            cpx_sol_val[cpx_var_idx] = 1;
+            size_t cpx_fad_idx = inst.m_opt + inst.act_opt_conv[act_i] * inst.n_opt + inst.var_opt_conv[var_i];
+            cpx_sol_ind[cpx_fad_idx] = static_cast<int>(cpx_fad_idx);
+            cpx_sol_val[cpx_fad_idx] = 1;
+            for (const auto& var_j : inst.actions[act_i].pre_sparse) {
+                size_t cpx_veg_idx = inst.m_opt * (1 + inst.n_opt) + inst.n_opt * (1 + inst.var_opt_conv[var_j]) + inst.var_opt_conv[var_i];
+                cpx_sol_ind[cpx_veg_idx] = static_cast<int>(cpx_veg_idx);
+                cpx_sol_val[cpx_veg_idx] = 1;
+            }
+        }
+        state |= inst.actions[act_i].eff;
+    }
+
+#if HPLUS_INTCHECK
+    ASSERT_LOG(log, fixed_act_check.empty());
+    ASSERT_LOG(log, fixed_var_check.empty());
+    ASSERT_LOG(log, fixed_t_act_check.empty());
+    ASSERT_LOG(log, fixed_t_var_check.empty());
+    for (size_t i = 0; i < inst.m; i++) ASSERT_LOG(log, fixed_fadd_check[i].empty());
+#endif
+
+    CPX_HANDLE_CALL(log, CPXaddmipstarts(cpxenv, cpxlp, 1, ncols, &izero, cpx_sol_ind, cpx_sol_val, &effortlevel, nullptr));
+    delete[] cpx_sol_ind;
+    cpx_sol_ind = nullptr;
+    delete[] cpx_sol_val;
+    cpx_sol_val = nullptr;
+}
+
+void rankooh::store_cpx_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst, const logger& log) {
+    PRINT_VERBOSE(log, "Storing Rankooh's solution.");
+
+    double* plan{new double[inst.m_opt + inst.m_opt * inst.n_opt]};
+    CPX_HANDLE_CALL(log, CPXgetx(cpxenv, cpxlp, plan, 0, inst.m_opt + inst.m_opt * inst.n_opt - 1));
+
+    // fixing the solution to read the plan (some actions are set to 1 even if they are not a first archiever of anything)
+    for (size_t act_i_cpx = 0, fadd_i = inst.m_opt; act_i_cpx < inst.m_opt; act_i_cpx++, fadd_i += inst.n_opt) {
+        bool set_zero{true};
+        for (size_t var_i_cpx = 0; var_i_cpx < inst.n_opt; var_i_cpx++) {
+            if (plan[fadd_i + var_i_cpx] > HPLUS_CPX_INT_ROUNDING) {
+                INTCHECK_ASSERT_LOG(log, plan[act_i_cpx] > HPLUS_CPX_INT_ROUNDING);
+                set_zero = false;
+                break;
+            }
+        }
+        if (set_zero) plan[act_i_cpx] = 0;
+    }
+
+    // convert to std collections for easier parsing
+    std::vector<size_t> cpx_result;
+    cpx_result.reserve(inst.m_opt);
+    for (size_t i = 0; i < inst.m_opt; i++) {
+        if (plan[i] > HPLUS_CPX_INT_ROUNDING) cpx_result.push_back(inst.act_cpxtoidx[i]);
+    }
+    delete[] plan;
+    plan = nullptr;
+
+    std::vector<size_t> solution;
+    solution.reserve(inst.m_opt);
+    binary_set remaining{cpx_result.size(), true}, state{inst.n};
+
+    while (!remaining.empty()) {
+        bool intcheck{false};
+        for (const auto& i : remaining) {
+            if (!state.contains(inst.actions[cpx_result[i]].pre)) continue;
+
+            remaining.remove(i);
+            state |= inst.actions[cpx_result[i]].eff;
+            solution.push_back(cpx_result[i]);
+            intcheck = true;
+        }
+        ASSERT_LOG(log, intcheck);
+    }
+
+    // store solution
+    hplus::solution rankooh_sol{
+        solution, static_cast<unsigned int>(std::accumulate(solution.begin(), solution.end(), 0, [&inst](const unsigned int acc, const size_t index) {
+            return acc + inst.actions[index].cost;
+        }))};
+    hplus::update_sol(inst, rankooh_sol, log);
+}

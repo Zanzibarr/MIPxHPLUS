@@ -11,89 +11,130 @@ endif()
 
 project(hplus)
 
-# Set default build type
+# Automated build type configuration
 if(NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
 endif()
 
-# Compiler flags for release and debug builds
+# Automated compiler flags with option for customization
+option(ENABLE_WARNINGS "Enable compiler warnings" OFF)
+option(TREAT_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
+
 set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3")
 set(CMAKE_CXX_FLAGS_DEBUG "-Og -ggdb")
-set(COMPILEWARNS OFF CACHE BOOL "Flag to enable compile warnings")
-if(COMPILEWARNS)
-    add_compile_options(-Wall -Wextra -pedantic -Werror)
+
+if(ENABLE_WARNINGS)
+    add_compile_options(-Wall -Wextra -pedantic)
+    if(TREAT_WARNINGS_AS_ERRORS)
+        add_compile_options(-Werror)
+    endif()
 endif()
 
-# Verbosity, warnings, and integrity checks
-set(VERBOSE "5" CACHE STRING "Verbose setting set from command line")
-message(STATUS "VERBOSE is set to ${VERBOSE}")
-set(WARN "1" CACHE STRING "Flag to enable warning messages")
-message(STATUS "WARN is set to ${WARN}")
-set(INTCHECK "0" CACHE STRING "Flag to enable integrity checks")
-message(STATUS "INTCHECK is set to ${INTCHECK}")
+# Automated verbosity and debug settings with environment variable fallback
+set(VERBOSE "5" CACHE STRING "Verbose setting")
+set(WARN "1" CACHE STRING "Warning message level")
+set(INTCHECK "0" CACHE STRING "Integrity checks level")
 
-# Detect machine and set CPLEX paths accordingly
-if(EXISTS "/Applications/CPLEX_Studio2211/cplex/lib/arm64_osx/static_pic")                  # Mac Laptop
-    set(CPLEX_DIR "/Applications/CPLEX_Studio2211/cplex/lib/arm64_osx/static_pic")
-    set(CPLEX_INCLUDE "/Applications/CPLEX_Studio2211/cplex/include/ilcplex")
-elseif(EXISTS "/opt/ibm/ILOG/CPLEX_Studio2211/cplex/lib/x86-64_linux/static_pic")           # Linux PC
-    set(CPLEX_DIR "/opt/ibm/ILOG/CPLEX_Studio2211/cplex/lib/x86-64_linux/static_pic")
-    set(CPLEX_INCLUDE "/opt/ibm/ILOG/CPLEX_Studio2211/cplex/include/ilcplex")
-elseif(EXISTS "/nfsd/rop/sw/ibm/cos221/cplex/lib/x86-64_linux/static_pic")                  # Cluster DEI
-    set(CPLEX_DIR "/nfsd/rop/sw/ibm/cos221/cplex/lib/x86-64_linux/static_pic")
-    set(CPLEX_INCLUDE "/nfsd/rop/sw/ibm/cos221/cplex/include/ilcplex")
-else()
-    message(FATAL_ERROR "CPLEX directory not found on this machine. Please set CPLEX_DIR manually.")
-endif()
+# Automated CPLEX detection with more flexible paths
+set(CPLEX_POSSIBLE_PATHS
+    "/Applications/CPLEX_Studio2211"
+    "/opt/ibm/ILOG/CPLEX_Studio2211"
+    "/nfsd/rop/sw/ibm/cos221/cplex"
+)
 
+# Function to find CPLEX
+function(find_cplex)
+    foreach(CPLEX_PATH ${CPLEX_POSSIBLE_PATHS})
+        if(EXISTS "${CPLEX_PATH}/cplex/lib")
+            # Detect architecture and OS
+            if(CMAKE_SYSTEM_NAME MATCHES "Darwin")
+                set(ARCH "arm64_osx")
+            elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
+                set(ARCH "x86-64_linux")
+            elseif(CMAKE_SYSTEM_NAME MATCHES "Windows")
+                set(ARCH "x64_windows")
+            else()
+                message(FATAL_ERROR "Unsupported operating system")
+            endif()
+
+            set(CPLEX_DIR "${CPLEX_PATH}/cplex/lib/${ARCH}/static_pic" CACHE PATH "CPLEX library directory")
+            set(CPLEX_INCLUDE "${CPLEX_PATH}/cplex/include/ilcplex" CACHE PATH "CPLEX include directory")
+            
+            message(STATUS "Found CPLEX: ${CPLEX_PATH}")
+            return()
+        endif()
+    endforeach()
+
+    message(FATAL_ERROR "CPLEX not found. Please specify CPLEX_DIR and CPLEX_INCLUDE manually.")
+endfunction()
+
+# Call the CPLEX detection function
+find_cplex()
+
+# Validate CPLEX paths
 if(NOT EXISTS ${CPLEX_DIR})
-    message(FATAL_ERROR "Directory ${CPLEX_DIR} doesn't exist... Please set with -DCPLEX_DIR=<path> the correct path to CPLEX's static pic folder.")
+    message(FATAL_ERROR "CPLEX library directory not found: ${CPLEX_DIR}")
 endif()
 if(NOT EXISTS ${CPLEX_INCLUDE})
-    message(FATAL_ERROR "Directory ${CPLEX_INCLUDE} doesn't exist... Please set with -DCPLEX_INCLUDE=<path> the correct path to CPLEX's headers folder.")
+    message(FATAL_ERROR "CPLEX include directory not found: ${CPLEX_INCLUDE}")
 endif()
 
-message(STATUS "Using CPLEX_DIR: ${CPLEX_DIR}")
-message(STATUS "Using CPLEX_INCLUDE: ${CPLEX_INCLUDE}")
-
-include_directories(${CPLEX_INCLUDE_DIR})
-
-# Directory setup
+# Automated logging directory setup
 cmake_path(GET CMAKE_HOME_DIRECTORY PARENT_PATH HOME_DIR)
-set(LOGS_DIR "${HOME_DIR}/logs")
-foreach(DIR ${LOGS_DIR} ${LOGS_DIR}/output_logs ${LOGS_DIR}/cpxout ${LOGS_DIR}/cpxout/log ${LOGS_DIR}/cpxout/lp)
-    if(NOT EXISTS ${DIR})
-        file(MAKE_DIRECTORY ${DIR})
-        if(NOT EXISTS ${DIR})
-            message(FATAL_ERROR "Failed to create directory ${DIR}")
-        endif()
-        message(STATUS "Created directory: ${DIR}")
+set(LOGS_SUBDIRS 
+    "logs"
+    "logs/output_logs"
+    "logs/cpxout"
+    "logs/cpxout/log"
+    "logs/cpxout/lp"
+)
+
+foreach(SUBDIR ${LOGS_SUBDIRS})
+    set(FULL_DIR "${HOME_DIR}/${SUBDIR}")
+    if(NOT EXISTS ${FULL_DIR})
+        file(MAKE_DIRECTORY ${FULL_DIR})
+        message(STATUS "Created directory: ${FULL_DIR}")
     endif()
 endforeach()
 
-# Threads support
+# Threads and other dependencies
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-# Include directories
-include_directories(include)
-include_directories(external)
-include_directories(${CPLEX_INCLUDE})
-
-# Libraries
-
-add_library(
-    hplus_instance
-    src/hplus_instance.cpp
-    include/hplus_instance.hpp
+# Automated include directories
+include_directories(
+    .
+    exact
+    heuristics
+    external
+    ${CPLEX_INCLUDE}
 )
 
-add_library(
-    algorithms
-    src/algorithms.cpp
-    include/algorithms.hpp
-)
+# Macro to add libraries from source directories
+macro(add_libraries_from_sources)
+    set(SOURCE_DIRS "exact" "heuristics")
+    foreach(SOURCE_DIR ${SOURCE_DIRS})
+        file(GLOB SOURCES "${SOURCE_DIR}/*.cpp")
+        foreach(SOURCE ${SOURCES})
+            get_filename_component(LIBNAME ${SOURCE} NAME_WE)
+            add_library(${LIBNAME} ${SOURCE} "${SOURCE_DIR}/${LIBNAME}.hpp")
+        endforeach()
+    endforeach()
 
+    # Special case libraries
+    file(GLOB SPECIAL_SOURCES "*.cpp")
+    foreach(SOURCE ${SPECIAL_SOURCES})
+        get_filename_component(LIBNAME ${SOURCE} NAME_WE)
+        if(LIBNAME MATCHES "^(hplus_instance|algorithms)$")
+            add_library(${LIBNAME} ${SOURCE} "${LIBNAME}.hpp")
+        endif()
+    endforeach()
+endmacro()
+
+# Generate libraries
+add_libraries_from_sources()
+
+# Find CPLEX library
 find_library(CPLEX_LIBRARY
     NAMES cplex
     PATHS ${CPLEX_DIR}
@@ -104,28 +145,52 @@ if(NOT CPLEX_LIBRARY)
     message(FATAL_ERROR "CPLEX library not found in ${CPLEX_DIR}")
 endif()
 
-# Main executable
-add_executable(
-    hplus
-    src/main.cpp
-)
-
-target_link_libraries(
-    hplus
+# Explicitly define the libraries to link
+set(HPLUS_LIBRARIES 
+    imai
+    rankooh
+    rankooh_dynamic
+    greedycost
+    greedycxe
+    hmax_hadd
     hplus_instance
     algorithms
+)
+
+# Main executable
+add_executable(hplus main.cpp)
+
+# Ensure these libraries are built before the main executable
+add_dependencies(hplus ${HPLUS_LIBRARIES})
+
+# Modify the target_link_libraries to explicitly include these libraries
+target_link_libraries(hplus 
+    ${HPLUS_LIBRARIES}  # Explicitly list the libraries
     ${CPLEX_LIBRARY}
     Threads::Threads
     dl
 )
 
-# Definitions
-add_definitions(-DHPLUS_HOME_DIR="${HOME_DIR}" -DHPLUS_VERBOSE=${VERBOSE} -DHPLUS_WARN=${WARN} -DHPLUS_INTCHECK=${INTCHECK})
+# Automated definitions
+add_definitions(
+    -DHPLUS_HOME_DIR="${HOME_DIR}" 
+    -DHPLUS_VERBOSE=${VERBOSE} 
+    -DHPLUS_WARN=${WARN} 
+    -DHPLUS_INTCHECK=${INTCHECK}
+)
 
-# Custom build targets
-add_custom_target(opt COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --config Release)
-add_custom_target(debug COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --config Debug)
+# Custom build targets with error handling
+add_custom_target(opt 
+    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --config Release
+    COMMAND_EXPAND_LISTS
+)
 
+add_custom_target(debug 
+    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --config Debug
+    COMMAND_EXPAND_LISTS
+)
+
+# Cleanup target
 add_custom_target(clear
     COMMAND rm -r ${CMAKE_HOME_DIRECTORY}/build/*
 )
