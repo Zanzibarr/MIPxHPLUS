@@ -1,6 +1,7 @@
 #include "hmax_hadd.hpp"
 
 #include <list>
+#include <stack>
 
 #if HPLUS_INTCHECK == 0
 #define INTCHECK_PQ false

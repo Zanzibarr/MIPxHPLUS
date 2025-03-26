@@ -147,14 +147,13 @@ endif()
 
 # Explicitly define the libraries to link
 set(HPLUS_LIBRARIES 
+    hplus_instance
     imai
     rankooh
     rankooh_dynamic
     greedycost
     greedycxe
     hmax_hadd
-    hplus_instance
-    algorithms
 )
 
 # Main executable
@@ -163,9 +162,9 @@ add_executable(hplus main.cpp)
 # Ensure these libraries are built before the main executable
 add_dependencies(hplus ${HPLUS_LIBRARIES})
 
-# Modify the target_link_libraries to explicitly include these libraries
 target_link_libraries(hplus 
-    ${HPLUS_LIBRARIES}  # Explicitly list the libraries
+    algorithms
+    ${HPLUS_LIBRARIES}
     ${CPLEX_LIBRARY}
     Threads::Threads
     dl
