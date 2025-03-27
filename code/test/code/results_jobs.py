@@ -251,8 +251,9 @@ def main():
 
         move_file(filepath, save_logs_dir)
 
-        cpxfilepath = os.path.join(cpxlogsdir, file)
-        move_file(cpxfilepath, save_cpxlogs_dir)
+        if runsum["results"][instance_name]["status"] > -1:
+            cpxfilepath = os.path.join(cpxlogsdir, file)
+            move_file(cpxfilepath, save_cpxlogs_dir)
 
     runsum["stats"]["avg_ptime"] /= n_good
     runsum["stats"]["avg_stime"] /= n_good
