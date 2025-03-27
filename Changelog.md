@@ -37,9 +37,10 @@ HOW I DO VERSIONING:
     - [~/code/hplus_instance.hpp](code/hplus_instance.hpp)
     - [~/code/hplus_instance.cpp](code/hplus_instance.cpp)
 ### :heavy_plus_sign: Added
-- Added back tighter bounds in Rankooh's and Dynamic models
+- Added back tighter bounds in Rankooh's model
     - [~/code/algorithms.cpp](code/algorithms.cpp)
-<!-- ### :x: Removed -->
+### :x: Removed
+- Temporarly removed Rankooh's dynamic model
 ### :curly_loop: Other
 - Changed code organization
 - Better [CMakeLists.txt](code/CMakeLists.txt) file
