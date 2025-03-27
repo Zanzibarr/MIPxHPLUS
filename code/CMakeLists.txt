@@ -40,7 +40,7 @@ set(INTCHECK "0" CACHE STRING "Integrity checks level")
 set(CPLEX_POSSIBLE_PATHS
     "/Applications/CPLEX_Studio2211"
     "/opt/ibm/ILOG/CPLEX_Studio2211"
-    "/nfsd/rop/sw/ibm/cos221/cplex"
+    "/nfsd/rop/sw/ibm/cos221"
 )
 
 # Function to find CPLEX
