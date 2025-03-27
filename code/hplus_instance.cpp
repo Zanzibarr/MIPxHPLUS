@@ -20,7 +20,7 @@ void hplus::print_stats(const statistics& stats, const logger& log) {
     log.print("-----------------   Statistics   -----------------");
     log.print("--------------------------------------------------\n");
     log.print(" >>  Parsing time                  %10.3fs  <<", stats.parsing);
-    log.print(" >>  Problem simplification time   %10.3fs  <<", stats.optimization);
+    log.print(" >>  Preprocessing time            %10.3fs  <<", stats.preprocessing);
     log.print(" >>  Heuristic time                %10.3fs  <<", stats.heuristic);
     log.print(" >>  Model building time           %10.3fs  <<", stats.build);
     log.print(" >>  CPLEX execution time          %10.3fs  <<", stats.execution);
@@ -404,7 +404,7 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
     return !is_infeasible;
 }
 
-static void init_instance_opt(hplus::instance& inst) {
+static void init_inst_preprocessing(hplus::instance& inst) {
     inst.n_opt = inst.n;
     inst.m_opt = inst.m;
     inst.var_e = binary_set(inst.n);
@@ -424,6 +424,13 @@ static void init_instance_opt(hplus::instance& inst) {
     for (size_t idx = 0; idx < inst.m; idx++) inst.act_opt_conv[idx] = idx;
     inst.act_cpxtoidx = std::vector<size_t>(inst.m);
     for (size_t idx = 0; idx < inst.m; idx++) inst.act_cpxtoidx[idx] = idx;
+    inst.fadd_cpx_start = std::vector<size_t>(inst.m);
+    size_t sum{0};
+    for (const auto& act_i : inst.act_rem) {
+        inst.fadd_cpx_start[act_i] = sum;
+        sum += inst.actions[act_i].eff_sparse.size();
+    }
+    inst.n_fadd = sum;
 }
 
 bool hplus::create_instance(instance& inst, environment& env, statistics& stats, const logger& log) {
@@ -433,7 +440,7 @@ bool hplus::create_instance(instance& inst, environment& env, statistics& stats,
         env.sol_s = solution_status::INFEAS;
         return false;
     }
-    init_instance_opt(inst);
+    init_inst_preprocessing(inst);
 
     PRINT_VERBOSE(log, "Created HPLUS_instance.");
     return true;
@@ -786,7 +793,7 @@ static void inverse_actions_extraction(hplus::instance& inst, const logger& log)
     }
 }
 
-static void finish_opt(hplus::instance& inst, const logger& log) {
+static void finish_preprocessing(hplus::instance& inst, const logger& log) {
     inst.var_rem = (!inst.var_e).sparse();
     inst.act_rem = (!inst.act_e).sparse();
     size_t count{0};
@@ -804,6 +811,14 @@ static void finish_opt(hplus::instance& inst, const logger& log) {
         inst.actions[act_i].pre_sparse = inst.actions[act_i].pre.sparse();
         inst.actions[act_i].eff_sparse = inst.actions[act_i].eff.sparse();
     }
+    inst.fadd_cpx_start.clear();
+    inst.fadd_cpx_start.reserve(inst.m_opt);
+    size_t sum{0};
+    for (const auto& act_i : inst.act_rem) {
+        inst.fadd_cpx_start.push_back(sum);
+        sum += inst.actions[act_i].eff_sparse.size();
+    }
+    inst.n_fadd = sum;
     INTCHECK_ASSERT_LOG(log, !inst.var_f.intersects(inst.var_e));
     INTCHECK_ASSERT_LOG(log, !inst.act_f.intersects(inst.act_e));
     for (size_t i = 0; i < inst.m; i++) {
@@ -817,7 +832,7 @@ static void finish_opt(hplus::instance& inst, const logger& log) {
     }
 }
 
-void hplus::instance_optimization(instance& inst, const environment& env, const logger& log) {
+void hplus::preprocessing(instance& inst, const environment& env, const logger& log) {
     std::vector<binary_set> landmarks(inst.n, binary_set(inst.n + 1));
     binary_set fact_landmarks{inst.n};
     binary_set act_landmarks{inst.m};
@@ -828,7 +843,7 @@ void hplus::instance_optimization(instance& inst, const environment& env, const 
     dominated_actions_elimination(inst, landmarks, fadd, log);
     if (!env.tight_bounds) immediate_action_application(inst, act_landmarks, log);
     inverse_actions_extraction(inst, log);
-    finish_opt(inst, log);
+    finish_preprocessing(inst, log);
 #if HPLUS_VERBOSE >= 100
     size_t count{(inst.var_f | inst.var_e).sparse().size()};
     log.print_info("# variables: %d - %d = %d.", inst.n, count, inst.n - count);

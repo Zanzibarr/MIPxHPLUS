@@ -125,7 +125,7 @@ def main():
                     content.partition(">>  Parsing time")[2].partition("s")[0].strip()
                 )
                 opt_time = float(
-                    content.partition(">>  Problem simplification time")[2]
+                    content.partition(">>  Preprocessing time")[2]
                     .partition("s")[0]
                     .strip()
                 )
@@ -169,9 +169,9 @@ def main():
                 if (
                     runsum["results"][instance_name]["status"] not in (1, 3)
                     and "Heuristic:"
-                    in content.partition("Problem simplification:")[2].partition(
-                        "Time limit:"
-                    )[0]
+                    in content.partition("Preprocessing:")[2].partition("Time limit:")[
+                        0
+                    ]
                 ):
                     # Find the last updated best solution before "Building model"
                     heuristic_part = content.partition(

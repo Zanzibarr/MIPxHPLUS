@@ -56,7 +56,7 @@ static void init(hplus::environment& env) {
 
 static void init(hplus::statistics& stats) {
     stats = hplus::statistics{.parsing = 0,
-                              .optimization = 0,
+                              .preprocessing = 0,
                               .heuristic = 0,
                               .build = 0,
                               .callback = 0,
@@ -214,18 +214,18 @@ static void run(hplus::instance& inst, hplus::environment& env, hplus::statistic
             }
         };
 
-        // ~~~~~~~~ PROBLEM SIMPLIFICATION ~~~~~~~ //
+        // ~~~~~~~~~~~~ PREPROCESSING ~~~~~~~~~~~~ //
 
         if (env.preprocessing) {
-            PRINT_INFO(log, "Problem simplification.");
+            PRINT_INFO(log, "Preprocessing.");
             env.exec_s = exec_status::PROBLEM_SIMPL;
 
-            stats.optimization = static_cast<double>(env.time_limit) - env.timer.get_time();
+            stats.preprocessing = static_cast<double>(env.time_limit) - env.timer.get_time();
             start_time = env.timer.get_time();
 
-            hplus::instance_optimization(inst, env, log);
+            hplus::preprocessing(inst, env, log);
 
-            stats.optimization = env.timer.get_time() - start_time;
+            stats.preprocessing = env.timer.get_time() - start_time;
         }
         stopchk();
 

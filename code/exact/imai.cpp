@@ -86,7 +86,6 @@ void imai::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::inst
         ubs[count] = 1;
         types[count++] = 'B';
     }
-    INTCHECK_ASSERT_LOG(log, count == inst.m_opt);
     curr_col += inst.m_opt;
 
     CPX_HANDLE_CALL(log, CPXnewcols(cpxenv, cpxlp, inst.m_opt, objs, lbs, ubs, types, nullptr));
@@ -101,7 +100,6 @@ void imai::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::inst
         ubs[count] = (inst.act_t[act_i] >= 0 ? inst.act_t[act_i] : max_steps);
         types[count++] = 'I';
     }
-    INTCHECK_ASSERT_LOG(log, count == inst.m_opt);
     curr_col += inst.m_opt;
 
     CPX_HANDLE_CALL(log, CPXnewcols(cpxenv, cpxlp, inst.m_opt, objs, lbs, ubs, types, nullptr));
@@ -118,7 +116,6 @@ void imai::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::inst
         ubs[count] = 1;
         types[count++] = 'B';
     }
-    INTCHECK_ASSERT_LOG(log, count == inst.n_opt);
     curr_col += inst.n_opt;
 
     CPX_HANDLE_CALL(log, CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
@@ -133,27 +130,24 @@ void imai::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::inst
         ubs[count] = (inst.var_t[i] >= 0 ? inst.var_t[i] : max_steps);
         types[count++] = 'I';
     }
-    INTCHECK_ASSERT_LOG(log, count == inst.n_opt);
     curr_col += inst.n_opt;
 
     CPX_HANDLE_CALL(log, CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
     stopchk2();
 
     // --- first archievers --- //
-    // FIXME: Find a way to add only necessary first archievers...
     const size_t fa_start{curr_col};
     count = 0;
     for (const auto& act_i : inst.act_rem) {
         size_t count_var{0};
-        for (const auto& var_i : inst.var_rem) {
+        for (const auto& var_i : inst.actions[act_i].eff_sparse) {
             objs[count_var] = 0;
             lbs[count_var] = (inst.fadd_f[act_i][var_i] ? 1 : 0);
-            ubs[count_var] = ((!inst.actions[act_i].eff[var_i] || inst.fadd_e[act_i][var_i]) ? 0 : 1);
+            ubs[count_var] = (inst.fadd_e[act_i][var_i] ? 0 : 1);
             types[count_var++] = 'B';
         }
-        INTCHECK_ASSERT_LOG(log, count_var == inst.n_opt);
-        curr_col += inst.n_opt;
-        CPX_HANDLE_CALL(log, CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
+        curr_col += count_var;
+        CPX_HANDLE_CALL(log, CPXnewcols(cpxenv, cpxlp, count_var, objs, lbs, ubs, types, nullptr));
         count++;
         stopchk2();
     }
@@ -177,8 +171,8 @@ void imai::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::inst
     const auto get_tact_idx = [&inst, &tact_start](size_t idx) { return static_cast<int>(tact_start + inst.act_opt_conv[idx]); };
     const auto get_var_idx = [&inst, &var_start](size_t idx) { return static_cast<int>(var_start + inst.var_opt_conv[idx]); };
     const auto get_tvar_idx = [&inst, &tvar_start](size_t idx) { return static_cast<int>(tvar_start + inst.var_opt_conv[idx]); };
-    const auto get_fa_idx = [&inst, &fa_start](size_t act_idx, size_t var_idx) {
-        return static_cast<int>(fa_start + inst.act_opt_conv[act_idx] * inst.n_opt + inst.var_opt_conv[var_idx]);
+    const auto get_fa_idx = [&inst, &fa_start](size_t act_idx, size_t var_count) {
+        return static_cast<int>(fa_start + inst.fadd_cpx_start[inst.act_opt_conv[act_idx]] + var_count);
     };
 
     int* ind_c1{new int[inst.m_opt + 1]};
@@ -224,6 +218,7 @@ void imai::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::inst
 
     for (const auto& act_i : inst.act_rem) {
         constexpr int nnz_c2_4{2};
+        size_t var_count{0};
         for (const auto& var_i : inst.actions[act_i].pre_sparse) {
             // constraint 1: x_a + sum_{inv(a, p)}(z_a'vj) <= y_vj, vj in pre(a)
             ind_c1[0] = get_act_idx(act_i);
@@ -234,7 +229,7 @@ void imai::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::inst
             // (section 4.6 of Imai's paper)
             for (const auto& inverse_action : inst.act_inv[act_i]) {
                 if (inst.actions[inverse_action].eff[var_i]) {
-                    ind_c1[nnz0] = get_fa_idx(inverse_action, var_i);
+                    ind_c1[nnz0] = get_fa_idx(inverse_action, var_count);
                     val_c1[nnz0++] = 1;
                 }
             }
@@ -245,11 +240,13 @@ void imai::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::inst
             ind_c2_4[1] = get_tact_idx(act_i);
             val_c2_4[1] = -1;
             CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c2_4, &rhs_c1_2_4, &sense_l, &begin, ind_c2_4, val_c2_4, nullptr, nullptr));
+            var_count++;
         }
+        var_count = 0;
         for (const auto& var_i : inst.actions[act_i].eff_sparse) {
             constexpr int nnz_c5{3};
             // constraint 2: z_avj <= x_a, vj in eff(a)
-            ind_c2_4[0] = get_fa_idx(act_i, var_i);
+            ind_c2_4[0] = get_fa_idx(act_i, var_count);
             val_c2_4[0] = 1;
             ind_c2_4[1] = get_act_idx(act_i);
             val_c2_4[1] = -1;
@@ -259,11 +256,11 @@ void imai::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::inst
             val_c5[0] = 1;
             ind_c5[1] = get_tvar_idx(var_i);
             val_c5[1] = -1;
-            ind_c5[2] = get_fa_idx(act_i, var_i);
+            ind_c5[2] = get_fa_idx(act_i, var_count);
             val_c5[2] = max_steps + 1;
             CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c5, &rhs_c5, &sense_l, &begin, ind_c5, val_c5, nullptr, nullptr));
             // constraint 3: I(v_j) + sum(z_avj) = y_vj
-            ind_c3[inst.var_opt_conv[var_i]][nnz_c3[inst.var_opt_conv[var_i]]] = get_fa_idx(act_i, var_i);
+            ind_c3[inst.var_opt_conv[var_i]][nnz_c3[inst.var_opt_conv[var_i]]] = get_fa_idx(act_i, var_count);
             val_c3[inst.var_opt_conv[var_i]][nnz_c3[inst.var_opt_conv[var_i]]] = -1;
             nnz_c3[inst.var_opt_conv[var_i]]++;
         }
@@ -333,7 +330,9 @@ void imai::post_cpx_warmstart(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
         cpx_sol_ind[cpx_tact_idx] = static_cast<int>(cpx_tact_idx);
         cpx_sol_val[cpx_tact_idx] = static_cast<int>(timestamp);
         timestamp++;
+        int var_count{-1};
         for (const auto& var_i : inst.actions[act_i].eff_sparse) {
+            var_count++;
             if (state[var_i]) continue;
 
 #if HPLUS_INTCHECK
@@ -351,7 +350,7 @@ void imai::post_cpx_warmstart(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
             size_t cpx_tvar_idx = 2 * inst.m_opt + inst.n_opt + inst.var_opt_conv[var_i];
             cpx_sol_ind[cpx_tvar_idx] = static_cast<int>(cpx_tvar_idx);
             cpx_sol_val[cpx_tvar_idx] = static_cast<int>(timestamp);
-            size_t cpx_fad_idx = 2 * inst.m_opt + inst.n_opt * (2 + inst.act_opt_conv[act_i]) + inst.var_opt_conv[var_i];
+            size_t cpx_fad_idx = 2 * inst.m_opt + 2 * inst.n_opt + inst.fadd_cpx_start[inst.act_opt_conv[act_i]] + var_count;
             cpx_sol_ind[cpx_fad_idx] = static_cast<int>(cpx_fad_idx);
             cpx_sol_val[cpx_fad_idx] = 1;
         }

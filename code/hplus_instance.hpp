@@ -52,6 +52,10 @@ typedef struct {
     /** Optimization helpers */
     std::vector<size_t> var_rem, act_rem;
     std::vector<size_t> var_opt_conv, act_opt_conv, act_cpxtoidx;
+    size_t n_fadd;
+    std::vector<size_t> fadd_cpx_start;
+    std::vector<size_t> veg_starts;
+    std::vector<binary_set> veg_cumulative_graph;
     std::vector<std::vector<size_t>> act_with_eff, act_with_pre;
 } instance;
 
@@ -72,7 +76,7 @@ typedef struct {
 
 /** Time statistics */
 typedef struct {
-    double parsing, optimization, heuristic, build, callback, execution, total;
+    double parsing, preprocessing, heuristic, build, callback, execution, total;
     pthread_mutex_t callback_time_mutex;
 } statistics;
 
@@ -94,7 +98,7 @@ void update_sol(instance& inst, const solution& sol, const logger& log);
 void print_sol(const instance& inst, const logger& log);
 /** Perform instance optimization to inst using flags stored in the env
  * environment */
-void instance_optimization(instance& inst, const environment& env, const logger& log);
+void preprocessing(instance& inst, const environment& env, const logger& log);
 /** Prepare helper data structure for faster action lookup on instance inst */
 void prepare_faster_actsearch(instance& inst, const logger& log);
 

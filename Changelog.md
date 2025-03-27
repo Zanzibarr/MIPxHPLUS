@@ -25,16 +25,20 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
-## [1.2.6] - 2025/03/26
+## [1.2.6] - 2025/03/27
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed
 - "Optimal" solution provided by the model with tb might not be optimal if problem optimization is being used
 ### :heavy_exclamation_mark: Changed
 - Small changes to the CLI parser
-    - [~/code/src/main.cpp](code/src/main.cpp)
+    - [~/code/main.cpp](code/main.cpp)
+- Smaller number of variables in cplex models
+    - [~/code/exact/*](code/exact)
+    - [~/code/hplus_instance.hpp](code/hplus_instance.hpp)
+    - [~/code/hplus_instance.cpp](code/hplus_instance.cpp)
 ### :heavy_plus_sign: Added
 - Added back tighter bounds in Rankooh's and Dynamic models
-    - [~/code/src/algorithms.cpp](code/src/algorithms.cpp)
+    - [~/code/algorithms.cpp](code/algorithms.cpp)
 <!-- ### :x: Removed -->
 ### :curly_loop: Other
 - Changed code organization
