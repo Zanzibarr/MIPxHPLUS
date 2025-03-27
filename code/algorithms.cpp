@@ -97,7 +97,6 @@ void run_model(hplus::instance& inst, hplus::environment& env, hplus::statistics
     };
 
     // ~~~~~~~~~~~~ MODEL BUILDING ~~~~~~~~~~~ //
-    PRINT_INFO(log, "Building model.");
     env.exec_s = exec_status::MODEL_BUILD;
 
     stats.build = static_cast<double>(env.time_limit) - env.timer.get_time();
@@ -124,8 +123,6 @@ void run_model(hplus::instance& inst, hplus::environment& env, hplus::statistics
         throw timelimit_exception("Reached the time limit");
 
     if (env.warm_start) {  // Post warm starto to CPLEX
-
-        PRINT_INFO(log, "Posting warm start.");
 
         if (env.alg == HPLUS_CLI_ALG_IMAI)
             imai::post_cpx_warmstart(cpxenv, cpxlp, inst, env, log);
