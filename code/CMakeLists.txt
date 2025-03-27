@@ -3,6 +3,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(CODE_VERSION "1.2.6")
 
 # Enforce out-of-source build
 if (CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
@@ -174,6 +175,7 @@ add_definitions(
     -DHPLUS_VERBOSE=${VERBOSE} 
     -DHPLUS_WARN=${WARN} 
     -DHPLUS_INTCHECK=${INTCHECK}
+    -DCODE_VERSION="${CODE_VERSION}"
 )
 
 # Custom build targets with error handling
@@ -191,3 +193,5 @@ add_custom_target(debug
 add_custom_target(clear
     COMMAND rm -r ${CMAKE_HOME_DIRECTORY}/build/*
 )
+
+message(STATUS "Code version: ${CODE_VERSION}")
