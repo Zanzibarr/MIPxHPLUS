@@ -53,6 +53,10 @@ static void init(hplus::instance& inst) {
                            .var_opt_conv = std::vector<size_t>(0),
                            .act_opt_conv = std::vector<size_t>(0),
                            .act_cpxtoidx = std::vector<size_t>(0),
+                           .n_fadd = 0,
+                           .fadd_cpx_start = std::vector<size_t>(0),
+                           .veg_starts = std::vector<size_t>(0),
+                           .veg_cumulative_graph = std::vector<binary_set>(0, binary_set(1)),
                            .act_with_eff = std::vector<std::vector<size_t>>(0),
                            .act_with_pre = std::vector<std::vector<size_t>>(0)};
 }
