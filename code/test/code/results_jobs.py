@@ -219,41 +219,33 @@ def main():
                         .strip()
                     )
 
-                cpxlogfile = f"{cpxlogsdir}/{file}"
-                if os.path.isfile(cpxlogfile):
-                    with open(cpxlogfile, "r") as f:
-                        cpxlogcontent = f.read()
-                    if runsum["results"][instance_name]["hcost"] >= 0:
-                        runsum["results"][instance_name]["incumb"].append(
-                            [float(0), runsum["results"][instance_name]["hcost"]]
+                    cpxlogfile = f"{cpxlogsdir}/{file}"
+                    if os.path.isfile(cpxlogfile):
+                        with open(cpxlogfile, "r") as f:
+                            cpxlogcontent = f.read()
+                        if runsum["results"][instance_name]["hcost"] >= 0:
+                            runsum["results"][instance_name]["incumb"].append(
+                                [float(0), runsum["results"][instance_name]["hcost"]]
+                            )
+
+                        # Find all matches in the log content
+                        incumbent_pattern = re.compile(
+                            r"Found incumbent of value (\d+\.\d+) after (\d+\.\d+) sec\."
                         )
+                        for match in incumbent_pattern.finditer(cpxlogcontent):
+                            # Extract value and time, convert to float
+                            value = float(match.group(1))
+                            time = float(match.group(2))
 
-                    # Find all matches in the log content
-                    incumbent_pattern = re.compile(
-                        r"Found incumbent of value (\d+\.\d+) after (\d+\.\d+) sec\."
-                    )
-                    counter = 0
-                    for match in incumbent_pattern.finditer(cpxlogcontent):
-                        # Extract value and time, convert to float
-                        value = float(match.group(1))
-                        time = float(match.group(2))
+                            # Append pair to the list
+                            runsum["results"][instance_name]["incumb"].append(
+                                [time, value]
+                            )
 
-                        if (
-                            counter == 0
-                            and value > runsum["results"][instance_name]["hcost"]
-                        ):
-                            runsum["results"][instance_name]["incumb"] = []
-
-                        counter += 1
-
-                        # Append pair to the list
-                        runsum["results"][instance_name]["incumb"].append([time, value])
+                        cpxfilepath = os.path.join(cpxlogsdir, file)
+                        move_file(cpxfilepath, save_cpxlogs_dir)
 
         move_file(filepath, save_logs_dir)
-
-        if runsum["results"][instance_name]["status"] > -1:
-            cpxfilepath = os.path.join(cpxlogsdir, file)
-            move_file(cpxfilepath, save_cpxlogs_dir)
 
     runsum["stats"]["avg_ptime"] /= n_good
     runsum["stats"]["avg_stime"] /= n_good
