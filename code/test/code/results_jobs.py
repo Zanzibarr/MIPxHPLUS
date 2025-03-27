@@ -78,6 +78,12 @@ def main():
             "status": -1,
             "hcost": -1,
             "fcost": -1,
+            "nnodes": -1,
+            "nvar_base": -1,
+            "nvar_acyc": -1,
+            "nconst_base": -1,
+            "nconst_acyc": -1,
+            "lb": -1,
             "incumb": [],
             "ptime": -1,
             "stime": -1,
@@ -98,19 +104,15 @@ def main():
             runsum["results"][instance_name]["other"] = "\n".join(
                 content.splitlines()[-5:]
             )
-        elif "The problem is infeasible." in content:
-            runsum["stats"]["perc_found"] += 1
-            runsum["stats"]["perc_opt"] += 1
-            runsum["results"][instance_name]["status"] = 1
-        elif "No solution found." in content:
-            runsum["results"][instance_name]["status"] = 3
-        elif "The solution has not been proven optimal." in content:
-            runsum["stats"]["perc_found"] += 1
-            runsum["results"][instance_name]["status"] = 2
-        elif "Solution cost: " in content:
-            runsum["stats"]["perc_found"] += 1
-            runsum["stats"]["perc_opt"] += 1
-            runsum["results"][instance_name]["status"] = 0
+        elif "Statistics" in content:
+            runsum["results"][instance_name]["status"] = int(
+                content.partition(">>  Status")[2].partition("<<")[0].strip()
+            )
+            if runsum["results"][instance_name]["status"] in (0, 1):
+                runsum["stats"]["perc_found"] += 1
+                runsum["stats"]["perc_opt"] += 1
+            elif runsum["results"][instance_name]["status"] == 2:
+                runsum["stats"]["perc_found"] += 1
         else:
             runsum["results"][instance_name]["status"] = -1
             runsum["results"][instance_name]["other"] = "\n".join(
@@ -173,29 +175,49 @@ def main():
                         0
                     ]
                 ):
-                    # Find the last updated best solution before "Building model"
-                    heuristic_part = content.partition(
-                        "Calculating heuristic solution."
-                    )[2].partition("Building model.")[0]
-                    # Get all solution updates in this section
-                    solution_updates = heuristic_part.split(
-                        "Updated best solution - Cost:"
+                    runsum["results"][instance_name]["hcost"] = int(
+                        content.partition(">>  Heur cost")[2].partition("<<")[0].strip()
                     )
-                    if len(solution_updates) > 1:
-                        # Get the last update (most recent one)
-                        last_update = solution_updates[-1]
-                        runsum["results"][instance_name]["hcost"] = int(
-                            last_update.partition(".\n")[0].strip()
-                        )
 
                 # Find the final cost proposed by the algorithm
                 if runsum["results"][instance_name]["status"] not in (1, 3):
-                    fcost = int(
-                        content.partition("Solution cost:")[2]
-                        .partition("\n")[0]
+                    runsum["results"][instance_name]["fcost"] = int(
+                        content.partition(">>  Final cost")[2]
+                        .partition("<<")[0]
                         .strip()
                     )
-                    runsum["results"][instance_name]["fcost"] = fcost
+
+                if "Running CPLEX." in content:
+                    runsum["results"][instance_name]["nnodes"] = int(
+                        content.partition(">>  Nodes expanded (cplex)")[2]
+                        .partition("<<")[0]
+                        .strip()
+                    )
+                    runsum["results"][instance_name]["nvar_base"] = int(
+                        content.partition(">>  Base model variables (cplex)")[2]
+                        .partition("<<")[0]
+                        .strip()
+                    )
+                    runsum["results"][instance_name]["nvar_acyc"] = int(
+                        content.partition(">>  Acyclicity variables (cplex)")[2]
+                        .partition("<<")[0]
+                        .strip()
+                    )
+                    runsum["results"][instance_name]["nconst_base"] = int(
+                        content.partition(">>  Base model const. (cplex)")[2]
+                        .partition("<<")[0]
+                        .strip()
+                    )
+                    runsum["results"][instance_name]["nconst_acyc"] = int(
+                        content.partition(">>  Acyclicity const. (cplex)")[2]
+                        .partition("<<")[0]
+                        .strip()
+                    )
+                    runsum["results"][instance_name]["lb"] = float(
+                        content.partition(">>  Lower bound (cplex)")[2]
+                        .partition("<<")[0]
+                        .strip()
+                    )
 
                 cpxlogfile = f"{cpxlogsdir}/{file}"
                 if os.path.isfile(cpxlogfile):
@@ -242,7 +264,7 @@ def main():
     runsum["stats"]["perc_found"] /= runsum["n_total"]
     runsum["stats"]["perc_opt"] /= runsum["n_total"]
 
-    with open(f"{save_logs_dir}/000_{run_name}.json", "w") as f:
+    with open(f"{save_logs_dir}/001_{run_name}.json", "w") as f:
         json.dump(runsum, f, indent=4)
 
 

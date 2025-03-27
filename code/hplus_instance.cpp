@@ -19,13 +19,22 @@ void hplus::print_stats(const statistics& stats, const logger& log) {
     log.print("\n\n--------------------------------------------------");
     log.print("-----------------   Statistics   -----------------");
     log.print("--------------------------------------------------\n");
-    log.print(" >>  Parsing time                  %10.3fs  <<", stats.parsing);
-    log.print(" >>  Preprocessing time            %10.3fs  <<", stats.preprocessing);
-    log.print(" >>  Heuristic time                %10.3fs  <<", stats.heuristic);
-    log.print(" >>  Model building time           %10.3fs  <<", stats.build);
-    log.print(" >>  CPLEX execution time          %10.3fs  <<", stats.execution);
-    log.print(" >>  CPLEX callback time           %10.3fs  <<", stats.callback);
-    log.print(" >>  Total time                    %10.3fs  <<", stats.total);
+    log.print(" >>  Status                        %10d  <<", stats.status);
+    log.print(" >>  Heur cost                     %10u  <<", stats.hcost);
+    log.print(" >>  Final cost                    %10u  <<", stats.fcost);
+    log.print(" >>  Nodes expanded (cplex)        %10d  <<", stats.nnodes);
+    log.print(" >>  Base model variables (cplex)  %10u  <<", stats.nvar_base);
+    log.print(" >>  Acyclicity variables (cplex)  %10u  <<", stats.nvar_acyclic);
+    log.print(" >>  Base model const. (cplex)     %10u  <<", stats.nconst_base);
+    log.print(" >>  Acyclicity const. (cplex)     %10u  <<", stats.nconst_acyclic);
+    log.print(" >>  Lower bound (cplex)           %10.3f  <<", stats.lb);
+    log.print(" >>  Parsing time                 %10.3fs  <<", stats.parsing);
+    log.print(" >>  Preprocessing time           %10.3fs  <<", stats.preprocessing);
+    log.print(" >>  Heuristic time               %10.3fs  <<", stats.heuristic);
+    log.print(" >>  Model building time          %10.3fs  <<", stats.build);
+    log.print(" >>  CPLEX execution time         %10.3fs  <<", stats.execution);
+    log.print(" >>  CPLEX callback time          %10.3fs  <<", stats.callback);
+    log.print(" >>  Total time                   %10.3fs  <<", stats.total);
     log.print("\n\n");
 }
 
@@ -430,7 +439,7 @@ static void init_inst_preprocessing(hplus::instance& inst) {
     for (size_t idx = 0; idx < inst.m; idx++) inst.act_cpxtoidx[idx] = idx;
     inst.fadd_cpx_start = std::vector<size_t>(inst.m);
     size_t sum{0};
-    for (const auto& act_i : inst.act_rem) {
+    for (size_t act_i = 0; act_i < inst.m; act_i++) {
         inst.fadd_cpx_start[act_i] = sum;
         sum += inst.actions[act_i].eff_sparse.size();
     }

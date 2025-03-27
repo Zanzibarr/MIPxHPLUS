@@ -74,10 +74,17 @@ typedef struct {
     time_keeper timer;
 } environment;
 
-/** Time statistics */
+/** Statistics */
 typedef struct {
+    // Times
     double parsing, preprocessing, heuristic, build, callback, execution, total;
     pthread_mutex_t callback_time_mutex;
+    // Costs
+    unsigned int hcost, fcost;
+    // Cplex stats
+    int nnodes, status;
+    size_t nvar_base, nvar_acyclic, nconst_base, nconst_acyclic;
+    double lb;
 } statistics;
 
 // ##################################################################### //

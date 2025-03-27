@@ -2,7 +2,8 @@
 
 #include <numeric>  // std::accumulate
 
-void imai::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log) {
+void imai::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log,
+                           hplus::statistics& stats) {
     PRINT_VERBOSE(log, "Building Imai's model.");
 
     const auto stopchk1 = []() {
@@ -161,6 +162,9 @@ void imai::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::inst
     delete[] objs;
     objs = nullptr;
 
+    stats.nvar_base = inst.n_opt + inst.m_opt + inst.n_fadd;
+    stats.nvar_acyclic = curr_col - stats.nvar_base;
+
     // ====================================================== //
     // ================== CPLEX CONSTRAINTS ================= //
     // ====================================================== //
@@ -216,6 +220,8 @@ void imai::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::inst
     }
     stopchk3();
 
+    stats.nconst_base = 0;
+    stats.nconst_acyclic = 0;
     for (const auto& act_i : inst.act_rem) {
         constexpr int nnz_c2_4{2};
         size_t var_count{0};
@@ -233,12 +239,14 @@ void imai::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::inst
                     val_c1[nnz0++] = 1;
                 }
             }
+            stats.nconst_base++;
             CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz0, &rhs_c1_2_4, &sense_l, &begin, ind_c1, val_c1, nullptr, nullptr));
             // constraint 4: t_vj <= t_a, vj in pre(a)
             ind_c2_4[0] = get_tvar_idx(var_i);
             val_c2_4[0] = 1;
             ind_c2_4[1] = get_tact_idx(act_i);
             val_c2_4[1] = -1;
+            stats.nconst_acyclic++;
             CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c2_4, &rhs_c1_2_4, &sense_l, &begin, ind_c2_4, val_c2_4, nullptr, nullptr));
             var_count++;
         }
@@ -250,6 +258,7 @@ void imai::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::inst
             val_c2_4[0] = 1;
             ind_c2_4[1] = get_act_idx(act_i);
             val_c2_4[1] = -1;
+            stats.nconst_base++;
             CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c2_4, &rhs_c1_2_4, &sense_l, &begin, ind_c2_4, val_c2_4, nullptr, nullptr));
             // constraint 5: t_a + 1 <= t_vj + (|A|+1)(1-z_avj), vj in eff(a)
             ind_c5[0] = get_tact_idx(act_i);
@@ -258,6 +267,7 @@ void imai::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::inst
             val_c5[1] = -1;
             ind_c5[2] = get_fa_idx(act_i, var_count);
             val_c5[2] = max_steps + 1;
+            stats.nconst_acyclic++;
             CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c5, &rhs_c5, &sense_l, &begin, ind_c5, val_c5, nullptr, nullptr));
             // constraint 3: I(v_j) + sum(z_avj) = y_vj
             ind_c3[inst.var_opt_conv[var_i]][nnz_c3[inst.var_opt_conv[var_i]]] = get_fa_idx(act_i, var_count);
@@ -267,9 +277,11 @@ void imai::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::inst
         stopchk3();
     }
 
-    for (size_t var_i = 0; var_i < inst.n_opt; var_i++)
-        ASSERT_LOG(log,
-                   !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c3[var_i], &rhs_c3[var_i], &sense_e, &begin, ind_c3[var_i], val_c3[var_i], nullptr, nullptr));
+    for (size_t var_i = 0; var_i < inst.n_opt; var_i++) {
+        stats.nconst_base++;
+        CPX_HANDLE_CALL(
+            log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c3[var_i], &rhs_c3[var_i], &sense_e, &begin, ind_c3[var_i], val_c3[var_i], nullptr, nullptr));
+    }
 
     for (size_t var_i = 0; var_i < inst.n_opt; var_i++) {
         delete[] ind_c3[var_i];

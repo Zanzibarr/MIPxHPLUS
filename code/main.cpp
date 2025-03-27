@@ -62,7 +62,16 @@ static void init(hplus::statistics& stats) {
                               .callback = 0,
                               .execution = 0,
                               .total = 0,
-                              .callback_time_mutex = PTHREAD_MUTEX_INITIALIZER};
+                              .callback_time_mutex = PTHREAD_MUTEX_INITIALIZER,
+                              .hcost = 0,
+                              .fcost = 0,
+                              .nnodes = 0,
+                              .status = -1,
+                              .nvar_base = 0,
+                              .nvar_acyclic = 0,
+                              .nconst_base = 0,
+                              .nconst_acyclic = 0,
+                              .lb = 0};
 }
 
 static void parse_cli(const int& argc, const char** argv, hplus::environment& env) {
@@ -246,6 +255,10 @@ static void run(hplus::instance& inst, hplus::environment& env, hplus::statistic
             start_time = env.timer.get_time();
 
             run_heur(inst, env, log);
+            if (env.sol_s != solution_status::INFEAS) {
+                stats.hcost = inst.best_sol.cost;
+                stats.fcost = inst.best_sol.cost;
+            }
 
             stats.heuristic = env.timer.get_time() - start_time;
         }
@@ -259,6 +272,7 @@ static void run(hplus::instance& inst, hplus::environment& env, hplus::statistic
         }
 
         run_model(inst, env, stats, log);
+        stats.fcost = inst.best_sol.cost;
 
     } catch (timelimit_exception&) {
     }
@@ -297,15 +311,23 @@ static void end(const hplus::instance& inst, hplus::environment& env, hplus::sta
     switch (env.sol_s) {
         case solution_status::INFEAS:
             log.print("The problem is infeasible.");
+            stats.status = 1;
             break;
         case solution_status::NOTFOUND:
             log.print("No solution found.");
+            stats.status = 3;
             break;
         case solution_status::FEAS:
             log.print("The solution has not been proven optimal.");
-            [[fallthrough]];
-        default:
+            stats.status = 2;
             hplus::print_sol(inst, log);
+            break;
+        case solution_status::OPT:
+            stats.status = 0;
+            hplus::print_sol(inst, log);
+            break;
+        default:
+            stats.status = -1;
             break;
     }
 

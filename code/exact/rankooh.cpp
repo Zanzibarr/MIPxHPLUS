@@ -9,7 +9,8 @@
 #endif
 #include "pq.hxx"
 
-void rankooh::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst, const hplus::environment& env, const logger& log) {
+void rankooh::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst, const hplus::environment& env, const logger& log,
+                              hplus::statistics& stats) {
     PRINT_VERBOSE(log, "Building Rankooh's model.");
 
     const auto stopchk1 = []() {
@@ -199,9 +200,9 @@ void rankooh::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instanc
         types[count++] = 'B';
     }
 
-    curr_col += inst.m_opt;
+    curr_col += count;
 
-    CPX_HANDLE_CALL(log, CPXnewcols(cpxenv, cpxlp, inst.m_opt, objs, lbs, ubs, types, nullptr));
+    CPX_HANDLE_CALL(log, CPXnewcols(cpxenv, cpxlp, count, objs, lbs, ubs, types, nullptr));
     stopchk2();
 
     resize_cpx_arrays(inst.n_opt);
@@ -232,17 +233,17 @@ void rankooh::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instanc
         ubs[count] = 1;
         types[count++] = 'B';
     }
-    curr_col += inst.n_opt;
+    curr_col += count;
 
-    CPX_HANDLE_CALL(log, CPXnewcols(cpxenv, cpxlp, inst.n_opt, objs, lbs, ubs, types, nullptr));
+    CPX_HANDLE_CALL(log, CPXnewcols(cpxenv, cpxlp, count, objs, lbs, ubs, types, nullptr));
     stopchk2();
 
     // vertex elimination graph edges
     const size_t veg_start{curr_col};
-    inst.veg_starts = std::vector<size_t>(inst.n_opt);
-    size_t var_count{0}, tmp_count{0};
+    inst.veg_starts = std::vector<size_t>();
+    size_t tmp_count{0};
     for (const auto& var_i : inst.var_rem) {
-        inst.veg_starts[var_count++] = tmp_count;
+        inst.veg_starts.push_back(tmp_count);
         count = 0;
         for ([[maybe_unused]] const auto& var_j : inst.veg_cumulative_graph[var_i]) {
             objs[count] = 0;
@@ -264,6 +265,9 @@ void rankooh::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instanc
     lbs = nullptr;
     delete[] objs;
     objs = nullptr;
+
+    stats.nvar_base = inst.n_opt + inst.m_opt + inst.n_fadd;
+    stats.nvar_acyclic = curr_col - stats.nvar_base;
 
     // ====================================================== //
     // ================== CPLEX CONSTRAINTS ================= //
@@ -298,6 +302,9 @@ void rankooh::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instanc
         }
     };
 
+    stats.nconst_base = 0;
+    stats.nconst_acyclic = 0;
+
     // p = \sum_{a\in A,p\in eff(a)}(fadd(a, p)), \forall p \in V
     for (const auto& var_i : inst.var_rem) {
         nnz = 0;
@@ -331,8 +338,10 @@ void rankooh::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instanc
             const char fix = 'B';
             const double zero = 0;
             CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 1, ind, &fix, &zero));
-        } else
+        } else {
+            stats.nconst_base++;
             CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_e, &begin, ind, val, nullptr, nullptr));
+        }
         stopchk3();
     }
 
@@ -364,7 +373,10 @@ void rankooh::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instanc
             // since we have a fixed first adder, all other first adder for that effect are eliminated, so we don't need the constraint
             if (fixed) continue;
             // if nnz == 1 than we have -p <= 0, hence it's always true, we can ignore this constraint
-            if (nnz != 1) CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_l, &begin, ind, val, nullptr, nullptr));
+            if (nnz != 1) {
+                stats.nconst_base++;
+                CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_l, &begin, ind, val, nullptr, nullptr));
+            }
             stopchk3();
         }
     }
@@ -380,7 +392,8 @@ void rankooh::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instanc
             ind[nnz] = get_act_idx(act_i);
             val[nnz++] = 1;
         }
-        ASSERT_LOG(log, !CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs, &sense_l, &begin, ind, val, nullptr, nullptr));
+        stats.nconst_base++;
+        CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs, &sense_l, &begin, ind, val, nullptr, nullptr));
     }
 
     delete[] val;
@@ -410,6 +423,7 @@ void rankooh::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instanc
                 continue;
             ind_c5_c6_c7[1] = get_fa_idx(act_i, var_count);
             val_c5_c6_c7[1] = 1;
+            stats.nconst_base++;
             CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
         }
         stopchk1();
@@ -439,6 +453,7 @@ void rankooh::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instanc
                     CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 1, &(ind_c5_c6_c7[1]), &fix, &zero));
                     continue;
                 }
+                stats.nconst_acyclic++;
                 CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
             }
             stopchk1();
@@ -454,6 +469,7 @@ void rankooh::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instanc
             val_c5_c6_c7[0] = 1;
             ind_c5_c6_c7[1] = get_veg_idx(var_j, var_i);
             val_c5_c6_c7[1] = 1;
+            stats.nconst_acyclic++;
             CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_1, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
             stopchk1();
         }
@@ -478,6 +494,7 @@ void rankooh::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instanc
             CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 2, ind_c8, fix, zero));
             continue;
         }
+        stats.nconst_acyclic++;
         CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 3, &rhs_1, &sense_l, &begin, ind_c8, val_c8, nullptr, nullptr));
         stopchk1();
     }
@@ -547,9 +564,9 @@ void rankooh::post_cpx_warmstart(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus
             cpx_sol_ind[cpx_fad_idx] = static_cast<int>(cpx_fad_idx);
             cpx_sol_val[cpx_fad_idx] = 1;
             for (const auto& var_j : inst.actions[act_i].pre_sparse) {
-                std::vector<size_t> tmp = inst.veg_cumulative_graph[var_i].sparse();
-                size_t veg_idx = static_cast<int>(inst.veg_starts[inst.var_opt_conv[var_i]] +
-                                                  static_cast<size_t>(std::find(tmp.begin(), tmp.end(), var_j) - tmp.begin()));
+                std::vector<size_t> tmp = inst.veg_cumulative_graph[var_j].sparse();
+                size_t veg_idx = static_cast<int>(inst.veg_starts[inst.var_opt_conv[var_j]] +
+                                                  static_cast<size_t>(std::find(tmp.begin(), tmp.end(), var_i) - tmp.begin()));
                 size_t cpx_veg_idx = inst.m_opt + inst.n_fadd + inst.n_opt + veg_idx;
                 cpx_sol_ind[cpx_veg_idx] = static_cast<int>(cpx_veg_idx);
                 cpx_sol_val[cpx_veg_idx] = 1;

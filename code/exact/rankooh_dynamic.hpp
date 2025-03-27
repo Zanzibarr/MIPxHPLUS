@@ -21,7 +21,8 @@ namespace rankooh_dynamic {
 /**
  * Build the cplex model using the instance described by the inst parameter, with execution details explained in the env parameter
  */
-void build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log);
+void build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log,
+                     hplus::statistics& stats);
 
 /**
  * Post as warm start a solution to cplex
