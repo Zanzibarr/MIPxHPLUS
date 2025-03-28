@@ -76,6 +76,7 @@ def main():
 
         runsum["results"][instance_name] = {
             "status": -1,
+            "unit_costs": False,
             "hcost": -1,
             "fcost": -1,
             "nnodes": -1,
@@ -166,6 +167,10 @@ def main():
                 runsum["results"][instance_name]["cbtime"] = callback_time
                 runsum["results"][instance_name]["ctime"] = cplex_time
                 runsum["results"][instance_name]["time"] = total_time
+
+                runsum["results"][instance_name]["unit_costs"] = (
+                    "integer costs" not in content
+                )
 
                 # If I have a solution (status 0 = opt, status 2 = heur)
                 if (
