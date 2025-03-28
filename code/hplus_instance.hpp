@@ -82,7 +82,7 @@ typedef struct {
     // Costs
     int hcost, fcost;
     // Cplex stats
-    int nnodes, status, nvar_base, nvar_acyclic, nconst_base, nconst_acyclic;
+    int nnodes, status, nvar_base, nvar_acyclic, nconst_base, nconst_acyclic, nusercuts;
     double lb;
 } statistics;
 

@@ -521,67 +521,28 @@ void rankooh::post_cpx_warmstart(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus
     constexpr int izero{0};
     constexpr int effortlevel{CPX_MIPSTART_NOCHECK};
 
-#if HPLUS_INTCHECK
-    binary_set fixed_act_check{inst.act_f}, fixed_var_check{inst.var_f}, fixed_t_act_check{inst.m}, fixed_t_var_check{inst.n};
-    std::vector<binary_set> fixed_fadd_check(inst.m);
-    for (size_t i = 0; i < inst.m; i++) fixed_fadd_check[i] = inst.fadd_f[i];
-    for (size_t i = 0; i < inst.m; i++)
-        if (inst.act_t[i] >= 0) fixed_t_act_check.add(i);
-    for (size_t i = 0; i < inst.n; i++)
-        if (inst.var_t[i] >= 0) fixed_t_var_check.add(i);
-    unsigned int timestamp{0};
-#endif
-
     for (const auto& act_i : warm_start) {
-#if HPLUS_INTCHECK
-        ASSERT_LOG(log, !(inst.act_t[act_i] >= 0 && timestamp != static_cast<unsigned int>(inst.act_t[act_i])));
-        ASSERT_LOG(log, !inst.act_e[act_i]);
-        fixed_act_check.remove(act_i);
-        fixed_t_act_check.remove(act_i);
-        timestamp++;
-#endif
         size_t cpx_act_idx = inst.act_opt_conv[act_i];
-        cpx_sol_ind[cpx_act_idx] = static_cast<int>(cpx_act_idx);
         cpx_sol_val[cpx_act_idx] = 1;
         int var_count{-1};
         for (const auto& var_i : inst.actions[act_i].eff_sparse) {
             var_count++;
             if (state[var_i]) continue;
 
-#if HPLUS_INTCHECK
-            ASSERT_LOG(log, !(inst.var_t[var_i] >= 0 && timestamp != static_cast<unsigned int>(inst.var_t[var_i])));
-            ASSERT_LOG(log, !inst.var_e[var_i]);
-            ASSERT_LOG(log, !inst.fadd_e[act_i][var_i]);
-            fixed_var_check.remove(var_i);
-            fixed_t_var_check.remove(var_i);
-            fixed_fadd_check[act_i].remove(var_i);
-#endif
-
             size_t cpx_var_idx = inst.m_opt + inst.n_fadd + inst.var_opt_conv[var_i];
-            cpx_sol_ind[cpx_var_idx] = static_cast<int>(cpx_var_idx);
             cpx_sol_val[cpx_var_idx] = 1;
             size_t cpx_fad_idx = inst.m_opt + inst.fadd_cpx_start[inst.act_opt_conv[act_i]] + var_count;
-            cpx_sol_ind[cpx_fad_idx] = static_cast<int>(cpx_fad_idx);
             cpx_sol_val[cpx_fad_idx] = 1;
             for (const auto& var_j : inst.actions[act_i].pre_sparse) {
                 std::vector<size_t> tmp = inst.veg_cumulative_graph[var_j].sparse();
                 size_t veg_idx = static_cast<int>(inst.veg_starts[inst.var_opt_conv[var_j]] +
                                                   static_cast<size_t>(std::find(tmp.begin(), tmp.end(), var_i) - tmp.begin()));
                 size_t cpx_veg_idx = inst.m_opt + inst.n_fadd + inst.n_opt + veg_idx;
-                cpx_sol_ind[cpx_veg_idx] = static_cast<int>(cpx_veg_idx);
                 cpx_sol_val[cpx_veg_idx] = 1;
             }
         }
         state |= inst.actions[act_i].eff;
     }
-
-#if HPLUS_INTCHECK
-    ASSERT_LOG(log, fixed_act_check.empty());
-    ASSERT_LOG(log, fixed_var_check.empty());
-    ASSERT_LOG(log, fixed_t_act_check.empty());
-    ASSERT_LOG(log, fixed_t_var_check.empty());
-    for (size_t i = 0; i < inst.m; i++) ASSERT_LOG(log, fixed_fadd_check[i].empty());
-#endif
 
     CPX_HANDLE_CALL(log, CPXaddmipstarts(cpxenv, cpxlp, 1, ncols, &izero, cpx_sol_ind, cpx_sol_val, &effortlevel, nullptr));
     delete[] cpx_sol_ind;
@@ -601,7 +562,7 @@ void rankooh::store_cpx_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance&
         bool set_zero{true};
         for (size_t var_count = 0; var_count < inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff_sparse.size(); var_count++) {
             if (plan[inst.m_opt + inst.fadd_cpx_start[act_i_cpx] + var_count] > HPLUS_CPX_INT_ROUNDING) {
-                INTCHECK_ASSERT_LOG(log, plan[act_i_cpx] > HPLUS_CPX_INT_ROUNDING);
+                ASSERT_LOG(log, plan[act_i_cpx] > HPLUS_CPX_INT_ROUNDING);
                 set_zero = false;
                 break;
             }

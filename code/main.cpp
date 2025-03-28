@@ -71,6 +71,7 @@ static void init(hplus::statistics& stats) {
                               .nvar_acyclic = -1,
                               .nconst_base = -1,
                               .nconst_acyclic = -1,
+                              .nusercuts = -1,
                               .lb = -1};
 }
 
@@ -183,9 +184,6 @@ static void show_info(const hplus::instance& inst, const hplus::environment& env
               (inst.equal_costs ? (inst.actions[0].cost == 1 ? "unitary costs" : "constant costs") : "integer costs"));
     log.print("# variables:                                     %10d.", inst.n);
     log.print("# actions:                                       %10d.", inst.m);
-#if HPLUS_VERBOSE >= 100
-    log.print("Goal state:  %s.", std::string(inst.goal).c_str());
-#endif
 
     log.print(LINE);
 

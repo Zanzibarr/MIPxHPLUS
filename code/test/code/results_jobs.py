@@ -82,6 +82,7 @@ def main():
             "hcost": -1,
             "fcost": -1,
             "nnodes": -1,
+            "usercuts": -1,
             "nvar_base": -1,
             "nvar_acyc": -1,
             "nconst_base": -1,
@@ -210,6 +211,11 @@ def main():
                 ):
                     runsum["results"][instance_name]["nnodes"] = int(
                         content.partition(">>  Nodes expanded (cplex)")[2]
+                        .partition("<<")[0]
+                        .strip()
+                    )
+                    runsum["results"][instance_name]["usercuts"] = int(
+                        content.partition(">>  User cuts (cplex callback)")[2]
                         .partition("<<")[0]
                         .strip()
                     )

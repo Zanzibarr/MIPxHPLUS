@@ -174,17 +174,6 @@ static bool htype(const hplus::instance& inst, hplus::solution& sol, double (*h_
             throw timelimit_exception("Reached time limit.");
     }
 
-#if HPLUS_INTCHECK
-    for (size_t i = 0; i < inst.m; i++) {
-        if (inst.act_e[i]) ASSERT_LOG(log, std::find(sol.plan.begin(), sol.plan.end(), i) == sol.plan.end());
-        if (inst.act_f[i]) ASSERT_LOG(log, std::find(sol.plan.begin(), sol.plan.end(), i) != sol.plan.end());
-        if (inst.act_t[i] < 0) continue;
-        ASSERT_LOG(log, inst.act_f[i]);
-        ASSERT_LOG(log, std::find(sol.plan.begin(), sol.plan.end(), i) != sol.plan.end());
-        ASSERT_LOG(log, sol.plan[inst.act_t[i]] == i);
-    }
-#endif
-
     return true;
 }
 

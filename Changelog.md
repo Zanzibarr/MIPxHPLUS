@@ -33,13 +33,16 @@ HOW I DO VERSIONING:
 - Better results reading script
     - [~/code/test/code/results_jobs.py](code/test/code/results_jobs.py)
 ### :heavy_plus_sign: Added
-- Added status, costs and cplex execution info to statistics
+- Added status, costs, basic info and other cplex execution info to statistics
     - [~/code/exact/*](code/exact/)
     - [~/code/algorithms.cpp](code/algorithms.cpp)
     - [~/code/hplus_instance.hpp](code/hplus_instance.hpp)
     - [~/code/hplus_instance.cpp](code/hplus_instance.cpp)
     - [~/code/main.cpp](code/main.cpp)
-<!-- ### :x: Removed -->
+### :x: Removed
+- Removed well tested integrity checks
+    - [~/code/exact/*](code/exact)
+    - [~/code/heuristics/*](code/heuristics)
 <!-- ### :curly_loop: Other -->
 
 

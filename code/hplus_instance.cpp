@@ -23,6 +23,7 @@ void hplus::print_stats(const statistics& stats, const logger& log) {
     log.print(" >>  Heur cost                     %10d  <<", stats.hcost);
     log.print(" >>  Final cost                    %10d  <<", stats.fcost);
     log.print(" >>  Nodes expanded (cplex)        %10d  <<", stats.nnodes);
+    log.print(" >>  User cuts (cplex callback)    %10d  <<", stats.nusercuts);
     log.print(" >>  Base model variables (cplex)  %10d  <<", stats.nvar_base);
     log.print(" >>  Acyclicity variables (cplex)  %10d  <<", stats.nvar_acyclic);
     log.print(" >>  Base model const. (cplex)     %10d  <<", stats.nconst_base);
@@ -832,16 +833,16 @@ static void finish_preprocessing(hplus::instance& inst, const logger& log) {
         sum += inst.actions[act_i].eff_sparse.size();
     }
     inst.n_fadd = sum;
-    INTCHECK_ASSERT_LOG(log, !inst.var_f.intersects(inst.var_e));
-    INTCHECK_ASSERT_LOG(log, !inst.act_f.intersects(inst.act_e));
+    ASSERT_LOG(log, !inst.var_f.intersects(inst.var_e));
+    ASSERT_LOG(log, !inst.act_f.intersects(inst.act_e));
     for (size_t i = 0; i < inst.m; i++) {
-        INTCHECK_ASSERT_LOG(log, !inst.fadd_f[i].intersects(inst.fadd_e[i]));
-        INTCHECK_ASSERT_LOG(log, !(inst.act_e[i] && inst.act_t[i] >= 0));
-        INTCHECK_ASSERT_LOG(log, !(!inst.act_f[i] && inst.act_t[i] >= 0));
+        ASSERT_LOG(log, !inst.fadd_f[i].intersects(inst.fadd_e[i]));
+        ASSERT_LOG(log, !(inst.act_e[i] && inst.act_t[i] >= 0));
+        ASSERT_LOG(log, !(!inst.act_f[i] && inst.act_t[i] >= 0));
     }
     for (size_t i = 0; i < inst.n; i++) {
-        INTCHECK_ASSERT_LOG(log, !(inst.var_e[i] && inst.var_t[i] >= 0));
-        INTCHECK_ASSERT_LOG(log, !(!inst.var_f[i] && inst.var_t[i] >= 0));
+        ASSERT_LOG(log, !(inst.var_e[i] && inst.var_t[i] >= 0));
+        ASSERT_LOG(log, !(!inst.var_f[i] && inst.var_t[i] >= 0));
     }
 }
 

@@ -81,17 +81,6 @@ void greedycost::run(hplus::instance& inst, hplus::environment& env, const logge
             throw timelimit_exception("Reached time limit.");
     }
 
-#if HPLUS_INTCHECK
-    for (size_t i = 0; i < inst.m; i++) {
-        if (inst.act_e[i]) ASSERT_LOG(log, std::find(heur_sol.plan.begin(), heur_sol.plan.end(), i) == heur_sol.plan.end());
-        if (inst.act_f[i]) ASSERT_LOG(log, std::find(heur_sol.plan.begin(), heur_sol.plan.end(), i) != heur_sol.plan.end());
-        if (inst.act_t[i] < 0) continue;
-        ASSERT_LOG(log, inst.act_f[i]);
-        ASSERT_LOG(log, std::find(heur_sol.plan.begin(), heur_sol.plan.end(), i) != heur_sol.plan.end());
-        ASSERT_LOG(log, heur_sol.plan[inst.act_t[i]] == i);
-    }
-#endif
-
     hplus::update_sol(inst, heur_sol, log);
     env.sol_s = solution_status::FEAS;
 }
