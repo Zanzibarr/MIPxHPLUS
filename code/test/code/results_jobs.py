@@ -77,6 +77,8 @@ def main():
         runsum["results"][instance_name] = {
             "status": -1,
             "unit_costs": False,
+            "natoms": -1,
+            "nacts": -1,
             "hcost": -1,
             "fcost": -1,
             "nnodes": -1,
@@ -171,6 +173,12 @@ def main():
                 runsum["results"][instance_name]["unit_costs"] = (
                     "integer costs" not in content
                 )
+                runsum["results"][instance_name]["natoms"] = int(
+                    content.partition("# variables:")[2].partition(".\n")[0].strip()
+                )
+                runsum["results"][instance_name]["nacts"] = int(
+                    content.partition("# actions:")[2].partition(".\n")[0].strip()
+                )
 
                 # If I have a solution (status 0 = opt, status 2 = heur)
                 if (
@@ -194,7 +202,7 @@ def main():
 
                 if (
                     int(
-                        content.partition(">>  Base model variables (cplex)")[2]
+                        content.partition(">>  Nodes expanded (cplex)")[2]
                         .partition("<<")[0]
                         .strip()
                     )
