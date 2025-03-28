@@ -187,7 +187,14 @@ def main():
                         .strip()
                     )
 
-                if "Running CPLEX." in content:
+                if (
+                    int(
+                        content.partition(">>  Base model variables (cplex)")[2]
+                        .partition("<<")[0]
+                        .strip()
+                    )
+                    != -1
+                ):
                     runsum["results"][instance_name]["nnodes"] = int(
                         content.partition(">>  Nodes expanded (cplex)")[2]
                         .partition("<<")[0]

@@ -55,23 +55,23 @@ static void init(hplus::environment& env) {
 }
 
 static void init(hplus::statistics& stats) {
-    stats = hplus::statistics{.parsing = 0,
-                              .preprocessing = 0,
-                              .heuristic = 0,
-                              .build = 0,
-                              .callback = 0,
-                              .execution = 0,
-                              .total = 0,
+    stats = hplus::statistics{.parsing = -1,
+                              .preprocessing = -1,
+                              .heuristic = -1,
+                              .build = -1,
+                              .callback = -1,
+                              .execution = -1,
+                              .total = -1,
                               .callback_time_mutex = PTHREAD_MUTEX_INITIALIZER,
-                              .hcost = 0,
-                              .fcost = 0,
-                              .nnodes = 0,
+                              .hcost = -1,
+                              .fcost = -1,
+                              .nnodes = -1,
                               .status = -1,
-                              .nvar_base = 0,
-                              .nvar_acyclic = 0,
-                              .nconst_base = 0,
-                              .nconst_acyclic = 0,
-                              .lb = 0};
+                              .nvar_base = -1,
+                              .nvar_acyclic = -1,
+                              .nconst_base = -1,
+                              .nconst_acyclic = -1,
+                              .lb = -1};
 }
 
 static void parse_cli(const int& argc, const char** argv, hplus::environment& env) {
