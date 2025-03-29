@@ -283,6 +283,10 @@ def main():
     runsum["stats"]["perc_found"] /= runsum["n_total"]
     runsum["stats"]["perc_opt"] /= runsum["n_total"]
 
+    runsum["results"] = {
+        key: runsum["results"][key] for key in sorted(runsum["results"].keys())
+    }
+
     with open(f"{save_logs_dir}/001_{run_name}.json", "w") as f:
         json.dump(runsum, f, indent=4)
 
