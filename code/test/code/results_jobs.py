@@ -174,12 +174,13 @@ def main():
                 runsum["results"][instance_name]["unit_costs"] = (
                     "integer costs" not in content
                 )
-                runsum["results"][instance_name]["natoms"] = int(
-                    content.partition("# variables:")[2].partition(".\n")[0].strip()
-                )
-                runsum["results"][instance_name]["nacts"] = int(
-                    content.partition("# actions:")[2].partition(".\n")[0].strip()
-                )
+                if runsum["results"][instance_name]["status"] != 1:
+                    runsum["results"][instance_name]["natoms"] = int(
+                        content.partition("# variables:")[2].partition(".\n")[0].strip()
+                    )
+                    runsum["results"][instance_name]["nacts"] = int(
+                        content.partition("# actions:")[2].partition(".\n")[0].strip()
+                    )
 
                 # If I have a solution (status 0 = opt, status 2 = heur)
                 if (
