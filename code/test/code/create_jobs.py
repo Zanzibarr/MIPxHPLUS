@@ -62,7 +62,7 @@ def main():
 
     print(f"Jobs folder: {jobs_folder}")
     print(f"Jobs output: {jobs_outputs}")
-    print(f"Executable: {exec_dir}/main")
+    print(f"Executable: {exec_dir}/hplus")
     if input("Check those paths.\nInsert y if it's all correct: ") != "y":
         exit(0)
 
