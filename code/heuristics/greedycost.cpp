@@ -34,12 +34,10 @@ void greedycost::run(hplus::instance& inst, hplus::environment& env, const logge
 
     binary_set state{inst.n};  // initial state is empty
 
-    // binary_set searcher for faster actions lookup
-    bs_searcher feasible_actions{inst.n};
-    for (const auto& act_i : inst.act_rem) feasible_actions.add(act_i, inst.actions[act_i].pre);
-
-    std::vector<size_t> tmp{feasible_actions.find_subsets(binary_set(inst.n))};
-    std::list<size_t> candidates{tmp.begin(), tmp.end()};
+    std::list<size_t> candidates{};
+    for (const auto& act_i : inst.act_rem) {
+        if (inst.actions[act_i].pre_sparse.empty()) candidates.push_back(act_i);
+    }
 
     while (!state.contains(inst.goal)) {
         if (candidates.empty()) [[unlikely]] {

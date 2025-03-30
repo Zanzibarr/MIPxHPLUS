@@ -9,7 +9,7 @@
 #include "pq.hxx"
 
 [[nodiscard]]
-static double evaluate_htype_state(const binary_set& state, const std::vector<double>& values, double (*h_eqtype)(double, double)) {
+static double evaluate_htype_state(const std::vector<size_t>& state, const std::vector<double>& values, double (*h_eqtype)(double, double)) {
     double state_hcost{0};
     for (const auto& p : state) state_hcost = h_eqtype(state_hcost, values[p]);
     return state_hcost;
@@ -34,7 +34,7 @@ static void update_htype_values(const hplus::instance& inst, const binary_set& s
         for (const auto& act_i : inst.act_with_pre[p]) {
             if (used_actions[act_i]) continue;
 
-            const double cost_pre{evaluate_htype_state(inst.actions[act_i].pre, values, h_eqtype)};
+            const double cost_pre{evaluate_htype_state(inst.actions[act_i].pre_sparse, values, h_eqtype)};
             if (cost_pre >= std::numeric_limits<double>::infinity()) continue;
 
             const double new_cost{cost_pre + inst.actions[act_i].cost};
@@ -75,7 +75,7 @@ static void init_htype(const hplus::instance& inst, const std::list<size_t>& ini
 }
 
 [[nodiscard]]
-static bool htype(const hplus::instance& inst, hplus::solution& sol, double (*h_eqtype)(double, double), const logger& log) {
+static bool htype(const hplus::instance& inst, hplus::solution& sol, double (*h_eqtype)(double, double)) {
     // Reset solution (just to be sure)
     sol.plan.clear();
     sol.plan.reserve(inst.m_opt);
@@ -85,15 +85,16 @@ static bool htype(const hplus::instance& inst, hplus::solution& sol, double (*h_
     std::vector<double> values(inst.n, std::numeric_limits<double>::infinity());
     binary_set state{inst.n}, used_actions{inst.m};
     priority_queue<double> pq{inst.n};
+    std::vector<size_t> goal_sparse{inst.goal.sparse()};
 
     unsigned int timestamp{0};
     std::stack<std::pair<size_t, double>> trail;  // leave a trail for the action simulation to be reverted
-    const auto find_best_act = [&inst, &h_eqtype, &used_actions, &trail, &pq, &timestamp](const std::list<size_t>& candidates,
-                                                                                          std::vector<double>& values, const binary_set& state) {
+    const auto find_best_act = [&inst, &h_eqtype, &used_actions, &goal_sparse, &trail, &pq, &timestamp](
+                                   const std::list<size_t>& candidates, std::vector<double>& values, const binary_set& state) {
         size_t choice{0};
         bool found{false};
         double best_goal_cost{std::numeric_limits<double>::infinity()};
-        double current_goal_cost{evaluate_htype_state(inst.goal, values, h_eqtype)};
+        double current_goal_cost{evaluate_htype_state(goal_sparse, values, h_eqtype)};
         for (const auto& act_i : candidates) {
             if (inst.act_t[act_i] >= 0 && static_cast<unsigned int>(inst.act_t[act_i]) == timestamp) return std::pair(true, act_i);
             if (inst.act_f[act_i]) {
@@ -107,7 +108,7 @@ static bool htype(const hplus::instance& inst, hplus::solution& sol, double (*h_
 
             update_htype_values(inst, inst.actions[act_i].eff - state, values, pq, used_actions, h_eqtype, &trail);
 
-            double goal_cost{h_eqtype(1, 1) == 1 ? /*hmax*/ evaluate_htype_state(inst.goal, values, h_eqtype) : current_goal_cost};
+            double goal_cost{h_eqtype(1, 1) == 1 ? /*hmax*/ evaluate_htype_state(goal_sparse, values, h_eqtype) : current_goal_cost};
             // reset values according to the trail
             while (!trail.empty()) {
                 const auto& [idx, value] = trail.top();
@@ -127,13 +128,10 @@ static bool htype(const hplus::instance& inst, hplus::solution& sol, double (*h_
         return std::pair(found, choice);
     };
 
-    // binary_set searcher for faster actions lookup
-    bs_searcher feasible_actions{inst.n};
-    for (const auto& act_i : inst.act_rem) feasible_actions.add(act_i, inst.actions[act_i].pre);
-
-    // initialize values and priority queue (needs to be done manually since here the initial state will always be empty)
-    std::vector<size_t> tmp{feasible_actions.find_subsets(binary_set(inst.n))};
-    std::list<size_t> candidates{tmp.begin(), tmp.end()};
+    std::list<size_t> candidates{};
+    for (const auto& act_i : inst.act_rem) {
+        if (inst.actions[act_i].pre_sparse.empty()) candidates.push_back(act_i);
+    }
     init_htype(inst, candidates, values, pq, h_eqtype);
 
     while (!state.contains(inst.goal)) {
@@ -184,7 +182,7 @@ void hmax::run(hplus::instance& inst, hplus::environment& env, const logger& log
     heur_sol.plan.reserve(inst.m_opt);
     heur_sol.cost = 0;
 
-    if (!htype(inst, heur_sol, [](const double a, const double b) { return (a > b ? a : b); }, log)) {
+    if (!htype(inst, heur_sol, [](const double a, const double b) { return (a > b ? a : b); })) {
         env.sol_s = solution_status::INFEAS;
         return;
     }
@@ -200,7 +198,7 @@ void hadd::run(hplus::instance& inst, hplus::environment& env, const logger& log
     heur_sol.plan.reserve(inst.m_opt);
     heur_sol.cost = 0;
 
-    if (!htype(inst, heur_sol, [](const double a, const double b) { return a + b; }, log)) {
+    if (!htype(inst, heur_sol, [](const double a, const double b) { return a + b; })) {
         env.sol_s = solution_status::INFEAS;
         return;
     }
