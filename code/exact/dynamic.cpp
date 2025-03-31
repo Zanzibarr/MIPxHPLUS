@@ -133,21 +133,21 @@ static void cb_post_landmark(CPXCALLBACKCONTEXTptr context, const hplus::instanc
     constexpr int izero{0};
     constexpr char sense_g{'G'};
 
-    // action_candidates now contains the landmark to add as a constraint
-    // TODO: Which is better?
-    // int* ind{new int[inst.m_opt]};
-    // double* val{new double[inst.m_opt]};
-    // for (const auto& act_i_cpx : landmark) {
-    //     ind[nnz] = act_i_cpx;
-    //     val[nnz++] = 1;
-    // }
     int* ind{new int[inst.n_fadd]};
     double* val{new double[inst.n_fadd]};
     for (const auto& act_i_cpx : landmark) {
-        size_t var_count{0};
+        int var_count{-1};
+        int init_nnz{nnz};
         for ([[maybe_unused]] const auto& p : inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff_sparse) {
-            ind[nnz] = inst.m_opt + inst.fadd_cpx_start[act_i_cpx] + var_count++;
+            var_count++;
+            if (inst.fadd_e[inst.act_cpxtoidx[act_i_cpx]][p]) continue;
+            ind[nnz] = inst.m_opt + inst.fadd_cpx_start[act_i_cpx] + var_count;
             val[nnz++] = 1;
+            if (inst.fadd_f[inst.act_cpxtoidx[act_i_cpx]][p]) {
+                nnz = init_nnz;
+                ind[nnz++] = inst.m_opt + inst.fadd_cpx_start[act_i_cpx] + var_count;
+                break;
+            }
         }
     }
 
@@ -209,26 +209,37 @@ int CPXPUBLIC dynamic::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG conte
     // print info for debugging
     cb_print_info(context, cost, log);
 
-    // save the order in which actions could be applied
-    std::vector<size_t> applicable_action_sequence{reachable_acts};
-
     // the goal state here was reached
     if (reachable_state.contains(inst.goal)) {
+        // save the order in which actions could be applied
+        std::vector<size_t> applicable_action_sequence{reachable_acts};
         auto [ind, val, size] = cb_find_heur_sol(inst, applicable_action_sequence);
 
         log.print_warn("Posting solution with cost: %u", partial_cost);
 
+        // Post the solution withoud unreachable actions
         CPX_HANDLE_CALL(log, CPXcallbackpostheursoln(context, size, ind, val, partial_cost, CPXCALLBACKSOLUTION_NOCHECK))
 
         delete[] val;
         val = nullptr;
         delete[] ind;
         ind = nullptr;
+
+        // reject solution: //TODO: Maybe I can add a constraint here(????)
+        constexpr double tmprhs{0};
+        constexpr char tmpsense{'L'};
+        constexpr int tmpbeg{0};
+        constexpr int tmpind{0};
+        constexpr double tmpval{0};
+        CPX_HANDLE_CALL(log, CPXcallbackrejectcandidate(context, 0, 0, &tmprhs, &tmpsense, &tmpbeg, &tmpind, &tmpval));
+        return 0;
     }
 
     // compute minimal landmark
     std::sort(reachable_acts.begin(), reachable_acts.end());
     const std::vector<size_t> landmark{cb_compute_landmark(inst, used_acts, reachable_acts, unused_acts, reachable_state)};
+
+    log.print_warn("Landmark size: %d", landmark.size());
 
     // reject the candidate point adding the landmark as constraint
     cb_post_landmark(context, inst, landmark, log);
