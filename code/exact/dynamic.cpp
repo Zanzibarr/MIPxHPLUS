@@ -1,4 +1,4 @@
-#include "rankooh.hpp"
+#include "dynamic.hpp"
 
 #include <numeric>  // std::accumulate
 #include <set>
@@ -8,121 +8,191 @@
 #endif
 #include "pq.hxx"
 
-void rankooh::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst, const hplus::environment& env, const logger& log,
+int CPXPUBLIC dynamic::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG context_id, void* user_handle) {
+    auto& [inst, env, stats, log] = *static_cast<cpx_callback_user_handle*>(user_handle);
+
+    ASSERT_LOG(log, context_id == CPX_CALLBACKCONTEXT_CANDIDATE);
+    double start_time{env.timer.get_time()};
+
+    // get candidate point
+    double* xstar{new double[inst.m_opt + inst.n_fadd]};
+    double cost{CPX_INFBOUND};
+    CPX_HANDLE_CALL(log, CPXcallbackgetcandidatepoint(context, xstar, 0, inst.m_opt + inst.n_fadd - 1, &cost));
+
+    // fixing the solution to read the plan (some actions are set to 1 even if they are not a first archiever of anything)
+    for (size_t act_i_cpx = 0; act_i_cpx < inst.m_opt; act_i_cpx++) {
+        bool set_zero{true};
+        for (size_t var_count = 0; var_count < inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff_sparse.size(); var_count++) {
+            if (xstar[inst.m_opt + inst.fadd_cpx_start[act_i_cpx] + var_count] > HPLUS_CPX_INT_ROUNDING) {
+                ASSERT_LOG(log, xstar[act_i_cpx] > HPLUS_CPX_INT_ROUNDING);
+                set_zero = false;
+                break;
+            }
+        }
+        if (set_zero) {
+            // TODO (ASK)
+            // ASSERT_LOG(log, !(xstar[act_i_cpx] > HPLUS_CPX_INT_ROUNDING && inst.actions[inst.act_cpxtoidx[act_i_cpx]].cost != 0));
+            xstar[act_i_cpx] = 0;
+        }
+    }
+
+    // find used actions
+    binary_set actions_used(inst.m_opt);
+    for (size_t act_i_cpx = 0; act_i_cpx < inst.m_opt; act_i_cpx++) {
+        if (xstar[act_i_cpx] > HPLUS_CPX_INT_ROUNDING) actions_used.add(act_i_cpx);
+    }
+    delete[] xstar;
+    xstar = nullptr;
+
+    // split used actions among reachable and unreachable
+    binary_set actions_unreachable{actions_used}, state{inst.n};
+    std::deque<size_t> applicable_queue;
+    for (const auto& act_i_cpx : actions_used) {
+        if (inst.actions[inst.act_cpxtoidx[act_i_cpx]].pre.empty()) applicable_queue.push_back(act_i_cpx);
+    }
+
+    // dividing actions in applicable / unreachable to check the feasibility of the solution
+    while (!applicable_queue.empty()) {
+        const auto act_i_cpx{applicable_queue.front()};
+        applicable_queue.pop_front();
+        INTCHECK_ASSERT_LOG(log, actions_used[act_i_cpx]);
+        actions_unreachable.remove(act_i_cpx);
+
+        const auto act_i{inst.act_cpxtoidx[act_i_cpx]};
+        INTCHECK_ASSERT_LOG(log, state.contains(inst.actions[act_i].pre));
+
+        // get new applicable actions
+        const auto& new_state{state | inst.actions[act_i].eff};
+        for (const auto& p : inst.actions[act_i].eff - state) {
+            for (const auto& act_j : inst.act_with_pre[p]) {
+                const auto& act_j_cpx{inst.act_opt_conv[act_j]};
+                if (!actions_used[act_j_cpx]) continue;
+                if (new_state.contains(inst.actions[act_j].pre) &&
+                    std::find(applicable_queue.begin(), applicable_queue.end(), act_j_cpx) == applicable_queue.end())
+                    applicable_queue.push_back(act_j_cpx);
+            }
+        }
+        state = new_state;
+    }
+
+    // solution is feasible
+    if (actions_unreachable.empty()) {
+        INTCHECK_ASSERT_LOG(log, state.contains(inst.goal));
+        return 0;
+    }
+
+#if HPLUS_INTCHECK
+    for (const auto& act_i_cpx : actions_unreachable) ASSERT_LOG(log, !state.contains(inst.actions[inst.act_cpxtoidx[act_i_cpx]].pre));
+    // TODO (ASK): Here sometimes I get that the goal can be reached, but I have actions unreachable... what should I do with those actions?
+    // TODO: If here the goal could be reached, I could build a feasible solution from this and give it back.
+    // ASSERT_LOG(log, !state.contains(inst.goal));
+#endif
+
+#if HPLUS_VERBOSE >= 20
+    int itcount = 0;
+    CPX_HANDLE_CALL(log, CPXcallbackgetinfoint(context, CPXCALLBACKINFO_ITCOUNT, &itcount));
+    if (itcount % 10 == 0) {
+        double lower_bound = CPX_INFBOUND;
+        CPX_HANDLE_CALL(log, CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_BND, &lower_bound));
+        double incumbent = CPX_INFBOUND;
+        CPX_HANDLE_CALL(log, CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_SOL, &incumbent));
+        double gap = (1 - lower_bound / incumbent) * 100;
+        log.print_info("Pruned infeasible solution - cost : %7d - incumbent : %7d - gap : %6.2f%%.", static_cast<int>(cost),
+                       static_cast<int>(incumbent), gap);
+    }
+#endif
+
+    binary_set unapplicable{actions_unreachable};
+
+    for (const auto& act_i_cpx : !actions_used) {
+        const auto& act_i{inst.act_cpxtoidx[act_i_cpx]};
+
+        if (!state.contains(inst.actions[act_i].pre)) {
+            actions_used.add(act_i_cpx);
+            unapplicable.add(act_i_cpx);
+            continue;
+        }
+
+        if ((state | inst.actions[act_i].eff).contains(inst.goal)) continue;
+
+        binary_set state_sim{state | inst.actions[act_i].eff}, new_applicable{inst.m_opt};
+        while (true) {
+            bool skip{true};
+            for (const auto& act_j_cpx : unapplicable) {
+                if (new_applicable[act_j_cpx]) continue;
+                const auto& act_j{inst.act_cpxtoidx[act_j_cpx]};
+                if (state_sim.contains(inst.actions[act_j].pre)) {
+                    new_applicable.add(act_j_cpx);
+                    state_sim |= inst.actions[act_j].eff;
+                    skip = false;
+                }
+            }
+            if (skip) break;
+        }
+
+        if (!state_sim.contains(inst.goal)) {
+            actions_used.add(act_i_cpx);
+            state = state_sim;
+            unapplicable -= new_applicable;
+        }
+    }
+
+    const auto& landmark{!actions_used};
+
+    // std::vector<size_t> landmark;
+    // for (const auto& act_i_cpx : !actions_used) {
+    //     const auto& act_i{inst.act_cpxtoidx[act_i_cpx]};
+    //     if (state.contains(inst.actions[act_i].pre) && inst.actions[act_i].eff.intersects(!state)) landmark.push_back(act_i_cpx);
+    // }
+
+    int nnz{0};
+    constexpr double rhs{1};
+    constexpr int izero{0};
+    constexpr char sense_g{'G'};
+
+    // action_candidates now contains the landmark to add as a constraint
+    // TODO: Which is better?
+    // int* ind{new int[inst.m_opt]};
+    // double* val{new double[inst.m_opt]};
+    // for (const auto& act_i_cpx : landmark) {
+    //     ind[nnz] = act_i_cpx;
+    //     val[nnz++] = 1;
+    // }
+    int* ind{new int[inst.n_fadd]};
+    double* val{new double[inst.n_fadd]};
+    for (const auto& act_i_cpx : landmark) {
+        size_t var_count{0};
+        for ([[maybe_unused]] const auto& p : inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff_sparse) {
+            ind[nnz] = inst.m_opt + inst.fadd_cpx_start[act_i_cpx] + var_count++;
+            val[nnz++] = 1;
+        }
+    }
+
+    CPX_HANDLE_CALL(log, CPXcallbackrejectcandidate(context, 1, nnz, &rhs, &sense_g, &izero, ind, val));
+
+    delete[] val;
+    val = nullptr;
+    delete[] ind;
+    ind = nullptr;
+
+    // TODO: I could add more constraints (SEC maybe?)
+
+    pthread_mutex_lock(&(stats.callback_time_mutex));
+    stats.nusercuts++;
+    stats.callback += env.timer.get_time() - start_time;
+    pthread_mutex_unlock(&(stats.callback_time_mutex));
+
+    return 0;
+}
+
+void dynamic::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log,
                               hplus::statistics& stats) {
-    PRINT_VERBOSE(log, "Building Rankooh's model.");
+    PRINT_VERBOSE(log, "Building Dynamic model.");
 
     const auto stopchk1 = []() {
         if (CHECK_STOP()) [[unlikely]]
             throw timelimit_exception("Reached time limit.");
     };
-
-    // ====================================================== //
-    // ================= VERTEX ELIMINATION ================= //
-    // ====================================================== //
-
-    struct node {
-        size_t id, deg;
-        node(const size_t id, const size_t deg) : id(id), deg(deg) {}
-    };
-    struct compare_node {
-        bool operator()(const node& n1, const node& n2) const { return n1.deg > n2.deg; }
-    };
-    struct triangle {
-        size_t first, second, third;
-        triangle(const size_t first, const size_t second, const size_t third) : first(first), second(second), third(third) {}
-    };
-
-    std::vector<std::set<size_t>> graph(inst.n);
-    inst.veg_cumulative_graph = std::vector<binary_set>(inst.n, binary_set(inst.n));
-    std::vector<triangle> triangles_list;
-
-    priority_queue<size_t> nodes_queue(2 * inst.n);
-    std::vector<size_t> degree_counter(inst.n, 0);
-
-    // G_0
-    for (const auto& act_i : inst.act_rem) {
-        for (const auto& var_i : inst.actions[act_i].pre_sparse) {
-            for (const auto& var_j : inst.actions[act_i].eff_sparse) {
-                if (var_i == var_j) [[unlikely]]
-                    continue;
-
-                // added is true if the element was actually inserted in the set
-                if (graph[var_i].insert(var_j).second) {
-                    degree_counter[var_i] += 1;
-                    degree_counter[var_j] += 1;
-                }
-            }
-            inst.veg_cumulative_graph[var_i] |= (inst.actions[act_i].eff);
-        }
-    }
-    stopchk1();
-
-    for (size_t node_i = 0; node_i < inst.n; node_i++) {
-        if (degree_counter[node_i] > 0) [[likely]]
-            nodes_queue.push(node_i, degree_counter[node_i]);
-    }
-
-    // G_i (min degree heuristics)
-    for ([[maybe_unused]] size_t _ = 0; _ < inst.var_rem.size(); _++) {
-        if (nodes_queue.empty()) [[unlikely]]
-            break;
-        size_t idx{nodes_queue.top()};
-        nodes_queue.pop();
-
-        // graph structure:
-        // | \       > |
-        // p -> idx -> q
-        // | /       > |
-
-        std::set<size_t> new_nodes;
-
-        for (const auto& p : inst.var_rem) {
-            if (graph[p].find(idx) == graph[p].end()) continue;
-
-            for (const auto& q : graph[idx]) {
-                if (p == q) [[unlikely]]
-                    continue;
-
-                // add edge p - q
-                // check.second is true if the element was actually inserted in
-                // the set
-                if (graph[p].insert(q).second) {
-                    degree_counter[p] += 1;
-                    degree_counter[q] += 1;
-                }
-
-                // update the overall graph
-                inst.veg_cumulative_graph[p].add(q);
-            }
-
-            // remove the edge p - idx
-            graph[p].erase(idx);
-            degree_counter[p] -= 1;
-            new_nodes.insert(p);
-
-            // update triangles list
-            for (const auto& q : graph[idx]) {
-                if (p != q) [[likely]]
-                    triangles_list.emplace_back(p, idx, q);
-            }
-        }
-
-        // remove the edge idx - q
-        for (const auto& q : graph[idx]) {
-            degree_counter[q] -= 1;
-            new_nodes.insert(q);
-        }
-        graph[idx].clear();
-        degree_counter[idx] = 0;
-
-        // Update the priority queue
-        for (const auto& x : new_nodes) {
-            if (degree_counter[x] > 0 && nodes_queue.has(x)) nodes_queue.change(x, degree_counter[x]);
-        }
-
-        stopchk1();
-    }
 
     // ====================================================== //
     // =================== TIGHTER BOUNDS =================== //
@@ -237,25 +307,6 @@ void rankooh::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instanc
     CPX_HANDLE_CALL(log, CPXnewcols(cpxenv, cpxlp, count, objs, lbs, ubs, types, nullptr));
     stopchk2();
 
-    // vertex elimination graph edges
-    const size_t veg_start{curr_col};
-    inst.veg_starts = std::vector<size_t>();
-    size_t tmp_count{0};
-    for (const auto& var_i : inst.var_rem) {
-        inst.veg_starts.push_back(tmp_count);
-        count = 0;
-        for ([[maybe_unused]] const auto& var_j : inst.veg_cumulative_graph[var_i]) {
-            objs[count] = 0;
-            lbs[count] = 0;
-            ubs[count] = 1;
-            types[count++] = 'B';
-        }
-        CPX_HANDLE_CALL(log, CPXnewcols(cpxenv, cpxlp, count, objs, lbs, ubs, types, nullptr));
-        tmp_count += count;
-        stopchk2();
-    }
-    curr_col += tmp_count;
-
     delete[] types;
     types = nullptr;
     delete[] ubs;
@@ -278,17 +329,12 @@ void rankooh::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instanc
     const auto get_fa_idx = [&inst, &fa_start](size_t act_idx, size_t var_count) {
         return static_cast<int>(fa_start + inst.fadd_cpx_start[inst.act_opt_conv[act_idx]] + var_count);
     };
-    const auto get_veg_idx = [&inst, &veg_start](size_t var_i, size_t var_j) {
-        std::vector<size_t> tmp = inst.veg_cumulative_graph[var_i].sparse();
-        return static_cast<int>(veg_start + inst.veg_starts[inst.var_opt_conv[var_i]] +
-                                static_cast<size_t>(std::find(tmp.begin(), tmp.end(), var_j) - tmp.begin()));
-    };
 
     int* ind{new int[inst.m_opt + 1]};
     double* val{new double[inst.m_opt + 1]};
     int nnz{0};
     constexpr char sense_e{'E'}, sense_l{'L'};
-    constexpr double rhs_0{0}, rhs_1{1};
+    constexpr double rhs_0{0};
     constexpr int begin{0};
 
     const auto stopchk3 = [&ind, &val]() {
@@ -400,110 +446,40 @@ void rankooh::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instanc
     delete[] ind;
     ind = nullptr;
 
-    int ind_c5_c6_c7[2], ind_c8[3];
-    double val_c5_c6_c7[2], val_c8[3];
+    int ind_2[2];
+    double val_2[2];
 
     // fadd(a, p) <= a, \forall a\in A, p\in eff(a)
     for (const auto& act_i : inst.act_rem) {
         int var_count{-1};
         for (const auto& var_i : inst.actions[act_i].eff_sparse) {
             var_count++;
-            ind_c5_c6_c7[0] = get_act_idx(act_i);
-            val_c5_c6_c7[0] = -1;
+            ind_2[0] = get_act_idx(act_i);
+            val_2[0] = -1;
             // if the first adder was fixed, we can directly fix the action insthead of adding the constraint
             if (inst.fadd_f[act_i][var_i]) {
                 const char fix = 'B';
                 const double one = 1;
-                CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 1, ind_c5_c6_c7, &fix, &one));
+                CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 1, ind_2, &fix, &one));
                 continue;
             }
             // if the first adder was eliminated, we can skip the constraint
             else if (inst.fadd_e[act_i][var_i])
                 continue;
-            ind_c5_c6_c7[1] = get_fa_idx(act_i, var_count);
-            val_c5_c6_c7[1] = 1;
+            ind_2[1] = get_fa_idx(act_i, var_count);
+            val_2[1] = 1;
             stats.nconst_base++;
-            CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
+            CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_2, val_2, nullptr, nullptr));
         }
-        stopchk1();
-    }
-
-    // fadd(a, q) <= veg(p, q) \forall a\in A, \forall p\in pre(a), \forall q\in eff(a) (V.E.G.)
-    for (const auto& act_i : inst.act_rem) {
-        for (const auto& var_i : inst.actions[act_i].pre_sparse) {
-            int var_count{-1};
-            for (const auto& var_j : inst.actions[act_i].eff_sparse) {
-                var_count++;
-                ind_c5_c6_c7[0] = get_veg_idx(var_i, var_j);
-                val_c5_c6_c7[0] = -1;
-                ind_c5_c6_c7[1] = get_fa_idx(act_i, var_count);
-                val_c5_c6_c7[1] = 1;
-                // if the first adder was fixed, we can directly fix also the VEG variable
-                if (inst.fadd_f[act_i][var_j]) {
-                    const char fix = 'B';
-                    const double one = 1;
-                    CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 1, ind_c5_c6_c7, &fix, &one));
-                    continue;
-                }
-                // if the VEG variable was eliminated, we can directly eliminate the first adder too
-                else if (!inst.veg_cumulative_graph[var_i][var_j]) {
-                    const char fix = 'B';
-                    const double zero = 0;
-                    CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 1, &(ind_c5_c6_c7[1]), &fix, &zero));
-                    continue;
-                }
-                stats.nconst_acyclic++;
-                CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
-            }
-            stopchk1();
-        }
-    }
-
-    // veg(p, q) + veg(q, p) <= 1 (V.E.G.)
-    for (const auto& var_i : inst.var_rem) {
-        for (const auto& var_j : inst.veg_cumulative_graph[var_i]) {
-            // if either VEG variable was eliminated, we can skip the constraint
-            if (!inst.veg_cumulative_graph[var_i][var_j] || !inst.veg_cumulative_graph[var_j][var_i]) continue;
-            ind_c5_c6_c7[0] = get_veg_idx(var_i, var_j);
-            val_c5_c6_c7[0] = 1;
-            ind_c5_c6_c7[1] = get_veg_idx(var_j, var_i);
-            val_c5_c6_c7[1] = 1;
-            stats.nconst_acyclic++;
-            CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_1, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
-            stopchk1();
-        }
-    }
-
-    // veg(a, b) + veg(b, c) <= veg(a, c) (V.E.G.)
-    // TODO: Try adding those as lazy constraints
-    for (const auto& [a, b, c] : triangles_list) {
-        ind_c8[0] = get_veg_idx(a, b);
-        val_c8[0] = 1;
-        ind_c8[1] = get_veg_idx(b, c);
-        val_c8[1] = 1;
-        ind_c8[2] = get_veg_idx(a, c);
-        val_c8[2] = -1;
-        // if veg(a, c) is eliminated, we can simply eliminate the other two VEG varliables
-        if (!inst.veg_cumulative_graph[a][c]) {
-            char fix[2];
-            fix[0] = 'B';
-            fix[1] = 'B';
-            double zero[2];
-            zero[0] = 0;
-            zero[1] = 0;
-            CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 2, ind_c8, fix, zero));
-            continue;
-        }
-        stats.nconst_acyclic++;
-        CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 3, &rhs_1, &sense_l, &begin, ind_c8, val_c8, nullptr, nullptr));
         stopchk1();
     }
 
     if (env.write_lp) CPX_HANDLE_CALL(log, CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR "/lp/" + env.run_name + ".lp").c_str(), "LP"));
 }
 
-void rankooh::post_cpx_warmstart(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log) {
-    PRINT_VERBOSE(log, "Posting warm start to Rankooh's model.");
+void dynamic::post_cpx_warmstart([[maybe_unused]] CPXENVptr& cpxenv, [[maybe_unused]] CPXLPptr& cpxlp, [[maybe_unused]] const hplus::instance& inst,
+                                 [[maybe_unused]] const hplus::environment& env, [[maybe_unused]] const logger& log) {
+    PRINT_VERBOSE(log, "Posting warm start to Dynamic model.");
     ASSERT_LOG(log, env.sol_s != solution_status::INFEAS && env.sol_s != solution_status::NOTFOUND);
 
     binary_set state{inst.n};
@@ -533,13 +509,6 @@ void rankooh::post_cpx_warmstart(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus
             cpx_sol_val[cpx_var_idx] = 1;
             size_t cpx_fad_idx = inst.m_opt + inst.fadd_cpx_start[inst.act_opt_conv[act_i]] + var_count;
             cpx_sol_val[cpx_fad_idx] = 1;
-            for (const auto& var_j : inst.actions[act_i].pre_sparse) {
-                std::vector<size_t> tmp = inst.veg_cumulative_graph[var_j].sparse();
-                size_t veg_idx = static_cast<int>(inst.veg_starts[inst.var_opt_conv[var_j]] +
-                                                  static_cast<size_t>(std::find(tmp.begin(), tmp.end(), var_i) - tmp.begin()));
-                size_t cpx_veg_idx = inst.m_opt + inst.n_fadd + inst.n_opt + veg_idx;
-                cpx_sol_val[cpx_veg_idx] = 1;
-            }
         }
         state |= inst.actions[act_i].eff;
     }
@@ -551,8 +520,9 @@ void rankooh::post_cpx_warmstart(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus
     cpx_sol_val = nullptr;
 }
 
-void rankooh::store_cpx_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst, const logger& log) {
-    PRINT_VERBOSE(log, "Storing Rankooh's solution.");
+void dynamic::store_cpx_sol([[maybe_unused]] CPXENVptr& cpxenv, [[maybe_unused]] CPXLPptr& cpxlp, [[maybe_unused]] hplus::instance& inst,
+                            [[maybe_unused]] const logger& log) {
+    PRINT_VERBOSE(log, "Storing Dynamic solution.");
 
     double* plan{new double[inst.m_opt + inst.n_fadd]};
     CPX_HANDLE_CALL(log, CPXgetx(cpxenv, cpxlp, plan, 0, inst.m_opt + inst.n_fadd - 1));

@@ -25,6 +25,19 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
+## [1.3.1] - 2025/03/30
+<!-- ### :warning: Known issues -->
+### :ballot_box_with_check: Fixed
+- Imai's model finds wrong optimal solutions
+<!-- ### :heavy_exclamation_mark: Changed -->
+### :heavy_plus_sign: Added
+- Added dynamic model
+- Added references
+<!-- ### :x: Removed -->
+### :curly_loop: Other
+- Minor changes
+
+
 ## [1.3.0] - 2025/03/28
 ### Tested all features added in 1.2.*
 <!-- ### :warning: Known issues -->

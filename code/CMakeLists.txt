@@ -3,7 +3,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-set(CODE_VERSION "1.3.0")
+set(CODE_VERSION "1.3.1")
 
 # Enforce out-of-source build
 if (CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
@@ -149,7 +149,7 @@ set(HPLUS_LIBRARIES
     hplus_instance
     imai
     rankooh
-    rankooh_dynamic
+    dynamic
     greedycost
     greedycxe
     hmax_hadd

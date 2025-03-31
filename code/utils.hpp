@@ -14,7 +14,7 @@
 // ##################################################################### //
 
 #ifndef CODE_VERSION  // overwritten by cmake
-#define CODE_VERSION "1.2"
+#define CODE_VERSION "1.3"
 #endif
 
 // ##################################################################### //
@@ -43,10 +43,10 @@
 // ########################## C.L.I. ALGORITHMS ######################## //
 // ##################################################################### //
 
+#define HPLUS_CLI_ALG_HEUR "heur"
 #define HPLUS_CLI_ALG_IMAI "imai"
 #define HPLUS_CLI_ALG_RANKOOH "rankooh"
-#define HPLUS_CLI_ALG_DYNAMIC_TIME "dynamic-t"
-#define HPLUS_CLI_ALG_HEUR "heur"
+#define HPLUS_CLI_ALG_DYNAMIC_TIME "dynamic"
 
 // ##################################################################### //
 // ########################### DEFAULT VALUES ########################## //

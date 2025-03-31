@@ -490,8 +490,7 @@ void hplus::update_sol(instance& inst, const solution& sol, const logger& log) {
 void hplus::print_sol(const instance& inst, const logger& log) {
     const auto& [sol_plan, sol_cost]{inst.best_sol};
     log.print("Solution cost: %10u", sol_cost);
-    // for (const auto& act_i : sol_plan)
-    // 	log.print("(%s)", inst.actions[act_i].name.c_str());
+    // for (const auto& act_i : sol_plan) log.print("(%s)", inst.actions[act_i].name.c_str());
 }
 
 static void landmark_extraction(hplus::instance& inst, std::vector<binary_set>& landmarks, binary_set& fact_landmarks, binary_set& act_landmarks,
@@ -506,8 +505,8 @@ static void landmark_extraction(hplus::instance& inst, std::vector<binary_set>& 
     // add to the queue all initial actions...
     std::deque<size_t> actions_queue;
     for (size_t act_i = 0; act_i < inst.m; act_i++) {
-        // ... and since the initial state is empty, the initial actions are those with no preconditions (pre.empty() is O(n) while pre_sparse.empty()
-        // is O(1))
+        // ... and since the initial state is empty, the initial actions are those with no preconditions (pre.empty() is O(n) while
+        // pre_sparse.empty() is O(1))
         if (inst.actions[act_i].pre_sparse.empty()) actions_queue.push_back(act_i);
     }
 
@@ -537,8 +536,8 @@ static void landmark_extraction(hplus::instance& inst, std::vector<binary_set>& 
                     x |= landmarks[var_j];
             }
 
-            // we then check if L[p] != X, and if they are the same we skip... since X will be the intersection between L[p] and (the current) x, if x
-            // is full, then X = L[P], so we can already skip
+            // we then check if L[p] != X, and if they are the same we skip... since X will be the intersection between L[p] and (the current) x,
+            // if x is full, then X = L[P], so we can already skip
             if (x[inst.n]) continue;
 
             // if the set for variable p is the full set of variables, the intersection generates back x -> we can skip the intersection

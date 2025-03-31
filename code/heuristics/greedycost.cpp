@@ -34,7 +34,7 @@ void greedycost::run(hplus::instance& inst, hplus::environment& env, const logge
 
     binary_set state{inst.n};  // initial state is empty
 
-    std::list<size_t> candidates{};
+    std::list<size_t> candidates;
     for (const auto& act_i : inst.act_rem) {
         if (inst.actions[act_i].pre_sparse.empty()) candidates.push_back(act_i);
     }

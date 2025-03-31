@@ -224,7 +224,6 @@ void imai::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::inst
     stats.nconst_acyclic = 0;
     for (const auto& act_i : inst.act_rem) {
         constexpr int nnz_c2_4{2};
-        size_t var_count{0};
         for (const auto& var_i : inst.actions[act_i].pre_sparse) {
             // constraint 1: x_a + sum_{inv(a, p)}(z_a'vj) <= y_vj, vj in pre(a)
             ind_c1[0] = get_act_idx(act_i);
@@ -235,7 +234,9 @@ void imai::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::inst
             // (section 4.6 of Imai's paper)
             for (const auto& inverse_action : inst.act_inv[act_i]) {
                 if (inst.actions[inverse_action].eff[var_i]) {
-                    ind_c1[nnz0] = get_fa_idx(inverse_action, var_count);
+                    ind_c1[nnz0] = get_fa_idx(inverse_action, static_cast<size_t>(std::find(inst.actions[inverse_action].eff_sparse.begin(),
+                                                                                            inst.actions[inverse_action].eff_sparse.end(), var_i) -
+                                                                                  inst.actions[inverse_action].eff_sparse.begin()));
                     val_c1[nnz0++] = 1;
                 }
             }
@@ -248,9 +249,8 @@ void imai::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::inst
             val_c2_4[1] = -1;
             stats.nconst_acyclic++;
             CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz_c2_4, &rhs_c1_2_4, &sense_l, &begin, ind_c2_4, val_c2_4, nullptr, nullptr));
-            var_count++;
         }
-        var_count = 0;
+        size_t var_count{0};
         for (const auto& var_i : inst.actions[act_i].eff_sparse) {
             constexpr int nnz_c5{3};
             // constraint 2: z_avj <= x_a, vj in eff(a)
@@ -273,6 +273,7 @@ void imai::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::inst
             ind_c3[inst.var_opt_conv[var_i]][nnz_c3[inst.var_opt_conv[var_i]]] = get_fa_idx(act_i, var_count);
             val_c3[inst.var_opt_conv[var_i]][nnz_c3[inst.var_opt_conv[var_i]]] = -1;
             nnz_c3[inst.var_opt_conv[var_i]]++;
+            var_count++;
         }
         stopchk3();
     }

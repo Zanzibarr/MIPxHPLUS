@@ -128,7 +128,7 @@ static bool htype(const hplus::instance& inst, hplus::solution& sol, double (*h_
         return std::pair(found, choice);
     };
 
-    std::list<size_t> candidates{};
+    std::list<size_t> candidates;
     for (const auto& act_i : inst.act_rem) {
         if (inst.actions[act_i].pre_sparse.empty()) candidates.push_back(act_i);
     }

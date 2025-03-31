@@ -66,7 +66,6 @@ typedef struct {
     solution_status sol_s;
     /** Parameters for execution */
     std::string input_file, log_name, run_name, alg, heur;
-    unsigned int ddepth;
     /** Execution flags */
     bool preprocessing, warm_start, tight_bounds, using_cplex, log, write_lp;
     /** Time limit */
