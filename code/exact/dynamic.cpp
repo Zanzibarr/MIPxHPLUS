@@ -1,94 +1,66 @@
 #include "dynamic.hpp"
 
+#include <list>
 #include <numeric>  // std::accumulate
 #include <set>
+#include <tuple>
 
 #if HPLUS_INTCHECK == 0
 #define INTCHECK_PQ false
 #endif
 #include "pq.hxx"
 
-int CPXPUBLIC dynamic::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG context_id, void* user_handle) {
-    auto& [inst, env, stats, log] = *static_cast<cpx_callback_user_handle*>(user_handle);
-
-    ASSERT_LOG(log, context_id == CPX_CALLBACKCONTEXT_CANDIDATE);
-    double start_time{env.timer.get_time()};
-
-    // get candidate point
-    double* xstar{new double[inst.m_opt + inst.n_fadd]};
-    double cost{CPX_INFBOUND};
-    CPX_HANDLE_CALL(log, CPXcallbackgetcandidatepoint(context, xstar, 0, inst.m_opt + inst.n_fadd - 1, &cost));
-
-    // fixing the solution to read the plan (some actions are set to 1 even if they are not a first archiever of anything)
+static std::tuple<std::vector<size_t>, std::vector<size_t>, std::vector<size_t>, binary_set, unsigned int> cb_analyze_candidate_point(
+    const hplus::instance& inst, const double* xstar) {
+    std::vector<size_t> used_acts, unused_acts;
     for (size_t act_i_cpx = 0; act_i_cpx < inst.m_opt; act_i_cpx++) {
-        bool set_zero{true};
-        for (size_t var_count = 0; var_count < inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff_sparse.size(); var_count++) {
-            if (xstar[inst.m_opt + inst.fadd_cpx_start[act_i_cpx] + var_count] > HPLUS_CPX_INT_ROUNDING) {
-                ASSERT_LOG(log, xstar[act_i_cpx] > HPLUS_CPX_INT_ROUNDING);
-                set_zero = false;
-                break;
-            }
-        }
-        if (set_zero) {
-            // TODO (ASK)
-            // ASSERT_LOG(log, !(xstar[act_i_cpx] > HPLUS_CPX_INT_ROUNDING && inst.actions[inst.act_cpxtoidx[act_i_cpx]].cost != 0));
-            xstar[act_i_cpx] = 0;
-        }
+        if (xstar[act_i_cpx] > HPLUS_CPX_INT_ROUNDING)
+            used_acts.push_back(act_i_cpx);
+        else
+            unused_acts.push_back(act_i_cpx);
     }
 
-    // find used actions
-    binary_set actions_used(inst.m_opt);
-    for (size_t act_i_cpx = 0; act_i_cpx < inst.m_opt; act_i_cpx++) {
-        if (xstar[act_i_cpx] > HPLUS_CPX_INT_ROUNDING) actions_used.add(act_i_cpx);
-    }
-    delete[] xstar;
-    xstar = nullptr;
+    binary_set reachable_state{inst.n};
+    unsigned int partial_cost{0};
 
-    // split used actions among reachable and unreachable
-    binary_set actions_unreachable{actions_used}, state{inst.n};
     std::deque<size_t> applicable_queue;
-    for (const auto& act_i_cpx : actions_used) {
+    for (const auto& act_i_cpx : used_acts) {
         if (inst.actions[inst.act_cpxtoidx[act_i_cpx]].pre.empty()) applicable_queue.push_back(act_i_cpx);
     }
 
-    // dividing actions in applicable / unreachable to check the feasibility of the solution
+    std::vector<size_t> reachable_acts;
+
+    // dividing actions in reachable / unreachable
     while (!applicable_queue.empty()) {
         const auto act_i_cpx{applicable_queue.front()};
         applicable_queue.pop_front();
-        INTCHECK_ASSERT_LOG(log, actions_used[act_i_cpx]);
-        actions_unreachable.remove(act_i_cpx);
+        reachable_acts.push_back(act_i_cpx);
 
         const auto act_i{inst.act_cpxtoidx[act_i_cpx]};
-        INTCHECK_ASSERT_LOG(log, state.contains(inst.actions[act_i].pre));
+        partial_cost += inst.actions[act_i].cost;
 
         // get new applicable actions
-        const auto& new_state{state | inst.actions[act_i].eff};
-        for (const auto& p : inst.actions[act_i].eff - state) {
+        const auto& new_state{reachable_state | inst.actions[act_i].eff};
+        for (const auto& p : inst.actions[act_i].eff_sparse) {
+            if (reachable_state[p]) continue;  // skip facts already reached
+
             for (const auto& act_j : inst.act_with_pre[p]) {
                 const auto& act_j_cpx{inst.act_opt_conv[act_j]};
-                if (!actions_used[act_j_cpx]) continue;
+                if (!std::binary_search(used_acts.begin(), used_acts.end(), act_j_cpx)) continue;  // if the action wasn't used, skip
+
                 if (new_state.contains(inst.actions[act_j].pre) &&
                     std::find(applicable_queue.begin(), applicable_queue.end(), act_j_cpx) == applicable_queue.end())
                     applicable_queue.push_back(act_j_cpx);
             }
         }
-        state = new_state;
+        reachable_state = new_state;
     }
 
-    // solution is feasible
-    if (actions_unreachable.empty()) {
-        INTCHECK_ASSERT_LOG(log, state.contains(inst.goal));
-        return 0;
-    }
+    return {used_acts, unused_acts, reachable_acts, reachable_state, partial_cost};
+}
 
-#if HPLUS_INTCHECK
-    for (const auto& act_i_cpx : actions_unreachable) ASSERT_LOG(log, !state.contains(inst.actions[inst.act_cpxtoidx[act_i_cpx]].pre));
-    // TODO (ASK): Here sometimes I get that the goal can be reached, but I have actions unreachable... what should I do with those actions?
-    // TODO: If here the goal could be reached, I could build a feasible solution from this and give it back.
-    // ASSERT_LOG(log, !state.contains(inst.goal));
-#endif
-
-#if HPLUS_VERBOSE >= 20
+static void cb_print_info(CPXCALLBACKCONTEXTptr& context, const double& cost, const logger& log) {
+#if HPLUS_VERBOSE >= 100
     int itcount = 0;
     CPX_HANDLE_CALL(log, CPXcallbackgetinfoint(context, CPXCALLBACKINFO_ITCOUNT, &itcount));
     if (itcount % 10 == 0) {
@@ -101,28 +73,36 @@ int CPXPUBLIC dynamic::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG conte
                        static_cast<int>(incumbent), gap);
     }
 #endif
+}
 
-    binary_set unapplicable{actions_unreachable};
+static std::vector<size_t> cb_compute_landmark(const hplus::instance& inst, const std::vector<size_t>& used_acts,
+                                               const std::vector<size_t>& reachable_acts, const std::vector<size_t>& unused_acts,
+                                               binary_set& reachable_state) {
+    std::vector<size_t> unapplicable;
+    std::set_difference(used_acts.begin(), used_acts.end(), reachable_acts.begin(), reachable_acts.end(), std::back_inserter(unapplicable));
 
-    for (const auto& act_i_cpx : !actions_used) {
+    std::vector<size_t> extension;
+
+    for (const auto& act_i_cpx : unused_acts) {
         const auto& act_i{inst.act_cpxtoidx[act_i_cpx]};
 
-        if (!state.contains(inst.actions[act_i].pre)) {
-            actions_used.add(act_i_cpx);
-            unapplicable.add(act_i_cpx);
+        if (!reachable_state.contains(inst.actions[act_i].pre)) {
+            insert_sorted(extension, act_i_cpx);
+            insert_sorted(unapplicable, act_i_cpx);
             continue;
         }
 
-        if ((state | inst.actions[act_i].eff).contains(inst.goal)) continue;
+        if ((reachable_state | inst.actions[act_i].eff).contains(inst.goal)) continue;
 
-        binary_set state_sim{state | inst.actions[act_i].eff}, new_applicable{inst.m_opt};
+        binary_set state_sim{reachable_state | inst.actions[act_i].eff};
+        std::vector<size_t> new_applicable;
         while (true) {
             bool skip{true};
             for (const auto& act_j_cpx : unapplicable) {
-                if (new_applicable[act_j_cpx]) continue;
+                if (std::binary_search(new_applicable.begin(), new_applicable.end(), act_j_cpx)) continue;
                 const auto& act_j{inst.act_cpxtoidx[act_j_cpx]};
                 if (state_sim.contains(inst.actions[act_j].pre)) {
-                    new_applicable.add(act_j_cpx);
+                    insert_sorted(new_applicable, act_j_cpx);
                     state_sim |= inst.actions[act_j].eff;
                     skip = false;
                 }
@@ -131,20 +111,23 @@ int CPXPUBLIC dynamic::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG conte
         }
 
         if (!state_sim.contains(inst.goal)) {
-            actions_used.add(act_i_cpx);
-            state = state_sim;
-            unapplicable -= new_applicable;
+            insert_sorted(extension, act_i_cpx);
+            reachable_state = state_sim;
+            const auto& it{
+                std::set_difference(unapplicable.begin(), unapplicable.end(), new_applicable.begin(), new_applicable.end(), unapplicable.begin())};
+            unapplicable.resize(it - unapplicable.begin());
         }
     }
 
-    const auto& landmark{!actions_used};
+    // TODO: Maybe try saturation as showed in the paper
 
-    // std::vector<size_t> landmark;
-    // for (const auto& act_i_cpx : !actions_used) {
-    //     const auto& act_i{inst.act_cpxtoidx[act_i_cpx]};
-    //     if (state.contains(inst.actions[act_i].pre) && inst.actions[act_i].eff.intersects(!state)) landmark.push_back(act_i_cpx);
-    // }
+    std::vector<size_t> landmark;
+    std::set_difference(unused_acts.begin(), unused_acts.end(), extension.begin(), extension.end(), std::back_inserter(landmark));
 
+    return landmark;
+}
+
+static void cb_post_landmark(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const std::vector<size_t> landmark, const logger& log) {
     int nnz{0};
     constexpr double rhs{1};
     constexpr int izero{0};
@@ -174,6 +157,81 @@ int CPXPUBLIC dynamic::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG conte
     val = nullptr;
     delete[] ind;
     ind = nullptr;
+}
+
+static std::tuple<int*, double*, size_t> cb_find_heur_sol(const hplus::instance& inst, const std::vector<size_t>& applicable_actions_sequence) {
+    size_t ncols{inst.m_opt + inst.n_opt + inst.n_fadd};
+    int* ind{new int[ncols]};
+    double* val{new double[ncols]};
+    for (size_t i = 0; i < ncols; i++) {
+        ind[i] = i;
+        val[i] = 0;
+    }
+
+    binary_set state{inst.n_opt};
+    for (const auto& act_i_cpx : applicable_actions_sequence) {
+        val[act_i_cpx] = 1;
+        int var_count{-1};
+        for (const auto& var_i : inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff_sparse) {
+            var_count++;
+            if (state[var_i]) continue;
+            val[inst.m_opt + inst.fadd_cpx_start[act_i_cpx] + var_count] = 1;
+            val[inst.m_opt + inst.n_fadd + inst.var_opt_conv[var_i]] = 1;
+        }
+        state |= inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff;
+    }
+
+    return {ind, val, ncols};
+}
+
+int CPXPUBLIC dynamic::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG context_id, void* user_handle) {
+    auto& [inst, env, stats, log] = *static_cast<cpx_callback_user_handle*>(user_handle);
+
+    ASSERT_LOG(log, context_id == CPX_CALLBACKCONTEXT_CANDIDATE);
+    double start_time{env.timer.get_time()};
+
+    // get candidate point
+    double* xstar{new double[inst.m_opt]};
+    double cost{CPX_INFBOUND};
+    CPX_HANDLE_CALL(log, CPXcallbackgetcandidatepoint(context, xstar, 0, inst.m_opt - 1, &cost));
+
+    // get info from the candidate point
+    auto [used_acts, unused_acts, reachable_acts, reachable_state, partial_cost] = cb_analyze_candidate_point(inst, xstar);
+    delete[] xstar;
+    xstar = nullptr;
+
+    // solution is feasible (all used actions are reachable)
+    if (used_acts.size() == reachable_acts.size()) {
+        INTCHECK_ASSERT_LOG(log, reachable_state.contains(inst.goal));
+        return 0;
+    }
+
+    // print info for debugging
+    cb_print_info(context, cost, log);
+
+    // save the order in which actions could be applied
+    std::vector<size_t> applicable_action_sequence{reachable_acts};
+
+    // the goal state here was reached
+    if (reachable_state.contains(inst.goal)) {
+        auto [ind, val, size] = cb_find_heur_sol(inst, applicable_action_sequence);
+
+        log.print_warn("Posting solution with cost: %u", partial_cost);
+
+        CPX_HANDLE_CALL(log, CPXcallbackpostheursoln(context, size, ind, val, partial_cost, CPXCALLBACKSOLUTION_NOCHECK))
+
+        delete[] val;
+        val = nullptr;
+        delete[] ind;
+        ind = nullptr;
+    }
+
+    // compute minimal landmark
+    std::sort(reachable_acts.begin(), reachable_acts.end());
+    const std::vector<size_t> landmark{cb_compute_landmark(inst, used_acts, reachable_acts, unused_acts, reachable_state)};
+
+    // reject the candidate point adding the landmark as constraint
+    cb_post_landmark(context, inst, landmark, log);
 
     // TODO: I could add more constraints (SEC maybe?)
 

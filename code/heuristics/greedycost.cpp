@@ -55,7 +55,8 @@ void greedycost::run(hplus::instance& inst, hplus::environment& env, const logge
 
         // add new actions to the candidates
         const auto& new_state = state | inst.actions[choice].eff;
-        for (const auto& p : inst.actions[choice].eff - state) {
+        for (const auto& p : inst.actions[choice].eff_sparse) {
+            if (state[p]) continue;
             for (const auto& act_i : inst.act_with_pre[p]) {
                 if (new_state.contains(inst.actions[act_i].pre) && std::find(candidates.begin(), candidates.end(), act_i) == candidates.end())
                     candidates.push_back(act_i);

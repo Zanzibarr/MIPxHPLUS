@@ -143,6 +143,45 @@ inline bool isint(const std::string& str, const int from = std::numeric_limits<i
     }
 }
 
+template <typename T>
+[[nodiscard]]
+size_t find_insert_position(const std::vector<T>& vec, const T& target) {
+    // Handle edge cases
+    if (vec.empty() || target <= vec[0]) {
+        return 0;  // Insert at the beginning
+    }
+
+    if (target > vec.back()) {
+        return vec.size();  // Insert at the end
+    }
+
+    // Binary search
+    size_t left = 0;
+    size_t right = vec.size() - 1;
+
+    while (left <= right) {
+        size_t mid = left + (right - left) / 2;
+
+        if (vec[mid] < target && (mid == vec.size() - 1 || vec[mid + 1] >= target)) {
+            // Found the largest element smaller than target
+            return mid + 1;  // Insert after this element
+        } else if (vec[mid] < target) {
+            left = mid + 1;  // Search right half
+        } else {
+            right = mid - 1;  // Search left half
+        }
+    }
+
+    return left;  // Fallback (should not reach here with proper implementation)
+}
+
+/** Insert an element into a sorted vector, keeping it sorted */
+template <typename T>
+void insert_sorted(std::vector<T>& vec, const T& value) {
+    int pos = find_insert_position(vec, value);
+    vec.insert(vec.begin() + pos, value);
+}
+
 /** (Debugging) Exits with error message due to missing implementation, prints
  * through log the message msg formatted as error */
 [[noreturn]]
