@@ -8,6 +8,8 @@
 
 #include <sys/stat.h>  // For stat buffer {}
 
+#include <cstring>  // For strncmp
+
 #define HPLUS_INFO 1
 
 #include "hplus_instance.hpp"
