@@ -89,6 +89,12 @@ typedef struct {
 // ################### READ/WRITE OF HPLUS STRUCTURES ################## //
 // ##################################################################### //
 
+/** Initialize an environment */
+void init(environment& env);
+/** Initialize the statistics */
+void init(statistics& stats);
+/** Initialize an instance */
+void init(instance& inst);
 /** Print the time statistics stats */
 void print_stats(const statistics& stats, const logger& log);
 /** Create the instance inst from the file stored in the environment @returns

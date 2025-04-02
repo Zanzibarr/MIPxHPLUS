@@ -35,45 +35,6 @@ static void* time_limit_termination(void* args) {
     return nullptr;
 }
 
-static void init(hplus::environment& env) {
-    env = hplus::environment{.exec_s = exec_status::START,
-                             .sol_s = solution_status::NOTFOUND,
-                             .input_file = "N/A",
-                             .log_name = HPLUS_LOG_DIR "/hplus_log.log",
-                             .run_name = "UnnamedRun",
-                             .alg = HPLUS_CLI_ALG_RANKOOH,
-                             .heur = "hadd",
-                             .preprocessing = true,
-                             .warm_start = true,
-                             .tight_bounds = false,
-                             .using_cplex = true,
-                             .log = false,
-                             .write_lp = false,
-                             .time_limit = 60,
-                             .timer = time_keeper()};
-}
-
-static void init(hplus::statistics& stats) {
-    stats = hplus::statistics{.parsing = 0,
-                              .preprocessing = 0,
-                              .heuristic = 0,
-                              .build = 0,
-                              .callback = 0,
-                              .execution = 0,
-                              .total = 0,
-                              .callback_time_mutex = PTHREAD_MUTEX_INITIALIZER,
-                              .hcost = -1,
-                              .fcost = -1,
-                              .nnodes = -1,
-                              .status = -1,
-                              .nvar_base = -1,
-                              .nvar_acyclic = -1,
-                              .nconst_base = -1,
-                              .nconst_acyclic = -1,
-                              .nusercuts = -1,
-                              .lb = -1};
-}
-
 static void parse_cli(const int& argc, const char** argv, hplus::environment& env) {
     args::ArgumentParser parser("Find a solution / the optimal solution to the deletefree relaxation of any SAS+ planning task.",
                                 "Copyright 2025 Matteo Zanella, Domenico Salvagnin");
@@ -336,9 +297,9 @@ int main(const int argc, const char** argv) {
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &t);
     hplus::instance inst;
     hplus::environment env;
-    init(env);
+    hplus::init(env);
     hplus::statistics stats;
-    init(stats);
+    hplus::init(stats);
     parse_cli(argc, argv, env);
     logger log(env.log, HPLUS_LOG_DIR "/" + env.log_name, env.run_name);
     pthread_t timer_thread;
