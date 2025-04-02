@@ -12,6 +12,7 @@
 
 static std::tuple<std::vector<size_t>, std::vector<size_t>, std::vector<size_t>, binary_set, unsigned int> cb_analyze_candidate_point(
     const hplus::instance& inst, const double* xstar) {
+    // split among used and unused actions
     std::vector<size_t> used_acts, unused_acts;
     for (size_t act_i_cpx = 0; act_i_cpx < inst.m_opt; act_i_cpx++) {
         if (xstar[act_i_cpx] > HPLUS_CPX_INT_ROUNDING)
@@ -20,80 +21,111 @@ static std::tuple<std::vector<size_t>, std::vector<size_t>, std::vector<size_t>,
             unused_acts.push_back(act_i_cpx);
     }
 
-    binary_set reachable_state{inst.n};
-    unsigned int partial_cost{0};
-
+    // init queue of applicable actions
     std::deque<size_t> applicable_queue;
     for (const auto& act_i_cpx : used_acts) {
         if (inst.actions[inst.act_cpxtoidx[act_i_cpx]].pre.empty()) applicable_queue.push_back(act_i_cpx);
     }
 
+    // dividing actions in reachable / unreachable, building up the set of reachable facts and computing the partial cost
     std::vector<size_t> reachable_acts;
-
-    // dividing actions in reachable / unreachable
+    binary_set reachable_state{inst.n};
+    unsigned int partial_cost{0};
     while (!applicable_queue.empty()) {
+        // retrieve an applicable action
         const auto act_i_cpx{applicable_queue.front()};
         applicable_queue.pop_front();
         reachable_acts.push_back(act_i_cpx);
-
         const auto act_i{inst.act_cpxtoidx[act_i_cpx]};
         partial_cost += inst.actions[act_i].cost;
 
-        // get new applicable actions
+        // compute new state
         const auto& new_state{reachable_state | inst.actions[act_i].eff};
+        if (new_state == reachable_state) continue;
+
+        // find new applicable actions
         for (const auto& p : inst.actions[act_i].eff_sparse) {
             if (reachable_state[p]) continue;  // skip facts already reached
 
+            // look among actions that have that new fact in their precondition: since the fact is a new reached fact, all actions that might be
+            // already applied won't appear here
             for (const auto& act_j : inst.act_with_pre[p]) {
                 const auto& act_j_cpx{inst.act_opt_conv[act_j]};
                 if (!std::binary_search(used_acts.begin(), used_acts.end(), act_j_cpx)) continue;  // if the action wasn't used, skip
 
+                // if the actions is applicable and isn't already in the queue, add it
                 if (new_state.contains(inst.actions[act_j].pre) &&
                     std::find(applicable_queue.begin(), applicable_queue.end(), act_j_cpx) == applicable_queue.end())
                     applicable_queue.push_back(act_j_cpx);
             }
         }
+
+        // update reachable state
         reachable_state = new_state;
     }
 
     return {used_acts, unused_acts, reachable_acts, reachable_state, partial_cost};
 }
 
-static void cb_print_info(CPXCALLBACKCONTEXTptr& context, const double& cost, const logger& log) {
-#if HPLUS_VERBOSE >= 100
-    int itcount = 0;
-    CPX_HANDLE_CALL(log, CPXcallbackgetinfoint(context, CPXCALLBACKINFO_ITCOUNT, &itcount));
-    if (itcount % 10 == 0) {
+static void cb_print_info(CPXCALLBACKCONTEXTptr& context, const double& cost, const bool& posting_sol, const unsigned int& heur_cost,
+                          const logger& log) {
+    static pthread_mutex_t cb_print_info_mutex = PTHREAD_MUTEX_INITIALIZER;
+    static int call_count{0};
+    static unsigned int last_heur_cost{std::numeric_limits<unsigned int>::max()};
+    if (call_count % 100 == 0) {
         double lower_bound = CPX_INFBOUND;
         CPX_HANDLE_CALL(log, CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_BND, &lower_bound));
         double incumbent = CPX_INFBOUND;
         CPX_HANDLE_CALL(log, CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_SOL, &incumbent));
         double gap = (1 - lower_bound / incumbent) * 100;
+        pthread_mutex_lock(&cb_print_info_mutex);
         log.print_info("Pruned infeasible solution - cost : %7d - incumbent : %7d - gap : %6.2f%%.", static_cast<int>(cost),
                        static_cast<int>(incumbent), gap);
+        pthread_mutex_unlock(&cb_print_info_mutex);
     }
-#endif
+    pthread_mutex_lock(&cb_print_info_mutex);
+    if (posting_sol && heur_cost < last_heur_cost) {
+        log.print_info("Posting solution with cost: %u", heur_cost);
+        last_heur_cost = heur_cost;
+    }
+    call_count++;
+    pthread_mutex_unlock(&cb_print_info_mutex);
 }
 
 static std::vector<size_t> cb_compute_landmark(const hplus::instance& inst, const std::vector<size_t>& used_acts,
                                                const std::vector<size_t>& reachable_acts, const std::vector<size_t>& unused_acts,
                                                binary_set& reachable_state) {
+    // init unapplicable actions with used unreachable actions
     std::vector<size_t> unapplicable;
     std::set_difference(used_acts.begin(), used_acts.end(), reachable_acts.begin(), reachable_acts.end(), std::back_inserter(unapplicable));
 
+    // TODO: Maybe here I can find a larger extension set, and get a smaller landmark(???)
     std::vector<size_t> extension;
 
+    // try to expand the set of actions looking among unused ones
     for (const auto& act_i_cpx : unused_acts) {
         const auto& act_i{inst.act_cpxtoidx[act_i_cpx]};
 
+        // if the effects of this action won't change the reachable state, just apply it
+        if (reachable_state.contains(inst.actions[act_i].eff)) {
+            insert_sorted(extension, act_i_cpx);
+            continue;
+        }
+
+        // if the action is unreachable, then it won't change the set of reachable facts, I can add it to the extension
         if (!reachable_state.contains(inst.actions[act_i].pre)) {
             insert_sorted(extension, act_i_cpx);
+            // add this actions to the unapplicable actions, to eventually add its effects when it'd become applicable
             insert_sorted(unapplicable, act_i_cpx);
             continue;
         }
 
+        // here the action is reachable
+
+        // if the effect of this action reaches the goal, we don't add it to the expansion
         if ((reachable_state | inst.actions[act_i].eff).contains(inst.goal)) continue;
 
+        // simulate the effects of using this action
         binary_set state_sim{reachable_state | inst.actions[act_i].eff};
         std::vector<size_t> new_applicable;
         while (true) {
@@ -101,6 +133,7 @@ static std::vector<size_t> cb_compute_landmark(const hplus::instance& inst, cons
             for (const auto& act_j_cpx : unapplicable) {
                 if (std::binary_search(new_applicable.begin(), new_applicable.end(), act_j_cpx)) continue;
                 const auto& act_j{inst.act_cpxtoidx[act_j_cpx]};
+                // if now a (previously) unapplicable action is applicable, add its effects to the simulated state
                 if (state_sim.contains(inst.actions[act_j].pre)) {
                     insert_sorted(new_applicable, act_j_cpx);
                     state_sim |= inst.actions[act_j].eff;
@@ -110,6 +143,8 @@ static std::vector<size_t> cb_compute_landmark(const hplus::instance& inst, cons
             if (skip) break;
         }
 
+        // if the new state doesn't contain the goal, then we can update the reachable state and remove the applicable actions from the previously
+        // unapplicable ones
         if (!state_sim.contains(inst.goal)) {
             insert_sorted(extension, act_i_cpx);
             reachable_state = state_sim;
@@ -121,6 +156,7 @@ static std::vector<size_t> cb_compute_landmark(const hplus::instance& inst, cons
 
     // TODO: Maybe try saturation as showed in the paper
 
+    // compute the landmark as the set of actions that, if applied, would reach the goal
     std::vector<size_t> landmark;
     std::set_difference(unused_acts.begin(), unused_acts.end(), extension.begin(), extension.end(), std::back_inserter(landmark));
 
@@ -207,7 +243,9 @@ int CPXPUBLIC dynamic::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG conte
     }
 
     // print info for debugging
-    cb_print_info(context, cost, log);
+#if HPLUS_VERBOSE >= 100
+    cb_print_info(context, cost, reachable_state.contains(inst.goal), partial_cost, log);
+#endif
 
     // the goal state here was reached
     if (reachable_state.contains(inst.goal)) {
@@ -215,9 +253,7 @@ int CPXPUBLIC dynamic::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG conte
         std::vector<size_t> applicable_action_sequence{reachable_acts};
         auto [ind, val, size] = cb_find_heur_sol(inst, applicable_action_sequence);
 
-        log.print_warn("Posting solution with cost: %u", partial_cost);
-
-        // Post the solution withoud unreachable actions
+        // Post the solution without unreachable actions
         CPX_HANDLE_CALL(log, CPXcallbackpostheursoln(context, size, ind, val, partial_cost, CPXCALLBACKSOLUTION_NOCHECK))
 
         delete[] val;
@@ -238,8 +274,6 @@ int CPXPUBLIC dynamic::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG conte
     // compute minimal landmark
     std::sort(reachable_acts.begin(), reachable_acts.end());
     const std::vector<size_t> landmark{cb_compute_landmark(inst, used_acts, reachable_acts, unused_acts, reachable_state)};
-
-    log.print_warn("Landmark size: %d", landmark.size());
 
     // reject the candidate point adding the landmark as constraint
     cb_post_landmark(context, inst, landmark, log);

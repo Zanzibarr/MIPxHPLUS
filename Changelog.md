@@ -25,7 +25,7 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
-## [1.3.1] - 2025/04/01
+## [1.3.1] - 2025/04/02
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed
 - Imai's model finds wrong optimal solutions
