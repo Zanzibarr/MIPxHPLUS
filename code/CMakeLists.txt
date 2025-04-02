@@ -3,7 +3,7 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
-set(CODE_VERSION "1.3.1")
+set(CODE_VERSION "1.3.2")
 
 # Enforce out-of-source build
 if (CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
@@ -157,11 +157,20 @@ set(HPLUS_LIBRARIES
 
 # Main executable
 add_executable(hplus main.cpp)
+add_executable(info info.cpp)
 
 # Ensure these libraries are built before the main executable
 add_dependencies(hplus ${HPLUS_LIBRARIES})
+add_dependencies(info ${HPLUS_LIBRARIES})
 
 target_link_libraries(hplus 
+    algorithms
+    ${HPLUS_LIBRARIES}
+    ${CPLEX_LIBRARY}
+    Threads::Threads
+    dl
+)
+target_link_libraries(info 
     algorithms
     ${HPLUS_LIBRARIES}
     ${CPLEX_LIBRARY}
@@ -180,11 +189,15 @@ add_definitions(
 
 # Custom build targets with error handling
 add_custom_target(opt 
+    COMMAND echo "Code version: ${CODE_VERSION}"
+    COMMAND echo "Flags used: ${CMAKE_CXX_FLAGS_RELEASE}"
     COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --config Release
     COMMAND_EXPAND_LISTS
 )
 
 add_custom_target(debug 
+    COMMAND echo "Code version: ${CODE_VERSION}"
+    COMMAND echo "Flags used: ${CMAKE_CXX_FLAGS_RELEASE}"
     COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --config Debug
     COMMAND_EXPAND_LISTS
 )
