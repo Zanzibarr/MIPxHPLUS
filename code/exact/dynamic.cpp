@@ -215,6 +215,7 @@ static std::tuple<int*, double*, size_t> cb_find_heur_sol(const hplus::instance&
             val[inst.m_opt + inst.n_fadd + inst.var_opt_conv[var_i]] = 1;
         }
         state |= inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff;
+        // TODO: If I find the goal before, exit
     }
 
     return {ind, val, ncols};
@@ -278,7 +279,7 @@ int CPXPUBLIC dynamic::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG conte
     // reject the candidate point adding the landmark as constraint
     cb_post_landmark(context, inst, landmark, log);
 
-    // TODO: I could add more constraints (SEC maybe?)
+    // TODO: I could add more constraints (complete landmark / SEC)
 
     pthread_mutex_lock(&(stats.callback_time_mutex));
     stats.nusercuts++;

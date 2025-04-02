@@ -119,7 +119,7 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
     if (!silent) PRINT_INFO(log, "Parsing SAS file.");
 
     std::ifstream ifs(env.input_file.c_str(), std::ifstream::in);
-    ASSERT_LOG(log, ifs.good());
+    if (!ifs.good()) log.raise_error("Unable to open file %s.", env.input_file.c_str());
 
     stats.parsing = static_cast<double>(env.time_limit) - env.timer.get_time();
     std::string line;
