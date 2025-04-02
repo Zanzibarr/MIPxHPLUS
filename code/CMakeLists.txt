@@ -159,10 +159,6 @@ set(HPLUS_LIBRARIES
 add_executable(hplus main.cpp)
 add_executable(info info.cpp)
 
-# Ensure these libraries are built before the main executable
-add_dependencies(hplus ${HPLUS_LIBRARIES})
-add_dependencies(info ${HPLUS_LIBRARIES})
-
 target_link_libraries(hplus 
     algorithms
     ${HPLUS_LIBRARIES}
@@ -170,13 +166,7 @@ target_link_libraries(hplus
     Threads::Threads
     dl
 )
-target_link_libraries(info 
-    algorithms
-    ${HPLUS_LIBRARIES}
-    ${CPLEX_LIBRARY}
-    Threads::Threads
-    dl
-)
+target_link_libraries(info hplus_instance)
 
 # Automated definitions
 add_definitions(
