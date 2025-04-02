@@ -161,13 +161,13 @@ set(CMAKE_CXX_FLAGS_DEBUG "-Og -ggdb")
 
 add_custom_target(opt 
     COMMAND echo "Code version: ${CODE_VERSION}"
-    COMMAND echo "Flags used: ${CMAKE_CXX_FLAGS_RELEASE}"
+    COMMAND echo "Flags used: ${CMAKE_CXX_FLAGS_RELEASE} -DHPLUS_VERBOSE=${VERBOSE} -DHPLUS_WARN=${WARN} -DHPLUS_INTCHECK=${INTCHECK}"
     COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --config Release
     COMMAND_EXPAND_LISTS
 )
 add_custom_target(debug 
     COMMAND echo "Code version: ${CODE_VERSION}"
-    COMMAND echo "Flags used: ${CMAKE_CXX_FLAGS_RELEASE}"
+    COMMAND echo "Flags used: ${CMAKE_CXX_FLAGS_RELEASE} -DHPLUS_VERBOSE=${VERBOSE} -DHPLUS_WARN=${WARN} -DHPLUS_INTCHECK=${INTCHECK}"
     COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --config Debug
     COMMAND_EXPAND_LISTS
 )
