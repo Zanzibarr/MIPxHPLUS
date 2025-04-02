@@ -328,7 +328,6 @@ static void end(const hplus::instance& inst, hplus::environment& env, hplus::sta
     hplus::print_stats(stats, log);
 }
 
-#ifndef HPLUS_INFO
 int main(const int argc, const char** argv) {
     signal(SIGINT, signal_callback_handler);
     struct termios t{};
@@ -352,4 +351,3 @@ int main(const int argc, const char** argv) {
     pthread_join(timer_thread, nullptr);
     end(inst, env, stats, log);
 }
-#endif
