@@ -176,7 +176,7 @@ def main():
                 )
                 if runsum["results"][instance_name]["status"] != 1:
                     runsum["results"][instance_name]["natoms"] = int(
-                        content.partition("# variables:")[2].partition(".\n")[0].strip()
+                        content.partition("# facts:")[2].partition(".\n")[0].strip()
                     )
                     runsum["results"][instance_name]["nacts"] = int(
                         content.partition("# actions:")[2].partition(".\n")[0].strip()

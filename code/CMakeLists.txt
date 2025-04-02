@@ -3,6 +3,9 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+cmake_path(GET CMAKE_HOME_DIRECTORY PARENT_PATH HOME_DIR)
+
+project(hplus)
 set(CODE_VERSION "1.3.2")
 
 # Enforce out-of-source build
@@ -10,19 +13,9 @@ if (CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
     message(FATAL_ERROR "Out-of-source build required. Create a 'build' directory and run cmake from there.")
 endif()
 
-project(hplus)
-
-# Automated build type configuration
-if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
-endif()
-
-# Automated compiler flags with option for customization
+# Compiler flags with option for customization
 option(ENABLE_WARNINGS "Enable compiler warnings" OFF)
 option(TREAT_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
-
-set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3")
-set(CMAKE_CXX_FLAGS_DEBUG "-Og -ggdb")
 
 if(ENABLE_WARNINGS)
     add_compile_options(-Wall -Wextra -pedantic)
@@ -31,19 +24,12 @@ if(ENABLE_WARNINGS)
     endif()
 endif()
 
-# Automated verbosity and debug settings with environment variable fallback
-set(VERBOSE "5" CACHE STRING "Verbose setting")
-set(WARN "1" CACHE STRING "Warning message level")
-set(INTCHECK "0" CACHE STRING "Integrity checks level")
-
-# Automated CPLEX detection with more flexible paths
+# CPLEX detection
 set(CPLEX_POSSIBLE_PATHS
     "/Applications/CPLEX_Studio2211"
     "/opt/ibm/ILOG/CPLEX_Studio2211"
     "/nfsd/rop/sw/ibm/cos221"
 )
-
-# Function to find CPLEX
 function(find_cplex)
     foreach(CPLEX_PATH ${CPLEX_POSSIBLE_PATHS})
         if(EXISTS "${CPLEX_PATH}/cplex/lib")
@@ -66,8 +52,6 @@ function(find_cplex)
 
     message(FATAL_ERROR "CPLEX not found. Please specify CPLEX_DIR and CPLEX_INCLUDE manually.")
 endfunction()
-
-# Call the CPLEX detection function
 find_cplex()
 
 # Validate CPLEX paths
@@ -78,8 +62,7 @@ if(NOT EXISTS ${CPLEX_INCLUDE})
     message(FATAL_ERROR "CPLEX include directory not found: ${CPLEX_INCLUDE}")
 endif()
 
-# Automated logging directory setup
-cmake_path(GET CMAKE_HOME_DIRECTORY PARENT_PATH HOME_DIR)
+# Logging directory setup
 set(LOGS_SUBDIRS 
     "logs"
     "logs/output_logs"
@@ -87,7 +70,6 @@ set(LOGS_SUBDIRS
     "logs/cpxout/log"
     "logs/cpxout/lp"
 )
-
 foreach(SUBDIR ${LOGS_SUBDIRS})
     set(FULL_DIR "${HOME_DIR}/${SUBDIR}")
     if(NOT EXISTS ${FULL_DIR})
@@ -100,7 +82,12 @@ endforeach()
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-# Automated include directories
+# Verbosity and debug settings
+set(VERBOSE "5" CACHE STRING "Verbose setting")
+set(WARN "1" CACHE STRING "Warning message level")
+set(INTCHECK "0" CACHE STRING "Integrity checks level")
+
+# Include directories
 include_directories(
     .
     exact
@@ -109,29 +96,24 @@ include_directories(
     ${CPLEX_INCLUDE}
 )
 
-# Macro to add libraries from source directories
-macro(add_libraries_from_sources)
-    set(SOURCE_DIRS "exact" "heuristics")
-    foreach(SOURCE_DIR ${SOURCE_DIRS})
-        file(GLOB SOURCES "${SOURCE_DIR}/*.cpp")
-        foreach(SOURCE ${SOURCES})
-            get_filename_component(LIBNAME ${SOURCE} NAME_WE)
-            add_library(${LIBNAME} ${SOURCE} "${SOURCE_DIR}/${LIBNAME}.hpp")
-        endforeach()
-    endforeach()
-
-    # Special case libraries
-    file(GLOB SPECIAL_SOURCES "*.cpp")
-    foreach(SOURCE ${SPECIAL_SOURCES})
-        get_filename_component(LIBNAME ${SOURCE} NAME_WE)
-        if(LIBNAME MATCHES "^(hplus_instance|algorithms)$")
-            add_library(${LIBNAME} ${SOURCE} "${LIBNAME}.hpp")
-        endif()
-    endforeach()
-endmacro()
-
 # Generate libraries
-add_libraries_from_sources()
+set(SOURCE_DIRS "exact" "heuristics")
+foreach(SOURCE_DIR ${SOURCE_DIRS})
+    file(GLOB SOURCES "${SOURCE_DIR}/*.cpp")
+    foreach(SOURCE ${SOURCES})
+        get_filename_component(LIBNAME ${SOURCE} NAME_WE)
+        add_library(${LIBNAME} ${SOURCE} "${SOURCE_DIR}/${LIBNAME}.hpp")
+    endforeach()
+endforeach()
+
+# Special case libraries
+file(GLOB SPECIAL_SOURCES "*.cpp")
+foreach(SOURCE ${SPECIAL_SOURCES})
+    get_filename_component(LIBNAME ${SOURCE} NAME_WE)
+    if(LIBNAME MATCHES "^(hplus_instance|algorithms)$")
+        add_library(${LIBNAME} ${SOURCE} "${LIBNAME}.hpp")
+    endif()
+endforeach()
 
 # Find CPLEX library
 find_library(CPLEX_LIBRARY
@@ -144,8 +126,13 @@ if(NOT CPLEX_LIBRARY)
     message(FATAL_ERROR "CPLEX library not found in ${CPLEX_DIR}")
 endif()
 
-# Explicitly define the libraries to link
-set(HPLUS_LIBRARIES 
+# Executables
+add_executable(hplus main.cpp)
+add_executable(info info.cpp)
+
+# Link libraries
+target_link_libraries(hplus 
+    algorithms
     hplus_instance
     imai
     rankooh
@@ -153,22 +140,13 @@ set(HPLUS_LIBRARIES
     greedycost
     greedycxe
     hmax_hadd
-)
-
-# Main executable
-add_executable(hplus main.cpp)
-add_executable(info info.cpp)
-
-target_link_libraries(hplus 
-    algorithms
-    ${HPLUS_LIBRARIES}
     ${CPLEX_LIBRARY}
     Threads::Threads
     dl
 )
 target_link_libraries(info hplus_instance)
 
-# Automated definitions
+# Define flags and default values
 add_definitions(
     -DHPLUS_HOME_DIR="${HOME_DIR}" 
     -DHPLUS_VERBOSE=${VERBOSE} 
@@ -177,22 +155,22 @@ add_definitions(
     -DCODE_VERSION="${CODE_VERSION}"
 )
 
-# Custom build targets with error handling
+# Build flags
+set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3")
+set(CMAKE_CXX_FLAGS_DEBUG "-Og -ggdb")
+
 add_custom_target(opt 
     COMMAND echo "Code version: ${CODE_VERSION}"
     COMMAND echo "Flags used: ${CMAKE_CXX_FLAGS_RELEASE}"
     COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --config Release
     COMMAND_EXPAND_LISTS
 )
-
 add_custom_target(debug 
     COMMAND echo "Code version: ${CODE_VERSION}"
     COMMAND echo "Flags used: ${CMAKE_CXX_FLAGS_RELEASE}"
     COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --config Debug
     COMMAND_EXPAND_LISTS
 )
-
-# Cleanup target
 add_custom_target(clear
     COMMAND rm -r ${CMAKE_HOME_DIRECTORY}/build/*
 )

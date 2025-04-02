@@ -154,7 +154,7 @@ static void parse_cli(const int& argc, const char** argv, hplus::environment& en
 
 static void show_info(const hplus::instance& inst, const hplus::environment& env, const logger& log) {
     PRINT_VERBOSE(log, "Showing info about the execution.");
-#if HPLUS_VERBOSE <= 1
+#if HPLUS_VERBOSE < 1
     return;
 #endif
 
@@ -177,7 +177,7 @@ static void show_info(const hplus::instance& inst, const hplus::environment& env
 
     log.print("Metric:                                %20s.",
               (inst.equal_costs ? (inst.actions[0].cost == 1 ? "unitary costs" : "constant costs") : "integer costs"));
-    log.print("# variables:                                     %10d.", inst.n);
+    log.print("# facts:                                         %10d.", inst.n);
     log.print("# actions:                                       %10d.", inst.m);
 
     log.print(LINE);

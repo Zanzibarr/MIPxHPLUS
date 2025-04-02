@@ -34,8 +34,10 @@ cd code/build
 cmake <build_options> ..
 make <target_option>
 
-# to run
+# to run the code on an instance
 ./hplus <input_file> <parameters>
+# to view info about an instance
+./info <input_file>
 ```
 
 ## Build options (CMake parameters)
@@ -43,7 +45,7 @@ make <target_option>
 - **-DVERBOSE=**\<verbose_option> : set the verbose option (default: 5)
   - = **0** : no output
   - < **5** : just solution
-  - \>= **5** : view time statistics
+  - \>= **5** : view statistics
   - \>= **10** : basic steps progress
   - \>= **20** : debugging output
   - \>= **100** : full verbose
@@ -70,4 +72,5 @@ See the help page:
 ```shell
 # to view commands available
 ./hplus --h
+./info --h
 ```

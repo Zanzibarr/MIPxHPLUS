@@ -72,12 +72,12 @@ static void init(hplus::instance& inst) {
 }
 
 [[nodiscard]]
-static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplus::statistics& stats, const logger& log) {
+static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplus::statistics& stats, const logger& log, const bool silent = false) {
     // ====================================================== //
     // ================== PARSING SAS FILE ================== //
     // ====================================================== //
 
-    PRINT_INFO(log, "Parsing SAS file.");
+    if (!silent) PRINT_INFO(log, "Parsing SAS file.");
 
     std::ifstream ifs(env.input_file.c_str(), std::ifstream::in);
     ASSERT_LOG(log, ifs.good());
@@ -109,7 +109,7 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
         log.raise_error("Corrupted file");
 
     // * variables section
-    PRINT_WARN(log, "Ignoring axiom layers.");
+    if (!silent) PRINT_WARN(log, "Ignoring axiom layers.");
     std::getline(ifs, line);  // inst.n
     if (!isint(line, 0)) [[unlikely]]
         log.raise_error("Corrupted file");
@@ -136,7 +136,7 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
     }
 
     // * mutex section (ignored)
-    PRINT_WARN(log, "Ignoring mutex section.");
+    if (!silent) PRINT_WARN(log, "Ignoring mutex section.");
     std::getline(ifs, line);  // number of mutex groups
     if (!isint(line, 0)) [[unlikely]]
         log.raise_error("Corrupted file");
@@ -200,7 +200,7 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
     // * operator (actions) section
     int checkcosts{-1};
     bool equalcosts_check{true};
-    PRINT_WARN(log, "Ignoring effect conditions.");
+    if (!silent) PRINT_WARN(log, "Ignoring effect conditions.");
     std::getline(ifs, line);  // n_act
     if (!isint(line, 0)) [[unlikely]]
         log.raise_error("Corrupted file");
@@ -288,7 +288,7 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
     }
     inst.equal_costs = equalcosts_check;
 
-    PRINT_WARN(log, "Ignoring axiom section.");
+    if (!silent) PRINT_WARN(log, "Ignoring axiom section.");
 
     ifs.close();
 
@@ -323,7 +323,7 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
     };
     binary_set istate;
     if (is_deletefree()) {
-        PRINT_DEBUG(log, "Detected delete-free instance, skipping binary expansion.");
+        if (!silent) PRINT_DEBUG(log, "Detected delete-free instance, skipping binary expansion.");
         istate = binary_set(inst.n);
         inst.goal = binary_set(inst.n);
         for (size_t var_i = 0; var_i < inst.n; var_i++) {
@@ -343,7 +343,7 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
         }
     } else {
         // binary expansion
-        PRINT_VERBOSE(log, "Performing binary expansion.");
+        if (!silent) PRINT_VERBOSE(log, "Performing binary expansion.");
         size_t n_exp{0};
         std::vector<size_t> offsets(inst.n);
         for (size_t i = 0; i < inst.n; i++) {
@@ -372,7 +372,7 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
     // ================ INITIAL STATE REMOVAL =============== //
     // ====================================================== //
 
-    PRINT_VERBOSE(log, "Removing initial state variables.");
+    if (!silent) PRINT_VERBOSE(log, "Removing initial state variables.");
     std::vector<size_t> istate_offsets(inst.n);
     size_t n_opt{inst.n};
     for (size_t i = 0, c = 0; i < inst.n; i++) {
@@ -409,7 +409,7 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
     // ====================================================== //
     if (inst.equal_costs && env.heur == "greedycost") {
         env.heur = "greedycxe";
-        PRINT_WARN(log, "Detected instance with equal costs actions, switching to 'greedycxe' heuristic.");
+        if (!silent) PRINT_WARN(log, "Detected instance with equal costs actions, switching to 'greedycxe' heuristic.");
     }
 
     // return
@@ -447,16 +447,16 @@ static void init_inst_preprocessing(hplus::instance& inst) {
     inst.n_fadd = sum;
 }
 
-bool hplus::create_instance(instance& inst, environment& env, statistics& stats, const logger& log) {
+bool hplus::create_instance(instance& inst, environment& env, statistics& stats, const logger& log, const bool silent) {
     init(inst);
-    if (!parse_inst_file(inst, env, stats, log)) {
-        PRINT_VERBOSE(log, "The problem is infeasible.");
+    if (!parse_inst_file(inst, env, stats, log, silent)) {
+        if (silent) log.print("The problem is infeasible.");
         env.sol_s = solution_status::INFEAS;
         return false;
     }
     init_inst_preprocessing(inst);
 
-    PRINT_VERBOSE(log, "Created HPLUS_instance.");
+    if (!silent) PRINT_VERBOSE(log, "Created HPLUS_instance.");
     return true;
 }
 
@@ -859,7 +859,7 @@ void hplus::preprocessing(instance& inst, const environment& env, const logger& 
     finish_preprocessing(inst, log);
 #if HPLUS_VERBOSE >= 100
     size_t count{(inst.var_f | inst.var_e).sparse().size()};
-    log.print_info("# variables: %d - %d = %d.", inst.n, count, inst.n - count);
+    log.print_info("# facts: %d - %d = %d.", inst.n, count, inst.n - count);
     count = (inst.act_f | inst.act_e).sparse().size();
     log.print_info("# actions: %d - %d = %d.", inst.m, count, inst.m - count);
 #endif

@@ -31,7 +31,7 @@ int main(const int argc, const char** argv) {
     init(stats);
     info_parse_cli(argc, argv, env);
     logger log(env.log, HPLUS_LOG_DIR "/" + env.log_name, env.run_name);
-    if (hplus::create_instance(inst, env, stats, log)) {
+    if (hplus::create_instance(inst, env, stats, log, true)) {
         log.print(LINE);
         std::time_t time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
         log.print("%sCode version: %s.\n%s", std::ctime(&time), CODE_VERSION, LINE);
@@ -39,7 +39,7 @@ int main(const int argc, const char** argv) {
         log.print(LINE);
         log.print("Metric:                                %20s.",
                   (inst.equal_costs ? (inst.actions[0].cost == 1 ? "unitary costs" : "constant costs") : "integer costs"));
-        log.print("# variables:                                     %10d.", inst.n);
+        log.print("# facts:                                         %10d.", inst.n);
         log.print("# actions:                                       %10d.", inst.m);
         log.print(LINE);
     }
