@@ -206,7 +206,7 @@ static std::tuple<bool, int*, double*, unsigned int, size_t> cb_find_heur_sol(co
         state |= inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff;
         hcost += inst.actions[inst.act_cpxtoidx[act_i_cpx]].cost;
         if (state.contains(inst.goal)) {
-            if (act_i_cpx != *applicable_actions_sequence.end()) changed = true;
+            if (act_i_cpx != applicable_actions_sequence[applicable_actions_sequence.size() - 1]) changed = true;
             break;
         }
     }
@@ -247,19 +247,15 @@ int CPXPUBLIC dynamic::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG conte
 
     // the goal state here was reached
     if (reachable_state.contains(inst.goal)) {
-        // save the order in which actions could be applied
-        std::vector<size_t> applicable_action_sequence{reachable_acts};
-        auto [changed, ind, val, hcost, size] = cb_find_heur_sol(inst, applicable_action_sequence);
-
-        // Post the feasible improved solution
+        // Post the (possibly) improved feasible solution
+        auto [changed, ind, val, hcost, size] = cb_find_heur_sol(inst, reachable_acts);
         if (changed) CPX_HANDLE_CALL(log, CPXcallbackpostheursoln(context, size, ind, val, hcost, CPXCALLBACKSOLUTION_NOCHECK))
-
         delete[] val;
         val = nullptr;
         delete[] ind;
         ind = nullptr;
 
-        // reject solution: //TODO: Maybe I can add a constraint here(????)
+        // reject solution: //TODO: Maybe I can add a constraint here
         constexpr int tmpind{0};
         constexpr double tmpval{0};
         CPX_HANDLE_CALL(log, CPXcallbackrejectcandidate(context, 0, 0, &rhs, &sense, &izero, &tmpind, &tmpval));
