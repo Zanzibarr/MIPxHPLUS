@@ -191,7 +191,7 @@ static std::tuple<bool, int*, double*, unsigned int, size_t> cb_find_heur_sol(co
     unsigned int hcost = 0;
     bool changed = false;
     for (const auto& act_i_cpx : applicable_actions_sequence) {
-        if (state.contains(inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff)) {
+        if (state.contains(inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff) && inst.actions[inst.act_cpxtoidx[act_i_cpx]].cost != 0) {
             changed = true;
             continue;
         }
@@ -205,7 +205,7 @@ static std::tuple<bool, int*, double*, unsigned int, size_t> cb_find_heur_sol(co
         }
         state |= inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff;
         hcost += inst.actions[inst.act_cpxtoidx[act_i_cpx]].cost;
-        if (state.contains(inst.goal)) {
+        if (state.contains(inst.goal) && inst.actions[inst.act_cpxtoidx[act_i_cpx]].cost != 0) {
             if (act_i_cpx != applicable_actions_sequence[applicable_actions_sequence.size() - 1]) changed = true;
             break;
         }
