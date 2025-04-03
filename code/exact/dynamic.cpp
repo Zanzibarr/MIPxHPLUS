@@ -67,11 +67,9 @@ static std::tuple<std::vector<size_t>, std::vector<size_t>, std::vector<size_t>,
     return {used_acts, unused_acts, reachable_acts, reachable_state, partial_cost};
 }
 
-static void cb_print_info(CPXCALLBACKCONTEXTptr& context, const double& cost, const bool& posting_sol, const unsigned int& heur_cost,
-                          const logger& log) {
+static void cb_print_info(CPXCALLBACKCONTEXTptr& context, const double& cost, const logger& log) {
     static pthread_mutex_t cb_print_info_mutex = PTHREAD_MUTEX_INITIALIZER;
     static int call_count{0};
-    static unsigned int last_heur_cost{std::numeric_limits<unsigned int>::max()};
     if (call_count % 100 == 0) {
         double lower_bound = CPX_INFBOUND;
         CPX_HANDLE_CALL(log, CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_BND, &lower_bound));
@@ -84,17 +82,13 @@ static void cb_print_info(CPXCALLBACKCONTEXTptr& context, const double& cost, co
         pthread_mutex_unlock(&cb_print_info_mutex);
     }
     pthread_mutex_lock(&cb_print_info_mutex);
-    if (posting_sol && heur_cost < last_heur_cost) {
-        log.print_info("Posting solution with cost: %u", heur_cost);
-        last_heur_cost = heur_cost;
-    }
     call_count++;
     pthread_mutex_unlock(&cb_print_info_mutex);
 }
 
-static std::vector<size_t> cb_compute_landmark(const hplus::instance& inst, const std::vector<size_t>& used_acts,
-                                               const std::vector<size_t>& reachable_acts, const std::vector<size_t>& unused_acts,
-                                               binary_set& reachable_state) {
+static std::tuple<int*, double*, int> cb_compute_minimal_landmark(const hplus::instance& inst, const std::vector<size_t>& used_acts,
+                                                                  const std::vector<size_t>& reachable_acts, const std::vector<size_t>& unused_acts,
+                                                                  binary_set& reachable_state) {
     // init unapplicable actions with used unreachable actions
     std::vector<size_t> unapplicable;
     std::set_difference(used_acts.begin(), used_acts.end(), reachable_acts.begin(), reachable_acts.end(), std::back_inserter(unapplicable));
@@ -160,17 +154,9 @@ static std::vector<size_t> cb_compute_landmark(const hplus::instance& inst, cons
     std::vector<size_t> landmark;
     std::set_difference(unused_acts.begin(), unused_acts.end(), extension.begin(), extension.end(), std::back_inserter(landmark));
 
-    return landmark;
-}
-
-static void cb_post_landmark(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const std::vector<size_t> landmark, const logger& log) {
-    int nnz{0};
-    constexpr double rhs{1};
-    constexpr int izero{0};
-    constexpr char sense_g{'G'};
-
     int* ind{new int[inst.n_fadd]};
     double* val{new double[inst.n_fadd]};
+    int nnz{0};
     for (const auto& act_i_cpx : landmark) {
         int var_count{-1};
         int init_nnz{nnz};
@@ -187,15 +173,12 @@ static void cb_post_landmark(CPXCALLBACKCONTEXTptr context, const hplus::instanc
         }
     }
 
-    CPX_HANDLE_CALL(log, CPXcallbackrejectcandidate(context, 1, nnz, &rhs, &sense_g, &izero, ind, val));
-
-    delete[] val;
-    val = nullptr;
-    delete[] ind;
-    ind = nullptr;
+    return {ind, val, nnz};
 }
 
-static std::tuple<int*, double*, size_t> cb_find_heur_sol(const hplus::instance& inst, const std::vector<size_t>& applicable_actions_sequence) {
+// TODO: Maybe find a way to improve more the solution, raher than blindly using actions used by CPLEX
+static std::tuple<bool, int*, double*, unsigned int, size_t> cb_find_heur_sol(const hplus::instance& inst,
+                                                                              const std::vector<size_t>& applicable_actions_sequence) {
     size_t ncols{inst.m_opt + inst.n_opt + inst.n_fadd};
     int* ind{new int[ncols]};
     double* val{new double[ncols]};
@@ -205,7 +188,13 @@ static std::tuple<int*, double*, size_t> cb_find_heur_sol(const hplus::instance&
     }
 
     binary_set state{inst.n_opt};
+    unsigned int hcost = 0;
+    bool changed = false;
     for (const auto& act_i_cpx : applicable_actions_sequence) {
+        if (state.contains(inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff)) {
+            changed = true;
+            continue;
+        }
         val[act_i_cpx] = 1;
         int var_count{-1};
         for (const auto& var_i : inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff_sparse) {
@@ -215,10 +204,14 @@ static std::tuple<int*, double*, size_t> cb_find_heur_sol(const hplus::instance&
             val[inst.m_opt + inst.n_fadd + inst.var_opt_conv[var_i]] = 1;
         }
         state |= inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff;
-        // TODO: If I find the goal before, exit
+        hcost += inst.actions[inst.act_cpxtoidx[act_i_cpx]].cost;
+        if (state.contains(inst.goal)) {
+            if (act_i_cpx != *applicable_actions_sequence.end()) changed = true;
+            break;
+        }
     }
 
-    return {ind, val, ncols};
+    return {changed, ind, val, hcost, ncols};
 }
 
 int CPXPUBLIC dynamic::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG context_id, void* user_handle) {
@@ -245,17 +238,21 @@ int CPXPUBLIC dynamic::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG conte
 
     // print info for debugging
 #if HPLUS_VERBOSE >= 100
-    cb_print_info(context, cost, reachable_state.contains(inst.goal), partial_cost, log);
+    cb_print_info(context, cost, log);
 #endif
+
+    constexpr double rhs{1};
+    constexpr int izero{0};
+    constexpr char sense{'G'};
 
     // the goal state here was reached
     if (reachable_state.contains(inst.goal)) {
         // save the order in which actions could be applied
         std::vector<size_t> applicable_action_sequence{reachable_acts};
-        auto [ind, val, size] = cb_find_heur_sol(inst, applicable_action_sequence);
+        auto [changed, ind, val, hcost, size] = cb_find_heur_sol(inst, applicable_action_sequence);
 
-        // Post the solution without unreachable actions
-        CPX_HANDLE_CALL(log, CPXcallbackpostheursoln(context, size, ind, val, partial_cost, CPXCALLBACKSOLUTION_NOCHECK))
+        // Post the feasible improved solution
+        if (changed) CPX_HANDLE_CALL(log, CPXcallbackpostheursoln(context, size, ind, val, hcost, CPXCALLBACKSOLUTION_NOCHECK))
 
         delete[] val;
         val = nullptr;
@@ -263,23 +260,22 @@ int CPXPUBLIC dynamic::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG conte
         ind = nullptr;
 
         // reject solution: //TODO: Maybe I can add a constraint here(????)
-        constexpr double tmprhs{0};
-        constexpr char tmpsense{'L'};
-        constexpr int tmpbeg{0};
         constexpr int tmpind{0};
         constexpr double tmpval{0};
-        CPX_HANDLE_CALL(log, CPXcallbackrejectcandidate(context, 0, 0, &tmprhs, &tmpsense, &tmpbeg, &tmpind, &tmpval));
+        CPX_HANDLE_CALL(log, CPXcallbackrejectcandidate(context, 0, 0, &rhs, &sense, &izero, &tmpind, &tmpval));
         return 0;
     }
 
-    // compute minimal landmark
+    // reject the candidate point adding the minimal landmark as constraint
     std::sort(reachable_acts.begin(), reachable_acts.end());
-    const std::vector<size_t> landmark{cb_compute_landmark(inst, used_acts, reachable_acts, unused_acts, reachable_state)};
+    auto [ind, val, size]{cb_compute_minimal_landmark(inst, used_acts, reachable_acts, unused_acts, reachable_state)};
+    CPX_HANDLE_CALL(log, CPXcallbackrejectcandidate(context, 1, size, &rhs, &sense, &izero, ind, val));
+    delete[] val;
+    val = nullptr;
+    delete[] ind;
+    ind = nullptr;
 
-    // reject the candidate point adding the landmark as constraint
-    cb_post_landmark(context, inst, landmark, log);
-
-    // TODO: I could add more constraints (complete landmark / SEC)
+    // TODO: I could add more constraints (cut section landmark / SEC)
 
     pthread_mutex_lock(&(stats.callback_time_mutex));
     stats.nusercuts++;

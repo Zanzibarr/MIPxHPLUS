@@ -25,6 +25,16 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
+## [1.3.3] - 2025/04/03
+<!-- ### :warning: Known issues -->
+### :ballot_box_with_check: Fixed
+- Dynamic model might find wrong optimal solutions
+<!-- ### :heavy_exclamation_mark: Changed -->
+<!-- ### :heavy_plus_sign: Added -->
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+
+
 ## [1.3.2] - 2025/04/02
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->
