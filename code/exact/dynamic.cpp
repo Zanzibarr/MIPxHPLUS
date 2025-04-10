@@ -86,28 +86,174 @@ static void cb_print_info(CPXCALLBACKCONTEXTptr& context, const double& cost, co
     pthread_mutex_unlock(&cb_print_info_mutex);
 }
 
-static std::tuple<int*, double*, int> cb_compute_minimal_landmark(const hplus::instance& inst, const std::vector<size_t>& used_acts,
-                                                                  const std::vector<size_t>& reachable_acts, const std::vector<size_t>& unused_acts,
-                                                                  binary_set& reachable_state) {
+static std::tuple<int*, double*, unsigned int, size_t> cb_find_heur_sol(const hplus::instance& inst,
+                                                                        const std::vector<size_t>& applicable_actions_sequence) {
+    size_t ncols{inst.m_opt + inst.n_opt + inst.n_fadd};
+    int* ind{new int[ncols]};
+    double* val{new double[ncols]};
+    for (size_t i = 0; i < ncols; i++) {
+        ind[i] = i;
+        val[i] = 0;
+    }
+
+    binary_set state{inst.n_opt};
+    unsigned int hcost = 0;
+    for (const auto& act_i_cpx : applicable_actions_sequence) {
+        if (state.contains(inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff)) continue;
+        val[act_i_cpx] = 1;
+        int var_count{-1};
+        for (const auto& var_i : inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff_sparse) {
+            var_count++;
+            if (state[var_i]) continue;
+            val[inst.m_opt + inst.fadd_cpx_start[act_i_cpx] + var_count] = 1;
+            val[inst.m_opt + inst.n_fadd + inst.var_opt_conv[var_i]] = 1;
+        }
+        state |= inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff;
+        hcost += inst.actions[inst.act_cpxtoidx[act_i_cpx]].cost;
+        if (state.contains(inst.goal)) break;
+    }
+
+    return {ind, val, hcost, ncols};
+}
+
+static std::tuple<int*, double*, unsigned int, size_t> cb_complete_heur_sol(const hplus::instance& inst,
+                                                                            const std::vector<size_t>& applicable_actions_sequence,
+                                                                            const binary_set& reachable_state) {
+    size_t ncols{inst.m_opt + inst.n_opt + inst.n_fadd};
+    int* ind{new int[ncols]};
+    double* val{new double[ncols]};
+    for (size_t i = 0; i < ncols; i++) {
+        ind[i] = i;
+        val[i] = 0;
+    }
+
+    binary_set state{inst.n_opt}, used_acts{inst.m_opt};
+    unsigned int hcost{0}, timestamp{0};
+    for (const auto& act_i_cpx : applicable_actions_sequence) {
+        if (state.contains(inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff)) continue;
+        val[act_i_cpx] = 1;
+        used_acts.add(act_i_cpx);
+        timestamp++;
+        int var_count{-1};
+        for (const auto& var_i : inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff_sparse) {
+            var_count++;
+            if (state[var_i]) continue;
+            val[inst.m_opt + inst.fadd_cpx_start[act_i_cpx] + var_count] = 1;
+            val[inst.m_opt + inst.n_fadd + inst.var_opt_conv[var_i]] = 1;
+        }
+        state |= inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff;
+        hcost += inst.actions[inst.act_cpxtoidx[act_i_cpx]].cost;
+    }
+
+    INTCHECK_ASSERT(state == reachable_state);
+
+    // from cxe heuristic
+    const auto find_best_act = [&inst, &timestamp](const std::list<size_t>& candidates, const binary_set& state) {
+        size_t choice{0};
+        bool found{false};
+        double best_cxe{std::numeric_limits<double>::infinity()};
+        for (const auto& act_i : candidates) {
+            if (inst.act_t[act_i] >= 0 && static_cast<unsigned int>(inst.act_t[act_i]) == timestamp) return std::pair(true, act_i);
+            if (inst.act_f[act_i]) {
+                choice = act_i;
+                best_cxe = -1;
+                found = true;
+                continue;
+            }
+
+            if (best_cxe < 0) continue;
+
+            unsigned int neff{0};
+            for (const auto& var_i : inst.actions[act_i].eff_sparse) {
+                if (!state[var_i]) neff++;
+            }
+            if (neff == 0) continue;
+            const double cxe{static_cast<double>(inst.actions[act_i].cost) / neff};
+            if (cxe >= best_cxe) continue;
+
+            found = true;
+            choice = act_i;
+            best_cxe = cxe;
+        }
+        return std::pair(found, choice);
+    };
+
+    std::list<size_t> candidates;
+    for (const auto& act_i : inst.act_rem) {
+        if (inst.actions[act_i].pre_sparse.empty() && !used_acts[inst.act_opt_conv[act_i]] && !state.contains(inst.actions[act_i].eff))
+            candidates.push_back(act_i);
+    }
+    for (const auto& p : state) {
+        for (const auto& act_i : inst.act_with_pre[p]) {
+            size_t act_i_cpx{inst.act_opt_conv[act_i]};
+            if (used_acts[act_i_cpx] || state.contains(inst.actions[act_i].eff) || !state.contains(inst.actions[act_i].pre) ||
+                std::find(candidates.begin(), candidates.end(), act_i) != candidates.end())
+                continue;
+            candidates.push_back(act_i);
+        }
+    }
+
+    while (!state.contains(inst.goal)) {
+        INTCHECK_ASSERT(!candidates.empty());
+        const auto [found, choice]{find_best_act(candidates, state)};
+        INTCHECK_ASSERT(found);
+        candidates.remove(choice);
+        // add new actions to the candidates
+        const auto& new_state = state | inst.actions[choice].eff;
+        for (const auto& p : inst.actions[choice].eff_sparse) {
+            if (state[p]) continue;
+            for (const auto& act_i : inst.act_with_pre[p]) {
+                if (new_state.contains(inst.actions[act_i].pre) && std::find(candidates.begin(), candidates.end(), act_i) == candidates.end())
+                    candidates.push_back(act_i);
+            }
+        }
+        // purge unnecessary actions from candidates
+        std::vector<size_t> purged_actions;
+        for (const auto& act_i : candidates) {
+            if (new_state.contains(inst.actions[act_i].eff) && !inst.act_f[act_i]) purged_actions.push_back(act_i);
+        }
+        for (const auto& act_i : purged_actions) candidates.remove(act_i);
+        for (const auto& act_i : inst.act_inv[choice]) candidates.remove(act_i);
+
+        val[inst.act_opt_conv[choice]] = 1;
+        int var_count{-1};
+        for (const auto& var_i : inst.actions[choice].eff_sparse) {
+            var_count++;
+            if (state[var_i]) continue;
+            val[inst.m_opt + inst.fadd_cpx_start[inst.act_opt_conv[choice]] + var_count] = 1;
+            val[inst.m_opt + inst.n_fadd + inst.var_opt_conv[var_i]] = 1;
+        }
+        hcost += inst.actions[choice].cost;
+        state = new_state;
+        timestamp++;
+    }
+
+    return {ind, val, hcost, ncols};
+}
+
+static std::vector<size_t> cb_compute_minimal_landmark(const hplus::instance& inst, const std::vector<size_t>& used_acts,
+                                                       const std::vector<size_t>& reachable_acts, const std::vector<size_t>& unused_acts,
+                                                       const binary_set& reachable_state) {
     // init unapplicable actions with used unreachable actions
     std::vector<size_t> unapplicable;
     std::set_difference(used_acts.begin(), used_acts.end(), reachable_acts.begin(), reachable_acts.end(), std::back_inserter(unapplicable));
 
     // TODO: Maybe here I can find a larger extension set, and get a smaller landmark(???)
     std::vector<size_t> extension;
+    binary_set state{reachable_state};
 
     // try to expand the set of actions looking among unused ones
     for (const auto& act_i_cpx : unused_acts) {
         const auto& act_i{inst.act_cpxtoidx[act_i_cpx]};
 
         // if the effects of this action won't change the reachable state, just apply it
-        if (reachable_state.contains(inst.actions[act_i].eff)) {
+        if (state.contains(inst.actions[act_i].eff)) {
             insert_sorted(extension, act_i_cpx);
             continue;
         }
 
         // if the action is unreachable, then it won't change the set of reachable facts, I can add it to the extension
-        if (!reachable_state.contains(inst.actions[act_i].pre)) {
+        if (!state.contains(inst.actions[act_i].pre)) {
             insert_sorted(extension, act_i_cpx);
             // add this actions to the unapplicable actions, to eventually add its effects when it'd become applicable
             insert_sorted(unapplicable, act_i_cpx);
@@ -117,10 +263,10 @@ static std::tuple<int*, double*, int> cb_compute_minimal_landmark(const hplus::i
         // here the action is reachable
 
         // if the effect of this action reaches the goal, we don't add it to the expansion
-        if ((reachable_state | inst.actions[act_i].eff).contains(inst.goal)) continue;
+        binary_set state_sim{state | inst.actions[act_i].eff};
+        if (state_sim.contains(inst.goal)) continue;
 
         // simulate the effects of using this action
-        binary_set state_sim{reachable_state | inst.actions[act_i].eff};
         std::vector<size_t> new_applicable;
         while (true) {
             bool skip{true};
@@ -141,7 +287,7 @@ static std::tuple<int*, double*, int> cb_compute_minimal_landmark(const hplus::i
         // unapplicable ones
         if (!state_sim.contains(inst.goal)) {
             insert_sorted(extension, act_i_cpx);
-            reachable_state = state_sim;
+            state = state_sim;
             const auto& it{
                 std::set_difference(unapplicable.begin(), unapplicable.end(), new_applicable.begin(), new_applicable.end(), unapplicable.begin())};
             unapplicable.resize(it - unapplicable.begin());
@@ -154,64 +300,53 @@ static std::tuple<int*, double*, int> cb_compute_minimal_landmark(const hplus::i
     std::vector<size_t> landmark;
     std::set_difference(unused_acts.begin(), unused_acts.end(), extension.begin(), extension.end(), std::back_inserter(landmark));
 
-    int* ind{new int[inst.n_fadd]};
-    double* val{new double[inst.n_fadd]};
+    return landmark;
+}
+
+static std::vector<size_t> cb_compute_complete_landmark(const hplus::instance& inst, const std::vector<size_t>& unused_acts,
+                                                        binary_set reachable_state) {
+    std::vector<size_t> landmark;
+    for (const auto& act_i_cpx : unused_acts) {
+        if (reachable_state.contains(inst.actions[inst.act_cpxtoidx[act_i_cpx]].pre)) landmark.push_back(act_i_cpx);
+    }
+
+    return landmark;
+}
+
+static std::tuple<int*, double*, int, double*, char*, int*> cb_cpxconvert_landmark_cut(const hplus::instance& inst,
+                                                                                       const std::vector<std::vector<size_t>>& landmarks) {
+    const size_t max_size = landmarks.size() * inst.n_fadd;
+
+    int* ind{new int[max_size]};
+    double* val{new double[max_size]};
     int nnz{0};
-    for (const auto& act_i_cpx : landmark) {
-        int var_count{-1};
-        int init_nnz{nnz};
-        for ([[maybe_unused]] const auto& p : inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff_sparse) {
-            var_count++;
-            if (inst.fadd_e[inst.act_cpxtoidx[act_i_cpx]][p]) continue;
-            ind[nnz] = inst.m_opt + inst.fadd_cpx_start[act_i_cpx] + var_count;
-            val[nnz++] = 1;
-            if (inst.fadd_f[inst.act_cpxtoidx[act_i_cpx]][p]) {
-                nnz = init_nnz;
-                ind[nnz++] = inst.m_opt + inst.fadd_cpx_start[act_i_cpx] + var_count;
-                break;
+    double* rhs{new double[landmarks.size()]};
+    char* sense{new char[landmarks.size()]};
+    int* izero{new int[landmarks.size()]};
+    int lm_counter{0};
+
+    for (const auto& landmark : landmarks) {
+        rhs[lm_counter] = 1;
+        sense[lm_counter] = 'G';
+        izero[lm_counter++] = nnz;
+        for (const auto& act_i_cpx : landmark) {
+            int var_count{-1};
+            int init_nnz{nnz};
+            for ([[maybe_unused]] const auto& p : inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff_sparse) {
+                var_count++;
+                if (inst.fadd_e[inst.act_cpxtoidx[act_i_cpx]][p]) continue;
+                ind[nnz] = inst.m_opt + inst.fadd_cpx_start[act_i_cpx] + var_count;
+                val[nnz++] = 1;
+                if (inst.fadd_f[inst.act_cpxtoidx[act_i_cpx]][p]) {
+                    nnz = init_nnz;
+                    ind[nnz++] = inst.m_opt + inst.fadd_cpx_start[act_i_cpx] + var_count;
+                    break;
+                }
             }
         }
     }
 
-    return {ind, val, nnz};
-}
-
-// TODO: Maybe find a way to improve more the solution, raher than blindly using actions used by CPLEX
-static std::tuple<bool, int*, double*, unsigned int, size_t> cb_find_heur_sol(const hplus::instance& inst,
-                                                                              const std::vector<size_t>& applicable_actions_sequence) {
-    size_t ncols{inst.m_opt + inst.n_opt + inst.n_fadd};
-    int* ind{new int[ncols]};
-    double* val{new double[ncols]};
-    for (size_t i = 0; i < ncols; i++) {
-        ind[i] = i;
-        val[i] = 0;
-    }
-
-    binary_set state{inst.n_opt};
-    unsigned int hcost = 0;
-    bool changed = false;
-    for (const auto& act_i_cpx : applicable_actions_sequence) {
-        if (state.contains(inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff) && inst.actions[inst.act_cpxtoidx[act_i_cpx]].cost != 0) {
-            changed = true;
-            continue;
-        }
-        val[act_i_cpx] = 1;
-        int var_count{-1};
-        for (const auto& var_i : inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff_sparse) {
-            var_count++;
-            if (state[var_i]) continue;
-            val[inst.m_opt + inst.fadd_cpx_start[act_i_cpx] + var_count] = 1;
-            val[inst.m_opt + inst.n_fadd + inst.var_opt_conv[var_i]] = 1;
-        }
-        state |= inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff;
-        hcost += inst.actions[inst.act_cpxtoidx[act_i_cpx]].cost;
-        if (state.contains(inst.goal) && inst.actions[inst.act_cpxtoidx[act_i_cpx]].cost != 0) {
-            if (act_i_cpx != applicable_actions_sequence[applicable_actions_sequence.size() - 1]) changed = true;
-            break;
-        }
-    }
-
-    return {changed, ind, val, hcost, ncols};
+    return {ind, val, nnz, rhs, sense, izero};
 }
 
 int CPXPUBLIC dynamic::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG context_id, void* user_handle) {
@@ -241,40 +376,67 @@ int CPXPUBLIC dynamic::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG conte
     cb_print_info(context, cost, log);
 #endif
 
-    constexpr double rhs{1};
-    constexpr int izero{0};
-    constexpr char sense{'G'};
-
-    // the goal state here was reached
     if (reachable_state.contains(inst.goal)) {
         // Post the (possibly) improved feasible solution
-        auto [changed, ind, val, hcost, size] = cb_find_heur_sol(inst, reachable_acts);
-        if (changed) CPX_HANDLE_CALL(log, CPXcallbackpostheursoln(context, size, ind, val, hcost, CPXCALLBACKSOLUTION_NOCHECK))
+        auto [ind, val, hcost, size] = cb_find_heur_sol(inst, reachable_acts);
+        CPX_HANDLE_CALL(log, CPXcallbackpostheursoln(context, size, ind, val, hcost, CPXCALLBACKSOLUTION_NOCHECK))
         delete[] val;
         val = nullptr;
         delete[] ind;
         ind = nullptr;
 
+        log.print_warn("Reached goal even if the solution is infeasible (%u).", hcost);
+
         // reject solution: //TODO: Maybe I can add a constraint here
         constexpr int tmpind{0};
         constexpr double tmpval{0};
-        CPX_HANDLE_CALL(log, CPXcallbackrejectcandidate(context, 0, 0, &rhs, &sense, &izero, &tmpind, &tmpval));
+        constexpr char tmpsense{'E'};
+        constexpr int tmpizero{0};
+        constexpr double tmprhs{0};
+        CPX_HANDLE_CALL(log, CPXcallbackrejectcandidate(context, 0, 0, &tmprhs, &tmpsense, &tmpizero, &tmpind, &tmpval));
         return 0;
     }
 
-    // reject the candidate point adding the minimal landmark as constraint
+    // {
+    //     // find a feasible solution to post
+    //     auto [ind, val, hcost, size] = cb_complete_heur_sol(inst, reachable_acts, reachable_state);
+    //     CPX_HANDLE_CALL(log, CPXcallbackpostheursoln(context, size, ind, val, hcost, CPXCALLBACKSOLUTION_NOCHECK))
+    //     log.print_warn("Posting complete solution (%u).", hcost);
+    //     delete[] val;
+    //     val = nullptr;
+    //     delete[] ind;
+    //     ind = nullptr;
+    // }
+
     std::sort(reachable_acts.begin(), reachable_acts.end());
-    auto [ind, val, size]{cb_compute_minimal_landmark(inst, used_acts, reachable_acts, unused_acts, reachable_state)};
-    CPX_HANDLE_CALL(log, CPXcallbackrejectcandidate(context, 1, size, &rhs, &sense, &izero, ind, val));
+
+    std::vector<std::vector<size_t>> landmarks_list;
+    // adding the minimal landmark as constraint
+    landmarks_list.emplace_back(cb_compute_minimal_landmark(inst, used_acts, reachable_acts, unused_acts, reachable_state));
+    // adding the complete landmark as constraint
+    // landmarks_list.emplace_back(cb_compute_complete_landmark(inst, unused_acts, reachable_state));
+
+    // convert the landmark into CPLEX data structures
+    auto [ind, val, size, rhs, sense, izero] = cb_cpxconvert_landmark_cut(inst, landmarks_list);
+
+    // reject the candidate point and add the landmarks as new cuts
+    CPX_HANDLE_CALL(log, CPXcallbackrejectcandidate(context, landmarks_list.size(), size, rhs, sense, izero, ind, val));
+
+    delete[] rhs;
+    rhs = nullptr;
+    delete[] sense;
+    sense = nullptr;
+    delete[] izero;
+    izero = nullptr;
     delete[] val;
     val = nullptr;
     delete[] ind;
     ind = nullptr;
 
-    // TODO: I could add more constraints (cut section landmark / SEC)
+    // TODO: I could add more constraints (SEC)
 
     pthread_mutex_lock(&(stats.callback_time_mutex));
-    stats.nusercuts++;
+    stats.nusercuts += landmarks_list.size();
     stats.callback += env.timer.get_time() - start_time;
     pthread_mutex_unlock(&(stats.callback_time_mutex));
 
@@ -542,6 +704,29 @@ void dynamic::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
     delete[] ind;
     ind = nullptr;
 
+    ind = new int[inst.n_opt];
+    val = new double[inst.n_opt];
+
+    for (const auto& act_i : inst.act_rem) {
+        if (inst.act_f[act_i]) continue;
+        nnz = 0;
+        ind[nnz] = get_act_idx(act_i);
+        val[nnz++] = 1;
+        int var_count{-1};
+        for (const auto& var_i : inst.actions[act_i].eff_sparse) {
+            var_count++;
+            if (inst.fadd_e[act_i][var_i]) continue;
+            ind[nnz] = get_fa_idx(act_i, var_count);
+            val[nnz++] = -1;
+        }
+        CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_l, &begin, ind, val, nullptr, nullptr));
+    }
+
+    delete[] val;
+    val = nullptr;
+    delete[] ind;
+    ind = nullptr;
+
     int ind_2[2];
     double val_2[2];
 
@@ -624,20 +809,20 @@ void dynamic::store_cpx_sol([[maybe_unused]] CPXENVptr& cpxenv, [[maybe_unused]]
     CPX_HANDLE_CALL(log, CPXgetx(cpxenv, cpxlp, plan, 0, inst.m_opt + inst.n_fadd - 1));
 
     // fixing the solution to read the plan (some actions are set to 1 even if they are not a first archiever of anything)
-    for (size_t act_i_cpx = 0; act_i_cpx < inst.m_opt; act_i_cpx++) {
-        bool set_zero{true};
-        for (size_t var_count = 0; var_count < inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff_sparse.size(); var_count++) {
-            if (plan[inst.m_opt + inst.fadd_cpx_start[act_i_cpx] + var_count] > HPLUS_CPX_INT_ROUNDING) {
-                ASSERT_LOG(log, plan[act_i_cpx] > HPLUS_CPX_INT_ROUNDING);
-                set_zero = false;
-                break;
-            }
-        }
-        if (set_zero) {
-            ASSERT_LOG(log, !(plan[act_i_cpx] > HPLUS_CPX_INT_ROUNDING && inst.actions[inst.act_cpxtoidx[act_i_cpx]].cost != 0));
-            plan[act_i_cpx] = 0;
-        }
-    }
+    // for (size_t act_i_cpx = 0; act_i_cpx < inst.m_opt; act_i_cpx++) {
+    //     bool set_zero{true};
+    //     for (size_t var_count = 0; var_count < inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff_sparse.size(); var_count++) {
+    //         if (plan[inst.m_opt + inst.fadd_cpx_start[act_i_cpx] + var_count] > HPLUS_CPX_INT_ROUNDING) {
+    //             ASSERT_LOG(log, plan[act_i_cpx] > HPLUS_CPX_INT_ROUNDING);
+    //             set_zero = false;
+    //             break;
+    //         }
+    //     }
+    //     if (set_zero) {
+    //         ASSERT_LOG(log, !(plan[act_i_cpx] > HPLUS_CPX_INT_ROUNDING && inst.actions[inst.act_cpxtoidx[act_i_cpx]].cost != 0));
+    //         plan[act_i_cpx] = 0;
+    //     }
+    // }
 
     // convert to std collections for easier parsing
     std::vector<size_t> cpx_result;
