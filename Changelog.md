@@ -25,11 +25,11 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
-## [1.3.4] - 2025/04/10
+## [1.3.4] - 2025/04/12
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->
 ### :heavy_exclamation_mark: Changed
-- Testing new cuts in dynamic model
+- Added iterative complete landmark cuts to dynamic model
 <!-- ### :heavy_plus_sign: Added -->
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->

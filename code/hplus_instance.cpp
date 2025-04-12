@@ -50,6 +50,8 @@ void hplus::init(environment& env) {
                       .preprocessing = true,
                       .warm_start = true,
                       .tight_bounds = false,
+                      .minimal_landmark = true,
+                      .complete_landmark = true,
                       .using_cplex = true,
                       .log = false,
                       .write_lp = false,

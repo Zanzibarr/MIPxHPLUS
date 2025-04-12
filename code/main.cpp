@@ -62,6 +62,11 @@ static void parse_cli(const int& argc, const char** argv, hplus::environment& en
     args::ValueFlag<bool> warmstart(parser, "0/1", "Using (if computed) the heuristic as warm start (def: true; options: 0 (false), 1 (true)).",
                                     {"ws"}, true);
     args::ValueFlag<bool> tightbounds(parser, "0/1", "Using tighter bounds (def: false; options: 0 (false), 1 (true)).", {"tb"}, false);
+    args::ValueFlag<bool> minimal_lm(
+        parser, "0/1", "Using minimal landmarks as lazy constraints in the dynamic model (def: true; options: 0 (false), 1 (true)).", {"mlm"}, true);
+    args::ValueFlag<bool> complete_lm(
+        parser, "0/1", "Using iterative complete landmarks as lazy constraints in the dynamic model (def: true; options: 0 (false), 1 (true)).",
+        {"clm"}, true);
 
     try {
         parser.ParseCLI(argc, argv);
@@ -100,12 +105,18 @@ static void parse_cli(const int& argc, const char** argv, hplus::environment& en
     if (heur) env.heur = args::get(heur);
     if (warmstart) env.warm_start = args::get(warmstart);
     if (tightbounds) env.tight_bounds = args::get(tightbounds);
+    if (minimal_lm) env.minimal_landmark = args::get(minimal_lm);
+    if (complete_lm) env.complete_landmark = args::get(complete_lm);
 
-    if (env.alg != HPLUS_CLI_ALG_IMAI && env.alg != HPLUS_CLI_ALG_RANKOOH && env.alg != HPLUS_CLI_ALG_DYNAMIC_TIME) {
+    if (env.alg != HPLUS_CLI_ALG_IMAI && env.alg != HPLUS_CLI_ALG_RANKOOH && env.alg != HPLUS_CLI_ALG_DYNAMIC) {
         env.write_lp = false;
         env.using_cplex = false;
         env.warm_start = false;
         env.tight_bounds = false;
+    }
+    if (env.alg == HPLUS_CLI_ALG_DYNAMIC && !env.minimal_landmark && !env.complete_landmark) {
+        std::cout << "You cannot disable both minimal and complete landmarks from the dynamic model.\n";
+        exit(1);
     }
     if (env.warm_start && env.heur == "none") {
         ACK_REQ("Warm start has been activated but heuristic has been disabled: disabling warm start");
@@ -155,6 +166,10 @@ static void show_info(const hplus::instance& inst, const hplus::environment& env
     log.print("Tighter bounds:                                  %10s.", env.tight_bounds ? "Y" : "N");
     if (env.heur != "none") log.print("Heuristic:                                       %10s.", env.heur.c_str());
     if (env.using_cplex) log.print("Warm start:                                      %10s.", env.warm_start ? "Y" : "N");
+    if (env.alg == HPLUS_CLI_ALG_DYNAMIC) {
+        log.print("Minimal landmarks:                               %10s", env.minimal_landmark ? "Y" : "N");
+        log.print("Complete landmarks:                              %10s", env.complete_landmark ? "Y" : "N");
+    }
     log.print("Time limit:                                     %10us.", env.time_limit);
     log.print(LINE);
 }
@@ -164,8 +179,7 @@ static void run(hplus::instance& inst, hplus::environment& env, hplus::statistic
 
     try {
         double start_time;
-        if (env.alg != HPLUS_CLI_ALG_IMAI && env.alg != HPLUS_CLI_ALG_RANKOOH && env.alg != HPLUS_CLI_ALG_DYNAMIC_TIME &&
-            env.alg != HPLUS_CLI_ALG_HEUR)
+        if (env.alg != HPLUS_CLI_ALG_IMAI && env.alg != HPLUS_CLI_ALG_RANKOOH && env.alg != HPLUS_CLI_ALG_DYNAMIC && env.alg != HPLUS_CLI_ALG_HEUR)
 
             log.raise_error("The algorithm specified (%s) is not on the list of possible algorithms... Please use the --h flag for instructions.",
                             env.alg.c_str());

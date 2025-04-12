@@ -46,7 +46,7 @@
 #define HPLUS_CLI_ALG_HEUR "heur"
 #define HPLUS_CLI_ALG_IMAI "imai"
 #define HPLUS_CLI_ALG_RANKOOH "rankooh"
-#define HPLUS_CLI_ALG_DYNAMIC_TIME "dynamic"
+#define HPLUS_CLI_ALG_DYNAMIC "dynamic"
 
 // ##################################################################### //
 // ########################### DEFAULT VALUES ########################## //
