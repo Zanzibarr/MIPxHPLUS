@@ -29,7 +29,7 @@ HOW I DO VERSIONING:
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->
 ### :heavy_exclamation_mark: Changed
-- Added iterative complete landmark cuts to dynamic model
+- Added complete landmark cuts to dynamic model
 <!-- ### :heavy_plus_sign: Added -->
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->

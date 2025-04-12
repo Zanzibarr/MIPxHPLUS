@@ -188,64 +188,16 @@ static std::vector<size_t> cb_compute_minimal_landmark(const hplus::instance& in
     return landmark;
 }
 
-static std::vector<std::vector<size_t>> cb_compute_complete_landmark(const hplus::instance& inst, const std::vector<size_t>& unused_acts,
-                                                                     const binary_set& candidate_actions, binary_set reachable_state) {
-    std::vector<std::vector<size_t>> landmarks;
-
-    std::list<size_t> candidates;
-    for (const auto& act_i_cpx : candidate_actions) {
+static std::vector<size_t> cb_compute_complete_landmark(const hplus::instance& inst, const std::vector<size_t>& unused_acts,
+                                                        const binary_set& reachable_state) {
+    std::vector<size_t> landmark;
+    for (const auto& act_i_cpx : unused_acts) {
         if (reachable_state.contains(inst.actions[inst.act_cpxtoidx[act_i_cpx]].pre) &&
             !reachable_state.contains(inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff))
-            candidates.push_back(act_i_cpx);
+            landmark.push_back(act_i_cpx);
     }
 
-    while (!reachable_state.contains(inst.goal)) {
-        // save the candidates as a landmark
-        std::vector<size_t> landmark;
-        for (const auto& act_i_cpx : candidates) {
-            if (std::binary_search(unused_acts.begin(), unused_acts.end(), act_i_cpx)) landmark.push_back(act_i_cpx);
-        }
-        landmarks.emplace_back(landmark);
-
-        // choose the next action to compute the landmark (the one that adds more effects)
-        size_t choice_cpx{0}, choice{0};
-        size_t best_neff{0};
-        for (const auto& act_i_cpx : candidates) {
-            size_t act_i{inst.act_cpxtoidx[act_i_cpx]};
-            size_t neff{0};
-            for (const auto& p : inst.actions[act_i].eff_sparse) {
-                if (!reachable_state[p]) neff++;
-            }
-            if (best_neff >= neff) continue;
-            choice_cpx = act_i_cpx;
-            choice = act_i;
-            best_neff = neff;
-        }
-
-        // update candidates for fast actions lookup
-        candidates.remove(choice_cpx);
-        // add new actions to the candidates
-        const auto& new_state = reachable_state | inst.actions[choice].eff;
-        for (const auto& p : inst.actions[choice].eff_sparse) {
-            if (reachable_state[p]) continue;
-            for (const auto& act_i : inst.act_with_pre[p]) {
-                if (new_state.contains(inst.actions[act_i].pre) &&
-                    std::find(candidates.begin(), candidates.end(), inst.act_opt_conv[act_i]) == candidates.end())
-                    candidates.push_back(inst.act_opt_conv[act_i]);
-            }
-        }
-        // purge unnecessary actions from candidates
-        std::vector<size_t> purged_actions;
-        for (const auto& act_i_cpx : candidates) {
-            if (new_state.contains(inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff) && !inst.act_f[inst.act_cpxtoidx[act_i_cpx]])
-                purged_actions.push_back(act_i_cpx);
-        }
-        for (const auto& act_i_cpx : purged_actions) candidates.remove(act_i_cpx);
-        for (const auto& act_i : inst.act_inv[choice]) candidates.remove(inst.act_opt_conv[act_i]);
-        reachable_state = new_state;
-    }
-
-    return landmarks;
+    return landmark;
 }
 
 static std::tuple<int*, double*, int, double*, char*, int*> cb_cpxconvert_landmark_cut(const hplus::instance& inst,
@@ -325,14 +277,9 @@ int CPXPUBLIC dynamic::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG conte
 
     std::vector<std::vector<size_t>> landmarks_list;
     // adding the minimal landmark as constraint
-    if (env.minimal_landmark) landmarks_list.emplace_back(cb_compute_minimal_landmark(inst, used_acts, reachable_acts, unused_acts, reachable_state));
+    if (env.minimal_landmark) landmarks_list.push_back(cb_compute_minimal_landmark(inst, used_acts, reachable_acts, unused_acts, reachable_state));
     // adding the complete landmark as constraint
-    if (env.complete_landmark) {
-        binary_set unused_unreachable_acts{inst.m_opt, true};
-        for (const auto& act_i_cpx : reachable_acts) unused_unreachable_acts.remove(act_i_cpx);
-        for (const auto& landmark : cb_compute_complete_landmark(inst, unused_acts, unused_unreachable_acts, reachable_state))
-            landmarks_list.emplace_back(landmark);
-    }
+    if (env.complete_landmark) landmarks_list.push_back(cb_compute_complete_landmark(inst, unused_acts, reachable_state));
 
     // convert the landmark into CPLEX data structures
     auto [ind, val, size, rhs, sense, izero] = cb_cpxconvert_landmark_cut(inst, landmarks_list);

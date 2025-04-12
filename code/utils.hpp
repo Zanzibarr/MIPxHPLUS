@@ -105,12 +105,12 @@ inline std::vector<std::string> split_string(const std::string& str, const char 
 
     while ((end = str.find(del, start)) != std::string::npos) {
         if (end > start)  // Avoid empty strings
-            tokens.emplace_back(str.substr(start, end - start));
+            tokens.push_back(str.substr(start, end - start));
         start = end + 1;
     }
 
     // Add the last token if it exists
-    if (start < str.length()) tokens.emplace_back(str.substr(start));
+    if (start < str.length()) tokens.push_back(str.substr(start));
 
     return tokens;
 }
