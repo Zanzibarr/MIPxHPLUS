@@ -623,8 +623,7 @@ void dynamic::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
     if (env.write_lp) CPX_HANDLE_CALL(log, CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR "/lp/" + env.run_name + ".lp").c_str(), "LP"));
 }
 
-void dynamic::post_cpx_warmstart([[maybe_unused]] CPXENVptr& cpxenv, [[maybe_unused]] CPXLPptr& cpxlp, [[maybe_unused]] const hplus::instance& inst,
-                                 [[maybe_unused]] const hplus::environment& env, [[maybe_unused]] const logger& log) {
+void dynamic::post_cpx_warmstart(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log) {
     PRINT_VERBOSE(log, "Posting warm start to Dynamic model.");
     ASSERT_LOG(log, env.sol_s != solution_status::INFEAS && env.sol_s != solution_status::NOTFOUND);
 
@@ -666,8 +665,7 @@ void dynamic::post_cpx_warmstart([[maybe_unused]] CPXENVptr& cpxenv, [[maybe_unu
     cpx_sol_val = nullptr;
 }
 
-void dynamic::store_cpx_sol([[maybe_unused]] CPXENVptr& cpxenv, [[maybe_unused]] CPXLPptr& cpxlp, [[maybe_unused]] hplus::instance& inst,
-                            [[maybe_unused]] const logger& log) {
+void dynamic::store_cpx_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst, const logger& log) {
     PRINT_VERBOSE(log, "Storing Dynamic solution.");
 
     double* plan{new double[inst.m_opt + inst.n_fadd]};
