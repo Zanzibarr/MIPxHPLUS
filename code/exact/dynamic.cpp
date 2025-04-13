@@ -569,6 +569,29 @@ void dynamic::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
     delete[] ind;
     ind = nullptr;
 
+    ind = new int[inst.n_opt];
+    val = new double[inst.n_opt];
+
+    for (const auto& act_i : inst.act_rem) {
+        if (inst.act_f[act_i]) continue;
+        nnz = 0;
+        ind[nnz] = get_act_idx(act_i);
+        val[nnz++] = 1;
+        int var_count{-1};
+        for (const auto& var_i : inst.actions[act_i].eff_sparse) {
+            var_count++;
+            if (inst.fadd_e[act_i][var_i]) continue;
+            ind[nnz] = get_fa_idx(act_i, var_count);
+            val[nnz++] = -1;
+        }
+        CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_l, &begin, ind, val, nullptr, nullptr));
+    }
+
+    delete[] val;
+    val = nullptr;
+    delete[] ind;
+    ind = nullptr;
+
     int ind_2[2];
     double val_2[2];
 
@@ -649,22 +672,6 @@ void dynamic::store_cpx_sol([[maybe_unused]] CPXENVptr& cpxenv, [[maybe_unused]]
 
     double* plan{new double[inst.m_opt + inst.n_fadd]};
     CPX_HANDLE_CALL(log, CPXgetx(cpxenv, cpxlp, plan, 0, inst.m_opt + inst.n_fadd - 1));
-
-    // fixing the solution to read the plan (some actions are set to 1 even if they are not a first archiever of anything)
-    for (size_t act_i_cpx = 0; act_i_cpx < inst.m_opt; act_i_cpx++) {
-        bool set_zero{true};
-        for (size_t var_count = 0; var_count < inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff_sparse.size(); var_count++) {
-            if (plan[inst.m_opt + inst.fadd_cpx_start[act_i_cpx] + var_count] > HPLUS_CPX_INT_ROUNDING) {
-                ASSERT_LOG(log, plan[act_i_cpx] > HPLUS_CPX_INT_ROUNDING);
-                set_zero = false;
-                break;
-            }
-        }
-        if (set_zero) {
-            ASSERT_LOG(log, !(plan[act_i_cpx] > HPLUS_CPX_INT_ROUNDING && inst.actions[inst.act_cpxtoidx[act_i_cpx]].cost != 0));
-            plan[act_i_cpx] = 0;
-        }
-    }
 
     // convert to std collections for easier parsing
     std::vector<size_t> cpx_result;
