@@ -96,7 +96,7 @@ static std::tuple<int*, double*, unsigned int, size_t> cb_find_heur_sol(const hp
         val[i] = 0;
     }
 
-    binary_set state{inst.n_opt};
+    binary_set state{inst.n};
     unsigned int hcost = 0;
     for (const auto& act_i_cpx : applicable_actions_sequence) {
         if (state.contains(inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff)) continue;
