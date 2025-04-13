@@ -27,7 +27,8 @@ HOW I DO VERSIONING:
 
 ## [1.3.4] - 2025/04/13
 <!-- ### :warning: Known issues -->
-<!-- ### :ballot_box_with_check: Fixed -->
+### :ballot_box_with_check: Fixed
+- Fixed CMakeLists with Release build type
 ### :heavy_exclamation_mark: Changed
 - Added complete landmark cuts to dynamic model
 <!-- ### :heavy_plus_sign: Added -->
