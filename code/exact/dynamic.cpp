@@ -755,10 +755,9 @@ void dynamic::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
         val[nnz++] = 1;
         for (const auto& act_j : inst.act_inv[act_i]) {
             ind[nnz] = get_act_idx(act_j);
-            val[nnz++] = 1;
+            val[nnz] = 1;
+            CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_1, &sense_l, &begin, ind, val, nullptr, nullptr));
         }
-        if (nnz == 1) continue;
-        CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_1, &sense_l, &begin, ind, val, nullptr, nullptr));
         stopchk3();
     }
 
