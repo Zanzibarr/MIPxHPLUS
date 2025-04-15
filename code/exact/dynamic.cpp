@@ -3,6 +3,7 @@
 #include <list>
 #include <numeric>  // std::accumulate
 #include <set>
+#include <stack>
 #include <tuple>
 #include <unordered_set>
 
