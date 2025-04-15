@@ -25,6 +25,17 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
+## [1.4.1] - 2025/04/15
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+<!-- ### :heavy_exclamation_mark: Changed -->
+### :heavy_plus_sign: Added
+- Added inverse actions constraints in dynamic model
+- Added sec cuts in dynamic model
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+
+
 ## [1.4.0] - 2025/04/14
 ### Tested all features added in 1.3.*
 <!-- ### :warning: Known issues -->

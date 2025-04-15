@@ -65,8 +65,9 @@ static void parse_cli(const int& argc, const char** argv, hplus::environment& en
     args::ValueFlag<bool> minimal_lm(
         parser, "0/1", "Using minimal landmarks as lazy constraints in the dynamic model (def: true; options: 0 (false), 1 (true)).", {"mlm"}, true);
     args::ValueFlag<bool> complete_lm(
-        parser, "0/1", "Using iterative complete landmarks as lazy constraints in the dynamic model (def: true; options: 0 (false), 1 (true)).",
-        {"clm"}, true);
+        parser, "0/1", "Using complete landmarks as lazy constraints in the dynamic model (def: true; options: 0 (false), 1 (true)).", {"clm"}, true);
+    args::ValueFlag<bool> sec(parser, "0/1", "Using S.E.C. as lazy constraints in the dynamic model (def: true; options: 0 (false), 1 (true)).",
+                              {"sec"}, true);
 
     try {
         parser.ParseCLI(argc, argv);
@@ -107,6 +108,7 @@ static void parse_cli(const int& argc, const char** argv, hplus::environment& en
     if (tightbounds) env.tight_bounds = args::get(tightbounds);
     if (minimal_lm) env.minimal_landmark = args::get(minimal_lm);
     if (complete_lm) env.complete_landmark = args::get(complete_lm);
+    if (sec) env.sec = args::get(sec);
 
     if (env.alg != HPLUS_CLI_ALG_IMAI && env.alg != HPLUS_CLI_ALG_RANKOOH && env.alg != HPLUS_CLI_ALG_DYNAMIC) {
         env.write_lp = false;
@@ -114,8 +116,8 @@ static void parse_cli(const int& argc, const char** argv, hplus::environment& en
         env.warm_start = false;
         env.tight_bounds = false;
     }
-    if (env.alg == HPLUS_CLI_ALG_DYNAMIC && !env.minimal_landmark && !env.complete_landmark) {
-        std::cout << "You cannot disable both minimal and complete landmarks from the dynamic model.\n";
+    if (env.alg == HPLUS_CLI_ALG_DYNAMIC && !env.minimal_landmark && !env.complete_landmark && !env.sec) {
+        std::cout << "You cannot disable all minimal, complete landmarks and sec from the dynamic model.\n";
         exit(1);
     }
     if (env.warm_start && env.heur == "none") {
@@ -169,6 +171,7 @@ static void show_info(const hplus::instance& inst, const hplus::environment& env
     if (env.alg == HPLUS_CLI_ALG_DYNAMIC) {
         log.print("Minimal landmarks:                               %10s", env.minimal_landmark ? "Y" : "N");
         log.print("Complete landmarks:                              %10s", env.complete_landmark ? "Y" : "N");
+        log.print("S.E.C.:                                          %10s", env.sec ? "Y" : "N");
     }
     log.print("Time limit:                                     %10us.", env.time_limit);
     log.print(LINE);

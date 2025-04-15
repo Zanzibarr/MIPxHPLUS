@@ -4,13 +4,14 @@
 #include <numeric>  // std::accumulate
 #include <set>
 #include <tuple>
+#include <unordered_set>
 
 #if HPLUS_INTCHECK == 0
 #define INTCHECK_PQ false
 #endif
 #include "pq.hxx"
 
-static std::tuple<std::vector<size_t>, std::vector<size_t>, std::vector<size_t>, binary_set, unsigned int> cb_analyze_candidate_point(
+static std::tuple<std::vector<size_t>, std::vector<size_t>, std::vector<size_t>, binary_set, std::vector<binary_set>> cb_analyze_candidate_point(
     const hplus::instance& inst, const double* xstar) {
     // split among used and unused actions
     std::vector<size_t> used_acts, unused_acts;
@@ -19,6 +20,17 @@ static std::tuple<std::vector<size_t>, std::vector<size_t>, std::vector<size_t>,
             used_acts.push_back(act_i_cpx);
         else
             unused_acts.push_back(act_i_cpx);
+    }
+
+    // get used first archievers
+    std::vector<binary_set> used_first_archievers(inst.m_opt, binary_set(inst.n));
+    for (size_t act_i_cpx = 0; act_i_cpx < inst.m_opt; act_i_cpx++) {
+        size_t var_count{0};
+        for (const auto& p : inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff_sparse) {
+            size_t idx = inst.m_opt + inst.fadd_cpx_start[act_i_cpx] + var_count;
+            if (xstar[idx] > HPLUS_CPX_INT_ROUNDING) used_first_archievers[act_i_cpx].add(p);
+            var_count++;
+        }
     }
 
     // init queue of applicable actions
@@ -30,14 +42,12 @@ static std::tuple<std::vector<size_t>, std::vector<size_t>, std::vector<size_t>,
     // dividing actions in reachable / unreachable, building up the set of reachable facts and computing the partial cost
     std::vector<size_t> reachable_acts;
     binary_set reachable_state{inst.n};
-    unsigned int partial_cost{0};
     while (!applicable_queue.empty()) {
         // retrieve an applicable action
         const auto act_i_cpx{applicable_queue.front()};
         applicable_queue.pop_front();
         reachable_acts.push_back(act_i_cpx);
         const auto act_i{inst.act_cpxtoidx[act_i_cpx]};
-        partial_cost += inst.actions[act_i].cost;
 
         // compute new state
         const auto& new_state{reachable_state | inst.actions[act_i].eff};
@@ -64,7 +74,7 @@ static std::tuple<std::vector<size_t>, std::vector<size_t>, std::vector<size_t>,
         reachable_state = new_state;
     }
 
-    return {used_acts, unused_acts, reachable_acts, reachable_state, partial_cost};
+    return {used_acts, unused_acts, reachable_acts, reachable_state, used_first_archievers};
 }
 
 static void cb_print_info(CPXCALLBACKCONTEXTptr& context, const double& cost, const logger& log) {
@@ -225,6 +235,177 @@ static std::tuple<int*, double*, int, double*, char*, int*> cb_cpxconvert_landma
     return {ind, val, nnz, rhs, sense, izero};
 }
 
+// straight from Johnson's paper
+static void unblock(size_t u, std::vector<bool>& blocked, std::vector<std::set<size_t>>& block_map) {
+    blocked[u] = false;
+    for (int w : block_map[u])
+        if (blocked[w]) unblock(w, blocked, block_map);
+    block_map[u].clear();
+}
+
+// straight from Johnson's paper
+static bool circuit(size_t v, size_t start, std::vector<std::vector<size_t>>& graph, std::vector<bool>& blocked,
+                    std::vector<std::set<size_t>>& block_map, std::stack<size_t>& path, std::vector<std::vector<size_t>>& cycles) {
+    bool found_cycle = false;
+    path.push(v);
+    blocked[v] = true;
+    for (auto w : graph[v]) {
+        if (w == start) {
+            // found a cycle
+            std::stack<size_t> copy = path;
+            std::vector<size_t> cycle;
+            while (!copy.empty()) {
+                cycle.push_back(copy.top());
+                copy.pop();
+            }
+            std::reverse(cycle.begin(), cycle.end());
+            cycles.push_back(cycle);
+            found_cycle = true;
+        } else if (!blocked[w] && circuit(w, start, graph, blocked, block_map, path, cycles))
+            found_cycle = true;
+    }
+
+    if (found_cycle)
+        unblock(v, blocked, block_map);
+    else
+        for (auto w : graph[v]) block_map[w].insert(v);
+
+    path.pop();
+    return found_cycle;
+}
+
+static void filter_cycles(std::vector<std::vector<size_t>>& cycles) {
+    if (cycles.size() <= 1) return;  // Nothing to filter
+
+    // Build sets for faster containment checks
+    std::vector<std::unordered_set<size_t>> cycleSets;
+    cycleSets.reserve(cycles.size());
+    for (const auto& cycle : cycles) {
+        cycleSets.push_back(std::unordered_set<size_t>(cycle.begin(), cycle.end()));
+    }
+
+    // Mark cycles for removal
+    std::vector<bool> shouldRemove(cycles.size(), false);
+    size_t removeCount = 0;
+
+    for (size_t i = 0; i < cycles.size(); ++i) {
+        if (shouldRemove[i]) continue;  // Already marked for removal
+
+        for (size_t j = 0; j < cycles.size(); ++j) {
+            if (i == j || shouldRemove[j]) continue;
+
+            const auto& setI = cycleSets[i];
+            const auto& setJ = cycleSets[j];
+
+            // If setI is a proper superset of setJ
+            if (setI.size() > setJ.size() && std::all_of(setJ.begin(), setJ.end(), [&setI](size_t node) { return setI.find(node) != setI.end(); })) {
+                shouldRemove[i] = true;
+                removeCount++;
+                break;
+            }
+        }
+    }
+
+    if (removeCount == 0) return;  // No cycles to remove
+
+    // Remove cycles marked for deletion (in-place)
+    size_t writeIndex = 0;
+    for (size_t readIndex = 0; readIndex < cycles.size(); ++readIndex) {
+        if (!shouldRemove[readIndex]) {
+            if (writeIndex != readIndex) {
+                cycles[writeIndex] = std::move(cycles[readIndex]);
+            }
+            writeIndex++;
+        }
+    }
+
+    // Resize the vector to remove the extra elements
+    cycles.resize(writeIndex);
+}
+
+static std::vector<std::vector<size_t>> cb_compute_sec(const hplus::instance& inst, const std::vector<binary_set>& used_first_archievers,
+                                                       const std::vector<size_t>& unreachable_acts) {
+    // build graph G=<A, {(ai, aj) ai, aj in A | ai is first archiever (in the current solution) to a precondition of aj}>
+    std::vector<std::set<size_t>> graph(inst.m_opt);
+    for (const auto& act_i_cpx : unreachable_acts) {
+        for (const auto& p : used_first_archievers[act_i_cpx]) {
+            for (const auto& act_i : inst.act_with_pre[p]) {
+                if (std::binary_search(unreachable_acts.begin(), unreachable_acts.end(), inst.act_opt_conv[act_i]))
+                    graph[act_i_cpx].insert(inst.act_opt_conv[act_i]);
+            }
+        }
+    }
+
+    // find all simple cycles (Johnson's paper)
+    size_t n = graph.size();
+    std::vector<bool> blocked(n, false);
+    std::vector<std::set<size_t>> bock_map(n);
+    std::stack<size_t> path;
+    std::vector<std::vector<size_t>> cycles;
+
+    for (const auto& act_i_cpx : unreachable_acts) {
+        // find subgraph with vertices >= act_i_cpx
+        std::vector<std::vector<size_t>> subgraph(n);
+        for (size_t u = act_i_cpx; u < n; u++)
+            for (auto v : graph[u])
+                if (v >= act_i_cpx) subgraph[u].push_back(v);
+
+        // run circuit function to find all cycles starting at "act_i_cpx"
+        circuit(act_i_cpx, act_i_cpx, subgraph, blocked, bock_map, path, cycles);
+
+        // remove act_i_cpx vertex from the graph
+        for (size_t u = 0; u < n; u++) graph[u].erase(act_i_cpx);
+    }
+
+    filter_cycles(cycles);
+
+    return cycles;
+}
+
+static std::tuple<int*, double*, int, double*, char*, int*> cb_cpxconvert_sec_cut(const hplus::instance& inst,
+                                                                                  const std::vector<binary_set> used_first_archievers,
+                                                                                  const std::vector<std::vector<size_t>>& cycles) {
+    const size_t max_size = cycles.size() * inst.n_opt;
+
+    int* ind{new int[max_size]};
+    double* val{new double[max_size]};
+    int nnz{0};
+    double* rhs{new double[cycles.size()]};
+    char* sense{new char[cycles.size()]};
+    int* izero{new int[cycles.size()]};
+    int sec_counter{0};
+
+    for (const auto& cycle : cycles) {
+        sense[sec_counter] = 'L';
+        izero[sec_counter] = nnz;
+        rhs[sec_counter] = nnz;
+
+        // first archievers in the cycle
+        for (size_t i = 0; i < cycle.size() - 1; i++) {
+            int var_count{-1};
+            for (const auto& p : inst.actions[inst.act_cpxtoidx[cycle[i]]].eff_sparse) {
+                var_count++;
+                if (!used_first_archievers[cycle[i]][p] || !inst.actions[inst.act_cpxtoidx[cycle[i + 1]]].pre[p]) continue;
+
+                ind[nnz] = inst.m_opt + inst.fadd_cpx_start[cycle[i]] + var_count;
+                val[nnz++] = 1;
+            }
+        }
+        int var_count{-1};
+        for (const auto& p : inst.actions[inst.act_cpxtoidx[cycle[cycle.size() - 1]]].eff_sparse) {
+            var_count++;
+            if (!used_first_archievers[cycle[cycle.size() - 1]][p] || !inst.actions[inst.act_cpxtoidx[cycle[0]]].pre[p]) continue;
+
+            ind[nnz] = inst.m_opt + inst.fadd_cpx_start[cycle[cycle.size() - 1]] + var_count;
+            val[nnz++] = 1;
+        }
+
+        rhs[sec_counter++] = nnz - rhs[sec_counter] - 1;
+    }
+
+    return {ind, val, nnz, rhs, sense, izero};
+}
+
 int CPXPUBLIC dynamic::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG context_id, void* user_handle) {
     auto& [inst, env, stats, log] = *static_cast<cpx_callback_user_handle*>(user_handle);
 
@@ -232,12 +413,12 @@ int CPXPUBLIC dynamic::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG conte
     double start_time{env.timer.get_time()};
 
     // get candidate point
-    double* xstar{new double[inst.m_opt]};
+    double* xstar{new double[inst.m_opt + inst.n_fadd]};
     double cost{CPX_INFBOUND};
-    CPX_HANDLE_CALL(log, CPXcallbackgetcandidatepoint(context, xstar, 0, inst.m_opt - 1, &cost));
+    CPX_HANDLE_CALL(log, CPXcallbackgetcandidatepoint(context, xstar, 0, inst.m_opt + inst.n_fadd - 1, &cost));
 
     // get info from the candidate point
-    auto [used_acts, unused_acts, reachable_acts, reachable_state, partial_cost] = cb_analyze_candidate_point(inst, xstar);
+    auto [used_acts, unused_acts, reachable_acts, reachable_state, used_first_archievers] = cb_analyze_candidate_point(inst, xstar);
     delete[] xstar;
     xstar = nullptr;
 
@@ -263,7 +444,6 @@ int CPXPUBLIC dynamic::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG conte
 
         log.print_warn("Reached goal even if the solution is infeasible (%u).", hcost);
 
-        // reject solution: //TODO: Maybe I can add a constraint here
         constexpr int tmpind{0};
         constexpr double tmpval{0};
         constexpr char tmpsense{'E'};
@@ -298,10 +478,29 @@ int CPXPUBLIC dynamic::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG conte
     delete[] ind;
     ind = nullptr;
 
-    // TODO: I could add more constraints (SEC)
+    int n_sec{0};
+    if (env.sec) {
+        // compute the SEC(s) and add them as new cuts
+        std::vector<size_t> unreachable_acts;
+        std::set_difference(used_acts.begin(), used_acts.end(), reachable_acts.begin(), reachable_acts.end(), std::back_inserter(unreachable_acts));
+        const auto& cycles{cb_compute_sec(inst, used_first_archievers, unreachable_acts)};
+        auto [secind, secval, secsize, secrhs, secsense, secizero] = cb_cpxconvert_sec_cut(inst, used_first_archievers, cycles);
+        n_sec = cycles.size();
+        CPX_HANDLE_CALL(log, CPXcallbackrejectcandidate(context, cycles.size(), secsize, secrhs, secsense, secizero, secind, secval));
+        delete[] secizero;
+        secizero = nullptr;
+        delete[] secsense;
+        secsense = nullptr;
+        delete[] secrhs;
+        secrhs = nullptr;
+        delete[] secval;
+        secval = nullptr;
+        delete[] secind;
+        secind = nullptr;
+    }
 
     pthread_mutex_lock(&(stats.callback_time_mutex));
-    stats.nusercuts += landmarks_list.size();
+    stats.nusercuts += landmarks_list.size() + n_sec;
     stats.callback += env.timer.get_time() - start_time;
     pthread_mutex_unlock(&(stats.callback_time_mutex));
 
@@ -457,7 +656,7 @@ void dynamic::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
     double* val{new double[inst.m_opt + 1]};
     int nnz{0};
     constexpr char sense_e{'E'}, sense_l{'L'};
-    constexpr double rhs_0{0};
+    constexpr double rhs_0{0}, rhs_1{1};
     constexpr int begin{0};
 
     const auto stopchk3 = [&ind, &val]() {
@@ -549,6 +748,19 @@ void dynamic::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
         }
     }
 
+    for (const auto& act_i : inst.act_rem) {
+        nnz = 0;
+        ind[nnz] = get_act_idx(act_i);
+        val[nnz++] = 1;
+        for (const auto& act_j : inst.act_inv[act_i]) {
+            ind[nnz] = get_act_idx(act_j);
+            val[nnz++] = 1;
+        }
+        if (nnz == 1) continue;
+        CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_1, &sense_l, &begin, ind, val, nullptr, nullptr));
+        stopchk3();
+    }
+
     if (env.tight_bounds) {
         double rhs{static_cast<double>(max_steps)};
         nnz = 0;
@@ -562,6 +774,7 @@ void dynamic::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
         }
         stats.nconst_base++;
         CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs, &sense_l, &begin, ind, val, nullptr, nullptr));
+        stopchk3();
     }
 
     delete[] val;
