@@ -1,61 +1,44 @@
 @article{Helmert_06,
-  title={The Fast Downward Planning System},
-  volume={26},
-  ISSN={1076-9757},
-  url={http://dx.doi.org/10.1613/jair.1705},
-  DOI={10.1613/jair.1705},
-  journal={Journal of Artificial Intelligence Research},
-  publisher={AI Access Foundation},
   author={Helmert, M.},
   year={2006},
-  month=jul, pages={191–246}
+  pages={191–246},
+  title={The Fast Downward Planning System},
+  volume={26},
+  journal={Journal of Artificial Intelligence Research},
+  doi={10.1613/jair.1705}
 }
 
 @InProceedings{Helmert_09,
   author="Betz, Christoph and Helmert, Malte",
-  editor="Mertsching, B{\"a}rbel and Hund, Marcus and Aziz, Zaheer",
-  title="Planning with h{\thinspace}+{\thinspace} in Theory and Practice",
-  booktitle="KI 2009: Advances in Artificial Intelligence",
   year="2009",
-  publisher="Springer Berlin Heidelberg",
-  address="Berlin, Heidelberg",
   pages="9--16",
-  abstract="Many heuristic estimators for classical planning are based on the so-called delete relaxation, which ignores negative effects of planning operators. Ideally, such heuristics would compute the actual goal distance in the delete relaxation, i.e, the cost of an optimal relaxed plan, denoted by h{\thinspace}+{\thinspace}. However, current delete relaxation heuristics only provide (often inadmissible) estimates to h{\thinspace}+{\thinspace} because computing the correct value is an NP-hard problem.",
-  isbn="978-3-642-04617-9"
+  title="Planning with h{\thinspace}+{\thinspace} in Theory and Practice",
+  publisher="Springer Berlin Heidelberg"
 }
 
 @article{Bylander_94,
-  title = {The computational complexity of propositional STRIPS planning},
-  journal = {Artificial Intelligence},
-  volume = {69},
-  number = {1},
-  pages = {165-204},
-  year = {1994},
-  issn = {0004-3702},
-  doi = {https://doi.org/10.1016/0004-3702(94)90081-7},
-  url = {https://www.sciencedirect.com/science/article/pii/0004370294900817},
   author = {Tom Bylander},
-  abstract = {I present several computational complexity results for propositional STRIPS planning, i.e., STRIPS planning restricted to ground formulas. Different planning problems can be defined by restricting the type of formulas, placing limits on the number of pre-and postconditions, by restricting negation in pre- and postconditions, and by requiring optimal plans. For these types of restrictions, I show when planning is tractable (polynomial) and intractable (NP-hard). In general, it is PSPACE-complete to determine if a given planning instance has any solutions. Extremely severe restrictions on both the operators and the formulas are required to guarantee polynomial time or even NP-completeness. For example, when only ground literals are permitted, determining plan existence is PSPACE-complete even if operators are limited to two preconditions and two postconditions. When definite Horn ground formulas are permitted, determining plan existence is PSPACE-complete even if operators are limited to zero preconditions and one postcondition. One of the interesting tractable problems is if each operator is restricted to positive preconditions and one postcondition (only ground literals). The blocks-world problem, slightly modified, is a subproblem of this restricted planning problem. These results in combination with previous analyses are not encouraging for domain-independent planning.}
+  year = {1994},
+  pages = {165-204},
+  title = {The computational complexity of propositional STRIPS planning},
+  volume = {69},
+  journal = {Artificial Intelligence},
+  doi = {10.1016/0004-3702(94)90081-7}
 }
 
 @article{LB_Haslum_12,
-  title={Incremental Lower Bounds for Additive Cost Planning Problems},
-  volume={22},
-  url={https://ojs.aaai.org/index.php/ICAPS/article/view/13511},
-  DOI={10.1609/icaps.v22i1.13511},
-  abstractNote={ &lt;p&gt; We present a novel method for computing increasing lower bounds on the cost of solving planning problems, based on repeatedly solving and strengthening the delete relaxation of the problem. Strengthening is done by compiling select conjunctions into new atoms, similar to the &lt;em&gt;P&lt;sup&gt;m&lt;/sup&gt;&lt;sub&gt;*&lt;/sub&gt;&lt;/em&gt; construction. Because it does not rely on search in the state space, this method does not suffer some of the weaknesses of admissible search algorithms and therefore is able to prove higher lower bounds for many problems that are too hard for optimal planners to solve, thus narrowing the gap between lower bound and cost of the best known plan, providing better assurances of plan quality. &lt;/p&gt; },
-  number={1},
-  journal={Proceedings of the International Conference on Automated Planning and Scheduling},
   author={Haslum, Patrik},
   year={2012},
-  month={May},
-  pages={74-82}
+  pages={74-82},
+  title={Incremental Lower Bounds for Additive Cost Planning Problems},
+  volume={22},
+  journal={Proceedings of the International Conference on Automated Planning and Scheduling},
+  doi={10.1609/icaps.v22i1.13511}
 }
 
 @article{Imai_15,
   author = {Imai, Tatsuya and Fukunaga, Alex},
   year = {2015},
-  month = {12},
   pages = {631-677},
   title = {On a Practical, Integer-Linear Programming Model for Delete-Free Tasks and its Use as a Heuristic for Cost-Optimal Planning},
   volume = {54},
@@ -66,7 +49,6 @@
 @article{Rankooh_22,
   author = {Feyzbakhsh Rankooh, Masood and Rintanen, Jussi},
   year = {2022},
-  month = {06},
   pages = {71-79},
   title = {Efficient Computation and Informative Estimation of h+ by Integer and Linear Programming},
   volume = {32},
@@ -77,7 +59,6 @@
 @article{Johnson_75,
   author = {Johnson, Donald B.},
   year = {1975},
-  month = {03},
   pages = {77-84},
   title = {Finding All the Elementary Circuits of a Directed Graph},
   volume = {4},
@@ -88,7 +69,6 @@
 @article{MLM_Haslum_12,
   author = {Haslum, Patrik and Slaney, John and Thiebaux, Sylvie},
   year = {2012},
-  month = {05},
   pages = {},
   title = {Minimal Landmarks for Optimal Delete-Free Planning},
   volume = {22},
@@ -96,26 +76,28 @@
   doi = {10.1609/icaps.v22i1.13534}
 }
 
-@inproceedings{Domshlak_07,
-  author = {Mirkis, Vitaly and Domshlak, Carmel},
-  year = {2007},
-  month = {01},
-  pages = {240-247},
-  title = {Cost-Sharing Approximations for h+.},
-  journal = {ICAPS 2007, 17th International Conference on Automated Planning and Scheduling}
+@article{Bonet_01,
+  author = {Blai Bonet and Héctor Geffner},
+  year = {2001},
+  pages = {5-33},
+  title = {Planning as heuristic search},
+  volume = {129},
+  journal = {Artificial Intelligence},
+  doi = {10.1016/S0004-3702(01)00108-4}
 }
 
-@article{Bonet_01,
-  title = {Planning as heuristic search},
-  journal = {Artificial Intelligence},
-  volume = {129},
-  number = {1},
-  pages = {5-33},
-  year = {2001},
-  issn = {0004-3702},
-  doi = {https://doi.org/10.1016/S0004-3702(01)00108-4},
-  url = {https://www.sciencedirect.com/science/article/pii/S0004370201001084},
-  author = {Blai Bonet and Héctor Geffner},
-  keywords = {Planning, Strips, Heuristic search, Domain-independent heuristics, Forward/backward search, Non-optimal planning, Graphplan},
-  abstract = {In the AIPS98 Planning Contest, the hsp planner showed that heuristic search planners can be competitive with state-of-the-art Graphplan and sat planners. Heuristic search planners like hsp transform planning problems into problems of heuristic search by automatically extracting heuristics from Strips encodings. They differ from specialized problem solvers such as those developed for the 24-Puzzle and Rubik's Cube in that they use a general declarative language for stating problems and a general mechanism for extracting heuristics from these representations. In this paper, we study a family of heuristic search planners that are based on a simple and general heuristic that assumes that action preconditions are independent. The heuristic is then used in the context of best-first and hill-climbing search algorithms, and is tested over a large collection of domains. We then consider variations and extensions such as reversing the direction of the search for speeding node evaluation, and extracting information about propositional invariants for avoiding dead-ends. We analyze the resulting planners, evaluate their performance, and explain when they do best. We also compare the performance of these planners with two state-of-the-art planners, and show that the simplest planner based on a pure best-first search yields the most solid performance over a large set of problems. We also discuss the strengths and limitations of this approach, establish a correspondence between heuristic search planning and Graphplan, and briefly survey recent ideas that can reduce the current gap in performance between general heuristic search planners and specialized solvers.}
+@inproceedings{Bonet_11,
+  author = {Bonet, Blai and Castillo, Julio},
+  year = {2011},
+  pages = {315–318},
+  title = {A complete algorithm for generating landmarks},
+  publisher = {AAAI Press}
+}
+
+@inproceedings{Fikes_71,
+  author = {Fikes, Richard E. and Nilsson, Nils J.},
+  year = {1971},
+  pages = {608–620},
+  title = {STRIPS: a new approach to the application of theorem proving to problem solving},
+  publisher = {Morgan Kaufmann Publishers Inc.}
 }
