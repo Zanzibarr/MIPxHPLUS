@@ -358,7 +358,7 @@ static std::vector<std::vector<size_t>> cb_compute_sec(const hplus::instance& in
         for (size_t u = 0; u < n; u++) graph[u].erase(act_i_cpx);
     }
 
-    // filter_cycles(cycles);
+    filter_cycles(cycles);
 
     return cycles;
 }

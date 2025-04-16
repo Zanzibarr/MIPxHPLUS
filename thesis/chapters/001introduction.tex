@@ -1,13 +1,17 @@
+AI Planning, a sub-area of Artificial Intelligence, has the objective of finding a sequence of actions, in a declaratively described system, to reach its goals while optimizing overall performance measures. Automated planners find the action to apply in each given state out of the set of possible actions for that state.\\
+Fast Downward \cite{Helmert_06} is a classical planning system based on heuristic search, which is leading the state-of-the-art in classical planning. One such heuristics that can be used to efficiently explore the search space, is the delete-free relaxation of the original problem, denoted as $\hplus$.
+
+\section{Delete-free relaxation}
+The value of $\hplus$ for a given planning problem is the optimal cost of the corresponding delete-relaxed planning problem, obtanied from the original problem by removing delete effects from all actions.\\
+The value of $\hplus$ is a lower bound of the optimal cost of the original problem, making it an admissible heuristic, and has been shown that having $\hplus$ can significantly improve the efficiency of optimal planning \cite{Helmert_09}. Computing $\hplus$, however, is NP-equivalent \cite{Bylander_94} and is also hard to approximate \cite{Helmert_09}.
+
+Methods for computing $\hplus$ can output optimal plans for a given delete-relaxed planning problem, equivalently important to find efficiently, since there exist delete-relaxed planning tasks that are of interest for the planning community. Moreover, optimal plans for classical planning problems, can be produced by iteratively solving and reformulating delete-relaxed tasks \cite{LB_Haslum_12}. This can be done by repeatedly finding optimal plans for a delete-relaxed version of the original planning problem, and reducing the relaxation by reformulating the problem whenever a plan has been found for the delete-relaxed task, that is not a valid plan for the original problem.
+
+We will first investigate on preprocessing techniques proposed by \cite{Imai_15} and \cite{MLM_Haslum_12}, aiming to simplify the problem by taking advantage of the less restrictive structure of the delete-relaxed task, to then explore the use of primal heuristics, to provide a warm-start to our MIP solver, combining a greedy algorithm with concepts used to compute $\hadd$ \cite{Bonet_01}.\\
+Finally we will implement the models proposed by \cite{Imai_15} and \cite{Rankooh_22}, which use different ways of modeling acyclicity in the model, respectively time labeling and vertex elimination, and compare them to our technique (of modeling acyclicity) of iteratively compiling violated disjunctive action landmarks (landmarks for short) and subtour elimination constraints (S.E.C.), adding those to the base model as cuts.
+
+\section{Preliminary definitions}
 ...
 
-\section{AI Planning}
-...
-
-\subsection{Delete-free relaxation}
-...
-
-\subsection{Disjunctive Action Landmarks}
-...
-
-\section{Mixed Integer Programming}
+\section{Integer programming for classical planning}
 ...

@@ -1,6 +1,6 @@
 \pdfinfo{
     /Author (Zanella Matteo)
-    /Title (TODO)
+    /Title (MIP formulations for delete-free AI planning)
     /Keyword ()
 }
 
@@ -73,8 +73,11 @@
 \renewcommand{\cftsecleader}{\cftdotfill{\cftdotsep}} % for sections
 
 % Bibliography
-\usepackage[sorting=none]{biblatex}
+\usepackage[sorting=ynt, style=alphabetic]{biblatex}
 \addbibresource{bibl.bib}
+
+\newcommand{\hplus}{h^+}
+\newcommand{\hadd}{h^{add}}
 
 % Start document
 \begin{document}
@@ -95,7 +98,7 @@
 
 \textsc{\large Master Degree in Computer Engineering}\\
 \vfill
-{ \LARGE \bfseries Example of a Title}\\
+{ \LARGE \bfseries MIP formulations for delete-free AI planning}\\
 \vspace{1cm}
 
 %\textbf{\large Example of a Subtitle}\\
@@ -132,7 +135,9 @@ Academic Year 2024/2025
 
 \begin{Abstract}
     \begin{center}
-        Exploring the use of MIP solvers to find optimal solutions to the Delete-Free relaxation of a Planning task, combining powerful heuristics and state-of-the-art MIP models through the IBM ILOG CPLEX software.
+        We compare current state-of-the-art M.I.P. formulations to solve the delete-free relaxation in cost-optimal planning, integrating different preprocessing techniques proposed in different pubblications and devising powerful primal heuristics to furnish a warm-start to the M.I.P. solver.\\
+        We, then, explored a novel way to model acyclicity by coumputing violated landmarks and adding them as constraints: computing all landmarks a priori is intractable, since the number of potential landmarks grows exponentially with respect to the problem size, making any brute-force approach computationally infeasible; instead we compute violated landmarks iteratively, looking for the minimal amount necessary to guarantee both feasibility and optimality of the final solution.\\
+        To conclude our work, we compared the current state-of-the-art with our formulation, showing that it can compete both in space and time complexity.
     \end{center}
 \end{Abstract}
 
