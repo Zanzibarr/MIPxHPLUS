@@ -358,7 +358,7 @@ static std::vector<std::vector<size_t>> cb_compute_sec(const hplus::instance& in
         for (size_t u = 0; u < n; u++) graph[u].erase(act_i_cpx);
     }
 
-    filter_cycles(cycles);
+    // filter_cycles(cycles);
 
     return cycles;
 }
@@ -749,6 +749,7 @@ void dynamic::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
         }
     }
 
+    // Inverse actions constraint
     for (const auto& act_i : inst.act_rem) {
         nnz = 0;
         ind[nnz] = get_act_idx(act_i);
@@ -756,6 +757,7 @@ void dynamic::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
         for (const auto& act_j : inst.act_inv[act_i]) {
             ind[nnz] = get_act_idx(act_j);
             val[nnz] = 1;
+            stats.nconst_base++;
             CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_1, &sense_l, &begin, ind, val, nullptr, nullptr));
         }
         stopchk3();
@@ -797,6 +799,7 @@ void dynamic::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
             ind[nnz] = get_fa_idx(act_i, var_count);
             val[nnz++] = -1;
         }
+        stats.nconst_base++;
         CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_l, &begin, ind, val, nullptr, nullptr));
     }
 
