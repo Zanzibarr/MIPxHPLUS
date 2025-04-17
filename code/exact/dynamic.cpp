@@ -236,92 +236,56 @@ static std::tuple<int*, double*, int, double*, char*, int*> cb_cpxconvert_landma
     return {ind, val, nnz, rhs, sense, izero};
 }
 
-// straight from Johnson's paper
-static void unblock(size_t u, std::vector<bool>& blocked, std::vector<std::set<size_t>>& block_map) {
-    blocked[u] = false;
-    for (int w : block_map[u])
-        if (blocked[w]) unblock(w, blocked, block_map);
-    block_map[u].clear();
-}
+static bool dfs(const std::vector<std::set<size_t>>& graph, const size_t& start, const size_t& current, std::vector<size_t>& path,
+                std::unordered_set<size_t>& in_path, std::unordered_set<size_t>& visited, std::vector<std::vector<size_t>>& cycles,
+                const std::unordered_set<size_t>& cycle_found) {
+    // Skip if current node is already in another cycle
+    if (cycle_found.count(current)) return false;
 
-// straight from Johnson's paper
-static bool circuit(size_t v, size_t start, std::vector<std::vector<size_t>>& graph, std::vector<bool>& blocked,
-                    std::vector<std::set<size_t>>& block_map, std::stack<size_t>& path, std::vector<std::vector<size_t>>& cycles) {
-    bool found_cycle = false;
-    path.push(v);
-    blocked[v] = true;
-    for (auto w : graph[v]) {
-        if (w == start) {
-            // found a cycle
-            std::stack<size_t> copy = path;
-            std::vector<size_t> cycle;
-            while (!copy.empty()) {
-                cycle.push_back(copy.top());
-                copy.pop();
-            }
-            std::reverse(cycle.begin(), cycle.end());
+    path.push_back(current);
+    in_path.insert(current);
+    visited.insert(current);
+
+    for (size_t neighbor : graph[current]) {
+        // If we find the start node, we've found a cycle
+        if (neighbor == start) {
+            // Create the cycle
+            std::vector<size_t> cycle = path;
             cycles.push_back(cycle);
-            found_cycle = true;
-        } else if (!blocked[w] && circuit(w, start, graph, blocked, block_map, path, cycles))
-            found_cycle = true;
-    }
+            return true;
+        }
 
-    if (found_cycle)
-        unblock(v, blocked, block_map);
-    else
-        for (auto w : graph[v]) block_map[w].insert(v);
+        // If neighbor is already in another cycle, skip
+        if (cycle_found.count(neighbor)) continue;
 
-    path.pop();
-    return found_cycle;
-}
+        // If neighbor is already in current path, we found a smaller cycle
+        if (in_path.count(neighbor)) {
+            // Extract the cycle from the current path
+            std::vector<size_t> small_cycle;
+            auto it = path.begin();
+            // Find the position of neighbor in path
+            while (it != path.end() && *it != neighbor) ++it;
 
-static void filter_cycles(std::vector<std::vector<size_t>>& cycles) {
-    if (cycles.size() <= 1) return;  // Nothing to filter
+            // Copy from neighbor position to end of path
+            small_cycle.assign(it, path.end());
 
-    // Build sets for faster containment checks
-    std::vector<std::unordered_set<size_t>> cycleSets;
-    cycleSets.reserve(cycles.size());
-    for (const auto& cycle : cycles) {
-        cycleSets.push_back(std::unordered_set<size_t>(cycle.begin(), cycle.end()));
-    }
+            cycles.push_back(small_cycle);
+            return true;
+        }
 
-    // Mark cycles for removal
-    std::vector<bool> shouldRemove(cycles.size(), false);
-    size_t removeCount = 0;
+        // Skip if already visited in another path and didn't lead to a cycle
+        if (visited.count(neighbor)) continue;
 
-    for (size_t i = 0; i < cycles.size(); ++i) {
-        if (shouldRemove[i]) continue;  // Already marked for removal
-
-        for (size_t j = 0; j < cycles.size(); ++j) {
-            if (i == j || shouldRemove[j]) continue;
-
-            const auto& setI = cycleSets[i];
-            const auto& setJ = cycleSets[j];
-
-            // If setI is a proper superset of setJ
-            if (setI.size() > setJ.size() && std::all_of(setJ.begin(), setJ.end(), [&setI](size_t node) { return setI.find(node) != setI.end(); })) {
-                shouldRemove[i] = true;
-                removeCount++;
-                break;
-            }
+        // Recurse
+        if (dfs(graph, start, neighbor, path, in_path, visited, cycles, cycle_found)) {
+            return true;
         }
     }
 
-    if (removeCount == 0) return;  // No cycles to remove
-
-    // Remove cycles marked for deletion (in-place)
-    size_t writeIndex = 0;
-    for (size_t readIndex = 0; readIndex < cycles.size(); ++readIndex) {
-        if (!shouldRemove[readIndex]) {
-            if (writeIndex != readIndex) {
-                cycles[writeIndex] = std::move(cycles[readIndex]);
-            }
-            writeIndex++;
-        }
-    }
-
-    // Resize the vector to remove the extra elements
-    cycles.resize(writeIndex);
+    // Backtrack
+    path.pop_back();
+    in_path.erase(current);
+    return false;
 }
 
 static std::vector<std::vector<size_t>> cb_compute_sec(const hplus::instance& inst, const std::vector<binary_set>& used_first_archievers,
@@ -337,28 +301,25 @@ static std::vector<std::vector<size_t>> cb_compute_sec(const hplus::instance& in
         }
     }
 
-    // find all simple cycles (Johnson's paper)
-    size_t n = graph.size();
-    std::vector<bool> blocked(n, false);
-    std::vector<std::set<size_t>> bock_map(n);
-    std::stack<size_t> path;
     std::vector<std::vector<size_t>> cycles;
+    std::unordered_set<size_t> cycle_found;
 
-    for (const auto& act_i_cpx : unreachable_acts) {
-        // find subgraph with vertices >= act_i_cpx
-        std::vector<std::vector<size_t>> subgraph(n);
-        for (size_t u = act_i_cpx; u < n; u++)
-            for (auto v : graph[u])
-                if (v >= act_i_cpx) subgraph[u].push_back(v);
+    for (size_t start = 0; start < graph.size(); start++) {
+        // Skip if we already found a cycle containing this node
+        if (cycle_found.count(start)) continue;
 
-        // run circuit function to find all cycles starting at "act_i_cpx"
-        circuit(act_i_cpx, act_i_cpx, subgraph, blocked, bock_map, path, cycles);
+        std::vector<size_t> path;
+        std::unordered_set<size_t> in_path;
+        std::unordered_set<size_t> visited;
 
-        // remove act_i_cpx vertex from the graph
-        for (size_t u = 0; u < n; u++) graph[u].erase(act_i_cpx);
+        // Run DFS to find a cycle starting from this node
+        if (dfs(graph, start, start, path, in_path, visited, cycles, cycle_found)) {
+            // Mark all nodes in the found cycle as having a cycle
+            for (size_t node : cycles.back()) {
+                cycle_found.insert(node);
+            }
+        }
     }
-
-    filter_cycles(cycles);
 
     return cycles;
 }
