@@ -31,7 +31,8 @@ HOW I DO VERSIONING:
 ### :heavy_exclamation_mark: Changed
 - Changed algorithm to find cycles
 - Removed probably unnecessary constraint in dynamic model
-<!-- ### :heavy_plus_sign: Added -->
+### :heavy_plus_sign: Added
+- Handling CPXMIP_MEM_LIM_FEAS status code
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
 

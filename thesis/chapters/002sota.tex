@@ -5,11 +5,6 @@ To build a MIP formulation that solves the delete-relaxed task $\Pi^+$, we ident
 \end{enumerate}
 The straightforward IP models, proposed by the literature, are often intractable and not useful in practice for computing $\hplus$; this has lead the research community to develop preprocessing techniques to reduce the size and complexity of the IP models.
 
-\section{Preprocessing}
-The techniques we explored are described mainly in \cite{Imai_15} and \cite{MLM_Haslum_12}; here we will provide a quick overview of our implementations of such techniques.
-
-TODO ...
-
 \section{Base IP model}
 Different models have been proposed in past years; we will use the base model proposed in \cite{Rankooh_22}:\\
 $x_a\in\{0,1\}$ indicates whether the action $a$ is used in a solution $\pi$.
@@ -78,3 +73,12 @@ $$
 \end{cases}
 $$
 The correctness of the resulting model, composed of constraints $(C1)$ to $(C4)$ and $(C6)$ to $(C9)$, is proved in \cite{Rankooh_22}.
+
+We will identify the two formulations respectively $\tl$ and $\ve$.
+
+\section{Preprocessing}
+The techniques we explored are described mainly in \cite{Imai_15} and \cite{MLM_Haslum_12}; here we will provide a quick overview of our implementations of such techniques.
+
+TODO ...
+
+By applying preprocessing to $\tl$ and $\ve$, we obtain $\tle$ and $\vee$ respectively.

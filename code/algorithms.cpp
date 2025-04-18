@@ -46,6 +46,8 @@ bool parse_cpx_status(const CPXENVptr& cpxenv, const CPXLPptr& cpxlp, hplus::env
     switch (const int cpxstatus{CPXgetstat(cpxenv, cpxlp)}) {
         case CPXMIP_TIME_LIM_FEAS:  // exceeded time limit, found intermediate solution
             [[fallthrough]];
+        case CPXMIP_MEM_LIM_FEAS:  // exceeded memory limit, found intermediate solution
+            [[fallthrough]];
         case CPXMIP_ABORT_FEAS:  // terminated by user, found solution
             env.sol_s = solution_status::FEAS;
             return true;
