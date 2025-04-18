@@ -1,16 +1,80 @@
-...
+To build a MIP formulation that solves the delete-relaxed task $\Pi^+$, we identify two sections:
+\begin{enumerate}
+    \item Base IP model: defining variables for atoms, actions and \textit{first achievers} \cite{Imai_15}, aswell as a basic set of constraints, aiming to enforce the basic functionalities of actions;
+    \item Modeling acyclicity: ensuring that the solution is in fact a plan, by adding constraints that make sure that a timeline of actions can be constructed from the solution obtained by the MIP solver.
+\end{enumerate}
+The straightforward IP models, proposed by the literature, are often intractable and not useful in practice for computing $\hplus$; this has lead the research community to develop preprocessing techniques to reduce the size and complexity of the IP models.
 
 \section{Preprocessing}
-...
+The techniques we explored are described mainly in \cite{Imai_15} and \cite{MLM_Haslum_12}; here we will provide a quick overview of our implementations of such techniques.
+
+TODO ...
 
 \section{Base IP model}
-...
+Different models have been proposed in past years; we will use the base model proposed in \cite{Rankooh_22}:\\
+$x_a\in\{0,1\}$ indicates whether the action $a$ is used in a solution $\pi$.
+$$x_a=
+\begin{cases}
+    0\qquad\mbox{if }a\not\in\pi\\
+    1\qquad\mbox{if }a\in\pi
+\end{cases}\forall a\in A^+
+$$
+$x_p\in\{0,1\}$ indicates whether an atom $p$ is achieved in a solution $\pi$.
+$$x_p=
+\begin{cases}
+    0\qquad\mbox{if }p\not\in I(\pi)\\
+    1\qquad\mbox{if }p\in I(\pi)
+\end{cases}\forall p\in P
+$$
+$x_{a,p}\in\{0,1\}$ indicates whether $a$ is the first achiever of $p$.
+$$x_{a,p}=
+\begin{cases}
+    1\qquad\mbox{if }a\mbox{ is the first achiever of }p\\
+    0\qquad\mbox{otherwise}
+\end{cases}\forall a\in A^+,\forall p\in add(a)
+$$
+Having defined the variables that will be used in our formulation, the model is defined as follows:
+$$
+\begin{cases}
+    \displaystyle\min\sum_{ a\in A^+}x_a\cdot cost(a)\\
+    \displaystyle_{(C1)}\quad\sum_{a\in A^+_p}x_{a,p}=x_p&\forall p\in P,\,A^+_p=\{a\in A^+,\,s.t.\,p\in add(a)\}\\
+    \displaystyle_{(C2)}\quad\sum_{a\in A^+_{p,q}}x_{a,q}\leq x_p&\forall p,q\in P,\,A^+_{p,q}=\{a\in A^+,\,s.t.\,p\in pre(a),q\in add(a)\}\\
+    _{(C3)}\quad x_{a,p}\leq x_a&\forall a\in A^+,\,p\in add(a)\\
+    _{(C4)}\quad x_p=1&\forall p\in G
+\end{cases}
+$$
+
+\begin{enumerate}
+    \item[]$(C1)$: An atom is achieved iff an action is its first achiever; moreover there can be only one first achiever per atom;
+    \item[]$(C2)$: An action can be a first achiever only if its preconditions are achieved;
+    \item[]$(C3)$: An action can be a first achiever only if it's used;
+    \item[]$(C4)$: Each atom in the goal state is achieved;
+\end{enumerate}
+Note that, since there's no upper bound on action indicator variables, 0-cost actions might be flagged as used, even if they aren't, and still be an optimal plan.\\
+If we were just looking for the optimal cost $c^*$, this wouldn't bother us; however, since we are interested in the optimal plan $\pi^*$, we must acknowledge those actions by filtering the solution obtained by removing actions that aren't first achiever of any atom.
 
 \section{Modeling acyclicity}
-...
+As shown both in \cite{Imai_15} and \cite{Rankooh_22}, any solution $\pi$ needs to be acyclic for it to be a plan, hence the need to add variables and constraints to force such acyclicity in the base model.\\
+Multiple methods have been proposed: the time labeling method was first proposed in \cite{Imai_15} while vertex elimination was proposed in \cite{Rankooh_22}; the latter, however, proposed a revised time labeling method, proving that it was better than its predecessor, hence we will only mention the improved version.
 
 \subsection{Time labeling}
-...
+For the time labeling method, we just need to create for each atom $p$, a timestamp $t_p\in\{0,...,|A^+|\}$.\\
+The constraints to add to the model will then be:
+$$_{(C5)}\quad t_p + 1 \leq t_q + |P|(1-x_{a, q})\qquad\forall a\in A^+, \forall p\in pre(a),q\in add(a)$$
+This constraint reads: if $a$ is first achiever of $q$, then every $p\in pre(a)$ must have a timestamp that precedes than $q$.
+
+The correctness of this model is implied from its construction, having tackled directly the problem of having to construct a timeline of actions out of the obtained solution with constraint ${(C5)}$.
 
 \subsection{Vertex elimination graph}
-...
+To explain how to use a vertex elimination graph to model acyclicity, we first need to define a \textit{causal relation graph} \cite{Rankooh_22_2}.
+A causal relation graph of $\Pi^+$ is $G_{\Pi^+}=(P,E_{\Pi^+}),\mbox{ where }E_{\Pi^+}=\{(p,q),\,s.t.\,\exists a\in A^+\mbox{ with }p\in pre(a),q\in add(a)\}$.
+As shown in \cite{Rankooh_22}, let $\mathcal{O}$ be an elimination ordering for $G_{\Pi^+}$, and $G^*_{\Pi^+}=(P,E^*_{\Pi^+})$ be the vertex elimination graph of $G_{\Pi^+}$ according to $\mathcal{O}$. Let $\Delta$ be the set of all triangles produced by elimination ordering $\mathcal{O}$ for graph $G_{\Pi^+}$: members of $\Delta$ are all ordered triples $(p,q,r)\,s.t.\,(p,r)$ is added to $E^*_{\Pi^+}$ by eliminating $q$.\\
+We then create a variable for each edge $(p,q)\in E^*_{\Pi^+}$, $e_{p,q}\in\{0,1\}\,\forall (p,q)\in E^*_{\Pi^+}$ and add the following constraints:
+$$
+\begin{cases}
+    _{(C6)}\quad x_{a,q}\leq e_{p,q}&\forall a\in A^+,p\in pre(a),q\in add(a)\\
+    _{(C7)}\quad e_{p,q}+e_{q,p}\leq 1&\forall(p,q)\in E^*_{\Pi^+}\\
+    _{(C8)}\quad e_{p,q}+e_{q,r}-1\leq e_{p,r}&\forall(p,q,r)\in\Delta
+\end{cases}
+$$
+The correctness of the resulting model, composed of constraints $(C1)$ to $(C4)$ and $(C6)$ to $(C9)$, is proved in \cite{Rankooh_22}.

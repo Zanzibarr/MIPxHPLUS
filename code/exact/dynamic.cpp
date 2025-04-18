@@ -745,29 +745,29 @@ void dynamic::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
     delete[] ind;
     ind = nullptr;
 
-    ind = new int[inst.n_opt];
-    val = new double[inst.n_opt];
+    // ind = new int[inst.n_opt];
+    // val = new double[inst.n_opt];
 
-    for (const auto& act_i : inst.act_rem) {
-        if (inst.act_f[act_i]) continue;
-        nnz = 0;
-        ind[nnz] = get_act_idx(act_i);
-        val[nnz++] = 1;
-        int var_count{-1};
-        for (const auto& var_i : inst.actions[act_i].eff_sparse) {
-            var_count++;
-            if (inst.fadd_e[act_i][var_i]) continue;
-            ind[nnz] = get_fa_idx(act_i, var_count);
-            val[nnz++] = -1;
-        }
-        stats.nconst_base++;
-        CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_l, &begin, ind, val, nullptr, nullptr));
-    }
+    // for (const auto& act_i : inst.act_rem) {
+    //     if (inst.act_f[act_i]) continue;
+    //     nnz = 0;
+    //     ind[nnz] = get_act_idx(act_i);
+    //     val[nnz++] = 1;
+    //     int var_count{-1};
+    //     for (const auto& var_i : inst.actions[act_i].eff_sparse) {
+    //         var_count++;
+    //         if (inst.fadd_e[act_i][var_i]) continue;
+    //         ind[nnz] = get_fa_idx(act_i, var_count);
+    //         val[nnz++] = -1;
+    //     }
+    //     stats.nconst_base++;
+    //     CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_l, &begin, ind, val, nullptr, nullptr));
+    // }
 
-    delete[] val;
-    val = nullptr;
-    delete[] ind;
-    ind = nullptr;
+    // delete[] val;
+    // val = nullptr;
+    // delete[] ind;
+    // ind = nullptr;
 
     int ind_2[2];
     double val_2[2];
