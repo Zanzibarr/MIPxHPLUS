@@ -8,6 +8,10 @@
 #endif
 #include "pq.hxx"
 
+// ##################################################################### //
+// ############################ BUILD MODEL ############################ //
+// ##################################################################### //
+
 void ve::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst, const hplus::environment& env, const logger& log,
                          hplus::statistics& stats) {
     PRINT_VERBOSE(log, "Building VE model.");
@@ -401,30 +405,30 @@ void ve::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& in
     delete[] ind;
     ind = nullptr;
 
-    int ind_c5_c6_c7[2], ind_c8[3];
-    double val_c5_c6_c7[2], val_c8[3];
+    int ind2[3];
+    double val2[3];
 
     // Constraint C3
     for (const auto& act_i : inst.act_rem) {
         int var_count{-1};
         for (const auto& var_i : inst.actions[act_i].eff_sparse) {
             var_count++;
-            ind_c5_c6_c7[0] = get_act_idx(act_i);
-            val_c5_c6_c7[0] = -1;
+            ind2[0] = get_act_idx(act_i);
+            val2[0] = -1;
             // if the first adder was fixed, we can directly fix the action insthead of adding the constraint
             if (inst.fadd_f[act_i][var_i]) {
                 const char fix = 'B';
                 const double one = 1;
-                CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 1, ind_c5_c6_c7, &fix, &one));
+                CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 1, ind2, &fix, &one));
                 continue;
             }
             // if the first adder was eliminated, we can skip the constraint
             else if (inst.fadd_e[act_i][var_i])
                 continue;
-            ind_c5_c6_c7[1] = get_fa_idx(act_i, var_count);
-            val_c5_c6_c7[1] = 1;
+            ind2[1] = get_fa_idx(act_i, var_count);
+            val2[1] = 1;
             stats.nconst_base++;
-            CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
+            CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind2, val2, nullptr, nullptr));
         }
         stopchk1();
     }
@@ -437,26 +441,26 @@ void ve::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& in
             int var_count{-1};
             for (const auto& var_j : inst.actions[act_i].eff_sparse) {
                 var_count++;
-                ind_c5_c6_c7[0] = get_veg_idx(var_i, var_j);
-                val_c5_c6_c7[0] = -1;
-                ind_c5_c6_c7[1] = get_fa_idx(act_i, var_count);
-                val_c5_c6_c7[1] = 1;
+                ind2[0] = get_veg_idx(var_i, var_j);
+                val2[0] = -1;
+                ind2[1] = get_fa_idx(act_i, var_count);
+                val2[1] = 1;
                 // if the first adder was fixed, we can directly fix also the VEG variable
                 if (inst.fadd_f[act_i][var_j]) {
                     const char fix = 'B';
                     const double one = 1;
-                    CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 1, ind_c5_c6_c7, &fix, &one));
+                    CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 1, ind2, &fix, &one));
                     continue;
                 }
                 // if the VEG variable was eliminated, we can directly eliminate the first adder too
                 else if (!inst.veg_cumulative_graph[var_i][var_j]) {
                     const char fix = 'B';
                     const double zero = 0;
-                    CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 1, &(ind_c5_c6_c7[1]), &fix, &zero));
+                    CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 1, &(ind2[1]), &fix, &zero));
                     continue;
                 }
                 stats.nconst_acyclic++;
-                CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
+                CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind2, val2, nullptr, nullptr));
             }
             stopchk1();
         }
@@ -467,12 +471,12 @@ void ve::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& in
         for (const auto& var_j : inst.veg_cumulative_graph[var_i]) {
             // if either VEG variable was eliminated, we can skip the constraint
             if (!inst.veg_cumulative_graph[var_i][var_j] || !inst.veg_cumulative_graph[var_j][var_i]) continue;
-            ind_c5_c6_c7[0] = get_veg_idx(var_i, var_j);
-            val_c5_c6_c7[0] = 1;
-            ind_c5_c6_c7[1] = get_veg_idx(var_j, var_i);
-            val_c5_c6_c7[1] = 1;
+            ind2[0] = get_veg_idx(var_i, var_j);
+            val2[0] = 1;
+            ind2[1] = get_veg_idx(var_j, var_i);
+            val2[1] = 1;
             stats.nconst_acyclic++;
-            CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_1, &sense_l, &begin, ind_c5_c6_c7, val_c5_c6_c7, nullptr, nullptr));
+            CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_1, &sense_l, &begin, ind2, val2, nullptr, nullptr));
             stopchk1();
         }
     }
@@ -480,12 +484,12 @@ void ve::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& in
     // Constraint C8
     // TODO: Try adding those as lazy constraints
     for (const auto& [a, b, c] : triangles_list) {
-        ind_c8[0] = get_veg_idx(a, b);
-        val_c8[0] = 1;
-        ind_c8[1] = get_veg_idx(b, c);
-        val_c8[1] = 1;
-        ind_c8[2] = get_veg_idx(a, c);
-        val_c8[2] = -1;
+        ind2[0] = get_veg_idx(a, b);
+        val2[0] = 1;
+        ind2[1] = get_veg_idx(b, c);
+        val2[1] = 1;
+        ind2[2] = get_veg_idx(a, c);
+        val2[2] = -1;
         // if veg(a, c) is eliminated, we can simply eliminate the other two VEG varliables
         if (!inst.veg_cumulative_graph[a][c]) {
             char fix[2];
@@ -494,16 +498,20 @@ void ve::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& in
             double zero[2];
             zero[0] = 0;
             zero[1] = 0;
-            CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 2, ind_c8, fix, zero));
+            CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 2, ind2, fix, zero));
             continue;
         }
         stats.nconst_acyclic++;
-        CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 3, &rhs_1, &sense_l, &begin, ind_c8, val_c8, nullptr, nullptr));
+        CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 3, &rhs_1, &sense_l, &begin, ind2, val2, nullptr, nullptr));
         stopchk1();
     }
 
     if (env.write_lp) CPX_HANDLE_CALL(log, CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR "/lp/" + env.run_name + ".lp").c_str(), "LP"));
 }
+
+// ##################################################################### //
+// ############################# WARM START ############################ //
+// ##################################################################### //
 
 void ve::post_cpx_warmstart(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log) {
     PRINT_VERBOSE(log, "Posting warm start to VE model.");
@@ -553,6 +561,10 @@ void ve::post_cpx_warmstart(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::ins
     delete[] cpx_sol_val;
     cpx_sol_val = nullptr;
 }
+
+// ##################################################################### //
+// ########################### STORE SOLUTION ########################## //
+// ##################################################################### //
 
 void ve::store_cpx_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst, const logger& log) {
     PRINT_VERBOSE(log, "Storing VE solution.");

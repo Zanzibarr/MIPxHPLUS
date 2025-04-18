@@ -47,7 +47,6 @@ typedef struct {
     /** Optimization variables */
     binary_set var_e, var_f, act_e, act_f;
     std::vector<binary_set> fadd_e, fadd_f;
-    std::vector<int> var_t, act_t;
     std::vector<std::vector<size_t>> act_inv;
     /** Optimization helpers */
     std::vector<size_t> var_rem, act_rem;

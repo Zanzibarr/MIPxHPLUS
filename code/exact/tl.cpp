@@ -2,6 +2,10 @@
 
 #include <numeric>  // std::accumulate
 
+// ##################################################################### //
+// ############################ BUILD MODEL ############################ //
+// ##################################################################### //
+
 void tl::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log,
                          hplus::statistics& stats) {
     PRINT_VERBOSE(log, "Building TL model.");
@@ -127,10 +131,10 @@ void tl::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instan
     // - variables timestamps - //
     const size_t tvar_start{curr_col};
     count = 0;
-    for (const auto& var_i : inst.var_rem) {
+    for ([[maybe_unused]] const auto& var_i : inst.var_rem) {
         objs[count] = 0;
-        lbs[count] = (inst.var_t[var_i] >= 0 ? inst.var_t[var_i] : 1);  // 1 since with no initial state, each variable needs to be archieved first
-        ubs[count] = (inst.var_t[var_i] >= 0 ? inst.var_t[var_i] : max_steps);
+        lbs[count] = 1;  // 1 since with no initial state, each variable needs to be archieved first
+        ubs[count] = max_steps;
         types[count++] = 'I';
     }
     curr_col += count;
@@ -258,22 +262,6 @@ void tl::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instan
         }
     }
 
-    // Inverse actions constraint (preprocessing)
-    if (env.preprocessing) {
-        for (const auto& act_i : inst.act_rem) {
-            nnz = 0;
-            ind[nnz] = get_act_idx(act_i);
-            val[nnz++] = 1;
-            for (const auto& act_j : inst.act_inv[act_i]) {
-                ind[nnz] = get_act_idx(act_j);
-                val[nnz] = 1;
-                stats.nconst_base++;
-                CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_1, &sense_l, &begin, ind, val, nullptr, nullptr));
-            }
-            stopchk3();
-        }
-    }
-
     delete[] val;
     val = nullptr;
     delete[] ind;
@@ -307,6 +295,22 @@ void tl::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instan
         stopchk1();
     }
 
+    // Inverse actions constraint (preprocessing)
+    if (env.preprocessing) {
+        for (const auto& act_i : inst.act_rem) {
+            nnz = 0;
+            ind2[nnz] = get_act_idx(act_i);
+            val2[nnz++] = 1;
+            for (const auto& act_j : inst.act_inv[act_i]) {
+                ind2[nnz] = get_act_idx(act_j);
+                val2[nnz] = 1;
+                stats.nconst_base++;
+                CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_1, &sense_l, &begin, ind2, val2, nullptr, nullptr));
+            }
+            stopchk3();
+        }
+    }
+
     // ~~~~~~~~~~~~ time labeling ~~~~~~~~~~~~ //
 
     // Constraint C5
@@ -330,6 +334,10 @@ void tl::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instan
 
     if (env.write_lp) CPX_HANDLE_CALL(log, CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR "/lp/" + env.run_name + ".lp").c_str(), "LP"));
 }
+
+// ##################################################################### //
+// ############################# WARM START ############################ //
+// ##################################################################### //
 
 void tl::post_cpx_warmstart(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log) {
     PRINT_VERBOSE(log, "Posting warm start to TL model.");
@@ -377,6 +385,10 @@ void tl::post_cpx_warmstart(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::ins
     delete[] cpx_sol_val;
     cpx_sol_val = nullptr;
 }
+
+// ##################################################################### //
+// ########################### STORE SOLUTION ########################## //
+// ##################################################################### //
 
 void tl::store_cpx_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst, const logger& log) {
     PRINT_VERBOSE(log, "Storing TL solution.");

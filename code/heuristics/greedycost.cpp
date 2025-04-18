@@ -5,13 +5,11 @@
 void greedycost::run(hplus::instance& inst, hplus::environment& env, const logger& log) {
     PRINT_VERBOSE(log, "Running greedycost algorithm.");
 
-    unsigned int timestamp{0};
     // greedy choice
-    const auto find_best_act = [&inst, &timestamp](const std::list<size_t>& candidates) {
+    const auto find_best_act = [&inst](const std::list<size_t>& candidates) {
         size_t choice{0};
         int best_cost{std::numeric_limits<int>::max()};
         for (const auto& act_i : candidates) {
-            if (inst.act_t[act_i] >= 0 && static_cast<unsigned int>(inst.act_t[act_i]) == timestamp) return std::pair(true, act_i);
             if (inst.act_f[act_i]) {
                 choice = act_i;
                 best_cost = -1;
@@ -74,7 +72,6 @@ void greedycost::run(hplus::instance& inst, hplus::environment& env, const logge
         heur_sol.plan.push_back(choice);
         heur_sol.cost += inst.actions[choice].cost;
         state = new_state;
-        timestamp++;
 
         if (CHECK_STOP()) [[unlikely]]
             throw timelimit_exception("Reached time limit.");

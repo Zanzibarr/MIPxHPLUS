@@ -87,16 +87,14 @@ static bool htype(const hplus::instance& inst, hplus::solution& sol, double (*h_
     priority_queue<double> pq{inst.n};
     std::vector<size_t> goal_sparse{inst.goal.sparse()};
 
-    unsigned int timestamp{0};
     std::stack<std::pair<size_t, double>> trail;  // leave a trail for the action simulation to be reverted
-    const auto find_best_act = [&inst, &h_eqtype, &used_actions, &goal_sparse, &trail, &pq, &timestamp](
-                                   const std::list<size_t>& candidates, std::vector<double>& values, const binary_set& state) {
+    const auto find_best_act = [&inst, &h_eqtype, &used_actions, &goal_sparse, &trail, &pq](const std::list<size_t>& candidates,
+                                                                                            std::vector<double>& values, const binary_set& state) {
         size_t choice{0};
         bool found{false};
         double best_goal_cost{std::numeric_limits<double>::infinity()};
         double current_goal_cost{evaluate_htype_state(goal_sparse, values, h_eqtype)};
         for (const auto& act_i : candidates) {
-            if (inst.act_t[act_i] >= 0 && static_cast<unsigned int>(inst.act_t[act_i]) == timestamp) return std::pair(true, act_i);
             if (inst.act_f[act_i]) {
                 choice = act_i;
                 best_goal_cost = -1;
@@ -167,7 +165,6 @@ static bool htype(const hplus::instance& inst, hplus::solution& sol, double (*h_
         sol.plan.push_back(choice);
         sol.cost += inst.actions[choice].cost;
         state = new_state;
-        timestamp++;
 
         if (CHECK_STOP()) [[unlikely]]
             throw timelimit_exception("Reached time limit.");

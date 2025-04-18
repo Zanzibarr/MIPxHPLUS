@@ -12,6 +12,10 @@
 #endif
 #include "pq.hxx"
 
+// ##################################################################### //
+// ############################## CALLBACK ############################# //
+// ##################################################################### //
+
 static std::tuple<std::vector<size_t>, std::vector<size_t>, std::vector<size_t>, binary_set, std::vector<binary_set>> cb_analyze_candidate_point(
     const hplus::instance& inst, const double* xstar) {
     // split among used and unused actions
@@ -97,6 +101,10 @@ static void cb_print_info(CPXCALLBACKCONTEXTptr& context, const double& cost, co
     pthread_mutex_unlock(&cb_print_info_mutex);
 }
 
+// ====================================================== //
+// ===================== IMPROVE SOL ==================== //
+// ====================================================== //
+
 static std::tuple<int*, double*, unsigned int, size_t> cb_find_heur_sol(const hplus::instance& inst,
                                                                         const std::vector<size_t>& applicable_actions_sequence) {
     size_t ncols{inst.m_opt + inst.n_opt + inst.n_fadd};
@@ -127,6 +135,11 @@ static std::tuple<int*, double*, unsigned int, size_t> cb_find_heur_sol(const hp
     return {ind, val, hcost, ncols};
 }
 
+// ====================================================== //
+// ====================== LANDMARKS ===================== //
+// ====================================================== //
+
+// From HaslumMLM12
 static std::vector<size_t> cb_compute_minimal_landmark(const hplus::instance& inst, const std::vector<size_t>& used_acts,
                                                        const std::vector<size_t>& reachable_acts, const std::vector<size_t>& unused_acts,
                                                        const binary_set& reachable_state) {
@@ -196,6 +209,7 @@ static std::vector<size_t> cb_compute_minimal_landmark(const hplus::instance& in
     return landmark;
 }
 
+// From BonetComplete
 static std::vector<size_t> cb_compute_complete_landmark(const hplus::instance& inst, const std::vector<size_t>& unused_acts,
                                                         const binary_set& reachable_state) {
     std::vector<size_t> landmark;
@@ -232,6 +246,10 @@ static std::tuple<int*, double*, int, double*, char*, int*> cb_cpxconvert_landma
 
     return {ind, val, nnz, rhs, sense, izero};
 }
+
+// ====================================================== //
+// ======================= S.E.C. ======================= //
+// ====================================================== //
 
 static bool cycles_dfs(const std::vector<std::set<size_t>>& graph, const size_t& start, const size_t& current, std::vector<size_t>& path,
                        std::unordered_set<size_t>& in_path, std::unordered_set<size_t>& visited, std::vector<std::vector<size_t>>& cycles,
@@ -365,6 +383,10 @@ static std::tuple<int*, double*, int, double*, char*, int*> cb_cpxconvert_sec_cu
     return {ind, val, nnz, rhs, sense, izero};
 }
 
+// ====================================================== //
+// ====================== CALLBACK ====================== //
+// ====================================================== //
+
 int CPXPUBLIC lm::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG context_id, void* user_handle) {
     auto& [inst, env, stats, log] = *static_cast<cpx_callback_user_handle*>(user_handle);
 
@@ -463,6 +485,10 @@ int CPXPUBLIC lm::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG context_id
 
     return 0;
 }
+
+// ##################################################################### //
+// ############################# BASE MODEL ############################ //
+// ##################################################################### //
 
 void lm::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log,
                          hplus::statistics& stats) {
@@ -705,22 +731,6 @@ void lm::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instan
         }
     }
 
-    // Inverse actions constraint (preprocessing)
-    if (env.preprocessing) {
-        for (const auto& act_i : inst.act_rem) {
-            nnz = 0;
-            ind[nnz] = get_act_idx(act_i);
-            val[nnz++] = 1;
-            for (const auto& act_j : inst.act_inv[act_i]) {
-                ind[nnz] = get_act_idx(act_j);
-                val[nnz] = 1;
-                stats.nconst_base++;
-                CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_1, &sense_l, &begin, ind, val, nullptr, nullptr));
-            }
-            stopchk3();
-        }
-    }
-
     delete[] val;
     val = nullptr;
     delete[] ind;
@@ -754,11 +764,31 @@ void lm::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instan
         stopchk1();
     }
 
+    // Inverse actions constraint (preprocessing)
+    if (env.preprocessing) {
+        for (const auto& act_i : inst.act_rem) {
+            nnz = 0;
+            ind2[nnz] = get_act_idx(act_i);
+            val2[nnz++] = 1;
+            for (const auto& act_j : inst.act_inv[act_i]) {
+                ind2[nnz] = get_act_idx(act_j);
+                val2[nnz] = 1;
+                stats.nconst_base++;
+                CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_1, &sense_l, &begin, ind2, val2, nullptr, nullptr));
+            }
+            stopchk3();
+        }
+    }
+
     // ~~~~~~~~~ Modeling acyclicity ~~~~~~~~~ //
     // left to the callbacks
 
     if (env.write_lp) CPX_HANDLE_CALL(log, CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR "/lp/" + env.run_name + ".lp").c_str(), "LP"));
 }
+
+// ##################################################################### //
+// ############################# WARM START ############################ //
+// ##################################################################### //
 
 void lm::post_cpx_warmstart(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log) {
     PRINT_VERBOSE(log, "Posting warm start to LM model.");
@@ -801,6 +831,10 @@ void lm::post_cpx_warmstart(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::ins
     delete[] cpx_sol_val;
     cpx_sol_val = nullptr;
 }
+
+// ##################################################################### //
+// ########################### STORE SOLUTION ########################## //
+// ##################################################################### //
 
 void lm::store_cpx_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst, const logger& log) {
     PRINT_VERBOSE(log, "Storing LM solution.");
