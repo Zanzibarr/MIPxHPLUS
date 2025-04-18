@@ -1,7 +1,7 @@
+#include "ve.hpp"
+
 #include <numeric>  // std::accumulate
 #include <set>
-
-#include "ve.hpp"
 
 #if HPLUS_INTCHECK == 0
 #define INTCHECK_PQ false

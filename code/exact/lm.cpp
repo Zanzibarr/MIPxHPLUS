@@ -1,11 +1,11 @@
+#include "lm.hpp"
+
 #include <list>
 #include <numeric>  // std::accumulate
 #include <set>
 #include <stack>
 #include <tuple>
 #include <unordered_set>
-
-#include "lm.hpp"
 
 #if HPLUS_INTCHECK == 0
 #define INTCHECK_PQ false
