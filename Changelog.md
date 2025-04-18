@@ -25,6 +25,17 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
+## [2.0.0] - YYYY/MM/DD
+### Tested all features added in 1.4.*
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+### :heavy_exclamation_mark: Changed
+- Preparing for ufficial testing and open-sourcing
+<!-- ### :heavy_plus_sign: Added -->
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+
+
 ## [1.4.2] - 2025/04/18
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->

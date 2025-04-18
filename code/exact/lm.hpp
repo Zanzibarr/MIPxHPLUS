@@ -1,13 +1,14 @@
 /**
- * @file imai.hpp
- * @brief Methods to find the optimal solution using the model proposed in Imai's paper
+ * @file lm.hpp
+ * @brief Methods to find the optimal solution using the model proposed in Rankooh's paper (using vertex elimination) with a lm approach to
+ * building and solving it (using callbacks)
  *
  * @author Matteo Zanella <matteozanella2@gmail.com>
  * Copyright 2025 Matteo Zanella
  */
 
-#ifndef IMAI_HPP
-#define IMAI_HPP
+#ifndef DYNAMIC_HPP
+#define DYNAMIC_HPP
 
 #include <cplex.h>
 
@@ -15,7 +16,19 @@
 #include "log.hxx"
 #include "utils.hpp"
 
-namespace imai {
+namespace lm {
+
+typedef struct {
+    hplus::instance& inst;
+    hplus::environment& env;
+    hplus::statistics& stats;
+    const logger& log;
+} cpx_callback_user_handle;
+
+/**
+ * Callback for the lm model
+ */
+int CPXPUBLIC cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG context_id, void* user_handle);
 
 /**
  * Build the cplex model using the instance described by the inst parameter, with execution details explained in the env parameter
@@ -33,6 +46,6 @@ void post_cpx_warmstart(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instanc
  */
 void store_cpx_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst, const logger& log);
 
-}  // namespace imai
+}  // namespace lm
 
-#endif /* IMAI_HPP */
+#endif /* DYNAMIC_HPP */

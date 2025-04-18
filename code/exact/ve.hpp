@@ -1,5 +1,5 @@
 /**
- * @file rankooh.hpp
+ * @file ve.hpp
  * @brief Methods to find the optimal solution using the model proposed in Rankooh's paper (using vertex elimination)
  *
  * @author Matteo Zanella <matteozanella2@gmail.com>
@@ -15,7 +15,7 @@
 #include "log.hxx"
 #include "utils.hpp"
 
-namespace rankooh {
+namespace ve {
 
 /**
  * Build the cplex model using the instance described by the inst parameter, with execution details explained in the env parameter
@@ -33,6 +33,6 @@ void post_cpx_warmstart(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instanc
  */
 void store_cpx_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst, const logger& log);
 
-}  // namespace rankooh
+}  // namespace ve
 
 #endif /* RANKOOH_HPP */

@@ -1,16 +1,16 @@
-#include "rankooh.hpp"
-
 #include <numeric>  // std::accumulate
 #include <set>
+
+#include "ve.hpp"
 
 #if HPLUS_INTCHECK == 0
 #define INTCHECK_PQ false
 #endif
 #include "pq.hxx"
 
-void rankooh::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst, const hplus::environment& env, const logger& log,
-                              hplus::statistics& stats) {
-    PRINT_VERBOSE(log, "Building Rankooh's model.");
+void ve::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst, const hplus::environment& env, const logger& log,
+                         hplus::statistics& stats) {
+    PRINT_VERBOSE(log, "Building VE model.");
 
     const auto stopchk1 = []() {
         if (CHECK_STOP()) [[unlikely]]
@@ -135,7 +135,7 @@ void rankooh::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instanc
 
         // max number of steps to reach heuristic
         if (env.heur != "none") {
-            unsigned int min_act_cost{inst.actions[0].cost + 1};  // +1 to avoid it being 0
+            unsigned int min_act_cost{std::numeric_limits<unsigned int>::max()};
             unsigned int n_act_zerocost{0};
             for (const auto& act_i : inst.act_rem) {
                 if (inst.actions[act_i].cost == 0)
@@ -237,7 +237,7 @@ void rankooh::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instanc
     CPX_HANDLE_CALL(log, CPXnewcols(cpxenv, cpxlp, count, objs, lbs, ubs, types, nullptr));
     stopchk2();
 
-    // vertex elimination graph edges
+    //  vertex elimination graph edges  //
     const size_t veg_start{curr_col};
     inst.veg_starts = std::vector<size_t>();
     size_t tmp_count{0};
@@ -304,7 +304,7 @@ void rankooh::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instanc
     stats.nconst_base = 0;
     stats.nconst_acyclic = 0;
 
-    // p = \sum_{a\in A,p\in eff(a)}(fadd(a, p)), \forall p \in V
+    // Constraint C1
     for (const auto& var_i : inst.var_rem) {
         nnz = 0;
         ind[nnz] = get_var_idx(var_i);
@@ -344,7 +344,7 @@ void rankooh::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instanc
         stopchk3();
     }
 
-    // \sum_{a\in A, p\in eff(a), q\in pre(a)}(fadd(a, p)) <= q, \forall p,q\in V
+    // Constraint C2
     for (const auto& p : inst.var_rem) {
         for (const auto& q : inst.var_rem) {
             nnz = 0;
@@ -380,6 +380,7 @@ void rankooh::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instanc
         }
     }
 
+    // Tight bounds constraint
     if (env.tight_bounds) {
         double rhs{static_cast<double>(max_steps)};
         nnz = 0;
@@ -403,7 +404,7 @@ void rankooh::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instanc
     int ind_c5_c6_c7[2], ind_c8[3];
     double val_c5_c6_c7[2], val_c8[3];
 
-    // fadd(a, p) <= a, \forall a\in A, p\in eff(a)
+    // Constraint C3
     for (const auto& act_i : inst.act_rem) {
         int var_count{-1};
         for (const auto& var_i : inst.actions[act_i].eff_sparse) {
@@ -428,7 +429,9 @@ void rankooh::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instanc
         stopchk1();
     }
 
-    // fadd(a, q) <= veg(p, q) \forall a\in A, \forall p\in pre(a), \forall q\in eff(a) (V.E.G.)
+    // ~~~~~~~~~~ Vertex Elimination ~~~~~~~~~ //
+
+    // Constraint C6
     for (const auto& act_i : inst.act_rem) {
         for (const auto& var_i : inst.actions[act_i].pre_sparse) {
             int var_count{-1};
@@ -459,7 +462,7 @@ void rankooh::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instanc
         }
     }
 
-    // veg(p, q) + veg(q, p) <= 1 (V.E.G.)
+    // Constraint C7
     for (const auto& var_i : inst.var_rem) {
         for (const auto& var_j : inst.veg_cumulative_graph[var_i]) {
             // if either VEG variable was eliminated, we can skip the constraint
@@ -474,7 +477,7 @@ void rankooh::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instanc
         }
     }
 
-    // veg(a, b) + veg(b, c) <= veg(a, c) (V.E.G.)
+    // Constraint C8
     // TODO: Try adding those as lazy constraints
     for (const auto& [a, b, c] : triangles_list) {
         ind_c8[0] = get_veg_idx(a, b);
@@ -502,8 +505,8 @@ void rankooh::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instanc
     if (env.write_lp) CPX_HANDLE_CALL(log, CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR "/lp/" + env.run_name + ".lp").c_str(), "LP"));
 }
 
-void rankooh::post_cpx_warmstart(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log) {
-    PRINT_VERBOSE(log, "Posting warm start to Rankooh's model.");
+void ve::post_cpx_warmstart(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log) {
+    PRINT_VERBOSE(log, "Posting warm start to VE model.");
     ASSERT_LOG(log, env.sol_s != solution_status::INFEAS && env.sol_s != solution_status::NOTFOUND);
 
     binary_set state{inst.n};
@@ -551,8 +554,8 @@ void rankooh::post_cpx_warmstart(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus
     cpx_sol_val = nullptr;
 }
 
-void rankooh::store_cpx_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst, const logger& log) {
-    PRINT_VERBOSE(log, "Storing Rankooh's solution.");
+void ve::store_cpx_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst, const logger& log) {
+    PRINT_VERBOSE(log, "Storing VE solution.");
 
     double* plan{new double[inst.m_opt + inst.n_fadd]};
     CPX_HANDLE_CALL(log, CPXgetx(cpxenv, cpxlp, plan, 0, inst.m_opt + inst.n_fadd - 1));
@@ -600,9 +603,9 @@ void rankooh::store_cpx_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance&
     }
 
     // store solution
-    hplus::solution rankooh_sol{
+    hplus::solution sol{
         solution, static_cast<unsigned int>(std::accumulate(solution.begin(), solution.end(), 0, [&inst](const unsigned int acc, const size_t index) {
             return acc + inst.actions[index].cost;
         }))};
-    hplus::update_sol(inst, rankooh_sol, log);
+    hplus::update_sol(inst, sol, log);
 }

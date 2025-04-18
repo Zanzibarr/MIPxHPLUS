@@ -55,7 +55,7 @@ Multiple methods have been proposed: the time labeling method was first proposed
 \subsection{Time labeling}
 For the time labeling method, we just need to create for each atom $p$, a timestamp $t_p\in\{0,...,|A^+|\}$.\\
 The constraints to add to the model will then be:
-$$_{(C5)}\quad t_p + 1 \leq t_q + |P|(1-x_{a, q})\qquad\forall a\in A^+, \forall p\in pre(a),q\in add(a)$$
+$$_{(C5)}\quad t_p + 1 \leq t_q + |P|(1-x_{a, q})\qquad\forall a\in A^+,p\in pre(a),q\in add(a)$$
 This constraint reads: if $a$ is first achiever of $q$, then every $p\in pre(a)$ must have a timestamp that precedes than $q$.
 
 The correctness of this model is implied from its construction, having tackled directly the problem of having to construct a timeline of actions out of the obtained solution with constraint ${(C5)}$.

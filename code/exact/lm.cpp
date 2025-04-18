@@ -1,11 +1,11 @@
-#include "dynamic.hpp"
-
 #include <list>
 #include <numeric>  // std::accumulate
 #include <set>
 #include <stack>
 #include <tuple>
 #include <unordered_set>
+
+#include "lm.hpp"
 
 #if HPLUS_INTCHECK == 0
 #define INTCHECK_PQ false
@@ -134,7 +134,6 @@ static std::vector<size_t> cb_compute_minimal_landmark(const hplus::instance& in
     std::vector<size_t> unapplicable;
     std::set_difference(used_acts.begin(), used_acts.end(), reachable_acts.begin(), reachable_acts.end(), std::back_inserter(unapplicable));
 
-    // TODO: Maybe here I can find a larger extension set, and get a smaller landmark(???)
     std::vector<size_t> extension;
     binary_set state{reachable_state};
 
@@ -190,8 +189,6 @@ static std::vector<size_t> cb_compute_minimal_landmark(const hplus::instance& in
         }
     }
 
-    // TODO: Maybe try saturation as showed in the paper
-
     // compute the landmark as the set of actions that, if applied, would reach the goal
     std::vector<size_t> landmark;
     std::set_difference(unused_acts.begin(), unused_acts.end(), extension.begin(), extension.end(), std::back_inserter(landmark));
@@ -236,9 +233,9 @@ static std::tuple<int*, double*, int, double*, char*, int*> cb_cpxconvert_landma
     return {ind, val, nnz, rhs, sense, izero};
 }
 
-static bool dfs(const std::vector<std::set<size_t>>& graph, const size_t& start, const size_t& current, std::vector<size_t>& path,
-                std::unordered_set<size_t>& in_path, std::unordered_set<size_t>& visited, std::vector<std::vector<size_t>>& cycles,
-                const std::unordered_set<size_t>& cycle_found) {
+static bool cycles_dfs(const std::vector<std::set<size_t>>& graph, const size_t& start, const size_t& current, std::vector<size_t>& path,
+                       std::unordered_set<size_t>& in_path, std::unordered_set<size_t>& visited, std::vector<std::vector<size_t>>& cycles,
+                       const std::unordered_set<size_t>& cycle_found) {
     // Skip if current node is already in another cycle
     if (cycle_found.count(current)) return false;
 
@@ -277,7 +274,7 @@ static bool dfs(const std::vector<std::set<size_t>>& graph, const size_t& start,
         if (visited.count(neighbor)) continue;
 
         // Recurse
-        if (dfs(graph, start, neighbor, path, in_path, visited, cycles, cycle_found)) {
+        if (cycles_dfs(graph, start, neighbor, path, in_path, visited, cycles, cycle_found)) {
             return true;
         }
     }
@@ -313,7 +310,7 @@ static std::vector<std::vector<size_t>> cb_compute_sec(const hplus::instance& in
         std::unordered_set<size_t> visited;
 
         // Run DFS to find a cycle starting from this node
-        if (dfs(graph, start, start, path, in_path, visited, cycles, cycle_found)) {
+        if (cycles_dfs(graph, start, start, path, in_path, visited, cycles, cycle_found)) {
             // Mark all nodes in the found cycle as having a cycle
             for (size_t node : cycles.back()) {
                 cycle_found.insert(node);
@@ -368,7 +365,7 @@ static std::tuple<int*, double*, int, double*, char*, int*> cb_cpxconvert_sec_cu
     return {ind, val, nnz, rhs, sense, izero};
 }
 
-int CPXPUBLIC dynamic::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG context_id, void* user_handle) {
+int CPXPUBLIC lm::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG context_id, void* user_handle) {
     auto& [inst, env, stats, log] = *static_cast<cpx_callback_user_handle*>(user_handle);
 
     ASSERT_LOG(log, context_id == CPX_CALLBACKCONTEXT_CANDIDATE);
@@ -404,8 +401,6 @@ int CPXPUBLIC dynamic::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG conte
         delete[] ind;
         ind = nullptr;
 
-        log.print_warn("Reached goal even if the solution is infeasible (%u).", hcost);
-
         constexpr int tmpind{0};
         constexpr double tmpval{0};
         constexpr char tmpsense{'E'};
@@ -440,9 +435,9 @@ int CPXPUBLIC dynamic::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG conte
     delete[] ind;
     ind = nullptr;
 
+    // compute the SEC and add them as new cuts
     int n_sec{0};
     if (env.sec) {
-        // compute the SEC(s) and add them as new cuts
         std::vector<size_t> unreachable_acts;
         std::set_difference(used_acts.begin(), used_acts.end(), reachable_acts.begin(), reachable_acts.end(), std::back_inserter(unreachable_acts));
         const auto& cycles{cb_compute_sec(inst, used_first_archievers, unreachable_acts)};
@@ -469,9 +464,9 @@ int CPXPUBLIC dynamic::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG conte
     return 0;
 }
 
-void dynamic::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log,
-                              hplus::statistics& stats) {
-    PRINT_VERBOSE(log, "Building Dynamic model.");
+void lm::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log,
+                         hplus::statistics& stats) {
+    PRINT_VERBOSE(log, "Building LM model.");
 
     const auto stopchk1 = []() {
         if (CHECK_STOP()) [[unlikely]]
@@ -489,7 +484,7 @@ void dynamic::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
 
         // max number of steps to reach heuristic
         if (env.heur != "none") {
-            unsigned int min_act_cost{inst.actions[0].cost + 1};  // +1 to avoid it being 0
+            unsigned int min_act_cost{std::numeric_limits<unsigned int>::max()};
             unsigned int n_act_zerocost{0};
             for (const auto& act_i : inst.act_rem) {
                 if (inst.actions[act_i].cost == 0)
@@ -634,7 +629,7 @@ void dynamic::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
     stats.nconst_base = 0;
     stats.nconst_acyclic = 0;
 
-    // p = \sum_{a\in A,p\in eff(a)}(fadd(a, p)), \forall p \in V
+    // Constraint C1
     for (const auto& var_i : inst.var_rem) {
         nnz = 0;
         ind[nnz] = get_var_idx(var_i);
@@ -674,7 +669,7 @@ void dynamic::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
         stopchk3();
     }
 
-    // \sum_{a\in A, p\in eff(a), q\in pre(a)}(fadd(a, p)) <= q, \forall p,q\in V
+    // Constraint C2
     for (const auto& p : inst.var_rem) {
         for (const auto& q : inst.var_rem) {
             nnz = 0;
@@ -710,34 +705,20 @@ void dynamic::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
         }
     }
 
-    // Inverse actions constraint
-    for (const auto& act_i : inst.act_rem) {
-        nnz = 0;
-        ind[nnz] = get_act_idx(act_i);
-        val[nnz++] = 1;
-        for (const auto& act_j : inst.act_inv[act_i]) {
-            ind[nnz] = get_act_idx(act_j);
-            val[nnz] = 1;
-            stats.nconst_base++;
-            CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_1, &sense_l, &begin, ind, val, nullptr, nullptr));
-        }
-        stopchk3();
-    }
-
-    if (env.tight_bounds) {
-        double rhs{static_cast<double>(max_steps)};
-        nnz = 0;
+    // Inverse actions constraint (preprocessing)
+    if (env.preprocessing) {
         for (const auto& act_i : inst.act_rem) {
-            if (inst.act_f[act_i]) {
-                rhs--;
-                continue;
-            }
+            nnz = 0;
             ind[nnz] = get_act_idx(act_i);
             val[nnz++] = 1;
+            for (const auto& act_j : inst.act_inv[act_i]) {
+                ind[nnz] = get_act_idx(act_j);
+                val[nnz] = 1;
+                stats.nconst_base++;
+                CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_1, &sense_l, &begin, ind, val, nullptr, nullptr));
+            }
+            stopchk3();
         }
-        stats.nconst_base++;
-        CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs, &sense_l, &begin, ind, val, nullptr, nullptr));
-        stopchk3();
     }
 
     delete[] val;
@@ -745,63 +726,42 @@ void dynamic::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::i
     delete[] ind;
     ind = nullptr;
 
-    // ind = new int[inst.n_opt];
-    // val = new double[inst.n_opt];
+    int ind2[3];
+    double val2[3];
 
-    // for (const auto& act_i : inst.act_rem) {
-    //     if (inst.act_f[act_i]) continue;
-    //     nnz = 0;
-    //     ind[nnz] = get_act_idx(act_i);
-    //     val[nnz++] = 1;
-    //     int var_count{-1};
-    //     for (const auto& var_i : inst.actions[act_i].eff_sparse) {
-    //         var_count++;
-    //         if (inst.fadd_e[act_i][var_i]) continue;
-    //         ind[nnz] = get_fa_idx(act_i, var_count);
-    //         val[nnz++] = -1;
-    //     }
-    //     stats.nconst_base++;
-    //     CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_l, &begin, ind, val, nullptr, nullptr));
-    // }
-
-    // delete[] val;
-    // val = nullptr;
-    // delete[] ind;
-    // ind = nullptr;
-
-    int ind_2[2];
-    double val_2[2];
-
-    // fadd(a, p) <= a, \forall a\in A, p\in eff(a)
+    // Constraint C3
     for (const auto& act_i : inst.act_rem) {
         int var_count{-1};
         for (const auto& var_i : inst.actions[act_i].eff_sparse) {
             var_count++;
-            ind_2[0] = get_act_idx(act_i);
-            val_2[0] = -1;
+            ind2[0] = get_act_idx(act_i);
+            val2[0] = -1;
             // if the first adder was fixed, we can directly fix the action insthead of adding the constraint
             if (inst.fadd_f[act_i][var_i]) {
                 const char fix = 'B';
                 const double one = 1;
-                CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 1, ind_2, &fix, &one));
+                CPX_HANDLE_CALL(log, CPXchgbds(cpxenv, cpxlp, 1, ind2, &fix, &one));
                 continue;
             }
             // if the first adder was eliminated, we can skip the constraint
             else if (inst.fadd_e[act_i][var_i])
                 continue;
-            ind_2[1] = get_fa_idx(act_i, var_count);
-            val_2[1] = 1;
+            ind2[1] = get_fa_idx(act_i, var_count);
+            val2[1] = 1;
             stats.nconst_base++;
-            CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind_2, val_2, nullptr, nullptr));
+            CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind2, val2, nullptr, nullptr));
         }
         stopchk1();
     }
 
+    // ~~~~~~~~~ Modeling acyclicity ~~~~~~~~~ //
+    // left to the callbacks
+
     if (env.write_lp) CPX_HANDLE_CALL(log, CPXwriteprob(cpxenv, cpxlp, (HPLUS_CPLEX_OUTPUT_DIR "/lp/" + env.run_name + ".lp").c_str(), "LP"));
 }
 
-void dynamic::post_cpx_warmstart(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log) {
-    PRINT_VERBOSE(log, "Posting warm start to Dynamic model.");
+void lm::post_cpx_warmstart(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instance& inst, const hplus::environment& env, const logger& log) {
+    PRINT_VERBOSE(log, "Posting warm start to LM model.");
     ASSERT_LOG(log, env.sol_s != solution_status::INFEAS && env.sol_s != solution_status::NOTFOUND);
 
     binary_set state{inst.n};
@@ -842,8 +802,8 @@ void dynamic::post_cpx_warmstart(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus
     cpx_sol_val = nullptr;
 }
 
-void dynamic::store_cpx_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst, const logger& log) {
-    PRINT_VERBOSE(log, "Storing Dynamic solution.");
+void lm::store_cpx_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst, const logger& log) {
+    PRINT_VERBOSE(log, "Storing LM solution.");
 
     double* plan{new double[inst.m_opt + inst.n_fadd]};
     CPX_HANDLE_CALL(log, CPXgetx(cpxenv, cpxlp, plan, 0, inst.m_opt + inst.n_fadd - 1));
@@ -875,9 +835,9 @@ void dynamic::store_cpx_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance&
     }
 
     // store solution
-    hplus::solution rankooh_sol{
+    hplus::solution sol{
         solution, static_cast<unsigned int>(std::accumulate(solution.begin(), solution.end(), 0, [&inst](const unsigned int acc, const size_t index) {
             return acc + inst.actions[index].cost;
         }))};
-    hplus::update_sol(inst, rankooh_sol, log);
+    hplus::update_sol(inst, sol, log);
 }

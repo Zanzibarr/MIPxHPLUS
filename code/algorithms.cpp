@@ -110,12 +110,12 @@ void run_model(hplus::instance& inst, hplus::environment& env, hplus::statistics
     cpx_init(cpxenv, cpxlp, env, log);
     stopchk();
 
-    if (env.alg == HPLUS_CLI_ALG_IMAI)
-        imai::build_cpx_model(cpxenv, cpxlp, inst, env, log, stats);
-    else if (env.alg == HPLUS_CLI_ALG_RANKOOH)
-        rankooh::build_cpx_model(cpxenv, cpxlp, inst, env, log, stats);
-    else if (env.alg == HPLUS_CLI_ALG_DYNAMIC)
-        dynamic::build_cpx_model(cpxenv, cpxlp, inst, env, log, stats);
+    if (env.alg == HPLUS_CLI_ALG_TL)
+        tl::build_cpx_model(cpxenv, cpxlp, inst, env, log, stats);
+    else if (env.alg == HPLUS_CLI_ALG_VE)
+        ve::build_cpx_model(cpxenv, cpxlp, inst, env, log, stats);
+    else if (env.alg == HPLUS_CLI_ALG_LM)
+        lm::build_cpx_model(cpxenv, cpxlp, inst, env, log, stats);
     stopchk();
 
     // time limit
@@ -126,18 +126,18 @@ void run_model(hplus::instance& inst, hplus::environment& env, hplus::statistics
 
     if (env.warm_start) {  // Post warm starto to CPLEX
 
-        if (env.alg == HPLUS_CLI_ALG_IMAI)
-            imai::post_cpx_warmstart(cpxenv, cpxlp, inst, env, log);
-        else if (env.alg == HPLUS_CLI_ALG_RANKOOH)
-            rankooh::post_cpx_warmstart(cpxenv, cpxlp, inst, env, log);
-        else if (env.alg == HPLUS_CLI_ALG_DYNAMIC)
-            dynamic::post_cpx_warmstart(cpxenv, cpxlp, inst, env, log);
+        if (env.alg == HPLUS_CLI_ALG_TL)
+            tl::post_cpx_warmstart(cpxenv, cpxlp, inst, env, log);
+        else if (env.alg == HPLUS_CLI_ALG_VE)
+            ve::post_cpx_warmstart(cpxenv, cpxlp, inst, env, log);
+        else if (env.alg == HPLUS_CLI_ALG_LM)
+            lm::post_cpx_warmstart(cpxenv, cpxlp, inst, env, log);
     }
 
     stats.nusercuts = 0;
-    dynamic::cpx_callback_user_handle callback_data{.inst = inst, .env = env, .stats = stats, .log = log};
-    if (env.alg == HPLUS_CLI_ALG_DYNAMIC)
-        CPX_HANDLE_CALL(log, CPXcallbacksetfunc(cpxenv, cpxlp, CPX_CALLBACKCONTEXT_CANDIDATE, dynamic::cpx_callback, &callback_data));
+    lm::cpx_callback_user_handle callback_data{.inst = inst, .env = env, .stats = stats, .log = log};
+    if (env.alg == HPLUS_CLI_ALG_LM)
+        CPX_HANDLE_CALL(log, CPXcallbacksetfunc(cpxenv, cpxlp, CPX_CALLBACKCONTEXT_CANDIDATE, lm::cpx_callback, &callback_data));
 
     stats.build = env.timer.get_time() - start_time;
 
@@ -155,12 +155,12 @@ void run_model(hplus::instance& inst, hplus::environment& env, hplus::statistics
 
     if (parse_cpx_status(cpxenv, cpxlp, env, log)) {  // If CPLEX has found a solution
         CPX_HANDLE_CALL(log, CPXgetbestobjval(cpxenv, cpxlp, &stats.lb));
-        if (env.alg == HPLUS_CLI_ALG_IMAI)
-            imai::store_cpx_sol(cpxenv, cpxlp, inst, log);
-        else if (env.alg == HPLUS_CLI_ALG_RANKOOH)
-            rankooh::store_cpx_sol(cpxenv, cpxlp, inst, log);
-        else if (env.alg == HPLUS_CLI_ALG_DYNAMIC)
-            dynamic::store_cpx_sol(cpxenv, cpxlp, inst, log);
+        if (env.alg == HPLUS_CLI_ALG_TL)
+            tl::store_cpx_sol(cpxenv, cpxlp, inst, log);
+        else if (env.alg == HPLUS_CLI_ALG_VE)
+            ve::store_cpx_sol(cpxenv, cpxlp, inst, log);
+        else if (env.alg == HPLUS_CLI_ALG_LM)
+            lm::store_cpx_sol(cpxenv, cpxlp, inst, log);
     }
 
     cpx_close(cpxenv, cpxlp);

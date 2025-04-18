@@ -6,7 +6,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 cmake_path(GET CMAKE_HOME_DIRECTORY PARENT_PATH HOME_DIR)
 
 project(hplus)
-set(CODE_VERSION "1.4.2")
+set(CODE_VERSION "2.0.0")
 
 # Enforce out-of-source build
 if (CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
@@ -139,9 +139,9 @@ add_executable(info info.cpp)
 target_link_libraries(hplus 
     algorithms
     hplus_instance
-    imai
-    rankooh
-    dynamic
+    tl
+    ve
+    lm
     greedycost
     greedycxe
     hmax_hadd
