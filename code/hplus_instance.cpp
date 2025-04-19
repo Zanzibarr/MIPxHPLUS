@@ -528,7 +528,7 @@ void hplus::update_sol(instance& inst, const solution& sol, const logger& log) {
 void hplus::print_sol(const instance& inst, const logger& log) {
     const auto& [sol_plan, sol_cost]{inst.best_sol};
     log.print("Solution cost: %10u", sol_cost);
-    // for (const auto& act_i : sol_plan) log.print("(%s)", inst.actions[act_i].name.c_str());  // TODO: Uncomment to show the plan
+    for (const auto& act_i : sol_plan) log.print("(%s)", inst.actions[act_i].name.c_str());
 }
 
 // ##################################################################### //

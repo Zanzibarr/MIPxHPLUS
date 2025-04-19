@@ -482,7 +482,6 @@ void ve::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& in
     }
 
     // Constraint C8
-    // TODO: Try adding those as lazy constraints
     for (const auto& [a, b, c] : triangles_list) {
         ind2[0] = get_veg_idx(a, b);
         val2[0] = 1;
