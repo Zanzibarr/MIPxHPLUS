@@ -377,7 +377,8 @@ static std::tuple<int*, double*, int, double*, char*, int*> cb_cpxconvert_sec_cu
             val[nnz++] = 1;
         }
 
-        rhs[sec_counter++] = nnz - rhs[sec_counter] - 1;
+        rhs[sec_counter] = nnz - rhs[sec_counter] - 1;
+        sec_counter++;
     }
 
     return {ind, val, nnz, rhs, sense, izero};

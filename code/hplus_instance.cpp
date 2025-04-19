@@ -708,7 +708,7 @@ static void relevance_analysis_forward(hplus::instance& inst, const std::vector<
                                        const logger& log) {
     PRINT_VERBOSE(log, "Relevance analysis (forward-chaining).");
 
-    std::vector<size_t> rem_act = (!inst.act_e & !inst.act_f).sparse();
+    std::vector<size_t> rem_act = ((!inst.act_e) & (!inst.act_f)).sparse();
 
     for (const auto& act_i : rem_act) {
         if (!first_adders[act_i].intersects(relevant_variables)) inst.act_e.add(act_i);
