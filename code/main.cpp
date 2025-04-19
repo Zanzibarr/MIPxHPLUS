@@ -151,9 +151,6 @@ static void show_info(const hplus::instance& inst, const hplus::environment& env
     return;
 #endif
 
-    if (env.preprocessing && env.tight_bounds)
-        PRINT_WARN(log, "Immediate action application might mess up with the tight bounds analysis: removed immediate application analysis.");
-
     log.print(LINE);
 
     std::time_t time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
