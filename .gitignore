@@ -26,7 +26,6 @@ thesis/*.run.xml
 thesis/*.synctex.gz
 thesis/*.toc
 thesis/*.xmpi
-thesis/*.pdf
 
 # files
 
