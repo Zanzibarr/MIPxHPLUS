@@ -771,6 +771,7 @@ void lm::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instan
             ind2[nnz] = get_act_idx(act_i);
             val2[nnz++] = 1;
             for (const auto& act_j : inst.act_inv[act_i]) {
+                if (act_j <= act_i) continue;
                 ind2[nnz] = get_act_idx(act_j);
                 val2[nnz] = 1;
                 stats.nconst_base++;
