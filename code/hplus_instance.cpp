@@ -1,16 +1,6 @@
-/**
- * @file hplus_instance.cpp
- * @brief Methods implementation of the hplus_instance.hpp interface
- *
- * @author Matteo Zanella <matteozanella2@gmail.com>
- * Copyright 2025 Matteo Zanella
- */
-
 #include "hplus_instance.hpp"
 
-#include <algorithm>  // For std::set_difference
-#include <fstream>    // For std::ifstream
-#include <list>       // For std::list
+#include <fstream>  // For std::ifstream
 
 void hplus::print_stats(const statistics& stats, const logger& log) {
 #if HPLUS_VERBOSE < 5
@@ -40,23 +30,23 @@ void hplus::print_stats(const statistics& stats, const logger& log) {
 }
 
 void hplus::init(environment& env) {
-    env = environment{.exec_s = exec_status::START,
-                      .sol_s = solution_status::NOTFOUND,
-                      .input_file = "N/A",
-                      .log_name = HPLUS_LOG_DIR "/hplus_log.log",
-                      .run_name = "UnnamedRun",
-                      .alg = HPLUS_CLI_ALG_VE,
-                      .heur = "hadd",
-                      .preprocessing = true,
-                      .warm_start = true,
-                      .tight_bounds = false,
-                      .minimal_landmark = true,
-                      .complete_landmark = true,
-                      .sec = true,
-                      .using_cplex = true,
-                      .log = false,
-                      .write_lp = false,
-                      .time_limit = 60,
+    env = environment{.exec_s = HPLUS_DEF_EXEC_STATUS,
+                      .sol_s = HPLUS_DEF_SOL_STATUS,
+                      .input_file = HPLUS_DEF_LOG_FILE,
+                      .log_name = HPLUS_DEF_LOG_NAME,
+                      .run_name = HPLUS_DEF_RUN_NAME,
+                      .alg = HPLUS_DEF_ALG,
+                      .heur = HPLUS_DEF_HEUR,
+                      .preprocessing = HPLUS_DEF_PREP,
+                      .warm_start = HPLUS_DEF_WARM_START,
+                      .tight_bounds = HPLUS_DEF_TIGHT_BOUNDS,
+                      .minimal_landmark = HPLUS_DEF_MLM,
+                      .complete_landmark = HPLUS_DEF_CLM,
+                      .sec = HPLUS_DEF_SEC,
+                      .using_cplex = HPLUS_DEF_USING_CPLEX,
+                      .log = HPLUS_DEF_LOG,
+                      .write_lp = HPLUS_DEF_WRITE_LP,
+                      .time_limit = HPLUS_DEF_TIME_LIMIT,
                       .timer = time_keeper()};
 }
 
@@ -447,8 +437,8 @@ static bool parse_inst_file(hplus::instance& inst, hplus::environment& env, hplu
     // ====================================================== //
     // ================ OPTIMIZE ENVIRONMENT ================ //
     // ====================================================== //
-    if (inst.equal_costs && env.heur == "greedycost") {
-        env.heur = "greedycxe";
+    if (inst.equal_costs && env.heur == HPLUS_CLI_HEUR_GREEDYCOST) {
+        env.heur = HPLUS_CLI_HEUR_GREEDYCXE;
         if (!silent) PRINT_WARN(log, "Detected instance with equal costs actions, switching to 'greedycxe' heuristic.");
     }
 

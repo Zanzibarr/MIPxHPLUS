@@ -1,7 +1,6 @@
 /**
  * @file hplus_instance.hpp
- * @brief Interface for the hplus instance to be used in the hplus master thesis
- * project
+ * @brief Interface for the hplus instance to be used in the hplus master thesis project
  *
  * @author Matteo Zanella <matteozanella2@gmail.com>
  * Copyright 2025 Matteo Zanella

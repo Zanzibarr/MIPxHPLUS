@@ -25,7 +25,7 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
-## [2.0.0] - YYYY/MM/DD
+## [2.0.0] -2025/04/19
 ### Tested all features added in 1.4.*
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->

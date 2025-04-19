@@ -5,18 +5,14 @@
 void greedycost::run(hplus::instance& inst, hplus::environment& env, const logger& log) {
     PRINT_VERBOSE(log, "Running greedycost algorithm.");
 
+    binary_set state{inst.n};  // initial state is empty
+
     // greedy choice
     const auto find_best_act = [&inst](const std::list<size_t>& candidates) {
         size_t choice{0};
         int best_cost{std::numeric_limits<int>::max()};
         for (const auto& act_i : candidates) {
-            if (inst.act_f[act_i]) {
-                choice = act_i;
-                best_cost = -1;
-                continue;
-            }
-
-            if (best_cost < 0) continue;
+            if (inst.act_f[act_i]) return std::pair(true, act_i);
 
             if (inst.actions[act_i].cost >= static_cast<unsigned int>(best_cost)) continue;
 
@@ -29,8 +25,6 @@ void greedycost::run(hplus::instance& inst, hplus::environment& env, const logge
     hplus::solution heur_sol;
     heur_sol.plan.reserve(inst.m_opt);
     heur_sol.cost = 0;
-
-    binary_set state{inst.n};  // initial state is empty
 
     std::list<size_t> candidates;
     for (const auto& act_i : inst.act_rem) {

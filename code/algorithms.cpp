@@ -1,11 +1,3 @@
-/**
- * @file algorithms.cpp
- * @brief Algorithms to solve the delete-free relaxation of the planning task
- *
- * @author Matteo Zanella <matteozanella2@gmail.com>
- * Copyright 2025 Matteo Zanella
- */
-
 #include "algorithms.hpp"
 
 // ##################################################################### //
@@ -20,24 +12,23 @@ void cpx_init(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::environment& env,
     cpxlp = CPXcreateprob(cpxenv, &cpxerror, env.run_name.c_str());
     CPX_HANDLE_CALL(log, cpxerror);
     // log file
-    CPX_HANDLE_CALL(log, CPXsetintparam(cpxenv, CPXPARAM_ScreenOutput, CPX_OFF));
+    CPX_HANDLE_CALL(log, CPXsetintparam(cpxenv, CPXPARAM_ScreenOutput, HPLUS_DEF_CPX_SCREENOUTPUT));
     if (log_file) CPX_HANDLE_CALL(log, CPXsetlogfilename(cpxenv, (HPLUS_CPLEX_OUTPUT_DIR "/log/" + env.run_name + ".log").c_str(), "w"));
-    CPX_HANDLE_CALL(log, CPXsetintparam(cpxenv, CPX_PARAM_CLONELOG, -1));
-    CPX_HANDLE_CALL(log, CPXsetintparam(cpxenv, CPXPARAM_MIP_Display, 3));
-    // CPX_HANDLE_CALL(log, CPXsetintparam(cpxenv, CPXPARAM_MIP_Limits_Solutions, 1));
+    CPX_HANDLE_CALL(log, CPXsetintparam(cpxenv, CPX_PARAM_CLONELOG, HPLUS_DEF_CPX_CLONELOG));
+    CPX_HANDLE_CALL(log, CPXsetintparam(cpxenv, CPXPARAM_MIP_Display, HPLUS_DEF_CPX_MIP_DISPLAY));
     // tolerance
-    CPX_HANDLE_CALL(log, CPXsetdblparam(cpxenv, CPXPARAM_MIP_Tolerances_MIPGap, 0));
+    CPX_HANDLE_CALL(log, CPXsetdblparam(cpxenv, CPXPARAM_MIP_Tolerances_MIPGap, HPLUS_DEF_CPX_TOL_GAP));
     // memory/size limits
-    CPX_HANDLE_CALL(log, CPXsetdblparam(cpxenv, CPXPARAM_MIP_Limits_TreeMemory, 12000));
-    CPX_HANDLE_CALL(log, CPXsetdblparam(cpxenv, CPXPARAM_WorkMem, 4096));
-    CPX_HANDLE_CALL(log, CPXsetintparam(cpxenv, CPXPARAM_MIP_Strategy_File, 3));
+    CPX_HANDLE_CALL(log, CPXsetdblparam(cpxenv, CPXPARAM_MIP_Limits_TreeMemory, HPLUS_DEF_CPX_TREE_MEM));
+    CPX_HANDLE_CALL(log, CPXsetdblparam(cpxenv, CPXPARAM_WorkMem, HPLUS_DEF_CPX_WORK_MEM));
+    CPX_HANDLE_CALL(log, CPXsetintparam(cpxenv, CPXPARAM_MIP_Strategy_File, HPLUS_DEF_CPX_STRAT_FILE));
     // terminate condition
     CPX_HANDLE_CALL(log, CPXsetterminate(cpxenv, &global_terminate));
 }
 
-void cpx_close(CPXENVptr& cpxenv, CPXLPptr& cpxlp) {
-    CPXfreeprob(cpxenv, &cpxlp);
-    CPXcloseCPLEX(&cpxenv);
+void cpx_close(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const logger& log) {
+    CPX_HANDLE_CALL(log, CPXfreeprob(cpxenv, &cpxlp));
+    CPX_HANDLE_CALL(log, CPXcloseCPLEX(&cpxenv));
 }
 
 [[nodiscard]]
@@ -77,13 +68,13 @@ bool parse_cpx_status(const CPXENVptr& cpxenv, const CPXLPptr& cpxlp, hplus::env
 
 void run_heur(hplus::instance& inst, hplus::environment& env, const logger& log) {
     srand(time(nullptr));
-    if (env.heur == "greedycost")
+    if (env.heur == HPLUS_CLI_HEUR_GREEDYCOST)
         greedycost::run(inst, env, log);
-    else if (env.heur == "greedycxe")
+    else if (env.heur == HPLUS_CLI_HEUR_GREEDYCXE)
         greedycxe::run(inst, env, log);
-    else if (env.heur == "hmax")
+    else if (env.heur == HPLUS_CLI_HEUR_GREEDYHMAX)
         hmax::run(inst, env, log);
-    else if (env.heur == "hadd")
+    else if (env.heur == HPLUS_CLI_HEUR_GREEDYHADD)
         hadd::run(inst, env, log);
     else
         log.raise_error("The heuristic specified (%s) is not on the list of possible heuristics... Please use the --h flag for instructions.",
@@ -163,7 +154,7 @@ void run_model(hplus::instance& inst, hplus::environment& env, hplus::statistics
             lm::store_cpx_sol(cpxenv, cpxlp, inst, log);
     }
 
-    cpx_close(cpxenv, cpxlp);
+    cpx_close(cpxenv, cpxlp, log);
 
     stats.execution = env.timer.get_time() - start_time;
 }

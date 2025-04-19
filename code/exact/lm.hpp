@@ -1,19 +1,17 @@
 /**
  * @file lm.hpp
- * @brief Methods to find the optimal solution using the model proposed in Rankooh's paper (using vertex elimination) with a lm approach to
- * building and solving it (using callbacks)
+ * @brief Methods to find the optimal solution modeling acyclicity using landmarks ans S.E.C.
  *
  * @author Matteo Zanella <matteozanella2@gmail.com>
  * Copyright 2025 Matteo Zanella
  */
 
-#ifndef DYNAMIC_HPP
-#define DYNAMIC_HPP
+#ifndef LM_HPP
+#define LM_HPP
 
 #include <cplex.h>
 
 #include "hplus_instance.hpp"
-#include "log.hxx"
 #include "utils.hpp"
 
 namespace lm {
@@ -48,4 +46,4 @@ void store_cpx_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst, co
 
 }  // namespace lm
 
-#endif /* DYNAMIC_HPP */
+#endif /* LM_HPP */

@@ -1,7 +1,6 @@
 /**
  * @file algorithms.hpp
- * @brief Interface for using algorithms to solve the delete-free relaxation of
- * the planning task
+ * @brief Interface for using algorithms to solve the delete-free relaxation of the planning task
  *
  * @author Matteo Zanella <matteozanella2@gmail.com>
  * Copyright 2025 Matteo Zanella

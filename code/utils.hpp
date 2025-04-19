@@ -47,12 +47,46 @@
 #define HPLUS_CLI_ALG_TL "tl"
 #define HPLUS_CLI_ALG_VE "ve"
 #define HPLUS_CLI_ALG_LM "lm"
+#define HPLUS_CLI_HEUR_GREEDYCOST "greedycost"
+#define HPLUS_CLI_HEUR_GREEDYCXE "greedycxe"
+#define HPLUS_CLI_HEUR_GREEDYHMAX "hmax"
+#define HPLUS_CLI_HEUR_GREEDYHADD "hadd"
 
 // ##################################################################### //
 // ########################### DEFAULT VALUES ########################## //
 // ##################################################################### //
 
+#define HPLUS_DEF_EXEC_STATUS exec_status::START
+#define HPLUS_DEF_SOL_STATUS solution_status::NOTFOUND
+#define HPLUS_DEF_LOG_FILE "N\\A"
+#define HPLUS_DEF_LOG_NAME HPLUS_LOG_DIR "/hplus_log.log"
+#define HPLUS_DEF_RUN_NAME "Unnamed run"
+#define HPLUS_DEF_ALG HPLUS_CLI_ALG_VE
+#define HPLUS_DEF_HEUR HPLUS_CLI_HEUR_GREEDYHADD
+#define HPLUS_DEF_PREP true
+#define HPLUS_DEF_WARM_START true
+#define HPLUS_DEF_TIGHT_BOUNDS false
+#define HPLUS_DEF_MLM true
+#define HPLUS_DEF_CLM true
+#define HPLUS_DEF_SEC true
+#define HPLUS_DEF_USING_CPLEX true
+#define HPLUS_DEF_LOG false
+#define HPLUS_DEF_WRITE_LP false
+#define HPLUS_DEF_TIME_LIMIT 60
+
+// ====================================================== //
+// ================== CPLEX PARAMETERS ================== //
+// ====================================================== //
+
 #define HPLUS_CPX_INT_ROUNDING 0.5
+
+#define HPLUS_DEF_CPX_SCREENOUTPUT CPX_OFF
+#define HPLUS_DEF_CPX_CLONELOG -1
+#define HPLUS_DEF_CPX_MIP_DISPLAY 3
+#define HPLUS_DEF_CPX_TOL_GAP 0
+#define HPLUS_DEF_CPX_TREE_MEM 12000
+#define HPLUS_DEF_CPX_WORK_MEM 4096
+#define HPLUS_DEF_CPX_STRAT_FILE 3
 
 // ##################################################################### //
 // ####################### PRINTING AND DEBUGGING ###################### //

@@ -539,10 +539,10 @@ void ve::post_cpx_warmstart(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::ins
             var_count++;
             if (state[var_i]) continue;
 
-            size_t cpx_var_idx = inst.m_opt + inst.n_fadd + inst.var_opt_conv[var_i];
-            cpx_sol_val[cpx_var_idx] = 1;
             size_t cpx_fad_idx = inst.m_opt + inst.fadd_cpx_start[inst.act_opt_conv[act_i]] + var_count;
             cpx_sol_val[cpx_fad_idx] = 1;
+            size_t cpx_var_idx = inst.m_opt + inst.n_fadd + inst.var_opt_conv[var_i];
+            cpx_sol_val[cpx_var_idx] = 1;
             for (const auto& var_j : inst.actions[act_i].pre_sparse) {
                 std::vector<size_t> tmp = inst.veg_cumulative_graph[var_j].sparse();
                 size_t veg_idx = static_cast<int>(inst.veg_starts[inst.var_opt_conv[var_j]] +
@@ -555,6 +555,7 @@ void ve::post_cpx_warmstart(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::ins
     }
 
     CPX_HANDLE_CALL(log, CPXaddmipstarts(cpxenv, cpxlp, 1, ncols, &izero, cpx_sol_ind, cpx_sol_val, &effortlevel, nullptr));
+
     delete[] cpx_sol_ind;
     cpx_sol_ind = nullptr;
     delete[] cpx_sol_val;

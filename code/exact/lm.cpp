@@ -188,7 +188,8 @@ static std::vector<size_t> cb_compute_minimal_landmark(const hplus::instance& in
                     skip = false;
                 }
             }
-            if (skip) break;
+            if (skip) [[unlikely]]
+                break;
         }
 
         // if the new state doesn't contain the goal, then we can update the reachable state and remove the applicable actions from the previously
@@ -264,9 +265,7 @@ static bool cycles_dfs(const std::vector<std::set<size_t>>& graph, const size_t&
     for (size_t neighbor : graph[current]) {
         // If we find the start node, we've found a cycle
         if (neighbor == start) {
-            // Create the cycle
-            std::vector<size_t> cycle = path;
-            cycles.push_back(cycle);
+            cycles.push_back(path);
             return true;
         }
 
@@ -292,9 +291,7 @@ static bool cycles_dfs(const std::vector<std::set<size_t>>& graph, const size_t&
         if (visited.count(neighbor)) continue;
 
         // Recurse
-        if (cycles_dfs(graph, start, neighbor, path, in_path, visited, cycles, cycle_found)) {
-            return true;
-        }
+        if (cycles_dfs(graph, start, neighbor, path, in_path, visited, cycles, cycle_found)) return true;
     }
 
     // Backtrack
@@ -309,9 +306,9 @@ static std::vector<std::vector<size_t>> cb_compute_sec(const hplus::instance& in
     std::vector<std::set<size_t>> graph(inst.m_opt);
     for (const auto& act_i_cpx : unreachable_acts) {
         for (const auto& p : used_first_archievers[act_i_cpx]) {
-            for (const auto& act_i : inst.act_with_pre[p]) {
-                if (std::binary_search(unreachable_acts.begin(), unreachable_acts.end(), inst.act_opt_conv[act_i]))
-                    graph[act_i_cpx].insert(inst.act_opt_conv[act_i]);
+            for (const auto& act_j : inst.act_with_pre[p]) {
+                if (std::binary_search(unreachable_acts.begin(), unreachable_acts.end(), inst.act_opt_conv[act_j]))
+                    graph[act_i_cpx].insert(inst.act_opt_conv[act_j]);
             }
         }
     }
@@ -355,29 +352,31 @@ static std::tuple<int*, double*, int, double*, char*, int*> cb_cpxconvert_sec_cu
     for (const auto& cycle : cycles) {
         sense[sec_counter] = 'L';
         izero[sec_counter] = nnz;
-        rhs[sec_counter] = nnz;
+        rhs[sec_counter] = -1;
 
         // first archievers in the cycle
+        int var_count{-1};
         for (size_t i = 0; i < cycle.size() - 1; i++) {
-            int var_count{-1};
+            var_count = -1;
             for (const auto& p : inst.actions[inst.act_cpxtoidx[cycle[i]]].eff_sparse) {
                 var_count++;
                 if (!used_first_archievers[cycle[i]][p] || !inst.actions[inst.act_cpxtoidx[cycle[i + 1]]].pre[p]) continue;
 
                 ind[nnz] = inst.m_opt + inst.fadd_cpx_start[cycle[i]] + var_count;
                 val[nnz++] = 1;
+                rhs[sec_counter]++;
             }
         }
-        int var_count{-1};
+        var_count = -1;
         for (const auto& p : inst.actions[inst.act_cpxtoidx[cycle[cycle.size() - 1]]].eff_sparse) {
             var_count++;
             if (!used_first_archievers[cycle[cycle.size() - 1]][p] || !inst.actions[inst.act_cpxtoidx[cycle[0]]].pre[p]) continue;
 
             ind[nnz] = inst.m_opt + inst.fadd_cpx_start[cycle[cycle.size() - 1]] + var_count;
             val[nnz++] = 1;
+            rhs[sec_counter]++;
         }
 
-        rhs[sec_counter] = nnz - rhs[sec_counter] - 1;
         sec_counter++;
     }
 
@@ -818,15 +817,16 @@ void lm::post_cpx_warmstart(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::ins
             var_count++;
             if (state[var_i]) continue;
 
-            size_t cpx_var_idx = inst.m_opt + inst.n_fadd + inst.var_opt_conv[var_i];
-            cpx_sol_val[cpx_var_idx] = 1;
             size_t cpx_fad_idx = inst.m_opt + inst.fadd_cpx_start[inst.act_opt_conv[act_i]] + var_count;
             cpx_sol_val[cpx_fad_idx] = 1;
+            size_t cpx_var_idx = inst.m_opt + inst.n_fadd + inst.var_opt_conv[var_i];
+            cpx_sol_val[cpx_var_idx] = 1;
         }
         state |= inst.actions[act_i].eff;
     }
 
     CPX_HANDLE_CALL(log, CPXaddmipstarts(cpxenv, cpxlp, 1, ncols, &izero, cpx_sol_ind, cpx_sol_val, &effortlevel, nullptr));
+
     delete[] cpx_sol_ind;
     cpx_sol_ind = nullptr;
     delete[] cpx_sol_val;

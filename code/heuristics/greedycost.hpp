@@ -10,7 +10,6 @@
 #define GREEDYCOST_HPP
 
 #include "hplus_instance.hpp"
-#include "log.hxx"
 #include "utils.hpp"
 
 namespace greedycost {

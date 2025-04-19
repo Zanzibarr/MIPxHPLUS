@@ -1,18 +1,17 @@
 /**
  * @file ve.hpp
- * @brief Methods to find the optimal solution using the model proposed in Rankooh's paper (using vertex elimination)
+ * @brief Methods to find the optimal solution modeling acyclicity using vertex elimination
  *
  * @author Matteo Zanella <matteozanella2@gmail.com>
  * Copyright 2025 Matteo Zanella
  */
 
-#ifndef RANKOOH_HPP
-#define RANKOOH_HPP
+#ifndef VE_HPP
+#define VE_HPP
 
 #include <cplex.h>
 
 #include "hplus_instance.hpp"
-#include "log.hxx"
 #include "utils.hpp"
 
 namespace ve {
@@ -35,4 +34,4 @@ void store_cpx_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst, co
 
 }  // namespace ve
 
-#endif /* RANKOOH_HPP */
+#endif /* VE_HPP */

@@ -5,20 +5,15 @@
 void greedycxe::run(hplus::instance& inst, hplus::environment& env, const logger& log) {
     PRINT_VERBOSE(log, "Running greedycxe algorithm.");
 
+    binary_set state{inst.n};  // initial state is empty
+
     // greedy choice
-    const auto find_best_act = [&inst](const std::list<size_t>& candidates, const binary_set& state) {
+    const auto find_best_act = [&inst, &state](const std::list<size_t>& candidates) {
         size_t choice{0};
         bool found{false};
         double best_cxe{std::numeric_limits<double>::infinity()};
         for (const auto& act_i : candidates) {
-            if (inst.act_f[act_i]) {
-                choice = act_i;
-                best_cxe = -1;
-                found = true;
-                continue;
-            }
-
-            if (best_cxe < 0) continue;
+            if (inst.act_f[act_i]) return std::pair(true, act_i);
 
             unsigned int neff{0};
             for (const auto& var_i : inst.actions[act_i].eff_sparse) {
@@ -39,8 +34,6 @@ void greedycxe::run(hplus::instance& inst, hplus::environment& env, const logger
     heur_sol.plan.reserve(inst.m_opt);
     heur_sol.cost = 0;
 
-    binary_set state{inst.n};  // initial state is empty
-
     std::list<size_t> candidates;
     for (const auto& act_i : inst.act_rem) {
         if (inst.actions[act_i].pre_sparse.empty()) candidates.push_back(act_i);
@@ -52,7 +45,7 @@ void greedycxe::run(hplus::instance& inst, hplus::environment& env, const logger
             return;
         }
 
-        const auto [found, choice]{find_best_act(candidates, state)};
+        const auto [found, choice]{find_best_act(candidates)};
         if (!found) [[unlikely]] {
             env.sol_s = solution_status::INFEAS;
             return;

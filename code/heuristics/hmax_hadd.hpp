@@ -1,6 +1,6 @@
 /**
  * @file hmax_hadd.hpp
- * @brief hmax_hadd heuristic
+ * @brief hmax and hadd heuristics
  *
  * @author Matteo Zanella <matteozanella2@gmail.com>
  * Copyright 2025 Matteo Zanella
@@ -10,7 +10,6 @@
 #define HMAX_HADD_HPP
 
 #include "hplus_instance.hpp"
-#include "log.hxx"
 #include "utils.hpp"
 
 namespace hmax {

@@ -1,18 +1,17 @@
 /**
  * @file tl.hpp
- * @brief Methods to find the optimal solution using the model proposed in Imai's paper
+ * @brief Methods to find the optimal solution modeling acyclicity using time labels
  *
  * @author Matteo Zanella <matteozanella2@gmail.com>
  * Copyright 2025 Matteo Zanella
  */
 
-#ifndef IMAI_HPP
-#define IMAI_HPP
+#ifndef TL_HPP
+#define TL_HPP
 
 #include <cplex.h>
 
 #include "hplus_instance.hpp"
-#include "log.hxx"
 #include "utils.hpp"
 
 namespace tl {
@@ -35,4 +34,4 @@ void store_cpx_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst, co
 
 }  // namespace tl
 
-#endif /* IMAI_HPP */
+#endif /* TL_HPP */
