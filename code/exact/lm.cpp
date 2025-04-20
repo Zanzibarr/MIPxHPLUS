@@ -500,28 +500,6 @@ void lm::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instan
     };
 
     // ====================================================== //
-    // =================== TIGHTER BOUNDS =================== //
-    // ====================================================== //
-
-    unsigned int max_steps{static_cast<unsigned int>(inst.n_opt)};
-    if (env.tight_bounds) {
-        // max number of steps to reach heuristic
-        if (env.heur != "none") {
-            unsigned int min_act_cost{std::numeric_limits<unsigned int>::max()};
-            unsigned int n_act_zerocost{0};
-            for (const auto& act_i : inst.act_rem) {
-                if (inst.actions[act_i].cost == 0)
-                    n_act_zerocost++;
-                else if (inst.actions[act_i].cost < min_act_cost)
-                    min_act_cost = inst.actions[act_i].cost;
-            }
-            const unsigned int nsteps{static_cast<unsigned int>(std::ceil(static_cast<double>(inst.best_sol.cost) / min_act_cost)) + n_act_zerocost};
-            if (nsteps < max_steps) max_steps = nsteps;
-        }
-    }
-    stopchk1();
-
-    // ====================================================== //
     // =================== CPLEX VARIABLES ================== //
     // ====================================================== //
 

@@ -53,7 +53,7 @@ As shown both in \cite{Imai_15} and \cite{Rankooh_22}, any solution $\pi$ needs 
 Multiple methods have been proposed: the time labeling method was first proposed in \cite{Imai_15} while vertex elimination was proposed in \cite{Rankooh_22}; the latter, however, proposed a revised time labeling method, proving that it was better than its predecessor, hence we will only mention the improved version.
 
 \subsection{Time labeling}
-For the time labeling method, we just need to create for each atom $p$, a timestamp $t_p\in\{0,...,|A^+|\}$.\\
+For the time labeling method, we just need to create for each atom $p$, a timestamp $t_p\in\{0,...,|P|\}$.\\
 The constraints to add to the model will then be:
 $$_{(C5)}\quad t_p + 1 \leq t_q + |P|(1-x_{a, q})\qquad\forall a\in A^+,p\in \mbox{pre}(a),q\in \mbox{add}(a)$$
 This constraint reads: if $a$ is first achiever of $q$, then every $p\in \mbox{pre}(a)$ must have a timestamp that precedes than $q$.
