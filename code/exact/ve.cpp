@@ -132,11 +132,8 @@ void ve::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& in
     // =================== TIGHTER BOUNDS =================== //
     // ====================================================== //
 
-    unsigned int max_steps{static_cast<unsigned int>(inst.m_opt)};
+    unsigned int max_steps{static_cast<unsigned int>(inst.n_opt)};
     if (env.tight_bounds) {
-        // number of variables
-        if (inst.n_opt < max_steps) max_steps = inst.n_opt;
-
         // max number of steps to reach heuristic
         if (env.heur != "none") {
             unsigned int min_act_cost{std::numeric_limits<unsigned int>::max()};
@@ -582,10 +579,7 @@ void ve::store_cpx_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst
                 break;
             }
         }
-        if (set_zero) {
-            ASSERT_LOG(log, !(plan[act_i_cpx] > HPLUS_CPX_INT_ROUNDING && inst.actions[inst.act_cpxtoidx[act_i_cpx]].cost != 0));
-            plan[act_i_cpx] = 0;
-        }
+        if (set_zero) plan[act_i_cpx] = 0;
     }
 
     // convert to std collections for easier parsing

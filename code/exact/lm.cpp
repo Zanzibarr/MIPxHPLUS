@@ -503,11 +503,8 @@ void lm::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instan
     // =================== TIGHTER BOUNDS =================== //
     // ====================================================== //
 
-    unsigned int max_steps{static_cast<unsigned int>(inst.m_opt)};
+    unsigned int max_steps{static_cast<unsigned int>(inst.n_opt)};
     if (env.tight_bounds) {
-        // number of variables
-        if (inst.n_opt < max_steps) max_steps = inst.n_opt;
-
         // max number of steps to reach heuristic
         if (env.heur != "none") {
             unsigned int min_act_cost{std::numeric_limits<unsigned int>::max()};
