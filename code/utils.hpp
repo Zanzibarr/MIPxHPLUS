@@ -278,6 +278,14 @@ class timelimit_exception final : public std::exception {
         }                                                \
     }
 
+// FIXME: ./organic-synthesis-sat18-strips-p06.log
+// ./parking-sat14-strips-p_36_1.log
+// ./parking-sat14-strips-p_38_1.log
+// ./parking-sat14-strips-p_40_1.log
+// ./parking-sat14-strips-p_40_2.log
+// ./parking-sat14-strips-p_40_3.log
+// ./transport-sat14-strips-p04.log
+// ./transport-sat14-strips-p14.log
 #define CPX_HANDLE_CALL(log, code)                                        \
     {                                                                     \
         switch (code) {                                                   \

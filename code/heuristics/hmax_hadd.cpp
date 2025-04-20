@@ -153,7 +153,6 @@ static bool htype(const hplus::instance& inst, hplus::solution& sol, double (*h_
             if (new_state.contains(inst.actions[act_i].eff) && !inst.act_f[act_i]) purged_actions.push_back(act_i);
         }
         for (const auto& act_i : purged_actions) candidates.remove(act_i);
-        for (const auto& act_i : inst.act_inv[choice]) candidates.remove(act_i);
 
         sol.plan.push_back(choice);
         sol.cost += inst.actions[choice].cost;

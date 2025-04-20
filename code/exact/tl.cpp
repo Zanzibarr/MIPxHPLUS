@@ -408,6 +408,14 @@ void tl::store_cpx_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst
             }
         }
         if (set_zero) {
+            // FIXME: ./organic-synthesis-sat18-strips-p06.log
+            // ./parking-sat14-strips-p_36_1.log
+            // ./parking-sat14-strips-p_38_1.log
+            // ./parking-sat14-strips-p_40_1.log
+            // ./parking-sat14-strips-p_40_2.log
+            // ./parking-sat14-strips-p_40_3.log
+            // ./transport-sat14-strips-p04.log
+            // ./transport-sat14-strips-p14.log
             ASSERT_LOG(log, !(plan[act_i_cpx] > HPLUS_CPX_INT_ROUNDING && inst.actions[inst.act_cpxtoidx[act_i_cpx]].cost != 0));
             plan[act_i_cpx] = 0;
         }

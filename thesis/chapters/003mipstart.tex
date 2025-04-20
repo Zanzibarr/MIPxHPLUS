@@ -1,12 +1,70 @@
-TODO ...
+A warm start in Mixed Integer Programming refers to providing an initial or partial solution to the solver before it begins its solving process. This can significantly improve performance in several ways:
+\begin{enumerate}
+    \item Reduced computation time: A good initial solution allows the solver to establish upper bounds early, potentially pruning large portions of the search tree.
+    \item Better branch selection: With good incumbent solutions, branching decisions can be more effective as the solver has better bounds.
+    \item Improved cut generation: Warm starts can help generate more effective cutting planes early in the solution process.
+\end{enumerate}
+
+In this chapter we explore efficient algorithms to compute good primal heuristic solutions, that can be used as warm start to speed up the search.
 
 \section{Greedy heuristic}
+When looking for a feasible solution to $\Pi^+$, starting from the initial state, we can simply iteratively look for actions that can be applied on the current state, adding them to the plan until we reach $G$: clearly, whenever we end up in a situation in which no action can be applied, and we didn't reach $G$ yet, we prove the infeasibility of the task $\Pi^+$.
+\begin{algorithm}[h]
+    \caption{Greedy algorithm}
+    \begin{algorithmic}
+        \State $S\gets I\qquad\quad\;\;\;$\# current state
+        \State $p\gets []\qquad\qquad$\# heuristic solution
+        \While{$G\not\subseteq S$}
+            \State candidates $\gets\{a\in A^+,\,s.t.\;a\not\in p,\mbox{ and pre(}a)\subseteq S\}$
+            \State $a\gets$ greedy choice(candidates)
+            \State enqueue $a$ to $p$
+            \State $S\gets S\cup\mbox{add}(a)$
+        \EndWhile
+    \end{algorithmic}
+\end{algorithm}
+
+We can immediatelly improve this algorithm by noting that:
+\begin{enumerate}
+    \item Actions that were fixed during our preprocessing should have the priority
+    \item Actions that were eliminated during our preprocessing can be ignored
+    \item Actions that only add already achieved atoms can be ignored
+\end{enumerate}
+
+\begin{algorithm}[h]
+    \caption{Improved greedy algorithm}
+    \begin{algorithmic}
+        \State $S\gets I\qquad\quad\;\;\;$\# current state
+        \State $p\gets []\qquad\qquad$\# heuristic solution
+        \While{$G\not\subseteq S$}
+            \If{$\exists a\in A^{+,f},\,s.t.\;\mbox{pre}(a)\subseteq S$}
+                \State enqueue $a$ to $p$
+                \State $S\gets S\cup\mbox{add}(a)$
+            \Else
+                \State candidates $\gets\{a\in A^+\setminus A^{+,e},\,s.t.\;a\not\in p,\mbox{ and pre(}a)\subseteq S,\mbox{ and add}(a)\not\subseteq S\}$
+                \State $a\gets$ greedy choice(candidates)
+                \State enqueue $a$ to $p$
+                \State $S\gets S\cup\mbox{add}(a)$
+            \EndIf
+        \EndWhile
+    \end{algorithmic}
+\end{algorithm}
+
+\subsection{Filtering applicable actions}
+
 TODO ...
 
-\section{H-add heuristic}
+The last thing we're left to do is define a \textit{greedy choice}: a decision that selects the action that is most appealing at the current moment, without considering the future consequences of that choice.
+
+\section{Naive greedy choice}
+The naive greedy choice will be to choose the action with lowest cost among the candidates:
+$$\mbox{greedy choice}_c\mbox{(candidates)}=argmin_a\{cost(a),\;\forall a\in\mbox{candidates}\}$$
+However there's another possible greedy choice, choosing the action that adds the highest number of new atoms:
+$$\mbox{greedy choice}_a\mbox{(candidates},S)=argmax_a\{|add(a)\setminus S|,\;\forall a\in\mbox{candidates}\}$$
+We can combine those two into a single improved greedy choice:
+$$\mbox{greedy choice}_{c\times a}\mbox{(candidates},S)=argmin_a\{{cost(a)\over|add(a)\setminus S|},\;\forall a\in\mbox{candidates}\}$$
+
+\section{Hadd estimator}
+
 TODO ...
 
-\section{Combining the greedy and hadd heuristic}
-TODO ...
-
-The use of the simple or hadd-enhanced greedy heuristics as warm-start to our formulations, will be indicated with $_g$ and $_h$ respectively, i.e. $\vee$ will either become $\veg$ or $\veh$.
+The use of the simple ($c\times a$) or hadd based greedy heuristics as warm-start to our formulations, will be indicated with $_g$ and $_h$ respectively, i.e. $\vee$ will either become $\veg$ or $\veh$.

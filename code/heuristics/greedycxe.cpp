@@ -69,7 +69,6 @@ void greedycxe::run(hplus::instance& inst, hplus::environment& env, const logger
             if (new_state.contains(inst.actions[act_i].eff) && !inst.act_f[act_i]) purged_actions.push_back(act_i);
         }
         for (const auto& act_i : purged_actions) candidates.remove(act_i);
-        for (const auto& act_i : inst.act_inv[choice]) candidates.remove(act_i);
 
         heur_sol.plan.push_back(choice);
         heur_sol.cost += inst.actions[choice].cost;

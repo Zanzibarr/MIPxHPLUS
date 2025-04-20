@@ -44,6 +44,8 @@ bool parse_cpx_status(const CPXENVptr& cpxenv, const CPXLPptr& cpxlp, hplus::env
             return true;
         case CPXMIP_TIME_LIM_INFEAS:  // exceeded time limit, no intermediate solution found
             [[fallthrough]];
+        case CPXMIP_MEM_LIM_INFEAS:  // exceeded memory limit, no intermediate solution found
+            [[fallthrough]];
         case CPXMIP_ABORT_INFEAS:  // terminated by user, not found solution
             if (!env.warm_start) env.sol_s = solution_status::NOTFOUND;
             return false;

@@ -185,6 +185,11 @@ The proof of this last statement lies on the construction of the tree: consider 
 \end{algorithm}
 
 This technique, with some further optimizations, led to a huge performance increase in our dominated and inverse actions extraction: this is due to the fact that, usually, actions don't have many positive effects, hence we don't have many branching in our search; this means that we have an efficient search for possible dominated actions, and a smaller number of iterations in the inner cycle. This technique, however, is much less efficient for example when looking for all actions that can be applied from a specific state $s$ (using pre($a$) for the insert part and $s$ for the search part), since a state might contain many atoms, increasing exponentially the number of branchings needed to complete the search. This issue will be tackled in chapter $3$, where we will compute a sub-optimal plan to provide as a warm-start to our MIP solver and we will need an efficient way of retrieving applicable actions.
-\newline
-\newline
+
+We define additional sets to refer to the atoms/actions eliminated/fixed by this preprocessing: 
+\begin{gather*}
+    P^e=\{p\in P,\,s.t.\;x_p\mbox{ has been set to }0\},\;P^f=\{p\in P,\,s.t.\;x_p\mbox{ has been set to }1\}\\
+    A^{+,e}=\{a\in A^+,\,s.t.\;x_a\mbox{ has been set to }0\},\;A^{+,f}=\{a\in A^+,\,s.t.\;x_a\mbox{ has been set to }1\}
+\end{gather*}
+
 By adding constraints $(P1)$-$(P5)$ to $\tl$ and $(P1)$-$(P4)$ to $\ve$, we obtain $\tle$ and $\vee$ respectively. We don't add $(P5$) to $\ve$ since $(P5)$ is included in $(C7)$, from our vertex elimination acyclicity modeling.
