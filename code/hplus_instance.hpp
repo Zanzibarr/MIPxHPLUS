@@ -46,7 +46,6 @@ typedef struct {
     /** Optimization variables */
     binary_set var_e, var_f, act_e, act_f;
     std::vector<binary_set> fadd_e, fadd_f;
-    std::vector<std::vector<size_t>> act_inv;
     /** Optimization helpers */
     std::vector<size_t> var_rem, act_rem;
     std::vector<size_t> var_opt_conv, act_opt_conv, act_cpxtoidx;
@@ -107,7 +106,7 @@ void update_sol(instance& inst, const solution& sol, const logger& log);
 void print_sol(const instance& inst, const logger& log);
 /** Perform instance optimization to inst using flags stored in the env
  * environment */
-void preprocessing(instance& inst, const environment& env, const logger& log);
+void preprocessing(instance& inst, const logger& log);
 /** Prepare helper data structure for faster action lookup on instance inst */
 void prepare_faster_actsearch(instance& inst, const logger& log);
 

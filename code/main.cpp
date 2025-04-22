@@ -219,7 +219,7 @@ static void run(hplus::instance& inst, hplus::environment& env, hplus::statistic
             stats.preprocessing = static_cast<double>(env.time_limit) - env.timer.get_time();
             start_time = env.timer.get_time();
 
-            hplus::preprocessing(inst, env, log);
+            hplus::preprocessing(inst, log);
 
             stats.preprocessing = env.timer.get_time() - start_time;
         }

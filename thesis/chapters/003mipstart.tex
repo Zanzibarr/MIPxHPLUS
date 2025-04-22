@@ -31,29 +31,63 @@ We can immediatelly improve this algorithm by noting that:
 \end{enumerate}
 
 \begin{algorithm}[h]
-    \caption{Improved greedy algorithm}
+    \caption{Revised greedy algorithm}
     \begin{algorithmic}
         \State $S\gets I\qquad\quad\;\;\;$\# current state
         \State $p\gets []\qquad\qquad$\# heuristic solution
         \While{$G\not\subseteq S$}
             \If{$\exists a\in A^{+,f},\,s.t.\;\mbox{pre}(a)\subseteq S$}
                 \State enqueue $a$ to $p$
-                \State $S\gets S\cup\mbox{add}(a)$
             \Else
                 \State candidates $\gets\{a\in A^+\setminus A^{+,e},\,s.t.\;a\not\in p,\mbox{ and pre(}a)\subseteq S,\mbox{ and add}(a)\not\subseteq S\}$
                 \State $a\gets$ greedy choice(candidates)
                 \State enqueue $a$ to $p$
-                \State $S\gets S\cup\mbox{add}(a)$
             \EndIf
+            \State $S\gets S\cup\mbox{add}(a)$
         \EndWhile
     \end{algorithmic}
 \end{algorithm}
 
 \subsection{Filtering applicable actions}
 
-TODO ...
+We proposed in section $(2.3.6)$ a way to efficiently filter among actions, only those that meet a specific criteria: we already anticipated that said technique won't be helpful for this specific problem, since we would have a large quantity of branches in our search algorithm of the binary tree. Looking among all actions at each step, for candidate actions, is not feasible; instead we can compute iteratively candidate actions based on newly achieved atoms:
+\begin{enumerate}
+    \item Start by computing, for each atom, the set of actions that have that atom among its preconditions: $$A^+_{pre,p}=\{a\in A^+\setminus A^{+,e},\,s.t.\;p\in\mbox{pre}(a)\}\;\forall p\in P$$
+    \item Before the greedy algorithm, initialize the candidates list as the set of actions with no preconditions; since the initial state is empty, those are the initial candidates:
+    $$\mbox{candidates}=\{a\in A^+\setminus A^{+,e},\,s.t.\;\mbox{pre}(a)=\emptyset\}$$
+    \item After making the greedy choice, update the candidates by expanding that list with actions that have among its preconditions, newly achieved atoms: by using $A^+_{pre,p}$ for each newly added atom, we are looking only among possible new candidates, skipping most of the unreachable actions.
+\end{enumerate}
 
-The last thing we're left to do is define a \textit{greedy choice}: a decision that selects the action that is most appealing at the current moment, without considering the future consequences of that choice.
+\begin{algorithm}[h]
+    \caption{Efficient greedy algorithm}
+    \begin{algorithmic}
+        \State $S\gets I\qquad\quad\;\;\;$\# current state
+        \State $p\gets []\qquad\qquad$\# heuristic solution
+        \State candidates $\gets\{a\in A^+\setminus A^{+,e},\,s.t.\;\mbox{pre}(a)=\emptyset\}$
+        \State $A^+_{pre,p}\gets\{a\in A^+\setminus A^{+,e},\,s.t.\;p\in\mbox{pre}(a)\}\;\forall p\in P$
+        \While{$G\not\subseteq S$}
+            \If{$\exists a\in A^{+,f},\,s.t.\;\mbox{pre}(a)\subseteq S$}
+                \State enqueue $a$ to $p$
+            \Else
+                \State $a\gets$ greedy choice(candidates)
+                \State enqueue $a$ to $p$
+            \EndIf
+            \For{$p\in\mbox{add}(a)\setminus S$}
+                \For{$a'\in A^+_{pre,p}$}
+                    \If{pre($a'$)$\subseteq(S\cup\mbox{add}(a))$ and $a'\not\in$ candidates}
+                        \State candidates $\gets$ candidates $\cup$ $\{a'\}$
+                    \EndIf
+                \EndFor
+            \EndFor
+            \State $S\gets S\cup\mbox{add}(a)$
+            \For{$a'\in$ candidates}
+                \If{add($a$)$\subseteq S$}
+                    \State remove $a'$ from candidates
+                \EndIf
+            \EndFor
+        \EndWhile
+    \end{algorithmic}
+\end{algorithm}
 
 \section{Naive greedy choice}
 The naive greedy choice will be to choose the action with lowest cost among the candidates:
@@ -63,8 +97,24 @@ $$\mbox{greedy choice}_a\mbox{(candidates},S)=argmax_a\{|add(a)\setminus S|,\;\f
 We can combine those two into a single improved greedy choice:
 $$\mbox{greedy choice}_{c\times a}\mbox{(candidates},S)=argmin_a\{{cost(a)\over|add(a)\setminus S|},\;\forall a\in\mbox{candidates}\}$$
 
-\section{Hadd estimator}
+\section{Hmax and Hadd estimators}
 
-TODO ...
+Computing $\hplus$ is NP-equivalent, hence techniques to estimate it have been proposed: $\hmax$ and $\hadd$ \cite{Bonet_01} aim to estimate the cost of achieving the goal atoms and then set their values to a combination of those costs.
+Suppose we are in the state $S$ and we aim to reach $G$:
+$$\hmax_S(p)=\begin{cases}
+    0&\mbox{if }p\in S\\
+    \min_{a\in A^+_p}\{cost(a)+\max_{q\in pre(a)}\{\hmax_S(q)\}\}&\mbox{otherwise}
+\end{cases}$$
+$$\hadd_S(p)=\begin{cases}
+    0&\mbox{if }p\in S\\
+    \min_{a\in A^+_p}\{cost(a)+\sum_{q\in pre(a)}\{\hadd_S(q)\}\}&\mbox{otherwise}
+\end{cases}$$
+with $A^+_p=\{a\in A^+,\,s.t.\;p\in\mbox{add}(a)\}$, and
+$$\hmax_S=\max_{p\in G}\{\hmax_S(p)\},\qquad\hadd_S=\sum_{p\in G}\hadd_S(p)$$
+$\hmax\equiv\hmax_I$ is considering the ``cost'' of the ``most expensive'' atom in the goal state, while $\hadd\equiv\hadd_I$ is isolating each atom in the goal state, and adding up all their ``costs'': we integrated these two estimators in our greedy algorithm:
+\begin{gather*}
+    \mbox{greedy choice}_{\hmax}(\mbox{candidates}, S)=argmin_a\{\hmax_{S'},\;S'=S\cup\mbox{add}(a),\,\forall a\in\mbox{candidates}\}\\
+    \mbox{greedy choice}_{\hadd}(\mbox{candidates}, S)=argmin_a\{\hadd_{S'},\;S'=S\cup\mbox{add}(a),\,\forall a\in\mbox{candidates}\}
+\end{gather*}
 
-The use of the simple ($c\times a$) or hadd based greedy heuristics as warm-start to our formulations, will be indicated with $_g$ and $_h$ respectively, i.e. $\vee$ will either become $\veg$ or $\veh$.
+Computing from scratch $\hmax_{S'}$ and $\hadd_{S'}$ for each $a\in$ candidates would require too much time, so we integrated in our greedy algorithm, an iterative computation of $\hmax$ and $\hadd$, which reuses past iteration's values of $\hmax$ and $\hadd$ and updates only necessary ones, using a trail to keep track of the changes that need to be reverted.

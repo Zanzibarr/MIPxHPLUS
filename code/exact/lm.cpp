@@ -614,7 +614,7 @@ void lm::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instan
     double* val{new double[inst.m_opt + 1]};
     int nnz{0};
     constexpr char sense_e{'E'}, sense_l{'L'};
-    constexpr double rhs_0{0}, rhs_1{1};
+    constexpr double rhs_0{0};
     constexpr int begin{0};
 
     const auto stopchk3 = [&ind, &val]() {
@@ -737,23 +737,6 @@ void lm::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instan
             CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind2, val2, nullptr, nullptr));
         }
         stopchk1();
-    }
-
-    // Inverse actions constraint (preprocessing)
-    if (env.preprocessing) {
-        for (const auto& act_i : inst.act_rem) {
-            nnz = 0;
-            ind2[nnz] = get_act_idx(act_i);
-            val2[nnz++] = 1;
-            for (const auto& act_j : inst.act_inv[act_i]) {
-                if (act_j <= act_i) continue;
-                ind2[nnz] = get_act_idx(act_j);
-                val2[nnz] = 1;
-                stats.nconst_base++;
-                CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, 2, &rhs_1, &sense_l, &begin, ind2, val2, nullptr, nullptr));
-            }
-            stopchk3();
-        }
     }
 
     // ~~~~~~~~~ Modeling acyclicity ~~~~~~~~~ //

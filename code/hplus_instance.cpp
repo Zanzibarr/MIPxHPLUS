@@ -87,7 +87,6 @@ void hplus::init(instance& inst) {
                     .act_f = binary_set(),
                     .fadd_e = std::vector<binary_set>(0),
                     .fadd_f = std::vector<binary_set>(0),
-                    .act_inv = std::vector<std::vector<size_t>>(0),
                     .var_rem = std::vector<size_t>(0),
                     .act_rem = std::vector<size_t>(0),
                     .var_opt_conv = std::vector<size_t>(0),
@@ -457,7 +456,6 @@ static void init_inst_preprocessing(hplus::instance& inst) {
     inst.act_f = binary_set(inst.m);
     inst.fadd_e = std::vector<binary_set>(inst.m, binary_set(inst.n));
     inst.fadd_f = std::vector<binary_set>(inst.m, binary_set(inst.n));
-    inst.act_inv = std::vector<std::vector<size_t>>(inst.m, std::vector<size_t>());
     inst.var_rem = (!inst.var_e).sparse();
     inst.act_rem = (!inst.act_e).sparse();
     inst.var_opt_conv = std::vector<size_t>(inst.n);
@@ -761,31 +759,6 @@ static void dominated_actions_elimination(hplus::instance& inst, const std::vect
     }
 }
 
-// Section 4.6 of Imai15
-static void inverse_actions_extraction(hplus::instance& inst, const logger& log) {
-    PRINT_VERBOSE(log, "Extracting inverse actions.");
-
-    const auto& rem_act{(!inst.act_e).sparse()};
-
-    // find efficiently all actions that satisfy point 2) of the Definition 1 in section 4.6 of Imai's paper
-    bs_searcher subset_finder{inst.n};
-    for (const auto& act_i : rem_act) subset_finder.add(act_i, inst.actions[act_i].eff - inst.var_e);
-
-    for (const auto& act_i : rem_act) {
-        const auto& pre{inst.actions[act_i].pre - inst.var_e};
-        const auto& eff{inst.actions[act_i].eff - inst.var_e};
-        for (const auto& act_j : subset_finder.find_subsets(pre)) {
-            if (!inst.actions[act_j].pre.contains(eff)) [[likely]]
-                continue;
-
-            if (!inst.act_f[act_i]) inst.act_inv[act_i].push_back(act_j);
-            if (!inst.act_f[act_j]) inst.act_inv[act_j].push_back(act_i);
-        }
-        if (CHECK_STOP()) [[unlikely]]
-            throw timelimit_exception("Reached time limit.");
-    }
-}
-
 static void finish_preprocessing(hplus::instance& inst, const logger& log) {
     inst.var_rem = (!inst.var_e).sparse();
     inst.act_rem = (!inst.act_e).sparse();
@@ -817,7 +790,7 @@ static void finish_preprocessing(hplus::instance& inst, const logger& log) {
     for (size_t i = 0; i < inst.m; i++) ASSERT_LOG(log, !inst.fadd_f[i].intersects(inst.fadd_e[i]));
 }
 
-void hplus::preprocessing(instance& inst, const environment& env, const logger& log) {
+void hplus::preprocessing(instance& inst, const logger& log) {
     std::vector<binary_set> landmarks(inst.n, binary_set(inst.n + 1));
     binary_set fact_landmarks{inst.n};
     binary_set act_landmarks{inst.m};
@@ -828,8 +801,6 @@ void hplus::preprocessing(instance& inst, const environment& env, const logger& 
     relevance_analysis_backwards(inst, fact_landmarks, fadd, relevant_variables, log);
     relevance_analysis_forward(inst, fadd, relevant_variables, log);
     dominated_actions_elimination(inst, landmarks, fadd, log);
-    if (env.alg != HPLUS_CLI_ALG_VE)
-        inverse_actions_extraction(inst, log);  // this is useless for a model with vertex elimination as acyclicity constraints constraint (C7)
     finish_preprocessing(inst, log);
 #if HPLUS_VERBOSE >= 100
     size_t count{(inst.var_f | inst.var_e).sparse().size()};
