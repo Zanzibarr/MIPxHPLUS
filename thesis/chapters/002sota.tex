@@ -99,7 +99,7 @@ We can easily find a fact landmark $p$ or an action landmark $a$ by checking wet
                 \If{$L[p]\not= X$}
                     \State $L[p]\gets X$
                     \For{$a'\in\{a\in A^+,\,s.t.\;p\in \mbox{pre}(a)\}$}
-                    \State insert $a'$ into $Q$ if $pre(a')\subseteq S$ and $a'\not\in Q$
+                    \State insert $a'$ into $Q$ if $\mbox{pre}(a')\subseteq S$ and $a'\not\in Q$
                     \EndFor
                 \EndIf
             \EndFor
@@ -117,23 +117,16 @@ We can also use this new definition of first achievers to remove some variables 
 $$_{(P2)}\quad x_{a,p}\equiv0\qquad\forall a\in A^+,p\in \mbox{add}(a),\,s.t.\;p\mbox{ is a fact landmark for }a$$
 
 \subsection{Relevance analysys}
-Relevance analysis is widely used to eliminate atoms and actions that are irrelevant to a task. In \cite{Imai_15}, a backchaining relevance analysis is proposed, where an action $a$ is relevant if $\mbox{fadd}(a)\cap G\not=\emptyset$ or there exists a relevant action $a'$ satisfying $\mbox{fadd}(a)\cap pre(a')\not=\emptyset$, and an atom $p$ is relevant if $p\in G$ or there exists a relevant action $a$ with $p\in \mbox{pre}(a)$.
+Relevance analysis is widely used to eliminate atoms and actions that are irrelevant to a task. In \cite{Imai_15}, a backchaining relevance analysis is proposed, where an action $a$ is relevant if $\mbox{fadd}(a)\cap G\not=\emptyset$ or there exists a relevant action $a'$ satisfying $\mbox{fadd}(a)\cap \mbox{pre}(a')\not=\emptyset$, and an atom $p$ is relevant if $p\in G$ or there exists a relevant action $a$ with $p\in \mbox{pre}(a)$.
 In \cite{MLM_Haslum_12}, this relevance analysis is strenghtened by considering as relevant only actions that are possible first achievers of a relevant atom ($\mbox{fadd}(a)\cap\{p\in P,\,s.t.\;p\mbox{ is relevant}\}\not=\emptyset$).
 Actions and atoms that aren't relevant, can be removed from our formulation:
 $$_{(P3)}\quad x_a,x_p\equiv0\qquad\forall a\in A^+,p\in P,\mbox{ that isn't relevant}$$
 As noted in \cite{Imai_15}, a fact landmark might be found not relevant: in this case we just set $x_p\equiv1$.
 
 \subsection{Dominated actions extraction}
-In a delete-relaxed task, if two actions have the same positive effects, it's clearly sufficient to use at most one of those two actions \cite{Imai_15}: given a feasible delete-relaxed task $\Pi^+$, there exists an optimal plan that doesn't contain $b\in A^+$ if there exists an action $a\in A^+$ satisfying $(\mbox{fadd}(b)\subseteq fadd(a)$ and $\forall p\in pre(a),\;p\mbox{ is a fact landmark for }b$ and $cost(b)\geq cost(a))$, and we call such $b$ as a \textit{dominated action}.
+In a delete-relaxed task, if two actions have the same positive effects, it's clearly sufficient to use at most one of those two actions \cite{Imai_15}: given a feasible delete-relaxed task $\Pi^+$, there exists an optimal plan that doesn't contain $b\in A^+$ if there exists an action $a\in A^+$ satisfying $(\mbox{fadd}(b)\subseteq \mbox{fadd}(a)$ and $\forall p\in \mbox{pre}(a),\;p\mbox{ is a fact landmark for }b$ and $cost(b)\geq cost(a))$, and we call such $b$ as a \textit{dominated action}.
 $$_{(P4)}\quad x_a\equiv0\qquad\forall a\in A^+\mbox{ that is a dominated action}$$
 This constraint might prune feasible, even some optimal, solutions, but as it's shown in \cite{Imai_15} at least one optimal solution remains. 
-
-\subsection{Inverse actions extraction}
-For two actions $a,b\in A^+$, $a$ is an \textit{inverse action} of $b$ if $\mbox{add}(a)\subseteq pre(b)$ and $add(b)\subseteq \mbox{pre}(a)$.
-Clearly, if $a$ is an inverse action of $b$, then $b$ must be an inverse action of $a$.\\
-For a delete-relaxed task $\Pi^+$, if $a,b\in\pi$ and $a$ is an inverse action of $b$, then there exist a feasible plan $\pi'$ with at most one of $a$ and $b$ in it, and $cost(\pi')\leq cost(\pi)$ \cite{Imai_15}.\\
-We can add this constraint as follows:
-$$_{(P5)}\quad x_a+x_b\leq1\qquad\forall a,b\in A^+,\,s.t.\;a\mbox{ is an inverse action of }b$$
 
 \subsection{Efficiency concerns}
 Section $(2.3.4)$ is one of the most effective preprocessing technique among the ones we presented; however, a naive algorithm that would require $O(|A^+|^2)$ steps, might require too much time for some of the most demanding instances.
@@ -143,7 +136,7 @@ Section $(2.3.4)$ is one of the most effective preprocessing technique among the
         \State $D\gets\emptyset\qquad\qquad$\# D is the set of dominated actions
         \For{$a\in A^+$}
             \For{$b\in A^+$}
-                \If{$(\mbox{fadd}(b)\subseteq fadd(a)$ and $\forall p\in pre(a),\;p\mbox{ is a fact landmark for }b$ and $cost(b)\geq cost(a))$}
+                \If{$(\mbox{fadd}(b)\subseteq \mbox{fadd}(a)$ and $\forall p\in \mbox{pre}(a),\;p\mbox{ is a fact landmark for }b$ and $cost(b)\geq cost(a))$}
                     \State $D\gets D\cup\{b\}$
                 \EndIf
             \EndFor
@@ -151,18 +144,18 @@ Section $(2.3.4)$ is one of the most effective preprocessing technique among the
     \end{algorithmic}
 \end{algorithm}
 
-This concern extends also to section $(2.3.5)$, therefore we felt the need to devise a data structure to speedup the filtering among actions. To explain how this data structure works, we will explain it using the example of the dominated actions extraction.\\
+We felt the need to devise a data structure to speedup the filtering among actions. To explain how this data structure works, we will explain it using the example of the dominated actions extraction.\\
 The problem lies in the inner loop: we, currently, are looking blindly among all actions for an action $b$ that is dominated by $a$; we need a way to filter among all actions, a smaller set of actions that contains all, but not necessarily only, the actions dominated by $a$. Luckily we know that if $\mbox{fadd}(b)\not\subseteq\mbox{fadd}(a)$, $b$ is not dominated by $a$, hence all those actions can be removed. We use a binary tree to store actions in a way that we can efficiently get all but those actions.\\
-To add an action $a$ to the tree $T$ ($T.$insert($a$,\,fadd($a$))):
+To add an action $a$ to the tree $T$ ($T.$insert($a$,\,\mbox{fadd}($a$))):
 \begin{enumerate}
     \item Start from the root
     \item For each $p\in P$, if $p\not\in \mbox{fadd}(a)$ we go to the left node, otherwise we go to the right node
     \item Once we reached a leaf, we append $a$ to a list in that leaf
 \end{enumerate}
-Then, given an action $a$, if we need to find all actions $b$ that satisfy $\mbox{fadd}(b)\subseteq\mbox{fadd}(a)$ ($T$.search(fadd($a$))):
+Then, given an action $a$, if we need to find all actions $b$ that satisfy $\mbox{fadd}(b)\subseteq\mbox{fadd}(a)$ ($T$.search(\mbox{fadd}($a$))):
 \begin{enumerate}
     \item Start from the root
-    \item For each $p\in P$, if $p\not\in \mbox{fadd(a)}$ we go to the left node, otherwise we expand both
+    \item For each $p\in P$, if $p\not\in \mbox{fadd}(a)$ we go to the left node, otherwise we expand both
     \item At the end we'll have a list of leaves we reached: all actions stored in the lists of those leaves, are all the actions $b$ that satisfy $\mbox{fadd}(b)\subseteq\mbox{fadd}(a)$
 \end{enumerate}
 The proof of this last statement lies on the construction of the tree: consider a generic $p\in P$, if $p\in\mbox{fadd}(a)$ then fadd($b$) might have or not have $p$, so we branch our search; if $p\not\in\mbox{fadd}(a)$, then we are interested only in actions $b$ that satisfy $p\not\in\mbox{fadd}(b)$, hence we can just go left without branching, since all actions that didn't have $p$ among its first achievers, were inserted in the tree going left at this step.
@@ -172,11 +165,11 @@ The proof of this last statement lies on the construction of the tree: consider 
         \State $D\gets\emptyset\qquad\qquad$\# D is the set of dominated actions
         \State $T\gets$ empty binary tree
         \For{$a\in A^+$}
-            \State $T$.insert($a$,\,fadd($a$))
+            \State $T$.insert($a$,\,\mbox{fadd}($a$))
         \EndFor
         \For{$a\in A^+$}
             \For{$b\in T.\mbox{search(fadd}(a))$}
-                \If{$(\forall p\in pre(a),\;p\mbox{ is a fact landmark for }b$ and $cost(b)\geq cost(a))$}
+                \If{$(\forall p\in \mbox{pre}(a),\;p\mbox{ is a fact landmark for }b$ and $cost(b)\geq cost(a))$}
                     \State $D\gets D\cup\{b\}$
                 \EndIf
             \EndFor
@@ -184,7 +177,7 @@ The proof of this last statement lies on the construction of the tree: consider 
     \end{algorithmic}
 \end{algorithm}
 
-This technique, with some further optimizations, led to a huge performance increase in our dominated and inverse actions extraction: this is due to the fact that, usually, actions don't have many positive effects, hence we don't have many branching in our search; this means that we have an efficient search for possible dominated actions, and a smaller number of iterations in the inner cycle. This technique, however, is much less efficient for example when looking for all actions that can be applied from a specific state $s$ (using pre($a$) for the insert part and $s$ for the search part), since a state might contain many atoms, increasing exponentially the number of branchings needed to complete the search. This issue will be tackled in chapter $3$, where we will compute a sub-optimal plan to provide as a warm-start to our MIP solver and we will need an efficient way of retrieving applicable actions.
+This technique, with some further optimizations, led to a huge performance increase in our dominated actions extraction: this is due to the fact that, usually, actions don't have many positive effects, hence we don't have many branching in our search; this means that we have an efficient search for possible dominated actions, and a smaller number of iterations in the inner cycle. This technique, however, is much less efficient for example when looking for all actions that can be applied from a specific state $s$ (using pre($a$) for the insert part and $s$ for the search part), since a state might contain many atoms, increasing exponentially the number of branchings needed to complete the search. This issue will be tackled in chapter $3$, where we will compute a sub-optimal plan to provide as a warm-start to our MIP solver and we will need an efficient way of retrieving applicable actions.
 
 We define additional sets to refer to the atoms/actions eliminated/fixed by this preprocessing: 
 \begin{gather*}
@@ -192,4 +185,4 @@ We define additional sets to refer to the atoms/actions eliminated/fixed by this
     A^{+,e}=\{a\in A^+,\,s.t.\;x_a\mbox{ has been set to }0\},\;A^{+,f}=\{a\in A^+,\,s.t.\;x_a\mbox{ has been set to }1\}
 \end{gather*}
 
-By adding constraints $(P1)$-$(P5)$ to $\tl$ and $(P1)$-$(P4)$ to $\ve$, we obtain $\tle$ and $\vee$ respectively. We don't add $(P5$) to $\ve$ since $(P5)$ is implicit in $(C7)$, from our vertex elimination acyclicity modeling.
+By adding constraints $(P1)$-$(P4)$ to $\tl$ and $\ve$, we obtain $\tle$ and $\vee$ respectively.

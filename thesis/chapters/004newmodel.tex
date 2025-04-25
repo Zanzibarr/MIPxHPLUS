@@ -1,12 +1,25 @@
-TODO ...
+% The model $\tl$ is composed of $O(|P|\cdot|A^+|)$ variables and $O(|P|^2\cdot|A^+|)$ constraints and model $\ve$ of $O(|P|\cdot|A^+|)$ variables and $O(\max\{|P|^2\cdot|A^+|,|P|^3\})$ constraints.\\
+% Model $\lm$ insthead only has $O(|P|\cdot|A^+|)$ variables and $O(\max\{|P|\cdot|A^+|,|P|^2p\})$
+Another technique proposed to compute $\hplus$, is that of computing a minimum-cost hitting set for a complete set of disjunctive action landmarks generated on the fly \cite{Bonet_11}, \Cite{MLM_Haslum_12}. We can integrate the work on MIP formulations and hitting sets for complete sets of disjunctive action landmarks by solving our base model, without the acyclicity constraints, and then, using the solver's callbacks for the candidate solutions, to add iteratively violated landmarks as cuts: this is a promising approach since we are not just trying to solve the minimum cost hitting set, but we already have other constraints in our base model, that can better guide the search process.
+
+Moreover, it has been shown \cite{MLM_Haslum_12} that usually, the number of violated landmarks that needs to be added, to obtain the optimal plan, is relatively small; a much smaller number than the number of constraints we would need to add to model acyclicity.
+
+We provide to our MIP solver the base model, without the constraints aiming to model acyclicity; this means that the solutions it provides us aren't plans, and we can try to fix them from two perspectives:
+\begin{enumerate}
+    \item Forcing landmarks: the solution is infeasible because it violates at least one landmark, using infeasible ``shortcuts'' to cut costs, causing it to avoid such landmark; forcing the use of the violated landmark means that to find the optimal plan it would need to use a different set of actions, leading the solution to turn into a plan;
+    \item Removing cycles: if a solution is infeasible, this means that we can find a cycle in a graph built from it, that we will define in section $4.2$; if no cycles can be found in such graph, then the solution is also a plan (those statements will be demonstrated in section $4.2$), hence by using Subtour Elimination Constraints (S.E.C.) on those cycles, we are pruning all infeasible solutions.
+\end{enumerate}
 
 \section{Using landmarks to model acyclicity}
+In contrast with action landmarks defined in section $2.3.1$, from now on when we talk about a \textit{landmark}, we are referring to a \textit{disjunctive action landmark}, a set of actions such that at least one action in the set must be included in any valid plan for $\Pi^+$ \cite{Bonet_11}, \cite{MLM_Haslum_12}. Each time we find a new violated landmark $L\subseteq A^+$, we will add a cut to the model:
+$$\sum_{a\in L}x_a\geq 1$$
+
+There are multiple ways of extracting a violated landmark from an infeasible solution: given a solution $\pi$, if $G\not\subseteq I(\pi)$ then a landmark can be computed from the cut section that divides the feasible part of the solution, and the rest of it \cite{Bonet_11}; another paper in the literature points out that, for every set of actions $A'\subseteq A^+$ that don't form a plan, $\overline{A'}$ is a violated landmark \cite{MLM_Haslum_12}.
+
+\subsection{Cut section landmarks}
 TODO ...
 
-\subsection{Minimal landmarks}
-TODO ...
-
-\subsection{Complete landmarks}
+\subsection{Complement landmarks}
 TODO ...
 
 \section{Using S.E.C. to model acyclicity}

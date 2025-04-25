@@ -109,7 +109,7 @@ $$\hadd_S(p)=\begin{cases}
     0&\mbox{if }p\in S\\
     \min_{a\in A^+_p}\{cost(a)+\sum_{q\in pre(a)}\{\hadd_S(q)\}\}&\mbox{otherwise}
 \end{cases}$$
-with $A^+_p=\{a\in A^+,\,s.t.\;p\in\mbox{add}(a)\}$, and
+with $A^+_p=\{a\in A^+\setminus A^{+,e},\,s.t.\;p\in\mbox{add}(a)\}$, and
 $$\hmax_S=\max_{p\in G}\{\hmax_S(p)\},\qquad\hadd_S=\sum_{p\in G}\hadd_S(p)$$
 $\hmax\equiv\hmax_I$ is considering the ``cost'' of the ``most expensive'' atom in the goal state, while $\hadd\equiv\hadd_I$ is isolating each atom in the goal state, and adding up all their ``costs'': we integrated these two estimators in our greedy algorithm:
 \begin{gather*}
