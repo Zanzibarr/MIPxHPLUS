@@ -87,6 +87,10 @@ static void parse_cli(const int& argc, const char** argv, hplus::environment& en
     args::ValueFlag<bool> sec(parser, "0/1",
                               "Using S.E.C. as cuts for the lm model (def: " + std::to_string(HPLUS_DEF_SEC) + "; options: 0 (false), 1 (true)).",
                               {"sec"}, HPLUS_DEF_SEC);
+    args::ValueFlag<bool> fract(
+        parser, "0/1",
+        "Using fractionary solutions to generate cuts for the lm model (def: " + std::to_string(HPLUS_DEF_FRACT) + "; options: 0 (false), 1 (true)).",
+        {"fract"}, HPLUS_DEF_FRACT);
 
     try {
         parser.ParseCLI(argc, argv);
@@ -128,6 +132,7 @@ static void parse_cli(const int& argc, const char** argv, hplus::environment& en
     if (minimal_lm) env.minimal_landmark = args::get(minimal_lm);
     if (complete_lm) env.complete_landmark = args::get(complete_lm);
     if (sec) env.sec = args::get(sec);
+    if (fract) env.fract_cuts = args::get(fract);
 
     if (env.alg != HPLUS_CLI_ALG_TL && env.alg != HPLUS_CLI_ALG_VE && env.alg != HPLUS_CLI_ALG_LM) {
         env.write_lp = false;

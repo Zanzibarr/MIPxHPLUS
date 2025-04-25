@@ -130,8 +130,10 @@ void run_model(hplus::instance& inst, hplus::environment& env, hplus::statistics
 
     stats.nusercuts = 0;
     lm::cpx_callback_user_handle callback_data{.inst = inst, .env = env, .stats = stats, .log = log};
-    if (env.alg == HPLUS_CLI_ALG_LM)
+    if (env.alg == HPLUS_CLI_ALG_LM) {
+        // if (env.)
         CPX_HANDLE_CALL(log, CPXcallbacksetfunc(cpxenv, cpxlp, CPX_CALLBACKCONTEXT_CANDIDATE, lm::cpx_callback, &callback_data));
+    }
 
     stats.build = env.timer.get_time() - start_time;
 

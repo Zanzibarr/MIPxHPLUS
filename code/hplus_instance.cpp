@@ -40,12 +40,13 @@ void hplus::init(environment& env) {
                       .preprocessing = HPLUS_DEF_PREP,
                       .warm_start = HPLUS_DEF_WARM_START,
                       .tight_bounds = HPLUS_DEF_TIGHT_BOUNDS,
-                      .minimal_landmark = HPLUS_DEF_MLM,
-                      .complete_landmark = HPLUS_DEF_CLM,
-                      .sec = HPLUS_DEF_SEC,
                       .using_cplex = HPLUS_DEF_USING_CPLEX,
                       .log = HPLUS_DEF_LOG,
                       .write_lp = HPLUS_DEF_WRITE_LP,
+                      .minimal_landmark = HPLUS_DEF_MLM,
+                      .complete_landmark = HPLUS_DEF_CLM,
+                      .sec = HPLUS_DEF_SEC,
+                      .fract_cuts = HPLUS_DEF_FRACT,
                       .time_limit = HPLUS_DEF_TIME_LIMIT,
                       .timer = time_keeper()};
 }

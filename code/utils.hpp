@@ -66,13 +66,14 @@
 #define HPLUS_DEF_PREP true
 #define HPLUS_DEF_WARM_START true
 #define HPLUS_DEF_TIGHT_BOUNDS false
-#define HPLUS_DEF_MLM true
-#define HPLUS_DEF_CLM true
-#define HPLUS_DEF_SEC true
 #define HPLUS_DEF_USING_CPLEX true
 #define HPLUS_DEF_LOG false
 #define HPLUS_DEF_WRITE_LP false
 #define HPLUS_DEF_TIME_LIMIT 60
+#define HPLUS_DEF_MLM true
+#define HPLUS_DEF_CLM true
+#define HPLUS_DEF_SEC true
+#define HPLUS_DEF_FRACT true
 
 // ====================================================== //
 // ================== CPLEX PARAMETERS ================== //
