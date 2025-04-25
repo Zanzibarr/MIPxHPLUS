@@ -498,6 +498,7 @@ void cpx_relax_callback(CPXCALLBACKCONTEXTptr context, const hplus::instance& in
         ind[i] = i;
         lu[i] = 'U';
     }
+    // TODO: a mutex in the relaxation callback might slow down a lot the execution
     pthread_mutex_lock(&tmp);
     CPX_HANDLE_CALL(log, CPXchgbds(cpx_fenv, cpx_flp, inst.m_opt, ind, lu, xstar));
     delete[] lu;
@@ -509,18 +510,21 @@ void cpx_relax_callback(CPXCALLBACKCONTEXTptr context, const hplus::instance& in
     // solve lp model
     CPX_HANDLE_CALL(log, CPXlpopt(cpx_fenv, cpx_flp));
     int status{CPXgetstat(cpx_fenv, cpx_flp)};
+    // TODO: proper handling
     if (status != CPX_STAT_OPTIMAL) {
         log.raise_error("CPXgetstat: %d.", status);
     }
     // get g
     double g{-1};
     CPX_HANDLE_CALL(log, CPXgetobjval(cpx_fenv, cpx_flp, &g));
+    // TODO: remove debugging
     ASSERT_LOG(log, g >= 0);
     // if g >= 1 then the goal can be reached, no landmark to add
     if (g >= 1 - HPLUS_EPSILON) {
         pthread_mutex_unlock(&tmp);
         return;
     }
+    // TODO: remove debugging
     log.print_warn("Found a solution with g < 1 (%f).", g);
     // compute the landmark
     double* dj{new double[inst.m_opt]};
@@ -535,12 +539,12 @@ void cpx_relax_callback(CPXCALLBACKCONTEXTptr context, const hplus::instance& in
     constexpr int begin{0}, purgeable{CPX_USECUT_PURGE}, local{0};
     int nnz{0};
     for (size_t i = 0; i < inst.m_opt; i++) {
-        if (cstat[i] == CPX_AT_UPPER) {                // only if v_a is non-basic to the upper bound
-            if (abs(dj[i]) < HPLUS_EPSILON) continue;  // skip if reduced cost is 0
-            ind[nnz] = i;
-            val[nnz++] = dj[i];
-            if (abs(dj[i] - 1) > HPLUS_EPSILON) log.print_warn("Found reduced cost that is not 0 or 1: %f.", dj[i]);
-        }
+        // add action to the landmark only if v_a is non-basic to the upper bound and if the reduced cost is not 0
+        if (cstat[i] != CPX_AT_UPPER || abs(dj[i]) < HPLUS_EPSILON) continue;
+        ind[nnz] = i;
+        val[nnz++] = dj[i];
+        // TODO: remove debugging
+        if (abs(dj[i] - 1) > HPLUS_EPSILON) log.print_warn("Found reduced cost that is not 0 or 1: %f.", dj[i]);
     }
     CPX_HANDLE_CALL(log, CPXcallbackaddusercuts(context, 1, nnz, &rhs, &sense, &begin, ind, val, &purgeable, &local));
     delete[] val;
@@ -590,6 +594,7 @@ static void cpx_open_fract_model(CPXENVptr& cpx_fenv, CPXLPptr& cpx_flp, const l
     CPX_HANDLE_CALL(log, CPXsetterminate(cpx_fenv, &global_terminate));
     // this will be a max problem
     CPX_HANDLE_CALL(log, CPXchgobjsen(cpx_fenv, cpx_flp, CPX_MAX));
+    // TODO: remove debugging
     // log file
     CPX_HANDLE_CALL(log, CPXsetlogfilename(cpx_fenv, (std::string(HPLUS_CPLEX_OUTPUT_DIR "/log/fract.log")).c_str(), "w"));
 }
