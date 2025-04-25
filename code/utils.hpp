@@ -80,6 +80,7 @@
 // ====================================================== //
 
 #define HPLUS_CPX_INT_ROUNDING 0.5
+#define HPLUS_EPSILON 1e-6
 
 #define HPLUS_DEF_CPX_SCREENOUTPUT CPX_OFF
 #define HPLUS_DEF_CPX_CLONELOG -1
@@ -281,17 +282,17 @@ class timelimit_exception final : public std::exception {
 
 // FIXME: ./airport-p38-airport5MUC-p3.log
 // ./barman-sat11-strips-pfile07-026.log
-#define CPX_HANDLE_CALL(log, code)                                        \
-    {                                                                     \
-        switch (code) {                                                   \
-            case 1001:                                                    \
-                log.raise_error("OUT OF MEMORY.");                        \
-                break;                                                    \
-            case 0:                                                       \
-                break;                                                    \
-            default:                                                      \
-                log.raise_error("Unhandled CPLEX error code: %d.", code); \
-        }                                                                 \
+#define CPX_HANDLE_CALL(log, code)                                                                                     \
+    {                                                                                                                  \
+        switch (code) {                                                                                                \
+            case 1001:                                                                                                 \
+                log.raise_error("OUT OF MEMORY.");                                                                     \
+                break;                                                                                                 \
+            case 0:                                                                                                    \
+                break;                                                                                                 \
+            default:                                                                                                   \
+                log.raise_error("Unhandled CPLEX error code: %d at %s(): %s:%d.", code, __func__, __FILE__, __LINE__); \
+        }                                                                                                              \
     }
 
 /** Print a warning message only if the warn flag is set */

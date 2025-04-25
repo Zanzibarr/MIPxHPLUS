@@ -193,6 +193,7 @@ static void show_info(const hplus::instance& inst, const hplus::environment& env
         log.print("Minimal landmarks:                               %10s", env.minimal_landmark ? "Y" : "N");
         log.print("Complete landmarks:                              %10s", env.complete_landmark ? "Y" : "N");
         log.print("S.E.C.:                                          %10s", env.sec ? "Y" : "N");
+        log.print("Fractional cuts:                                 %10s", env.fract_cuts ? "Y" : "N");
     }
     log.print("Time limit:                                     %10us.", env.time_limit);
     log.print(LINE);

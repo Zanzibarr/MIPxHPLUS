@@ -387,10 +387,8 @@ static std::tuple<int*, double*, int, double*, char*, int*> cb_cpxconvert_sec_cu
 // ====================== CALLBACK ====================== //
 // ====================================================== //
 
-int CPXPUBLIC lm::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG context_id, void* user_handle) {
-    auto& [inst, env, stats, log] = *static_cast<cpx_callback_user_handle*>(user_handle);
-
-    ASSERT_LOG(log, context_id == CPX_CALLBACKCONTEXT_CANDIDATE);
+static void cpx_cand_callback(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const hplus::environment& env, hplus::statistics& stats,
+                              const logger& log) {
     double start_time{env.timer.get_time()};
 
     // get candidate point
@@ -406,7 +404,7 @@ int CPXPUBLIC lm::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG context_id
     // solution is feasible (all used actions are reachable)
     if (used_acts.size() == reachable_acts.size()) {
         INTCHECK_ASSERT_LOG(log, reachable_state.contains(inst.goal));
-        return 0;
+        return;
     }
 
     // print info for debugging
@@ -429,7 +427,7 @@ int CPXPUBLIC lm::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG context_id
         constexpr int tmpizero{0};
         constexpr double tmprhs{0};
         CPX_HANDLE_CALL(log, CPXcallbackrejectcandidate(context, 0, 0, &tmprhs, &tmpsense, &tmpizero, &tmpind, &tmpval));
-        return 0;
+        return;
     }
 
     std::sort(reachable_acts.begin(), reachable_acts.end());
@@ -482,8 +480,207 @@ int CPXPUBLIC lm::cpx_callback(CPXCALLBACKCONTEXTptr context, CPXLONG context_id
     stats.nusercuts += landmarks_list.size() + n_sec;
     stats.callback += env.timer.get_time() - start_time;
     pthread_mutex_unlock(&(stats.callback_time_mutex));
+}
+
+pthread_mutex_t tmp = PTHREAD_MUTEX_INITIALIZER;
+
+void cpx_relax_callback(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, hplus::statistics& stats, CPXENVptr& cpx_fenv, CPXLPptr& cpx_flp,
+                        const logger& log) {
+    // get candidate point
+    double* xstar{new double[inst.m_opt]};
+    double cost{CPX_INFBOUND};
+    CPX_HANDLE_CALL(log, CPXcallbackgetrelaxationpoint(context, xstar, 0, inst.m_opt - 1, &cost));
+    // TODO: filter xstar
+    // update bounds in the lp model
+    int* ind{new int[inst.m_opt]};
+    char* lu{new char[inst.m_opt]};
+    for (size_t i = 0; i < inst.m_opt; i++) {
+        ind[i] = i;
+        lu[i] = 'U';
+    }
+    pthread_mutex_lock(&tmp);
+    CPX_HANDLE_CALL(log, CPXchgbds(cpx_fenv, cpx_flp, inst.m_opt, ind, lu, xstar));
+    delete[] lu;
+    lu = nullptr;
+    delete[] ind;
+    ind = nullptr;
+    delete[] xstar;
+    xstar = nullptr;
+    // solve lp model
+    CPX_HANDLE_CALL(log, CPXlpopt(cpx_fenv, cpx_flp));
+    int status{CPXgetstat(cpx_fenv, cpx_flp)};
+    if (status != CPX_STAT_OPTIMAL) {
+        log.raise_error("CPXgetstat: %d.", status);
+    }
+    // get g
+    double g{-1};
+    CPX_HANDLE_CALL(log, CPXgetobjval(cpx_fenv, cpx_flp, &g));
+    ASSERT_LOG(log, g >= 0);
+    // if g >= 1 then the goal can be reached, no landmark to add
+    if (g >= 1 - HPLUS_EPSILON) {
+        pthread_mutex_unlock(&tmp);
+        return;
+    }
+    log.print_warn("Found a solution with g < 1 (%f).", g);
+    // compute the landmark
+    double* dj{new double[inst.m_opt]};
+    CPX_HANDLE_CALL(log, CPXgetdj(cpx_fenv, cpx_flp, dj, 0, inst.m_opt - 1));
+    int* cstat{new int[inst.m_opt + inst.n_opt + 1]};
+    CPX_HANDLE_CALL(log, CPXgetbase(cpx_fenv, cpx_flp, cstat, nullptr))
+    pthread_mutex_unlock(&tmp);
+    ind = new int[inst.m_opt];
+    double* val{new double[inst.m_opt]};
+    constexpr double rhs{1};
+    constexpr char sense{'G'};
+    constexpr int begin{0}, purgeable{CPX_USECUT_PURGE}, local{0};
+    int nnz{0};
+    for (size_t i = 0; i < inst.m_opt; i++) {
+        if (cstat[i] == CPX_AT_UPPER) {                // only if v_a is non-basic to the upper bound
+            if (abs(dj[i]) < HPLUS_EPSILON) continue;  // skip if reduced cost is 0
+            ind[nnz] = i;
+            val[nnz++] = dj[i];
+            if (abs(dj[i] - 1) > HPLUS_EPSILON) log.print_warn("Found reduced cost that is not 0 or 1: %f.", dj[i]);
+        }
+    }
+    CPX_HANDLE_CALL(log, CPXcallbackaddusercuts(context, 1, nnz, &rhs, &sense, &begin, ind, val, &purgeable, &local));
+    delete[] val;
+    val = nullptr;
+    delete[] ind;
+    ind = nullptr;
+    delete[] cstat;
+    cstat = nullptr;
+    delete[] dj;
+    dj = nullptr;
+}
+
+int CPXPUBLIC lm::cpx_callback_hub(CPXCALLBACKCONTEXTptr context, CPXLONG context_id, void* user_handle) {
+    auto& [inst, env, stats, log, cpx_fenv, cpx_flp]{*static_cast<lm::cpx_callback_user_handle*>(user_handle)};
+
+    switch (context_id) {
+        case CPX_CALLBACKCONTEXT_CANDIDATE:
+            cpx_cand_callback(context, inst, env, stats, log);
+            break;
+        case CPX_CALLBACKCONTEXT_RELAXATION:
+            cpx_relax_callback(context, inst, stats, cpx_fenv, cpx_flp, log);
+            break;
+        default:
+            log.raise_error("Unhandled callback context: %ld.", context_id);
+    }
 
     return 0;
+}
+
+static void cpx_open_fract_model(CPXENVptr& cpx_fenv, CPXLPptr& cpx_flp, const logger& log) {
+    int cpxerror;
+    cpx_fenv = CPXopenCPLEX(&cpxerror);
+    CPX_HANDLE_CALL(log, cpxerror);
+    std::string lpname{"fractmodel"};
+    cpx_flp = CPXcreateprob(cpx_fenv, &cpxerror, lpname.c_str());
+    CPX_HANDLE_CALL(log, cpxerror);
+    // log file
+    CPX_HANDLE_CALL(log, CPXsetintparam(cpx_fenv, CPXPARAM_ScreenOutput, HPLUS_DEF_CPX_SCREENOUTPUT));
+    CPX_HANDLE_CALL(log, CPXsetintparam(cpx_fenv, CPX_PARAM_CLONELOG, HPLUS_DEF_CPX_CLONELOG));
+    // tolerance
+    CPX_HANDLE_CALL(log, CPXsetdblparam(cpx_fenv, CPXPARAM_MIP_Tolerances_MIPGap, HPLUS_DEF_CPX_TOL_GAP));
+    // memory/size limits
+    CPX_HANDLE_CALL(log, CPXsetdblparam(cpx_fenv, CPXPARAM_MIP_Limits_TreeMemory, HPLUS_DEF_CPX_TREE_MEM));
+    CPX_HANDLE_CALL(log, CPXsetdblparam(cpx_fenv, CPXPARAM_WorkMem, HPLUS_DEF_CPX_WORK_MEM));
+    CPX_HANDLE_CALL(log, CPXsetintparam(cpx_fenv, CPXPARAM_MIP_Strategy_File, HPLUS_DEF_CPX_STRAT_FILE));
+    // terminate condition
+    CPX_HANDLE_CALL(log, CPXsetterminate(cpx_fenv, &global_terminate));
+    // this will be a max problem
+    CPX_HANDLE_CALL(log, CPXchgobjsen(cpx_fenv, cpx_flp, CPX_MAX));
+    // log file
+    CPX_HANDLE_CALL(log, CPXsetlogfilename(cpx_fenv, (std::string(HPLUS_CPLEX_OUTPUT_DIR "/log/fract.log")).c_str(), "w"));
+}
+
+void lm::cpx_close_fract_model(CPXENVptr& cpx_fenv, CPXLPptr& cpx_flp, const logger& log) {
+    CPX_HANDLE_CALL(log, CPXfreeprob(cpx_fenv, &cpx_flp));
+    CPX_HANDLE_CALL(log, CPXcloseCPLEX(&cpx_fenv));
+}
+
+static void cpx_build_fract_model(CPXENVptr& cpx_fenv, CPXLPptr& cpx_flp, const hplus::instance& inst, const logger& log) {
+    size_t ncols{inst.m_opt + inst.n_opt + 1};
+    double* objs{new double[ncols]};
+    double* lbs{new double[ncols]};
+    double* ubs{new double[ncols]};
+    char* types{new char[ncols]};
+    // variables indexes:
+    // 0 -> m_opt - 1 : actions
+    // m_opt -> m_opt + n_opt - 1 : variables
+    // m_opt + n_opt : g
+    for (size_t var_count = 0; var_count < ncols; var_count++) {
+        objs[var_count] = 0;
+        lbs[var_count] = 0;
+        ubs[var_count] = CPX_INFBOUND;
+        types[var_count] = 'C';
+    }
+    objs[ncols - 1] = 1.0;  // max{g}
+    CPX_HANDLE_CALL(log, CPXnewcols(cpx_fenv, cpx_flp, ncols, objs, lbs, ubs, types, nullptr));
+    delete[] types;
+    types = nullptr;
+    delete[] ubs;
+    ubs = nullptr;
+    delete[] lbs;
+    lbs = nullptr;
+    delete[] objs;
+    objs = nullptr;
+
+    // ~~~~~~~~~~~~~ CONSTRAINTS ~~~~~~~~~~~~~ //
+    int* ind{new int[inst.m_opt + 1]};
+    double* val{new double[inst.m_opt + 1]};
+    int nnz{0};
+    constexpr char sense{'L'};
+    constexpr double rhs{0};
+    constexpr int begin{0};
+
+    const auto get_act_idx = [&inst](size_t idx) { return inst.act_opt_conv[idx]; };
+    const auto get_var_idx = [&inst](size_t idx) { return inst.m_opt + inst.var_opt_conv[idx]; };
+    const auto get_g_idx = [&ncols]() { return ncols - 1; };
+
+    // g - vp <= 0 for each p in G
+    for (const auto& var_i : inst.goal) {
+        ind[0] = get_g_idx();
+        val[0] = 1;
+        ind[1] = get_var_idx(var_i);
+        val[1] = -1;
+        CPX_HANDLE_CALL(log, CPXaddrows(cpx_fenv, cpx_flp, 0, 1, 2, &rhs, &sense, &begin, ind, val, nullptr, nullptr));
+    }
+
+    // va - vp <= 0 for each a, for each p in pre(a)
+    for (const auto& act_i : inst.act_rem) {
+        ind[0] = get_act_idx(act_i);
+        val[0] = 1;
+        for (const auto& var_i : inst.actions[act_i].pre_sparse) {
+            ind[1] = get_var_idx(var_i);
+            val[1] = -1;
+            CPX_HANDLE_CALL(log, CPXaddrows(cpx_fenv, cpx_flp, 0, 1, 2, &rhs, &sense, &begin, ind, val, nullptr, nullptr));
+        }
+    }
+
+    // vp - \sum_{a:p\in eff(a)}va <= 0 for each p
+    for (const auto& var_i : inst.var_rem) {
+        nnz = 0;
+        ind[nnz] = get_var_idx(var_i);
+        val[nnz++] = 1;
+        for (const auto& act_i : inst.act_with_eff[var_i]) {
+            ind[nnz] = get_act_idx(act_i);
+            val[nnz++] = -1;
+        }
+        CPX_HANDLE_CALL(log, CPXaddrows(cpx_fenv, cpx_flp, 0, 1, nnz, &rhs, &sense, &begin, ind, val, nullptr, nullptr));
+    }
+
+    delete[] val;
+    val = nullptr;
+    delete[] ind;
+    ind = nullptr;
+
+    CPX_HANDLE_CALL(log, CPXchgprobtype(cpx_fenv, cpx_flp, CPXPROB_LP));
+}
+
+void lm::cpx_create_fract_model(const hplus::instance& inst, const logger& log, CPXENVptr& cpx_fenv, CPXLPptr& cpx_flp) {
+    cpx_open_fract_model(cpx_fenv, cpx_flp, log);
+    cpx_build_fract_model(cpx_fenv, cpx_flp, inst, log);
 }
 
 // ##################################################################### //
