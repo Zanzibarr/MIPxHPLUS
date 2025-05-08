@@ -415,7 +415,7 @@ static void cpx_cand_callback(CPXCALLBACKCONTEXTptr context, const hplus::instan
     if (reachable_state.contains(inst.goal)) {
         // Post the (possibly) improved feasible solution
         auto [ind, val, hcost, size] = cb_find_heur_sol(inst, reachable_acts);
-        CPX_HANDLE_CALL(log, CPXcallbackpostheursoln(context, size, ind, val, hcost, CPXCALLBACKSOLUTION_NOCHECK))
+        CPX_HANDLE_CALL(log, CPXcallbackpostheursoln(context, size, ind, val, hcost, CPXCALLBACKSOLUTION_NOCHECK));
         delete[] val;
         val = nullptr;
         delete[] ind;
@@ -482,210 +482,235 @@ static void cpx_cand_callback(CPXCALLBACKCONTEXTptr context, const hplus::instan
     pthread_mutex_unlock(&(stats.callback_time_mutex));
 }
 
-pthread_mutex_t tmp = PTHREAD_MUTEX_INITIALIZER;
+// static int nfract = 0, nlms = 0;
 
-void cpx_relax_callback(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, hplus::statistics& stats, CPXENVptr& cpx_fenv, CPXLPptr& cpx_flp,
-                        const logger& log) {
-    // get candidate point
+static void cpx_relax_callback(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, hplus::statistics& stats, const logger& log) {
+    // int nodeid{-1};
+    // CPX_HANDLE_CALL(log, CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODEUID, &nodeid));
+    // if (nodeid != 0) return;
+
+    // pthread_mutex_lock(&(stats.callback_time_mutex));
+    // nfract++;
+    // pthread_mutex_unlock(&(stats.callback_time_mutex));
+
     double* xstar{new double[inst.m_opt]};
-    double cost{CPX_INFBOUND};
-    CPX_HANDLE_CALL(log, CPXcallbackgetrelaxationpoint(context, xstar, 0, inst.m_opt - 1, &cost));
-    // TODO: filter xstar
-    // update bounds in the lp model
-    int* ind{new int[inst.m_opt]};
-    char* lu{new char[inst.m_opt]};
+    double _{CPX_INFBOUND};
+    CPX_HANDLE_CALL(log, CPXcallbackgetrelaxationpoint(context, xstar, 0, inst.m_opt - 1, &_));
+
+    std::vector<double> var_values(inst.n, 0), act_values(inst.m_opt, -1);
+    std::list<size_t> actions_queue;
+    binary_set state(inst.n), act_in_queue(inst.m_opt);
+
+    // initial actions (no preconditions)
     for (size_t i = 0; i < inst.m_opt; i++) {
-        ind[i] = i;
-        lu[i] = 'U';
+        if (xstar[i] <= HPLUS_EPSILON) continue;
+        if (inst.actions[inst.act_cpxtoidx[i]].pre_sparse.empty()) {
+            actions_queue.push_back(i);
+            act_in_queue.add(i);
+        }
     }
-    // TODO: a mutex in the relaxation callback might slow down a lot the execution
-    pthread_mutex_lock(&tmp);
-    CPX_HANDLE_CALL(log, CPXchgbds(cpx_fenv, cpx_flp, inst.m_opt, ind, lu, xstar));
-    delete[] lu;
-    lu = nullptr;
-    delete[] ind;
-    ind = nullptr;
-    delete[] xstar;
-    xstar = nullptr;
-    // solve lp model
-    CPX_HANDLE_CALL(log, CPXlpopt(cpx_fenv, cpx_flp));
-    int status{CPXgetstat(cpx_fenv, cpx_flp)};
-    // TODO: proper handling
-    if (status != CPX_STAT_OPTIMAL) {
-        log.raise_error("CPXgetstat: %d.", status);
+
+    while (!actions_queue.empty()) {
+        size_t act_i_cpx{actions_queue.front()};
+        actions_queue.pop_front();
+        act_in_queue.remove(act_i_cpx);
+
+        // choose value to set to the action
+        double act_val{act_values[act_i_cpx] < 0 ? 0 : act_values[act_i_cpx]};
+        act_values[act_i_cpx] = xstar[act_i_cpx];
+
+        if (act_values[act_i_cpx] <= HPLUS_EPSILON) continue;
+
+        for (const auto& var_i : inst.actions[inst.act_cpxtoidx[act_i_cpx]].pre_sparse)
+            act_values[act_i_cpx] = std::min(act_values[act_i_cpx], var_values[var_i]);
+
+        if (act_values[act_i_cpx] <= HPLUS_EPSILON) continue;
+
+        // update values of the effects
+        double diff{act_values[act_i_cpx] - act_val};
+        if (diff < HPLUS_EPSILON && state.contains(inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff)) continue;
+        state |= inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff;
+        for (const auto& var_i : inst.actions[inst.act_cpxtoidx[act_i_cpx]].eff_sparse) {
+            var_values[var_i] += diff;
+            for (const auto& act_j : inst.act_with_pre[var_i]) {
+                if (!state.contains(inst.actions[act_j].pre)) continue;
+                if (act_in_queue[inst.act_opt_conv[act_j]]) continue;
+                actions_queue.push_back(inst.act_opt_conv[act_j]);
+                act_in_queue.add(inst.act_opt_conv[act_j]);
+            }
+        }
     }
-    // get g
-    double g{-1};
-    CPX_HANDLE_CALL(log, CPXgetobjval(cpx_fenv, cpx_flp, &g));
-    // TODO: remove debugging
-    ASSERT_LOG(log, g >= 0);
-    // if g >= 1 then the goal can be reached, no landmark to add
-    if (g >= 1 - HPLUS_EPSILON) {
-        pthread_mutex_unlock(&tmp);
+
+    // compute reachable state
+    binary_set reachable_state(inst.n);
+    for (size_t i = 0; i < inst.n; i++) {
+        if (var_values[i] >= HPLUS_EPSILON) reachable_state.add(i);
+    }
+
+    if (reachable_state.contains(inst.goal)) {
+        delete[] xstar;
+        xstar = nullptr;
         return;
     }
-    // TODO: remove debugging
-    log.print_warn("Found a solution with g < 1 (%f).", g);
-    // compute the landmark
-    double* dj{new double[inst.m_opt]};
-    CPX_HANDLE_CALL(log, CPXgetdj(cpx_fenv, cpx_flp, dj, 0, inst.m_opt - 1));
-    int* cstat{new int[inst.m_opt + inst.n_opt + 1]};
-    CPX_HANDLE_CALL(log, CPXgetbase(cpx_fenv, cpx_flp, cstat, nullptr))
-    pthread_mutex_unlock(&tmp);
-    ind = new int[inst.m_opt];
-    double* val{new double[inst.m_opt]};
-    constexpr double rhs{1};
-    constexpr char sense{'G'};
-    constexpr int begin{0}, purgeable{CPX_USECUT_PURGE}, local{0};
-    int nnz{0};
+
+    // compute landmark
+    double cut_section = 0;
+    std::vector<size_t> landmark;
+    landmark.reserve(inst.m_opt);
     for (size_t i = 0; i < inst.m_opt; i++) {
-        // add action to the landmark only if v_a is non-basic to the upper bound and if the reduced cost is not 0
-        if (cstat[i] != CPX_AT_UPPER || abs(dj[i]) < HPLUS_EPSILON) continue;
-        ind[nnz] = i;
-        val[nnz++] = dj[i];
-        // TODO: remove debugging
-        if (abs(dj[i] - 1) > HPLUS_EPSILON) log.print_warn("Found reduced cost that is not 0 or 1: %f.", dj[i]);
+        if (reachable_state.contains(inst.actions[inst.act_cpxtoidx[i]].pre) && !reachable_state.contains(inst.actions[inst.act_cpxtoidx[i]].eff)) {
+            landmark.push_back(i);
+            cut_section += xstar[i];
+        }
     }
+
+    delete[] xstar;
+    xstar = nullptr;
+
+    if (cut_section >= 1 - HPLUS_EPSILON) return;
+
+    // pthread_mutex_lock(&(stats.callback_time_mutex));
+    // log.print_warn("Cut section COMB: %f.", cut_section);
+    // log.print_warn("Number of landmarks: %d/%d.", nlms, nfract);
+    // for (const auto& i : landmark) std::cout << i << ";";
+    // std::cout << "\n";
+    // pthread_mutex_unlock(&(stats.callback_time_mutex));
+
+    int* ind = new int[inst.m_opt];
+    double* val{new double[inst.m_opt]};
+    int nnz{0};
+    static constexpr int begin{0}, purgeable{CPX_USECUT_FORCE}, local{0};
+    static constexpr double rhs{1};
+    static constexpr char sense{'G'};
+    for (const auto& act_i_cpx : landmark) {
+        ind[nnz] = act_i_cpx;
+        val[nnz++] = 1;
+    }
+
     CPX_HANDLE_CALL(log, CPXcallbackaddusercuts(context, 1, nnz, &rhs, &sense, &begin, ind, val, &purgeable, &local));
+
     delete[] val;
     val = nullptr;
     delete[] ind;
     ind = nullptr;
-    delete[] cstat;
-    cstat = nullptr;
-    delete[] dj;
-    dj = nullptr;
+
+    // SEC
+    xstar = new double[inst.n_fadd];
+    CPX_HANDLE_CALL(log, CPXcallbackgetrelaxationpoint(context, xstar, inst.m_opt, inst.m_opt + inst.n_fadd, &_));
+
+    std::vector<std::set<size_t>> graph(inst.m_opt);
+    for (size_t act_i_cpx = 0; act_i_cpx < inst.m_opt; act_i_cpx++) {
+        const auto& act{inst.actions[inst.act_cpxtoidx[act_i_cpx]]};
+        for (size_t idx = 0; idx < act.eff_sparse.size(); idx++) {
+            size_t var_i{act.eff_sparse[idx]};
+            if (xstar[inst.fadd_cpx_start[act_i_cpx] + idx] < HPLUS_EPSILON) continue;
+            for (const auto& act_j : inst.act_with_pre[var_i]) graph[act_i_cpx].insert(inst.act_opt_conv[act_j]);
+        }
+    }
+
+    std::vector<std::vector<size_t>> cycles;
+    std::unordered_set<size_t> cycle_found;
+
+    for (size_t start = 0; start < graph.size(); start++) {
+        // Skip if we already found a cycle containing this node
+        if (cycle_found.count(start)) continue;
+
+        std::vector<size_t> path;
+        std::unordered_set<size_t> in_path;
+        std::unordered_set<size_t> visited;
+
+        // Run DFS to find a cycle starting from this node
+        if (cycles_dfs(graph, start, start, path, in_path, visited, cycles, cycle_found)) {
+            // Mark all nodes in the found cycle as having a cycle
+            for (size_t node : cycles.back()) {
+                cycle_found.insert(node);
+            }
+        }
+    }
+    const size_t max_size = cycles.size() * inst.n_opt;
+
+    int* secind{new int[max_size]};
+    double* secval{new double[max_size]};
+    nnz = 0;
+    double* secrhs{new double[cycles.size()]};
+    char* secsense{new char[cycles.size()]};
+    int* secizero{new int[cycles.size()]};
+    int *secpurgeable{new int[cycles.size()]}, *seclocal{new int[cycles.size()]};
+    int sec_counter{0};
+
+    for (const auto& cycle : cycles) {
+        secsense[sec_counter] = 'L';
+        secizero[sec_counter] = nnz;
+        secrhs[sec_counter] = -1;
+        secpurgeable[sec_counter] = CPX_USECUT_FORCE;
+        seclocal[sec_counter] = 0;
+
+        // first archievers in the cycle
+        int var_count{-1};
+        for (size_t i = 0; i < cycle.size() - 1; i++) {
+            var_count = -1;
+            for (size_t idx = 0; idx < inst.actions[inst.act_cpxtoidx[cycle[i]]].eff_sparse.size(); idx++) {
+                size_t p{inst.actions[inst.act_cpxtoidx[cycle[i]]].eff_sparse[idx]};
+                var_count++;
+                if (xstar[inst.fadd_cpx_start[cycle[i] + idx]] < HPLUS_EPSILON || !inst.actions[inst.act_cpxtoidx[cycle[i + 1]]].pre[p]) continue;
+
+                secind[nnz] = inst.m_opt + inst.fadd_cpx_start[cycle[i]] + var_count;
+                secval[nnz++] = 1;
+                secrhs[sec_counter]++;
+            }
+        }
+        var_count = -1;
+        for (const auto& p : inst.actions[inst.act_cpxtoidx[cycle[cycle.size() - 1]]].eff_sparse) {
+            var_count++;
+            if (xstar[inst.fadd_cpx_start[cycle[cycle.size() - 1] + var_count]] < HPLUS_EPSILON || !inst.actions[inst.act_cpxtoidx[cycle[0]]].pre[p])
+                continue;
+
+            secind[nnz] = inst.m_opt + inst.fadd_cpx_start[cycle[cycle.size() - 1]] + var_count;
+            secval[nnz++] = 1;
+            secrhs[sec_counter]++;
+        }
+
+        sec_counter++;
+    }
+    CPX_HANDLE_CALL(log, CPXcallbackaddusercuts(context, cycles.size(), nnz, secrhs, secsense, secizero, secind, secval, secpurgeable, seclocal));
+    delete[] seclocal;
+    seclocal = nullptr;
+    delete[] secpurgeable;
+    secpurgeable = nullptr;
+    delete[] secizero;
+    secizero = nullptr;
+    delete[] secsense;
+    secsense = nullptr;
+    delete[] secrhs;
+    secrhs = nullptr;
+    delete[] secval;
+    secval = nullptr;
+    delete[] secind;
+    secind = nullptr;
+    delete[] xstar;
+    xstar = nullptr;
+
+    pthread_mutex_lock(&(stats.callback_time_mutex));
+    stats.nusercuts += cycles.size();
+    // nlms += 1 + cycles.size();
+    pthread_mutex_unlock(&(stats.callback_time_mutex));
 }
 
 int CPXPUBLIC lm::cpx_callback_hub(CPXCALLBACKCONTEXTptr context, CPXLONG context_id, void* user_handle) {
-    auto& [inst, env, stats, log, cpx_fenv, cpx_flp]{*static_cast<lm::cpx_callback_user_handle*>(user_handle)};
+    auto& [inst, env, stats, log]{*static_cast<lm::cpx_callback_user_handle*>(user_handle)};
 
     switch (context_id) {
         case CPX_CALLBACKCONTEXT_CANDIDATE:
             cpx_cand_callback(context, inst, env, stats, log);
             break;
         case CPX_CALLBACKCONTEXT_RELAXATION:
-            cpx_relax_callback(context, inst, stats, cpx_fenv, cpx_flp, log);
+            cpx_relax_callback(context, inst, stats, log);
             break;
         default:
             log.raise_error("Unhandled callback context: %ld.", context_id);
     }
 
     return 0;
-}
-
-static void cpx_open_fract_model(CPXENVptr& cpx_fenv, CPXLPptr& cpx_flp, const logger& log) {
-    int cpxerror;
-    cpx_fenv = CPXopenCPLEX(&cpxerror);
-    CPX_HANDLE_CALL(log, cpxerror);
-    std::string lpname{"fractmodel"};
-    cpx_flp = CPXcreateprob(cpx_fenv, &cpxerror, lpname.c_str());
-    CPX_HANDLE_CALL(log, cpxerror);
-    // log file
-    CPX_HANDLE_CALL(log, CPXsetintparam(cpx_fenv, CPXPARAM_ScreenOutput, HPLUS_DEF_CPX_SCREENOUTPUT));
-    CPX_HANDLE_CALL(log, CPXsetintparam(cpx_fenv, CPX_PARAM_CLONELOG, HPLUS_DEF_CPX_CLONELOG));
-    // tolerance
-    CPX_HANDLE_CALL(log, CPXsetdblparam(cpx_fenv, CPXPARAM_MIP_Tolerances_MIPGap, HPLUS_DEF_CPX_TOL_GAP));
-    // memory/size limits
-    CPX_HANDLE_CALL(log, CPXsetdblparam(cpx_fenv, CPXPARAM_MIP_Limits_TreeMemory, HPLUS_DEF_CPX_TREE_MEM));
-    CPX_HANDLE_CALL(log, CPXsetdblparam(cpx_fenv, CPXPARAM_WorkMem, HPLUS_DEF_CPX_WORK_MEM));
-    CPX_HANDLE_CALL(log, CPXsetintparam(cpx_fenv, CPXPARAM_MIP_Strategy_File, HPLUS_DEF_CPX_STRAT_FILE));
-    // terminate condition
-    CPX_HANDLE_CALL(log, CPXsetterminate(cpx_fenv, &global_terminate));
-    // this will be a max problem
-    CPX_HANDLE_CALL(log, CPXchgobjsen(cpx_fenv, cpx_flp, CPX_MAX));
-    // TODO: remove debugging
-    // log file
-    CPX_HANDLE_CALL(log, CPXsetlogfilename(cpx_fenv, (std::string(HPLUS_CPLEX_OUTPUT_DIR "/log/fract.log")).c_str(), "w"));
-}
-
-void lm::cpx_close_fract_model(CPXENVptr& cpx_fenv, CPXLPptr& cpx_flp, const logger& log) {
-    CPX_HANDLE_CALL(log, CPXfreeprob(cpx_fenv, &cpx_flp));
-    CPX_HANDLE_CALL(log, CPXcloseCPLEX(&cpx_fenv));
-}
-
-static void cpx_build_fract_model(CPXENVptr& cpx_fenv, CPXLPptr& cpx_flp, const hplus::instance& inst, const logger& log) {
-    size_t ncols{inst.m_opt + inst.n_opt + 1};
-    double* objs{new double[ncols]};
-    double* lbs{new double[ncols]};
-    double* ubs{new double[ncols]};
-    char* types{new char[ncols]};
-    // variables indexes:
-    // 0 -> m_opt - 1 : actions
-    // m_opt -> m_opt + n_opt - 1 : variables
-    // m_opt + n_opt : g
-    for (size_t var_count = 0; var_count < ncols; var_count++) {
-        objs[var_count] = 0;
-        lbs[var_count] = 0;
-        ubs[var_count] = CPX_INFBOUND;
-        types[var_count] = 'C';
-    }
-    objs[ncols - 1] = 1.0;  // max{g}
-    CPX_HANDLE_CALL(log, CPXnewcols(cpx_fenv, cpx_flp, ncols, objs, lbs, ubs, types, nullptr));
-    delete[] types;
-    types = nullptr;
-    delete[] ubs;
-    ubs = nullptr;
-    delete[] lbs;
-    lbs = nullptr;
-    delete[] objs;
-    objs = nullptr;
-
-    // ~~~~~~~~~~~~~ CONSTRAINTS ~~~~~~~~~~~~~ //
-    int* ind{new int[inst.m_opt + 1]};
-    double* val{new double[inst.m_opt + 1]};
-    int nnz{0};
-    constexpr char sense{'L'};
-    constexpr double rhs{0};
-    constexpr int begin{0};
-
-    const auto get_act_idx = [&inst](size_t idx) { return inst.act_opt_conv[idx]; };
-    const auto get_var_idx = [&inst](size_t idx) { return inst.m_opt + inst.var_opt_conv[idx]; };
-    const auto get_g_idx = [&ncols]() { return ncols - 1; };
-
-    // g - vp <= 0 for each p in G
-    for (const auto& var_i : inst.goal) {
-        ind[0] = get_g_idx();
-        val[0] = 1;
-        ind[1] = get_var_idx(var_i);
-        val[1] = -1;
-        CPX_HANDLE_CALL(log, CPXaddrows(cpx_fenv, cpx_flp, 0, 1, 2, &rhs, &sense, &begin, ind, val, nullptr, nullptr));
-    }
-
-    // va - vp <= 0 for each a, for each p in pre(a)
-    for (const auto& act_i : inst.act_rem) {
-        ind[0] = get_act_idx(act_i);
-        val[0] = 1;
-        for (const auto& var_i : inst.actions[act_i].pre_sparse) {
-            ind[1] = get_var_idx(var_i);
-            val[1] = -1;
-            CPX_HANDLE_CALL(log, CPXaddrows(cpx_fenv, cpx_flp, 0, 1, 2, &rhs, &sense, &begin, ind, val, nullptr, nullptr));
-        }
-    }
-
-    // vp - \sum_{a:p\in eff(a)}va <= 0 for each p
-    for (const auto& var_i : inst.var_rem) {
-        nnz = 0;
-        ind[nnz] = get_var_idx(var_i);
-        val[nnz++] = 1;
-        for (const auto& act_i : inst.act_with_eff[var_i]) {
-            ind[nnz] = get_act_idx(act_i);
-            val[nnz++] = -1;
-        }
-        CPX_HANDLE_CALL(log, CPXaddrows(cpx_fenv, cpx_flp, 0, 1, nnz, &rhs, &sense, &begin, ind, val, nullptr, nullptr));
-    }
-
-    delete[] val;
-    val = nullptr;
-    delete[] ind;
-    ind = nullptr;
-
-    CPX_HANDLE_CALL(log, CPXchgprobtype(cpx_fenv, cpx_flp, CPXPROB_LP));
-}
-
-void lm::cpx_create_fract_model(const hplus::instance& inst, const logger& log, CPXENVptr& cpx_fenv, CPXLPptr& cpx_flp) {
-    cpx_open_fract_model(cpx_fenv, cpx_flp, log);
-    cpx_build_fract_model(cpx_fenv, cpx_flp, inst, log);
 }
 
 // ##################################################################### //
@@ -1001,8 +1026,8 @@ void lm::post_cpx_warmstart(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::ins
 void lm::store_cpx_sol(CPXENVptr& cpxenv, CPXLPptr& cpxlp, hplus::instance& inst, const logger& log) {
     PRINT_VERBOSE(log, "Storing LM solution.");
 
-    double* plan{new double[inst.m_opt + inst.n_fadd]};
-    CPX_HANDLE_CALL(log, CPXgetx(cpxenv, cpxlp, plan, 0, inst.m_opt + inst.n_fadd - 1));
+    double* plan{new double[inst.m_opt]};
+    CPX_HANDLE_CALL(log, CPXgetx(cpxenv, cpxlp, plan, 0, inst.m_opt - 1));
 
     // convert to std collections for easier parsing
     std::vector<size_t> cpx_result;

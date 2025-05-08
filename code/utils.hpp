@@ -280,8 +280,6 @@ class timelimit_exception final : public std::exception {
         }                                                \
     }
 
-// FIXME: ./airport-p38-airport5MUC-p3.log
-// ./barman-sat11-strips-pfile07-026.log
 #define CPX_HANDLE_CALL(log, code)                                                                                     \
     {                                                                                                                  \
         switch (code) {                                                                                                \
