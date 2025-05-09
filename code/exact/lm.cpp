@@ -588,106 +588,108 @@ static void cpx_relax_callback(CPXCALLBACKCONTEXTptr context, const hplus::insta
     pthread_mutex_unlock(&(stats.callback_time_mutex));
 
     // SEC
-    {
-        double* xstar = new double[inst.n_fadd];
-        double _{-1};
-        CPX_HANDLE_CALL(log, CPXcallbackgetrelaxationpoint(context, xstar, inst.m_opt, inst.m_opt + inst.n_fadd, &_));
+    // {
+    //     double* xstar = new double[inst.n_fadd];
+    //     double _{-1};
+    //     CPX_HANDLE_CALL(log, CPXcallbackgetrelaxationpoint(context, xstar, inst.m_opt, inst.m_opt + inst.n_fadd, &_));
 
-        std::vector<std::set<size_t>> graph(inst.m_opt);
-        for (size_t act_i_cpx = 0; act_i_cpx < inst.m_opt; act_i_cpx++) {
-            const auto& act{inst.actions[inst.act_cpxtoidx[act_i_cpx]]};
-            for (size_t idx = 0; idx < act.eff_sparse.size(); idx++) {
-                size_t var_i{act.eff_sparse[idx]};
-                if (xstar[inst.fadd_cpx_start[act_i_cpx] + idx] < HPLUS_EPSILON) continue;
-                for (const auto& act_j : inst.act_with_pre[var_i]) graph[act_i_cpx].insert(inst.act_opt_conv[act_j]);
-            }
-        }
+    //     std::vector<std::set<size_t>> graph(inst.m_opt);
+    //     for (size_t act_i_cpx = 0; act_i_cpx < inst.m_opt; act_i_cpx++) {
+    //         const auto& act{inst.actions[inst.act_cpxtoidx[act_i_cpx]]};
+    //         for (size_t idx = 0; idx < act.eff_sparse.size(); idx++) {
+    //             size_t var_i{act.eff_sparse[idx]};
+    //             if (xstar[inst.fadd_cpx_start[act_i_cpx] + idx] < HPLUS_EPSILON) continue;
+    //             for (const auto& act_j : inst.act_with_pre[var_i]) graph[act_i_cpx].insert(inst.act_opt_conv[act_j]);
+    //         }
+    //     }
 
-        std::vector<std::vector<size_t>> cycles;
-        std::unordered_set<size_t> cycle_found;
+    //     std::vector<std::vector<size_t>> cycles;
+    //     std::unordered_set<size_t> cycle_found;
 
-        for (size_t start = 0; start < graph.size(); start++) {
-            // Skip if we already found a cycle containing this node
-            if (cycle_found.count(start)) continue;
+    //     for (size_t start = 0; start < graph.size(); start++) {
+    //         // Skip if we already found a cycle containing this node
+    //         if (cycle_found.count(start)) continue;
 
-            std::vector<size_t> path;
-            std::unordered_set<size_t> in_path;
-            std::unordered_set<size_t> visited;
+    //         std::vector<size_t> path;
+    //         std::unordered_set<size_t> in_path;
+    //         std::unordered_set<size_t> visited;
 
-            // Run DFS to find a cycle starting from this node
-            if (cycles_dfs(graph, start, start, path, in_path, visited, cycles, cycle_found)) {
-                // Mark all nodes in the found cycle as having a cycle
-                for (size_t node : cycles.back()) {
-                    cycle_found.insert(node);
-                }
-            }
-        }
-        const size_t max_size = cycles.size() * inst.n_opt;
+    //         // Run DFS to find a cycle starting from this node
+    //         if (cycles_dfs(graph, start, start, path, in_path, visited, cycles, cycle_found)) {
+    //             // Mark all nodes in the found cycle as having a cycle
+    //             for (size_t node : cycles.back()) {
+    //                 cycle_found.insert(node);
+    //             }
+    //         }
+    //     }
+    //     const size_t max_size = cycles.size() * inst.n_opt;
 
-        int* secind{new int[max_size]};
-        double* secval{new double[max_size]};
-        int nnz = 0;
-        double* secrhs{new double[cycles.size()]};
-        char* secsense{new char[cycles.size()]};
-        int* secizero{new int[cycles.size()]};
-        int *secpurgeable{new int[cycles.size()]}, *seclocal{new int[cycles.size()]};
-        int sec_counter{0};
+    //     if (max_size == 0) {
+    //         delete[] xstar;
+    //         xstar = nullptr;
+    //         return;
+    //     }
 
-        for (const auto& cycle : cycles) {
-            secsense[sec_counter] = 'L';
-            secizero[sec_counter] = nnz;
-            secrhs[sec_counter] = -1;
-            secpurgeable[sec_counter] = CPX_USECUT_FORCE;
-            seclocal[sec_counter] = 0;
+    //     int* secind{new int[max_size]};
+    //     double* secval{new double[max_size]};
+    //     int nnz = 0;
+    //     double* secrhs{new double[cycles.size()]};
+    //     char* secsense{new char[cycles.size()]};
+    //     int* secizero{new int[cycles.size()]};
+    //     int *secpurgeable{new int[cycles.size()]}, *seclocal{new int[cycles.size()]};
+    //     int sec_counter{0};
 
-            // first archievers in the cycle
-            for (size_t i = 0; i < cycle.size() - 1; i++) {
-                for (size_t idx = 0; idx < inst.actions[inst.act_cpxtoidx[cycle[i]]].eff_sparse.size(); idx++) {
-                    size_t p{inst.actions[inst.act_cpxtoidx[cycle[i]]].eff_sparse[idx]};
-                    if (xstar[inst.fadd_cpx_start[cycle[i]] + idx] < HPLUS_EPSILON || !inst.actions[inst.act_cpxtoidx[cycle[i + 1]]].pre[p]) continue;
+    //     for (const auto& cycle : cycles) {
+    //         secsense[sec_counter] = 'L';
+    //         secizero[sec_counter] = nnz;
+    //         secrhs[sec_counter] = -1;
+    //         secpurgeable[sec_counter] = CPX_USECUT_FORCE;
+    //         seclocal[sec_counter] = 0;
 
-                    secind[nnz] = inst.m_opt + inst.fadd_cpx_start[cycle[i]] + idx;
-                    secval[nnz++] = 1;
-                    secrhs[sec_counter]++;
-                }
-            }
-            int var_count{-1};
-            for (const auto& p : inst.actions[inst.act_cpxtoidx[cycle[cycle.size() - 1]]].eff_sparse) {
-                var_count++;
-                if (xstar[inst.fadd_cpx_start[cycle[cycle.size() - 1]] + var_count] < HPLUS_EPSILON ||
-                    !inst.actions[inst.act_cpxtoidx[cycle[0]]].pre[p])
-                    continue;
+    //         // first archievers in the cycle
+    //         for (size_t i = 0; i < cycle.size() - 1; i++) {
+    //             for (size_t idx = 0; idx < inst.actions[inst.act_cpxtoidx[cycle[i]]].eff_sparse.size(); idx++) {
+    //                 size_t p{inst.actions[inst.act_cpxtoidx[cycle[i]]].eff_sparse[idx]};
+    //                 if (xstar[inst.fadd_cpx_start[cycle[i]] + idx] < HPLUS_EPSILON || !inst.actions[inst.act_cpxtoidx[cycle[i + 1]]].pre[p])
+    //                 continue;
 
-                secind[nnz] = inst.m_opt + inst.fadd_cpx_start[cycle[cycle.size() - 1]] + var_count;
-                secval[nnz++] = 1;
-                secrhs[sec_counter]++;
-            }
+    //                 secind[nnz] = inst.m_opt + inst.fadd_cpx_start[cycle[i]] + idx;
+    //                 secval[nnz++] = 1;
+    //                 secrhs[sec_counter]++;
+    //             }
+    //         }
+    //         int var_count{-1};
+    //         for (const auto& p : inst.actions[inst.act_cpxtoidx[cycle[cycle.size() - 1]]].eff_sparse) {
+    //             var_count++;
+    //             if (xstar[inst.fadd_cpx_start[cycle[cycle.size() - 1]] + var_count] < HPLUS_EPSILON ||
+    //                 !inst.actions[inst.act_cpxtoidx[cycle[0]]].pre[p])
+    //                 continue;
 
-            ASSERT_LOG(log, secrhs[sec_counter] >= 0);
-            sec_counter++;
-        }
-        CPX_HANDLE_CALL(log, CPXcallbackaddusercuts(context, cycles.size(), nnz, secrhs, secsense, secizero, secind, secval, secpurgeable, seclocal));
-        delete[] seclocal;
-        seclocal = nullptr;
-        delete[] secpurgeable;
-        secpurgeable = nullptr;
-        delete[] secizero;
-        secizero = nullptr;
-        delete[] secsense;
-        secsense = nullptr;
-        delete[] secrhs;
-        secrhs = nullptr;
-        delete[] secval;
-        secval = nullptr;
-        delete[] secind;
-        secind = nullptr;
-        delete[] xstar;
-        xstar = nullptr;
+    //             secind[nnz] = inst.m_opt + inst.fadd_cpx_start[cycle[cycle.size() - 1]] + var_count;
+    //             secval[nnz++] = 1;
+    //             secrhs[sec_counter]++;
+    //         }
 
-        pthread_mutex_lock(&(stats.callback_time_mutex));
-        stats.nusercuts += cycles.size();
-        pthread_mutex_unlock(&(stats.callback_time_mutex));
-    }
+    //         ASSERT_LOG(log, secrhs[sec_counter] >= 0);
+    //         sec_counter++;
+    //     }
+    //     CPX_HANDLE_CALL(log, CPXcallbackaddusercuts(context, cycles.size(), nnz, secrhs, secsense, secizero, secind, secval, secpurgeable,
+    //     seclocal)); delete[] seclocal; seclocal = nullptr; delete[] secpurgeable; secpurgeable = nullptr; delete[] secizero; secizero = nullptr;
+    //     delete[] secsense;
+    //     secsense = nullptr;
+    //     delete[] secrhs;
+    //     secrhs = nullptr;
+    //     delete[] secval;
+    //     secval = nullptr;
+    //     delete[] secind;
+    //     secind = nullptr;
+    //     delete[] xstar;
+    //     xstar = nullptr;
+
+    //     pthread_mutex_lock(&(stats.callback_time_mutex));
+    //     stats.nusercuts += cycles.size();
+    //     pthread_mutex_unlock(&(stats.callback_time_mutex));
+    // }
 }
 
 int CPXPUBLIC lm::cpx_callback_hub(CPXCALLBACKCONTEXTptr context, CPXLONG context_id, void* user_handle) {

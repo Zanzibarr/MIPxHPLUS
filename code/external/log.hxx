@@ -94,7 +94,6 @@ class logger {
         va_start(args, msg);
         log_message(log_level::print, false, msg, args);
         va_end(args);
-        std::cout << "\033[s";
     }
 
     /**
@@ -108,15 +107,6 @@ class logger {
     void print_info(const char* msg, ...) const {
         va_list args;
         va_start(args, msg);
-        log_message(log_level::info, true, msg, args);
-        va_end(args);
-        std::cout << "\033[s";
-    }
-
-    void print_update(const char* msg, ...) const {
-        va_list args;
-        va_start(args, msg);
-        std::cout << "\033[u" << "\033[s";
         log_message(log_level::info, true, msg, args);
         va_end(args);
     }
@@ -134,7 +124,6 @@ class logger {
         va_start(args, msg);
         log_message(log_level::warning, true, msg, args);
         va_end(args);
-        std::cout << "\033[s";
     }
 
     /**
@@ -153,7 +142,6 @@ class logger {
         va_end(args);
         std::cerr << colors::reset;
         std::exit(1);
-        std::cout << "\033[s";
     }
 
    private:
