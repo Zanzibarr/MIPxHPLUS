@@ -539,7 +539,7 @@ static void cpx_relax_callback(CPXCALLBACKCONTEXTptr context, const hplus::insta
     // compute reachable state
     binary_set reachable_state(inst.n);
     for (size_t i = 0; i < inst.n; i++) {
-        if (var_values[i] >= HPLUS_EPSILON) reachable_state.add(i);
+        if (var_values[i] >= 1 - HPLUS_EPSILON) reachable_state.add(i);
     }
 
     if (reachable_state.contains(inst.goal)) {
