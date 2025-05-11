@@ -391,8 +391,7 @@ static void cpx_open_lmcut_model(CPXENVptr& lmcutenv, CPXLPptr& lmcutlp, const l
     int cpxerror;
     lmcutenv = CPXopenCPLEX(&cpxerror);
     CPX_HANDLE_CALL(log, cpxerror);
-    std::string lpname{"lmcut_model"};
-    lmcutlp = CPXcreateprob(lmcutenv, &cpxerror, lpname.c_str());
+    lmcutlp = CPXcreateprob(lmcutenv, &cpxerror, "lmcutmodel");
     CPX_HANDLE_CALL(log, cpxerror);
     // log file
     CPX_HANDLE_CALL(log, CPXsetintparam(lmcutenv, CPXPARAM_ScreenOutput, HPLUS_DEF_CPX_SCREENOUTPUT));
@@ -405,9 +404,8 @@ static void cpx_open_lmcut_model(CPXENVptr& lmcutenv, CPXLPptr& lmcutlp, const l
     CPX_HANDLE_CALL(log, CPXsetintparam(lmcutenv, CPXPARAM_MIP_Strategy_File, HPLUS_DEF_CPX_STRAT_FILE));
     // terminate condition
     CPX_HANDLE_CALL(log, CPXsetterminate(lmcutenv, &global_terminate));
-    // TODO: remove debugging
     // log file
-    CPX_HANDLE_CALL(log, CPXsetlogfilename(lmcutenv, (std::string(HPLUS_CPLEX_OUTPUT_DIR "/log/fract.log")).c_str(), "w"));
+    // CPX_HANDLE_CALL(log, CPXsetlogfilename(lmcutenv, HPLUS_CPLEX_OUTPUT_DIR "/log/lmcutmodel.log", "w"));
 }
 
 static void cpx_build_lmcut_model(CPXENVptr& lmcutenv, CPXLPptr& lmcutlp, const hplus::instance& inst, const logger& log) {
@@ -484,8 +482,7 @@ static void cpx_build_lmcut_model(CPXENVptr& lmcutenv, CPXLPptr& lmcutlp, const 
     delete[] ind;
     ind = nullptr;
 
-    CPX_HANDLE_CALL(log, CPXwriteprob(lmcutenv, lmcutlp, HPLUS_CPLEX_OUTPUT_DIR "/lp/lmcutmodel.lp", "LP"));
-    // mypause();
+    // CPX_HANDLE_CALL(log, CPXwriteprob(lmcutenv, lmcutlp, HPLUS_CPLEX_OUTPUT_DIR "/lp/lmcutmodel.lp", "LP"));
 }
 
 void lm::cpx_close_lmcut_model(CPXENVptr& lmcutenv, CPXLPptr& lmcutlp, const logger& log) {
@@ -601,30 +598,44 @@ pthread_mutex_t tmp = PTHREAD_MUTEX_INITIALIZER;
 
 static void cpx_relax_callback(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, CPXENVptr& lmcutenv, CPXLPptr& lmcutlp,
                                hplus::statistics& stats, const logger& log) {
+    if (CHECK_STOP()) return;
     int nodeid{-1};
     CPX_HANDLE_CALL(log, CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODEUID, &nodeid));
     if (nodeid != 0) return;
-    if (CHECK_STOP()) return;
 
     double* BASE_xstar{new double[inst.m_opt]};
     double _{CPX_INFBOUND};
     CPX_HANDLE_CALL(log, CPXcallbackgetrelaxationpoint(context, BASE_xstar, 0, inst.m_opt - 1, &_));
     int* ind{new int[inst.m_opt]};
-    for (size_t i = 0; i < inst.m_opt; i++) ind[i] = i;
+    for (size_t i = 0; i < inst.m_opt; i++) {
+        ind[i] = i;
+        if (BASE_xstar[i] < HPLUS_EPSILON) BASE_xstar[i] = 0;
+    }
     pthread_mutex_lock(&tmp);
     CPX_HANDLE_CALL(log, CPXchgobj(lmcutenv, lmcutlp, inst.m_opt, ind, BASE_xstar));
     delete[] ind;
     ind = nullptr;
-    CPX_HANDLE_CALL(log, CPXwriteprob(lmcutenv, lmcutlp, HPLUS_CPLEX_OUTPUT_DIR "/lp/lmcutmodel.lp", "LP"));
+    // #if !HPLUS_INTCHECK
+    // delete[] BASE_xstar;
+    // BASE_xstar = nullptr;
+    // #endif
+    // CPX_HANDLE_CALL(log, CPXwriteprob(lmcutenv, lmcutlp, HPLUS_CPLEX_OUTPUT_DIR "/lp/lmcutmodel.lp", "LP"));
     CPX_HANDLE_CALL(log, CPXmipopt(lmcutenv, lmcutlp));
     int status{CPXgetstat(lmcutenv, lmcutlp)};
-    if (status != CPXMIP_OPTIMAL && status != CPXMIP_OPTIMAL_TOL) log.raise_error("CPXgetstat: %d.", status);
+    if (status != CPXMIP_OPTIMAL && status != CPXMIP_OPTIMAL_TOL) {
+        log.print_warn("CPXgetstat: %d.", status);
+        delete[] BASE_xstar;
+        BASE_xstar = nullptr;
+        return;
+    }
     double cutval{-1};
     CPX_HANDLE_CALL(log, CPXgetobjval(lmcutenv, lmcutlp, &cutval));
     // log.print_warn("cutval: %f.", cutval);
     if (cutval >= 1) {
+        // #if HPLUS_INTCHECK
         delete[] BASE_xstar;
         BASE_xstar = nullptr;
+        // #endif
         pthread_mutex_unlock(&tmp);
         return;
     }
@@ -655,14 +666,23 @@ static void cpx_relax_callback(CPXCALLBACKCONTEXTptr context, const hplus::insta
     constexpr char sense{'G'};
     constexpr int begin{0}, purgeable{CPX_USECUT_FORCE}, local{0};
     int nnz{0};
+    // #if HPLUS_INTCHECK
+    double cutvalpost{0};
+    // #endif
     for (const auto act_i : inst.act_rem) {
         if (r.contains(inst.actions[act_i].pre) && !r.contains(inst.actions[act_i].eff)) {
             ind[nnz] = inst.act_opt_conv[act_i];
             val[nnz++] = 1;
+            // #if HPLUS_INTCHECK
+            cutvalpost += BASE_xstar[inst.act_opt_conv[act_i]];
+            // #endif
         }
     }
+    // #if HPLUS_INTCHECK
+    ASSERT_LOG(log, abs(cutval - cutvalpost) < HPLUS_EPSILON);
     delete[] BASE_xstar;
     BASE_xstar = nullptr;
+    // #endif
     CPX_HANDLE_CALL(log, CPXcallbackaddusercuts(context, 1, nnz, &rhs, &sense, &begin, ind, val, &purgeable, &local));
     delete[] val;
     val = nullptr;
