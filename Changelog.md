@@ -25,6 +25,16 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
+## [2.0.3] - 2025/05/11
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+<!-- ### :heavy_exclamation_mark: Changed -->
+### :heavy_plus_sign: Added
+- Trying violated landmark detection through MIP formulation
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+
+
 ## [2.0.2] - 2025/05/08
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->

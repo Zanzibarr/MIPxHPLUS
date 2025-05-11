@@ -132,7 +132,10 @@ void run_model(hplus::instance& inst, hplus::environment& env, hplus::statistics
     lm::cpx_callback_user_handle callback_data{.inst = inst, .env = env, .stats = stats, .log = log};
     if (env.alg == HPLUS_CLI_ALG_LM) {
         CPXLONG callback_context = CPX_CALLBACKCONTEXT_CANDIDATE;
-        if (env.fract_cuts) callback_context |= CPX_CALLBACKCONTEXT_RELAXATION;
+        if (env.fract_cuts) {
+            lm::cpx_create_lmcut_model(inst, log, callback_data.lmcutenv, callback_data.lmcutlp);
+            callback_context |= CPX_CALLBACKCONTEXT_RELAXATION;
+        }
         CPX_HANDLE_CALL(log, CPXcallbacksetfunc(cpxenv, cpxlp, callback_context, lm::cpx_callback_hub, &callback_data));
     }
 
@@ -161,6 +164,7 @@ void run_model(hplus::instance& inst, hplus::environment& env, hplus::statistics
     }
 
     cpx_close(cpxenv, cpxlp, log);
+    if (env.fract_cuts && env.alg == HPLUS_CLI_ALG_LM) lm::cpx_close_lmcut_model(callback_data.lmcutenv, callback_data.lmcutlp, log);
 
     stats.execution = env.timer.get_time() - start_time;
 }

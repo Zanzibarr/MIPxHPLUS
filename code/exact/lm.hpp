@@ -21,12 +21,24 @@ typedef struct {
     hplus::environment& env;
     hplus::statistics& stats;
     const logger& log;
+    CPXENVptr lmcutenv;
+    CPXLPptr lmcutlp;
 } cpx_callback_user_handle;
 
 /**
  * Callback hub for the lm model
  */
 int CPXPUBLIC cpx_callback_hub(CPXCALLBACKCONTEXTptr context, CPXLONG context_id, void* user_handle);
+
+/**
+ * Building che model to extract cuts from the fractional solution
+ */
+void cpx_create_lmcut_model(const hplus::instance& inst, const logger& log, CPXENVptr& lmcutenv, CPXLPptr& lmcutlp);
+
+/**
+ * Closing the model used to extract cuts from the fractional solution
+ */
+void cpx_close_lmcut_model(CPXENVptr& lmcutenv, CPXLPptr& lmcutlp, const logger& log);
 
 /**
  * Build the cplex model using the instance described by the inst parameter, with execution details explained in the env parameter
