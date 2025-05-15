@@ -21,10 +21,10 @@ $$x_p=
     1\qquad\mbox{if }p\in I(\pi)
 \end{cases}\forall p\in P
 $$
-$x_{a,p}\in\{0,1\}$ indicates whether $a$ is the first achiever of $p$.
+$x_{a,p}\in\{0,1\}$ indicates whether $a$ is the first action achieving $p$ in $\pi$.
 $$x_{a,p}=
 \begin{cases}
-    1\qquad\mbox{if }a\mbox{ is the first achiever of }p\\
+    1\qquad\mbox{if }a\mbox{ is the first action achieving }p\mbox{ in }\pi\\
     0\qquad\mbox{otherwise}
 \end{cases}\forall a\in A^+,\forall p\in \mbox{add}(a)
 $$
@@ -49,7 +49,7 @@ Note that, since there's no upper bound on action indicator variables, 0-cost ac
 If we were just looking for the optimal cost $c^*$, this wouldn't bother us; however, since we are interested in the optimal plan $\pi^*$, we must acknowledge those actions by filtering the solution obtained by removing actions that aren't first achiever of any atom.
 
 \section{Modeling acyclicity}
-As shown both in \cite{Imai_15} and \cite{Rankooh_22}, any solution $\pi$ needs to be acyclic for it to be a plan, hence the need to add variables and constraints to force such acyclicity in the base model.\\
+The causal graph associated to a problem $\Pi^+$ needs to be acyclic for the solutions provided by the base model to be plans \cite{Rankooh_22}, hence we need to add variables and constraints to force such acyclicity.\\
 Multiple methods have been proposed: the time labeling method was first proposed in \cite{Imai_15} while vertex elimination was proposed in \cite{Rankooh_22}; the latter, however, proposed a revised time labeling method, proving that it was better than its predecessor, hence we will only mention the improved version.
 
 \subsection{Time labeling}
@@ -120,7 +120,7 @@ $$_{(P2)}\quad x_{a,p}\equiv0\qquad\forall a\in A^+,p\in \mbox{add}(a),\,s.t.\;p
 Relevance analysis is widely used to eliminate atoms and actions that are irrelevant to a task. In \cite{Imai_15}, a backchaining relevance analysis is proposed, where an action $a$ is relevant if $\mbox{fadd}(a)\cap G\not=\emptyset$ or there exists a relevant action $a'$ satisfying $\mbox{fadd}(a)\cap \mbox{pre}(a')\not=\emptyset$, and an atom $p$ is relevant if $p\in G$ or there exists a relevant action $a$ with $p\in \mbox{pre}(a)$.
 In \cite{MLM_Haslum_12}, this relevance analysis is strenghtened by considering as relevant only actions that are possible first achievers of a relevant atom ($\mbox{fadd}(a)\cap\{p\in P,\,s.t.\;p\mbox{ is relevant}\}\not=\emptyset$).
 Actions and atoms that aren't relevant, can be removed from our formulation:
-$$_{(P3)}\quad x_a,x_p\equiv0\qquad\forall a\in A^+,p\in P,\mbox{ that isn't relevant}$$
+$$_{(P3)}\quad x_a,x_p\equiv0\qquad\forall a\in A^+,p\in P\mbox{ that isn't relevant}$$
 As noted in \cite{Imai_15}, a fact landmark might be found not relevant: in this case we just set $x_p\equiv1$.
 
 \subsection{Dominated actions extraction}
@@ -177,7 +177,7 @@ The proof of this last statement lies on the construction of the tree: consider 
     \end{algorithmic}
 \end{algorithm}
 
-This technique, with some further optimizations, led to a huge performance increase in our dominated actions extraction: this is due to the fact that, usually, actions don't have many positive effects, hence we don't have many branching in our search; this means that we have an efficient search for possible dominated actions, and a smaller number of iterations in the inner cycle. This technique, however, is much less efficient for example when looking for all actions that can be applied from a specific state $s$ (using pre($a$) for the insert part and $s$ for the search part), since a state might contain many atoms, increasing exponentially the number of branchings needed to complete the search. This issue will be tackled in chapter $3$, where we will compute a sub-optimal plan to provide as a warm-start to our MIP solver and we will need an efficient way of retrieving applicable actions.
+This technique, with some other minor optimizations, led to a huge performance increase in our dominated actions extraction: this is due to the fact that, usually, actions don't have many positive effects, hence we don't have many branching in our search; this means that we have an efficient search for possible dominated actions, and a smaller number of iterations in the inner cycle. This technique, however, is much less efficient for example when looking for all actions that can be applied from a specific state $s$ (using pre($a$) for the insert part and $s$ for the search part), since a state might contain many atoms, increasing exponentially the number of branchings needed to complete the search. This issue will be tackled in chapter $3$, where we will compute a primal heuristic to provide as a warm-start to our MIP solver and we will need an efficient way of retrieving applicable actions.
 
 We define additional sets to refer to the atoms/actions eliminated/fixed by this preprocessing: 
 \begin{gather*}

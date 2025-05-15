@@ -25,6 +25,16 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
+## [2.0.4] - 2025/05/15
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+### :heavy_exclamation_mark: Changed
+- Added thread safety in relaxation callback
+<!-- ### :heavy_plus_sign: Added -->
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+
+
 ## [2.0.3] - 2025/05/11
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->

@@ -11,18 +11,25 @@
 
 #include <cplex.h>
 
+#include <map>
+
 #include "hplus_instance.hpp"
 #include "utils.hpp"
 
 namespace lm {
 
 typedef struct {
+    CPXENVptr lmcutenv;
+    CPXLPptr lmcutlp;
+    std::map<int, std::pair<CPXENVptr, CPXLPptr>> thread_data;
+} thread_data;
+
+typedef struct {
     hplus::instance& inst;
     hplus::environment& env;
     hplus::statistics& stats;
     const logger& log;
-    CPXENVptr lmcutenv;
-    CPXLPptr lmcutlp;
+    thread_data data;
 } cpx_callback_user_handle;
 
 /**
