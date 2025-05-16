@@ -848,8 +848,8 @@ void lm::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instan
     int* ind{new int[inst.m_opt + 1]};
     double* val{new double[inst.m_opt + 1]};
     int nnz{0};
-    constexpr char sense_e{'E'}, sense_l{'L'};
-    constexpr double rhs_0{0};
+    constexpr char sense_e{'E'}, sense_l{'L'}, sense_g{'G'};
+    constexpr double rhs_0{0}, rhs_1{1};
     constexpr int begin{0};
 
     const auto stopchk3 = [&ind, &val]() {
@@ -938,6 +938,19 @@ void lm::build_cpx_model(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::instan
                 CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_0, &sense_l, &begin, ind, val, nullptr, nullptr));
             }
             stopchk3();
+        }
+    }
+
+    // ~~~~~~~~~~~~~~ Landmarks ~~~~~~~~~~~~~~ //
+    if (env.heur != "none") {
+        for (const auto& landmark : inst.landmarks) {
+            nnz = 0;
+            for (const auto& a : landmark) {
+                ind[nnz] = get_act_idx(a);
+                val[nnz++] = 1;
+            }
+            CPX_HANDLE_CALL(log, CPXaddrows(cpxenv, cpxlp, 0, 1, nnz, &rhs_1, &sense_g, &begin, ind, val, nullptr, nullptr));
+            stats.nconst_acyclic++;
         }
     }
 

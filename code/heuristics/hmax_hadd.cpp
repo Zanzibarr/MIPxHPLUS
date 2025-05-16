@@ -75,7 +75,7 @@ static void init_htype(const hplus::instance& inst, const std::list<size_t>& ini
 }
 
 [[nodiscard]]
-static bool htype(const hplus::instance& inst, hplus::solution& sol, double (*h_eqtype)(double, double)) {
+static bool htype(hplus::instance& inst, hplus::solution& sol, double (*h_eqtype)(double, double)) {
     // Initialize helpers
     std::vector<double> values(inst.n, std::numeric_limits<double>::infinity());
     binary_set state{inst.n}, used_actions{inst.m};
@@ -128,6 +128,8 @@ static bool htype(const hplus::instance& inst, hplus::solution& sol, double (*h_
     while (!state.contains(inst.goal)) {
         if (candidates.empty()) [[unlikely]]
             return false;
+
+        inst.landmarks.push_back(std::vector<size_t>(candidates.begin(), candidates.end()));
 
         const auto [found, choice]{find_best_act(candidates)};
         if (!found) [[unlikely]]
