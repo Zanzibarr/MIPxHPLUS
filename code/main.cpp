@@ -186,7 +186,7 @@ static void show_info(const hplus::instance& inst, const hplus::environment& env
 
     log.print("Algorithm:                                       %10s.", env.alg.c_str());
     log.print("Preprocessing:                                   %10s.", env.preprocessing ? "Y" : "N");
-    log.print("Tighter bounds:                                  %10s.", env.tight_bounds ? "Y" : "N");
+    if (env.alg == HPLUS_CLI_ALG_TL) log.print("Tighter bounds:                                  %10s.", env.tight_bounds ? "Y" : "N");
     if (env.heur != "none") log.print("Heuristic:                                       %10s.", env.heur.c_str());
     if (env.using_cplex) log.print("Warm start:                                      %10s.", env.warm_start ? "Y" : "N");
     if (env.alg == HPLUS_CLI_ALG_LM) {
