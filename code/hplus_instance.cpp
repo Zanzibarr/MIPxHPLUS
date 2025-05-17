@@ -98,8 +98,7 @@ void hplus::init(instance& inst) {
                     .veg_starts = std::vector<size_t>(0),
                     .veg_cumulative_graph = std::vector<binary_set>(0, binary_set(1)),
                     .act_with_eff = std::vector<std::vector<size_t>>(0),
-                    .act_with_pre = std::vector<std::vector<size_t>>(0),
-                    .landmarks = std::vector<std::vector<size_t>>()};
+                    .act_with_pre = std::vector<std::vector<size_t>>(0)};
 }
 
 [[nodiscard]]

@@ -54,7 +54,6 @@ typedef struct {
     std::vector<size_t> veg_starts;
     std::vector<binary_set> veg_cumulative_graph;
     std::vector<std::vector<size_t>> act_with_eff, act_with_pre;
-    std::vector<std::vector<size_t>> landmarks;
 } instance;
 
 /** Struct containing the environment variables for the execution of the code */

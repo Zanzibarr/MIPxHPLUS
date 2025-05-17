@@ -129,8 +129,6 @@ static bool htype(hplus::instance& inst, hplus::solution& sol, double (*h_eqtype
         if (candidates.empty()) [[unlikely]]
             return false;
 
-        inst.landmarks.push_back(std::vector<size_t>(candidates.begin(), candidates.end()));
-
         const auto [found, choice]{find_best_act(candidates)};
         if (!found) [[unlikely]]
             return false;

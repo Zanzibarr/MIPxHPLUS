@@ -37,8 +37,6 @@ void greedycost::run(hplus::instance& inst, hplus::environment& env, const logge
             return;
         }
 
-        inst.landmarks.push_back(std::vector<size_t>(candidates.begin(), candidates.end()));
-
         const auto [found, choice]{find_best_act(candidates)};
         if (!found) [[unlikely]] {
             env.sol_s = solution_status::INFEAS;
