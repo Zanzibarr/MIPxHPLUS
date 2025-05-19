@@ -643,15 +643,18 @@ static void cpx_relax_callback(CPXCALLBACKCONTEXTptr context, const hplus::insta
     delete[] xstar;
     xstar = nullptr;
     // filtering solution
-    for (const auto& p : r) {
-        bool found{false};
-        for (const auto& act_i : inst.act_with_eff[p]) {
-            if (r.contains(inst.actions[act_i].pre)) {
-                found = true;
-                break;
+    bool found{false};
+    while (!found) {
+        for (const auto& p : r) {
+            found = false;
+            for (const auto& act_i : inst.act_with_eff[p]) {
+                if (r.contains(inst.actions[act_i].pre)) {
+                    found = true;
+                    break;
+                }
             }
+            if (!found) r.remove(p);
         }
-        if (!found) r.remove(p);
     }
     ASSERT_LOG(log, !r.contains(inst.goal));
     ind = new int[inst.m_opt];

@@ -30,6 +30,7 @@ HOW I DO VERSIONING:
 <!-- ### :ballot_box_with_check: Fixed -->
 ### :heavy_exclamation_mark: Changed
 - Added thread safety in relaxation callback
+- Stronger landmark filtering in relaxation callback
 <!-- ### :heavy_plus_sign: Added -->
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
