@@ -101,9 +101,11 @@ def main():
 
         if "Axiom layer is" in content:
             runsum["results"][instance_name]["status"] = -2
-        elif "OUT OF MEMORY" in content:
+        elif (
+            "OUT OF MEMORY" in content or "Unhandled CPLEX error code: 1001" in content
+        ):
             runsum["results"][instance_name]["status"] = -3
-        elif "[ ERR  ]" in content or "Unhandled CPLEX error code: 1001" in content:
+        elif "[ ERR  ]" in content:
             runsum["results"][instance_name]["status"] = -1
             runsum["results"][instance_name]["other"] = "\n".join(
                 content.splitlines()[-5:]
