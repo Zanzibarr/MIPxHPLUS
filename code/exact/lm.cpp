@@ -598,6 +598,9 @@ static void cpx_cand_callback(CPXCALLBACKCONTEXTptr context, const hplus::instan
 static void cpx_relax_callback(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, CPXENVptr& lmcutenv, CPXLPptr& lmcutlp,
                                hplus::statistics& stats, const logger& log) {
     if (CHECK_STOP()) return;
+    // int nodedepth{-1};
+    // CPX_HANDLE_CALL(log, CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODEDEPTH, &nodedepth));
+    // if (nodedepth != 0) return;
     int nodeid{-1};
     CPX_HANDLE_CALL(log, CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODEUID, &nodeid));
     if (nodeid != 0) return;

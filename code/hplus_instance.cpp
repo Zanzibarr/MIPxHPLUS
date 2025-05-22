@@ -48,7 +48,8 @@ void hplus::init(environment& env) {
                       .sec = HPLUS_DEF_SEC,
                       .fract_cuts = HPLUS_DEF_FRACT,
                       .time_limit = HPLUS_DEF_TIME_LIMIT,
-                      .timer = time_keeper()};
+                      .timer = time_keeper(),
+                      .tmp_choice = false};
 }
 
 void hplus::init(statistics& stats) {
@@ -98,7 +99,8 @@ void hplus::init(instance& inst) {
                     .veg_starts = std::vector<size_t>(0),
                     .veg_cumulative_graph = std::vector<binary_set>(0, binary_set(1)),
                     .act_with_eff = std::vector<std::vector<size_t>>(0),
-                    .act_with_pre = std::vector<std::vector<size_t>>(0)};
+                    .act_with_pre = std::vector<std::vector<size_t>>(0)/*,
+                    .landmarks = std::vector<std::vector<size_t>>(0)*/};
 }
 
 [[nodiscard]]
