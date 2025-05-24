@@ -18,7 +18,6 @@ void cpx_init(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::environment& env,
     CPX_HANDLE_CALL(log, cpxerror);
     cpxlp = CPXcreateprob(cpxenv, &cpxerror, env.run_name.c_str());
     CPX_HANDLE_CALL(log, cpxerror);
-    if (env.tmp_choice) CPX_HANDLE_CALL(log, CPXsetintparam(cpxenv, CPXPARAM_Preprocessing_Presolve, CPX_OFF));
     // log file
     CPX_HANDLE_CALL(log, CPXsetintparam(cpxenv, CPXPARAM_ScreenOutput, HPLUS_DEF_CPX_SCREENOUTPUT));
     if (log_file) CPX_HANDLE_CALL(log, CPXsetlogfilename(cpxenv, (HPLUS_CPLEX_OUTPUT_DIR "/log/" + env.run_name + ".log").c_str(), "w"));

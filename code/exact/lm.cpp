@@ -82,8 +82,9 @@ static std::tuple<std::vector<size_t>, std::vector<size_t>, std::vector<size_t>,
     return {used_acts, unused_acts, reachable_acts, reachable_state, used_first_archievers};
 }
 
+static pthread_mutex_t cb_print_info_mutex = PTHREAD_MUTEX_INITIALIZER;
+
 static void cb_print_info(CPXCALLBACKCONTEXTptr& context, const double& cost, const logger& log) {
-    static pthread_mutex_t cb_print_info_mutex = PTHREAD_MUTEX_INITIALIZER;
     static int call_count{0};
     if (call_count % 100 == 0) {
         double lower_bound = CPX_INFBOUND;
@@ -92,8 +93,7 @@ static void cb_print_info(CPXCALLBACKCONTEXTptr& context, const double& cost, co
         CPX_HANDLE_CALL(log, CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_SOL, &incumbent));
         double gap = (1 - lower_bound / incumbent) * 100;
         pthread_mutex_lock(&cb_print_info_mutex);
-        log.print_info("Pruned infeasible solution - cost : %7d - incumbent : %7d - gap : %6.2f%%.", static_cast<int>(cost),
-                       static_cast<int>(incumbent), gap);
+        log.print_info("ILP  -  Pruned infeasible integer solution  - cost: %3d, gap: %4.2f%%.", static_cast<int>(cost), gap);
         pthread_mutex_unlock(&cb_print_info_mutex);
     }
     pthread_mutex_lock(&cb_print_info_mutex);
@@ -500,7 +500,7 @@ void lm::cpx_create_lmcut_model(const hplus::instance& inst, const logger& log, 
 // ====================== CALLBACK ====================== //
 // ====================================================== //
 
-static void cpx_cand_callback(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const hplus::environment& env, hplus::statistics& stats,
+static void cpx_cand_callback(CPXCALLBACKCONTEXTptr& context, const hplus::instance& inst, const hplus::environment& env, hplus::statistics& stats,
                               const logger& log) {
     double start_time{env.timer.get_time()};
 
@@ -595,95 +595,159 @@ static void cpx_cand_callback(CPXCALLBACKCONTEXTptr context, const hplus::instan
     pthread_mutex_unlock(&(stats.callback_time_mutex));
 }
 
-static void cpx_relax_callback(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, CPXENVptr& lmcutenv, CPXLPptr& lmcutlp,
+static void cpx_relax_callback(CPXCALLBACKCONTEXTptr& context, const hplus::instance& inst, CPXENVptr& lmcutenv, CPXLPptr& lmcutlp,
                                hplus::statistics& stats, const logger& log) {
-    if (CHECK_STOP()) return;
-    // int nodedepth{-1};
-    // CPX_HANDLE_CALL(log, CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODEDEPTH, &nodedepth));
-    // if (nodedepth != 0) return;
-    int nodeid{-1};
-    CPX_HANDLE_CALL(log, CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODEUID, &nodeid));
-    if (nodeid != 0) return;
+    // [[DEBUG]] controlled execution
+    // mypause();
 
-    double* BASE_xstar{new double[inst.m_opt]};
+    // [[DEBUG]] divide callbacks outputs
+    // log.print("\nStart of callback.\n");
+
+    // if I reached the termination condition, exit
+    if (CHECK_STOP()) {
+        // [[DEBUG]] exiting callback
+        // log.print("\nEnd of calback, termination condition.\n");
+        return;
+    }
+
+    // check if we are at the root node
+    int nodeuid{-1};
+    CPX_HANDLE_CALL(log, CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODEUID, &nodeuid));
+    if (nodeuid != 0) {
+        // [[DEBUG]] exiting callback
+        // log.print("\nEnd of calback, not at root node.\n");
+        return;
+    }
+
+    // get relaxation point (the first inst.m_opt variables are operators indicator variables)
+    double* relax_point{new double[inst.m_opt]};
     double _{CPX_INFBOUND};
-    CPX_HANDLE_CALL(log, CPXcallbackgetrelaxationpoint(context, BASE_xstar, 0, inst.m_opt - 1, &_));
+    CPX_HANDLE_CALL(log, CPXcallbackgetrelaxationpoint(context, relax_point, 0, inst.m_opt - 1, &_));
+
+    // change objective function to vlm-det MIP model
     int* ind{new int[inst.m_opt]};
     for (size_t i = 0; i < inst.m_opt; i++) {
         ind[i] = i;
-        if (BASE_xstar[i] < HPLUS_EPSILON) BASE_xstar[i] = 0;
+        if (relax_point[i] < HPLUS_EPSILON) relax_point[i] = 0;
     }
-    CPX_HANDLE_CALL(log, CPXchgobj(lmcutenv, lmcutlp, inst.m_opt, ind, BASE_xstar));
+    CPX_HANDLE_CALL(log, CPXchgobj(lmcutenv, lmcutlp, inst.m_opt, ind, relax_point));
     delete[] ind;
     ind = nullptr;
 #if !HPLUS_INTCHECK
-    delete[] BASE_xstar;
-    BASE_xstar = nullptr;
+    delete[] relax_point;
+    relax_point = nullptr;
 #endif
+
+    // run vlm-det model
     CPX_HANDLE_CALL(log, CPXmipopt(lmcutenv, lmcutlp));
     int status{CPXgetstat(lmcutenv, lmcutlp)};
     if (status != CPXMIP_OPTIMAL && status != CPXMIP_OPTIMAL_TOL) {
+        pthread_mutex_lock(&cb_print_info_mutex);
         log.print_warn("CPXgetstat: %d.", status);
-        delete[] BASE_xstar;
-        BASE_xstar = nullptr;
+        pthread_mutex_unlock(&cb_print_info_mutex);
+        delete[] relax_point;
+        relax_point = nullptr;
+        // [[DEBUG]] exiting callback
+        // log.print("\nEnd of calback, error in vlm-det model.\n");
         return;
     }
+
+    // get obj val --> < 1: a landmark is violated, >= 1: no landmark is violated
     double cutval{-1};
     CPX_HANDLE_CALL(log, CPXgetobjval(lmcutenv, lmcutlp, &cutval));
-    if (cutval >= 1) {
+    if (cutval >= 1 - HPLUS_EPSILON) {
 #if HPLUS_INTCHECK
-        delete[] BASE_xstar;
-        BASE_xstar = nullptr;
+        delete[] relax_point;
+        relax_point = nullptr;
 #endif
+        // [[DEBUG]] exiting callback
+        pthread_mutex_lock(&cb_print_info_mutex);
+        log.print_warn(" LP  -  Landmark not violated by lp relax.  - cutval: %f.", cutval);
+        pthread_mutex_unlock(&cb_print_info_mutex);
         return;
     }
-    double* xstar{new double[inst.n_opt]};
-    CPX_HANDLE_CALL(log, CPXgetx(lmcutenv, lmcutlp, xstar, inst.m_opt, inst.m_opt + inst.n_opt - 1));
-    binary_set r(inst.n);
+
+    // here a landmark is violated
+    // [[DEBUG]] found a landmark!
+    // log.print("Found landmark(%f).", cutval);
+
+    // get the partition of facts
+    double* facts_partition{new double[inst.n_opt]};
+    CPX_HANDLE_CALL(log, CPXgetx(lmcutenv, lmcutlp, facts_partition, inst.m_opt, inst.m_opt + inst.n_opt - 1));
+    binary_set reach(inst.n);
     for (const auto p : inst.var_rem) {
-        if (xstar[inst.var_opt_conv[p]] >= HPLUS_CPX_INT_ROUNDING) r.add(p);
+        if (facts_partition[inst.var_opt_conv[p]] >= HPLUS_CPX_INT_ROUNDING) reach.add(p);
     }
-    delete[] xstar;
-    xstar = nullptr;
-    // filtering solution
+    delete[] facts_partition;
+    facts_partition = nullptr;
+
+    // filter the solution (actions with xa* = 0 might weaken the partition)
     bool found{false};
     while (!found) {
-        for (const auto& p : r) {
+        for (const auto& p : reach) {
             found = false;
             for (const auto& act_i : inst.act_with_eff[p]) {
-                if (r.contains(inst.actions[act_i].pre)) {
+                if (reach.contains(inst.actions[act_i].pre)) {
                     found = true;
                     break;
                 }
             }
-            if (!found) r.remove(p);
+            if (!found) reach.remove(p);
         }
     }
-    ASSERT_LOG(log, !r.contains(inst.goal));
+    INTCHECK_ASSERT_LOG(log, !reach.contains(inst.goal));
+
+    // compute landmark
     ind = new int[inst.m_opt];
     double* val{new double[inst.m_opt]};
-    constexpr double rhs{1};
-    constexpr char sense{'G'};
-    constexpr int begin{0}, purgeable{CPX_USECUT_FORCE}, local{0};
+    static constexpr double rhs{1};
+    static constexpr char sense{'G'};
+    static constexpr int begin{0}, purgeable{CPX_USECUT_FORCE}, local{0};
     int nnz{0};
 #if HPLUS_INTCHECK
     double cutvalpost{0};
 #endif
     for (const auto act_i : inst.act_rem) {
-        if (r.contains(inst.actions[act_i].pre) && !r.contains(inst.actions[act_i].eff)) {
+        if (reach.contains(inst.actions[act_i].pre) && !reach.contains(inst.actions[act_i].eff)) {
             ind[nnz] = inst.act_opt_conv[act_i];
             val[nnz++] = 1;
 #if HPLUS_INTCHECK
-            cutvalpost += BASE_xstar[inst.act_opt_conv[act_i]];
+            cutvalpost += relax_point[inst.act_opt_conv[act_i]];
 #endif
         }
     }
+
+    // [[DEBUG]] see what is the minimum cost of the actions in the landmark
+    unsigned int costcheck{inst.actions[inst.act_cpxtoidx[ind[0]]].cost};
+    for (int i = 0; i < nnz; i++) costcheck = std::min(costcheck, inst.actions[inst.act_cpxtoidx[ind[i]]].cost);
+
+    // [[DEBUG]] print some info about the landmark
+    // std::cout << "Actions in landmark and costs: ";
+    // for (int i = 0; i < nnz; i++) std::cout << "a" << ind[i] << "(" << inst.actions[inst.act_cpxtoidx[ind[i]]].cost << ");";
+    // std::cout << "\nRelax point: ";
+    // for (int i = 0; i < nnz; i++) std::cout << relax_point[ind[i]] << ";";
+    // std::cout << "\n";
+
+    // [[DEBUG]] check that the landmark violation corresponds to the one computed by the vlm-det model
 #if HPLUS_INTCHECK
     ASSERT_LOG(log, abs(cutval - cutvalpost) < HPLUS_EPSILON);
-    delete[] BASE_xstar;
-    BASE_xstar = nullptr;
+    delete[] relax_point;
+    relax_point = nullptr;
 #endif
+
+    // [[DEBUG]] print some info about the cut
+    // log.print("CPXcallbackaddusercuts parameters: nnz: %d, rhs: %f, sense: %c, begin: %d.", nnz, rhs, sense, begin);
+    // std::cout << "Cut: ";
+    // for (int i = 0; i < nnz; i++) {
+    //     std::cout << val[i] << "*a" << ind[i] << " ";
+    //     if (i < nnz - 1) std::cout << "+ ";
+    // }
+    // std::cout << ">= " << rhs << "\n";
+
+    // add the landmark as a cut
     CPX_HANDLE_CALL(log, CPXcallbackaddusercuts(context, 1, nnz, &rhs, &sense, &begin, ind, val, &purgeable, &local));
+
+    // cleanup and logging
     delete[] val;
     val = nullptr;
     delete[] ind;
@@ -691,9 +755,16 @@ static void cpx_relax_callback(CPXCALLBACKCONTEXTptr context, const hplus::insta
     pthread_mutex_lock(&(stats.callback_time_mutex));
     stats.nusercuts++;
     pthread_mutex_unlock(&(stats.callback_time_mutex));
+    double lb{-1};
+    CPX_HANDLE_CALL(log, CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_BND, &lb));
+    pthread_mutex_lock(&cb_print_info_mutex);
+    log.print_warn(" LP  -  Landmark violated by lp relaxation  - size: %3d, min-cut: %1.3f, min-cost: %3d, lb: %3.3f.", nnz, cutval, costcheck, lb);
+    pthread_mutex_unlock(&cb_print_info_mutex);
+
+    // std::cout << "\nEnd of callback.\n\n";
 }
 
-pthread_mutex_t thread_data_reader = PTHREAD_MUTEX_INITIALIZER;
+static pthread_mutex_t thread_data_reader = PTHREAD_MUTEX_INITIALIZER;
 
 int CPXPUBLIC lm::cpx_callback_hub(CPXCALLBACKCONTEXTptr context, CPXLONG context_id, void* user_handle) {
     auto& [inst, env, stats, log, thread_data]{*static_cast<lm::cpx_callback_user_handle*>(user_handle)};

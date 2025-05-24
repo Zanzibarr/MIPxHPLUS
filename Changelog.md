@@ -25,7 +25,7 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
-## [2.0.5] - 2025/05/22
+## [2.0.5] - 2025/05/24
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->
 <!-- ### :heavy_exclamation_mark: Changed -->
