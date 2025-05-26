@@ -421,21 +421,15 @@ static void cpx_build_lmcut_model(CPXENVptr& lmcutenv, CPXLPptr& lmcutlp, const 
     double* lbs{new double[ncols]};
     double* ubs{new double[ncols]};
     char* types{new char[ncols]};
-    // char** names{new char*[ncols]};
     for (size_t var_count = 0; var_count < ncols; var_count++) {
         objs[var_count] = 0;
         lbs[var_count] = 0;
         ubs[var_count] = 1;
         types[var_count] = 'B';
-        // names[var_count] = new char[10];
     }
     for (size_t var_count = 0; var_count < inst.m_opt; var_count++) {
         objs[var_count] = 1;  // min \sum_{a\in A}(x^*_a z_a)
-        // sprintf(names[var_count], "za_%d", var_count);
     }
-    // for (size_t var_count = inst.m_opt; var_count < inst.m_opt + inst.n_opt; var_count++) {
-    //     sprintf(names[var_count], "yp_%d", var_count - inst.m_opt);
-    // }
     CPX_HANDLE_CALL(log, CPXnewcols(lmcutenv, lmcutlp, ncols, objs, lbs, ubs, types, nullptr));
     delete[] types;
     types = nullptr;
@@ -462,7 +456,6 @@ static void cpx_build_lmcut_model(CPXENVptr& lmcutenv, CPXLPptr& lmcutlp, const 
             ind[nnz] = get_yp_idx(p);
             val[nnz++] = 1;
         }
-        // log.print_info("%d", inst.actions[act_i].eff_sparse.size());
         for (const auto& q : inst.actions[act_i].eff_sparse) {
             ind[nnz] = get_yp_idx(q);
             val[nnz] = -1;
@@ -482,8 +475,6 @@ static void cpx_build_lmcut_model(CPXENVptr& lmcutenv, CPXLPptr& lmcutlp, const 
     val = nullptr;
     delete[] ind;
     ind = nullptr;
-
-    // CPX_HANDLE_CALL(log, CPXwriteprob(lmcutenv, lmcutlp, HPLUS_CPLEX_OUTPUT_DIR "/lp/lmcutmodel.lp", "LP"));
 }
 
 void lm::cpx_close_lmcut_model(CPXENVptr& lmcutenv, CPXLPptr& lmcutlp, const logger& log) {
@@ -597,27 +588,13 @@ static void cpx_cand_callback(CPXCALLBACKCONTEXTptr& context, const hplus::insta
 
 static void cpx_relax_callback(CPXCALLBACKCONTEXTptr& context, const hplus::instance& inst, CPXENVptr& lmcutenv, CPXLPptr& lmcutlp,
                                hplus::statistics& stats, const logger& log) {
-    // [[DEBUG]] controlled execution
-    // mypause();
-
-    // [[DEBUG]] divide callbacks outputs
-    // log.print("\nStart of callback.\n");
-
     // if I reached the termination condition, exit
-    if (CHECK_STOP()) {
-        // [[DEBUG]] exiting callback
-        // log.print("\nEnd of calback, termination condition.\n");
-        return;
-    }
+    if (CHECK_STOP()) return;
 
     // check if we are at the root node
-    int nodeuid{-1};
-    CPX_HANDLE_CALL(log, CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODEUID, &nodeuid));
-    if (nodeuid != 0) {
-        // [[DEBUG]] exiting callback
-        // log.print("\nEnd of calback, not at root node.\n");
-        return;
-    }
+    int nodedepth{-1};
+    CPX_HANDLE_CALL(log, CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODEDEPTH, &nodedepth));
+    if (nodedepth != 0) return;
 
     // get relaxation point (the first inst.m_opt variables are operators indicator variables)
     double* relax_point{new double[inst.m_opt]};
@@ -647,8 +624,6 @@ static void cpx_relax_callback(CPXCALLBACKCONTEXTptr& context, const hplus::inst
         pthread_mutex_unlock(&cb_print_info_mutex);
         delete[] relax_point;
         relax_point = nullptr;
-        // [[DEBUG]] exiting callback
-        // log.print("\nEnd of calback, error in vlm-det model.\n");
         return;
     }
 
@@ -668,8 +643,6 @@ static void cpx_relax_callback(CPXCALLBACKCONTEXTptr& context, const hplus::inst
     }
 
     // here a landmark is violated
-    // [[DEBUG]] found a landmark!
-    // log.print("Found landmark(%f).", cutval);
 
     // get the partition of facts
     double* facts_partition{new double[inst.n_opt]};
@@ -721,28 +694,12 @@ static void cpx_relax_callback(CPXCALLBACKCONTEXTptr& context, const hplus::inst
     unsigned int costcheck{inst.actions[inst.act_cpxtoidx[ind[0]]].cost};
     for (int i = 0; i < nnz; i++) costcheck = std::min(costcheck, inst.actions[inst.act_cpxtoidx[ind[i]]].cost);
 
-    // [[DEBUG]] print some info about the landmark
-    // std::cout << "Actions in landmark and costs: ";
-    // for (int i = 0; i < nnz; i++) std::cout << "a" << ind[i] << "(" << inst.actions[inst.act_cpxtoidx[ind[i]]].cost << ");";
-    // std::cout << "\nRelax point: ";
-    // for (int i = 0; i < nnz; i++) std::cout << relax_point[ind[i]] << ";";
-    // std::cout << "\n";
-
     // [[DEBUG]] check that the landmark violation corresponds to the one computed by the vlm-det model
 #if HPLUS_INTCHECK
     ASSERT_LOG(log, abs(cutval - cutvalpost) < HPLUS_EPSILON);
     delete[] relax_point;
     relax_point = nullptr;
 #endif
-
-    // [[DEBUG]] print some info about the cut
-    // log.print("CPXcallbackaddusercuts parameters: nnz: %d, rhs: %f, sense: %c, begin: %d.", nnz, rhs, sense, begin);
-    // std::cout << "Cut: ";
-    // for (int i = 0; i < nnz; i++) {
-    //     std::cout << val[i] << "*a" << ind[i] << " ";
-    //     if (i < nnz - 1) std::cout << "+ ";
-    // }
-    // std::cout << ">= " << rhs << "\n";
 
     // add the landmark as a cut
     CPX_HANDLE_CALL(log, CPXcallbackaddusercuts(context, 1, nnz, &rhs, &sense, &begin, ind, val, &purgeable, &local));
@@ -760,8 +717,6 @@ static void cpx_relax_callback(CPXCALLBACKCONTEXTptr& context, const hplus::inst
     pthread_mutex_lock(&cb_print_info_mutex);
     log.print_warn(" LP  -  Landmark violated by lp relaxation  - size: %3d, min-cut: %1.3f, min-cost: %3d, lb: %3.3f.", nnz, cutval, costcheck, lb);
     pthread_mutex_unlock(&cb_print_info_mutex);
-
-    // std::cout << "\nEnd of callback.\n\n";
 }
 
 static pthread_mutex_t thread_data_reader = PTHREAD_MUTEX_INITIALIZER;

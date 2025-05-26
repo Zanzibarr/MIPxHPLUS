@@ -1,12 +1,5 @@
 #include "algorithms.hpp"
 
-// #include <deque>
-
-// #if HPLUS_INTCHECK == 0
-// #define INTCHECK_PQ false
-// #endif
-// #include "pq.hxx"
-
 // ##################################################################### //
 // ############################ CPLEX UTILS ############################ //
 // ##################################################################### //
@@ -18,6 +11,8 @@ void cpx_init(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::environment& env,
     CPX_HANDLE_CALL(log, cpxerror);
     cpxlp = CPXcreateprob(cpxenv, &cpxerror, env.run_name.c_str());
     CPX_HANDLE_CALL(log, cpxerror);
+    CPX_HANDLE_CALL(log, CPXsetintparam(cpxenv, CPXPARAM_Threads, 1));  // TODO: Remove
+    if (env.tmp_choice) CPX_HANDLE_CALL(log, CPXsetdblparam(cpxenv, CPXPARAM_MIP_Strategy_HeuristicEffort, 0.0));
     // log file
     CPX_HANDLE_CALL(log, CPXsetintparam(cpxenv, CPXPARAM_ScreenOutput, HPLUS_DEF_CPX_SCREENOUTPUT));
     if (log_file) CPX_HANDLE_CALL(log, CPXsetlogfilename(cpxenv, (HPLUS_CPLEX_OUTPUT_DIR "/log/" + env.run_name + ".log").c_str(), "w"));
@@ -71,165 +66,6 @@ bool parse_cpx_status(const CPXENVptr& cpxenv, const CPXLPptr& cpxlp, hplus::env
             return false;
     }
 }
-
-// ##################################################################### //
-// ############################### LM-CUT ############################## //
-// ##################################################################### //
-
-// void compute_hmax(const hplus::instance& inst, std::vector<double>& values, const std::vector<int>& reduced_costs) {
-//     std::vector<size_t> initial_actions;
-//     for (const auto& act_i : inst.act_rem) {
-//         if (inst.actions[act_i].pre_sparse.empty()) initial_actions.push_back(act_i);
-//     }
-//     priority_queue<double> pq{inst.n};
-//     values = std::vector<double>(inst.n, std::numeric_limits<double>::infinity());
-
-//     for (const auto& act_i : initial_actions) {
-//         const double cost{static_cast<double>(reduced_costs[act_i])};
-//         for (const auto& p : inst.actions[act_i].eff_sparse) {
-//             if (cost >= values[p]) continue;
-
-//             values[p] = cost;
-//             if (pq.has(p))
-//                 pq.change(p, cost);
-//             else
-//                 pq.push(p, cost);
-//         }
-//     }
-
-//     while (!pq.empty()) {
-//         const size_t p{pq.top()};
-//         pq.pop();
-//         for (const auto& act_i : inst.act_with_pre[p]) {
-//             double cost_pre{0};
-//             for (const auto& p : inst.actions[act_i].pre_sparse) cost_pre = std::max(cost_pre, values[p]);
-
-//             if (cost_pre >= std::numeric_limits<double>::infinity()) continue;
-
-//             const double new_cost{cost_pre + reduced_costs[act_i]};
-//             for (const auto& p_eff : inst.actions[act_i].eff_sparse) {
-//                 if (new_cost >= values[p_eff]) continue;
-
-//                 values[p_eff] = new_cost;
-//                 if (pq.has(p_eff))
-//                     pq.change(p_eff, new_cost);
-//                 else
-//                     pq.push(p_eff, new_cost);
-//             }
-//         }
-//     }
-// }
-
-// void compute_pcf(const hplus::instance& inst, const std::vector<double>& values, std::vector<int>& pcf) {
-//     pcf = std::vector<int>(inst.m, -1);
-//     for (const auto& act_i : inst.act_rem) {
-//         double max{-1};
-//         for (const auto& p : inst.actions[act_i].pre_sparse) {
-//             if (values[p] > max) {
-//                 max = values[p];
-//                 pcf[act_i] = p;
-//             }
-//         }
-//     }
-// }
-
-// unsigned int compute_cut(const hplus::instance& inst, std::vector<int>& reduced_costs, const std::vector<int>& pcf, std::vector<size_t>& cut) {
-//     binary_set A(inst.n), B(inst.n);
-//     cut.clear();
-//     std::deque<size_t> queue;
-//     for (const auto& p : inst.goal) {
-//         queue.push_back(p);
-//         B.add(p);
-//     }
-//     while (!queue.empty()) {
-//         const size_t p{queue.front()};
-//         queue.pop_front();
-//         for (const auto& act_i : inst.act_with_eff[p]) {
-//             if (reduced_costs[act_i] != 0 || pcf[act_i] == -1) continue;
-//             if (!B[pcf[act_i]]) {
-//                 B.add(pcf[act_i]);
-//                 queue.push_back(pcf[act_i]);
-//             }
-//         }
-//     }
-
-//     binary_set incut(inst.m);
-//     for (const auto& act_i : inst.act_rem) {
-//         if (!inst.actions[act_i].pre_sparse.empty()) continue;
-//         if (B.intersects(inst.actions[act_i].eff)) {
-//             if (reduced_costs[act_i] == 0) continue;
-//             cut.push_back(act_i);
-//             incut.add(act_i);
-//         } else {
-//             for (const auto q : inst.actions[act_i].eff_sparse) {
-//                 if (A[q]) continue;
-//                 A.add(q);
-//                 queue.push_back(q);
-//             }
-//         }
-//     }
-
-//     while (!queue.empty()) {
-//         const size_t p{queue.front()};
-//         queue.pop_front();
-//         for (const auto& act_i : inst.act_with_pre[p]) {
-//             if (pcf[act_i] != static_cast<int>(p)) continue;
-//             if (B.intersects(inst.actions[act_i].eff)) {
-//                 if (incut[act_i]) continue;
-//                 ASSERT(reduced_costs[act_i] > 0);
-//                 incut.add(act_i);
-//                 cut.push_back(act_i);
-//             } else {
-//                 for (const auto q : inst.actions[act_i].eff_sparse) {
-//                     if (A[q]) continue;
-//                     A.add(q);
-//                     queue.push_back(q);
-//                 }
-//             }
-//         }
-//     }
-
-//     const int choice_cost{[&]() {
-//         ASSERT(!cut.empty());
-//         int min = reduced_costs[cut[0]];
-//         for (const auto act_i : cut) min = std::min(min, reduced_costs[act_i]);
-//         return min;
-//     }()};
-
-//     ASSERT(choice_cost > 0);
-
-//     for (const size_t act_i : cut) reduced_costs[act_i] -= choice_cost;
-//     return choice_cost;
-// }
-
-// void compute_lmcut(hplus::instance& inst, const logger& log) {
-//     log.print_info("Computing LM-CUT.");
-//     std::vector<double> values(inst.n, std::numeric_limits<double>::infinity());
-//     std::vector<int> reduced_costs(inst.m);
-//     for (const auto& act_i : inst.act_rem) {
-//         reduced_costs[act_i] = inst.actions[act_i].cost;
-//     }
-//     compute_hmax(inst, values, reduced_costs);
-//     std::vector<int> pcf(inst.m, -1);
-//     compute_pcf(inst, values, pcf);
-//     double goal_hmax{0};
-//     for (const auto& p : inst.goal) goal_hmax = std::max(goal_hmax, values[p]);
-//     unsigned int lmcut{0};
-//     std::vector<size_t> cut;
-//     while (goal_hmax != 0) {
-//         lmcut += compute_cut(inst, reduced_costs, pcf, cut);
-//         inst.landmarks.push_back(cut);
-//         compute_hmax(inst, values, reduced_costs);
-//         compute_pcf(inst, values, pcf);
-//         goal_hmax = 0;
-//         for (const auto& p : inst.goal) goal_hmax = std::max(goal_hmax, values[p]);
-//         // log.print_info("goal_hmax: %d", static_cast<int>(goal_hmax));
-//     }
-
-//     log.print_info("lmcut: %d", lmcut);
-//     // exit(0);
-// }
-
 // ##################################################################### //
 // ######################### ALGORITHM HANDLERS ######################## //
 // ##################################################################### //
@@ -292,8 +128,6 @@ void run_model(hplus::instance& inst, hplus::environment& env, hplus::statistics
         else if (env.alg == HPLUS_CLI_ALG_LM)
             lm::post_cpx_warmstart(cpxenv, cpxlp, inst, env, log);
     }
-
-    // compute_lmcut(inst, log);
 
     stats.nusercuts = 0;
     lm::cpx_callback_user_handle callback_data{
