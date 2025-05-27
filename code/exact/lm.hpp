@@ -31,7 +31,7 @@ typedef struct {
     const logger& log;
     CPXENVptr lmcutenv;
     CPXLPptr lmcutlp;
-    std::vector<thread_data> thread_data;
+    std::vector<thread_data> thread_specific_data;
 } cpx_callback_user_handle;
 
 /**

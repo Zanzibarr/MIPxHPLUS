@@ -733,17 +733,17 @@ void lm::create_thread_data(const hplus::instance& inst, const hplus::environmen
     cpx_create_lmcut_model(inst, log, callback_data.lmcutenv, callback_data.lmcutlp);
     for (int i = 0; i < env.threads; i++) {
         int cpxerror{-1};
-        callback_data.thread_data.emplace_back(
+        callback_data.thread_specific_data.emplace_back(
             lm::thread_data{.usercuts_lm = 0, .usercuts_sec = 0, .cand_time = 0, .relax_time = 0, .lmcutenv = nullptr, .lmcutlp = nullptr});
-        callback_data.thread_data[i].lmcutenv = CPXopenCPLEX(&cpxerror);
+        callback_data.thread_specific_data[i].lmcutenv = CPXopenCPLEX(&cpxerror);
         CPX_HANDLE_CALL(log, cpxerror);
-        CPXreadcopyparam(callback_data.thread_data[i].lmcutenv, HPLUS_CPLEX_OUTPUT_DIR "/.prm");
-        callback_data.thread_data[i].lmcutlp = CPXcloneprob(callback_data.thread_data[i].lmcutenv, callback_data.lmcutlp, &cpxerror);
+        CPXreadcopyparam(callback_data.thread_specific_data[i].lmcutenv, HPLUS_CPLEX_OUTPUT_DIR "/.prm");
+        callback_data.thread_specific_data[i].lmcutlp = CPXcloneprob(callback_data.thread_specific_data[i].lmcutenv, callback_data.lmcutlp, &cpxerror);
     }
 }
 
 void lm::sync_and_close_threads(hplus::statistics& stats, lm::cpx_callback_user_handle& callback_data, const logger& log) {
-    for (auto& data : callback_data.thread_data) {
+    for (auto& data : callback_data.thread_specific_data) {
         stats.cand_callback += data.cand_time;
         stats.relax_callback += data.relax_time;
         stats.usercuts_lm += data.usercuts_lm;
