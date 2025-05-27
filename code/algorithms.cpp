@@ -11,8 +11,10 @@ void cpx_init(CPXENVptr& cpxenv, CPXLPptr& cpxlp, const hplus::environment& env,
     CPX_HANDLE_CALL(log, cpxerror);
     cpxlp = CPXcreateprob(cpxenv, &cpxerror, env.run_name.c_str());
     CPX_HANDLE_CALL(log, cpxerror);
-    CPX_HANDLE_CALL(log, CPXsetintparam(cpxenv, CPXPARAM_Threads, 1));  // TODO: Remove
+    // [[DEBUG]] testing
     if (env.tmp_choice) CPX_HANDLE_CALL(log, CPXsetdblparam(cpxenv, CPXPARAM_MIP_Strategy_HeuristicEffort, 0.0));
+    // threads
+    CPX_HANDLE_CALL(log, CPXsetintparam(cpxenv, CPXPARAM_Threads, env.threads));
     // log file
     CPX_HANDLE_CALL(log, CPXsetintparam(cpxenv, CPXPARAM_ScreenOutput, HPLUS_DEF_CPX_SCREENOUTPUT));
     if (log_file) CPX_HANDLE_CALL(log, CPXsetlogfilename(cpxenv, (HPLUS_CPLEX_OUTPUT_DIR "/log/" + env.run_name + ".log").c_str(), "w"));
@@ -51,7 +53,7 @@ bool parse_cpx_status(const CPXENVptr& cpxenv, const CPXLPptr& cpxlp, hplus::env
             [[fallthrough]];
         case CPXMIP_ABORT_INFEAS:  // terminated by user, not found solution
             if (!env.warm_start) env.sol_s = solution_status::NOTFOUND;
-            return false;
+            return true;
         case CPXMIP_INFEASIBLE:  // proven to be infeasible
             env.sol_s = solution_status::INFEAS;
             return false;
@@ -129,15 +131,14 @@ void run_model(hplus::instance& inst, hplus::environment& env, hplus::statistics
             lm::post_cpx_warmstart(cpxenv, cpxlp, inst, env, log);
     }
 
-    stats.nusercuts = 0;
+    stats.usercuts_lm = 0;
+    stats.usercuts_sec = 0;
     lm::cpx_callback_user_handle callback_data{
-        .inst = inst, .env = env, .stats = stats, .log = log, .data = {nullptr, nullptr, std::map<int, std::pair<CPXENVptr, CPXLPptr>>()}};
+        .env = env, .inst = inst, .log = log, .lmcutenv = nullptr, .lmcutlp = nullptr, .thread_data = std::vector<lm::thread_data>(0)};
     if (env.alg == HPLUS_CLI_ALG_LM) {
         CPXLONG callback_context = CPX_CALLBACKCONTEXT_CANDIDATE;
-        if (env.fract_cuts) {
-            lm::cpx_create_lmcut_model(inst, log, callback_data.data.lmcutenv, callback_data.data.lmcutlp);
-            callback_context |= CPX_CALLBACKCONTEXT_RELAXATION;
-        }
+        if (env.fract_cuts) callback_context |= CPX_CALLBACKCONTEXT_RELAXATION;
+        lm::create_thread_data(inst, env, callback_data, log);
         CPX_HANDLE_CALL(log, CPXcallbacksetfunc(cpxenv, cpxlp, callback_context, lm::cpx_callback_hub, &callback_data));
     }
 
@@ -155,20 +156,21 @@ void run_model(hplus::instance& inst, hplus::environment& env, hplus::statistics
 
     stats.nnodes = CPXgetnodecnt(cpxenv, cpxlp);
 
-    if (parse_cpx_status(cpxenv, cpxlp, env, log)) {  // If CPLEX has found a solution
+    if (parse_cpx_status(cpxenv, cpxlp, env, log)) {
         CPX_HANDLE_CALL(log, CPXgetbestobjval(cpxenv, cpxlp, &stats.lb));
-        if (env.alg == HPLUS_CLI_ALG_TL)
-            tl::store_cpx_sol(cpxenv, cpxlp, inst, log);
-        else if (env.alg == HPLUS_CLI_ALG_VE)
-            ve::store_cpx_sol(cpxenv, cpxlp, inst, log);
-        else if (env.alg == HPLUS_CLI_ALG_LM)
-            lm::store_cpx_sol(cpxenv, cpxlp, inst, log);
+        if (env.sol_s != solution_status::NOTFOUND) {  // If we have a solution
+            if (env.alg == HPLUS_CLI_ALG_TL)
+                tl::store_cpx_sol(cpxenv, cpxlp, inst, log);
+            else if (env.alg == HPLUS_CLI_ALG_VE)
+                ve::store_cpx_sol(cpxenv, cpxlp, inst, log);
+            else if (env.alg == HPLUS_CLI_ALG_LM)
+                lm::store_cpx_sol(cpxenv, cpxlp, inst, log);
+        }
     }
 
     cpx_close(cpxenv, cpxlp, log);
     if (env.fract_cuts && env.alg == HPLUS_CLI_ALG_LM) {
-        lm::cpx_close_lmcut_model(callback_data.data.lmcutenv, callback_data.data.lmcutlp, log);
-        for (auto& data : callback_data.data.thread_data) lm::cpx_close_lmcut_model(data.second.first, data.second.second, log);
+        lm::sync_and_close_threads(stats, callback_data, log);
     }
 
     stats.execution = env.timer.get_time() - start_time;

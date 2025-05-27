@@ -17,9 +17,12 @@
 #include <stdexcept>    // For std::runtime_error
 #include <string>       // For std::string
 #include <string_view>  // For std::string_view
+#include <thread>
 
 #define LINE "------------------------------------------------------------"
 #define THICK_LINE "############################################################"
+
+inline pthread_mutex_t logger_mutex;
 
 // Enum for log level types
 enum class log_level { print, info, warning, error };
@@ -65,7 +68,7 @@ class logger {
      * @throw std::runtime_error If any problem with opening the log file occurs
      */
     explicit logger(const bool log_enabled, const std::string_view log_name, const std::string_view run_title = "")
-        : log_file_path_(log_name), log_enabled_(log_enabled), timer(std::chrono::steady_clock::now()) {
+        : log_file_path_(log_name), log_enabled_(log_enabled), timer_(std::chrono::steady_clock::now()) {
         if (log_enabled_) {
             try {
                 std::ofstream file(log_file_path_.c_str(), std::ios::app);
@@ -75,6 +78,8 @@ class logger {
                     file << '\n' << THICK_LINE << "\nRUN_NAME: " << run_title << '\n' << THICK_LINE << '\n';
                 }
                 file.close();
+
+                logger_mutex = PTHREAD_MUTEX_INITIALIZER;
             } catch (const std::exception& e) {
                 throw std::runtime_error(std::string("logger initialization error: ") + e.what());
             }
@@ -147,7 +152,7 @@ class logger {
    private:
     std::string log_file_path_;
     bool log_enabled_;
-    std::chrono::steady_clock::time_point timer;
+    std::chrono::steady_clock::time_point timer_;
 
     std::pair<std::string, std::string> format_prefix(const log_level level, const bool include_time) const {
         std::string terminal_prefix, file_prefix;
@@ -170,7 +175,8 @@ class logger {
         }
         if (include_time) {
             double time_passed =
-                static_cast<double>((std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - this->timer).count())) /
+                static_cast<double>(
+                    (std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - this->timer_).count())) /
                 1'000;
             char buf[32];
             snprintf(buf, 32, "%9.3f", time_passed);
@@ -188,6 +194,7 @@ class logger {
 
     void log_message(const log_level level, const bool include_time, const char* format, va_list args) const {
         try {
+            pthread_mutex_lock(&logger_mutex);
             std::string message{format_string(format, args)};
             auto [terminal_prefix, file_prefix]{format_prefix(level, include_time)};
 
@@ -203,8 +210,10 @@ class logger {
             }
 
             if (level != log_level::print) out_stream << colors::reset;
+            pthread_mutex_unlock(&logger_mutex);
 
         } catch (const std::exception& e) {
+            pthread_mutex_unlock(&logger_mutex);
             std::cerr << "logger error: " << e.what() << std::endl;
             if (level == log_level::error) std::exit(1);
         }

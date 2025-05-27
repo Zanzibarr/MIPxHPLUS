@@ -13,7 +13,8 @@ void hplus::print_stats(const statistics& stats, const logger& log) {
     log.print(" >>  Heur cost                     %10d  <<", stats.hcost);
     log.print(" >>  Final cost                    %10d  <<", stats.fcost);
     log.print(" >>  Nodes expanded (cplex)        %10d  <<", stats.nnodes);
-    log.print(" >>  User cuts (cplex callback)    %10d  <<", stats.nusercuts);
+    log.print(" >>  User cuts (landmarks)         %10d  <<", stats.usercuts_lm);
+    log.print(" >>  User cuts (S.E.C.)            %10d  <<", stats.usercuts_sec);
     log.print(" >>  Base model variables (cplex)  %10d  <<", stats.nvar_base);
     log.print(" >>  Acyclicity variables (cplex)  %10d  <<", stats.nvar_acyclic);
     log.print(" >>  Base model const. (cplex)     %10d  <<", stats.nconst_base);
@@ -24,7 +25,8 @@ void hplus::print_stats(const statistics& stats, const logger& log) {
     log.print(" >>  Heuristic time               %10.3fs  <<", stats.heuristic);
     log.print(" >>  Model building time          %10.3fs  <<", stats.build);
     log.print(" >>  CPLEX execution time         %10.3fs  <<", stats.execution);
-    log.print(" >>  CPLEX callback time          %10.3fs  <<", stats.callback);
+    log.print(" >>  CPLEX callback time (relax)  %10.3fs  <<", stats.relax_callback);
+    log.print(" >>  CPLEX callback time (cand)   %10.3fs  <<", stats.cand_callback);
     log.print(" >>  Total time                   %10.3fs  <<", stats.total);
     log.print("\n\n");
 }
@@ -32,6 +34,7 @@ void hplus::print_stats(const statistics& stats, const logger& log) {
 void hplus::init(environment& env) {
     env = environment{.exec_s = HPLUS_DEF_EXEC_STATUS,
                       .sol_s = HPLUS_DEF_SOL_STATUS,
+                      .threads = 4,
                       .input_file = HPLUS_DEF_LOG_FILE,
                       .log_name = HPLUS_DEF_LOG_NAME,
                       .run_name = HPLUS_DEF_RUN_NAME,
@@ -57,10 +60,10 @@ void hplus::init(statistics& stats) {
                        .preprocessing = 0,
                        .heuristic = 0,
                        .build = 0,
-                       .callback = 0,
+                       .cand_callback = 0,
+                       .relax_callback = 0,
                        .execution = 0,
                        .total = 0,
-                       .callback_time_mutex = PTHREAD_MUTEX_INITIALIZER,
                        .hcost = -1,
                        .fcost = -1,
                        .nnodes = -1,
@@ -69,7 +72,8 @@ void hplus::init(statistics& stats) {
                        .nvar_acyclic = -1,
                        .nconst_base = -1,
                        .nconst_acyclic = -1,
-                       .nusercuts = -1,
+                       .usercuts_lm = -1,
+                       .usercuts_sec = -1,
                        .lb = -1};
 }
 

@@ -19,17 +19,19 @@
 namespace lm {
 
 typedef struct {
+    int usercuts_lm, usercuts_sec;
+    double cand_time, relax_time;
     CPXENVptr lmcutenv;
     CPXLPptr lmcutlp;
-    std::map<int, std::pair<CPXENVptr, CPXLPptr>> thread_data;
 } thread_data;
 
 typedef struct {
     hplus::instance& inst;
     hplus::environment& env;
-    hplus::statistics& stats;
     const logger& log;
-    thread_data data;
+    CPXENVptr lmcutenv;
+    CPXLPptr lmcutlp;
+    std::vector<thread_data> thread_data;
 } cpx_callback_user_handle;
 
 /**
@@ -46,6 +48,16 @@ void cpx_create_lmcut_model(const hplus::instance& inst, const logger& log, CPXE
  * Closing the model used to extract cuts from the fractional solution
  */
 void cpx_close_lmcut_model(CPXENVptr& lmcutenv, CPXLPptr& lmcutlp, const logger& log);
+
+/**
+ * Create the data for each thread for callbacks
+ */
+void create_thread_data(const hplus::instance& inst, const hplus::environment& env, cpx_callback_user_handle& callback_data, const logger& log);
+
+/**
+ * Sync data gathered among callbacks and correctly free all data allocated for each
+ */
+void sync_and_close_threads(hplus::statistics& stats, cpx_callback_user_handle& callback_data, const logger& log);
 
 /**
  * Build the cplex model using the instance described by the inst parameter, with execution details explained in the env parameter

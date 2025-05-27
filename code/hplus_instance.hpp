@@ -54,7 +54,6 @@ typedef struct {
     std::vector<size_t> veg_starts;
     std::vector<binary_set> veg_cumulative_graph;
     std::vector<std::vector<size_t>> act_with_eff, act_with_pre;
-    // std::vector<std::vector<size_t>> landmarks;
 } instance;
 
 /** Struct containing the environment variables for the execution of the code */
@@ -63,6 +62,7 @@ typedef struct {
     exec_status exec_s;
     solution_status sol_s;
     /** Parameters for execution */
+    int threads;
     std::string input_file, log_name, run_name, alg, heur;
     /** Execution flags */
     bool preprocessing, warm_start, tight_bounds, using_cplex, log, write_lp;
@@ -77,12 +77,11 @@ typedef struct {
 /** Statistics */
 typedef struct {
     // Times
-    double parsing, preprocessing, heuristic, build, callback, execution, total;
-    pthread_mutex_t callback_time_mutex;
+    double parsing, preprocessing, heuristic, build, cand_callback, relax_callback, execution, total;
     // Costs
     int hcost, fcost;
     // Cplex stats
-    int nnodes, status, nvar_base, nvar_acyclic, nconst_base, nconst_acyclic, nusercuts;
+    int nnodes, status, nvar_base, nvar_acyclic, nconst_base, nconst_acyclic, usercuts_lm, usercuts_sec;
     double lb;
 } statistics;
 

@@ -82,8 +82,6 @@ static std::tuple<std::vector<size_t>, std::vector<size_t>, std::vector<size_t>,
     return {used_acts, unused_acts, reachable_acts, reachable_state, used_first_archievers};
 }
 
-static pthread_mutex_t cb_print_info_mutex = PTHREAD_MUTEX_INITIALIZER;
-
 static void cb_print_info(CPXCALLBACKCONTEXTptr& context, const double& cost, const logger& log) {
     static int call_count{0};
     if (call_count % 100 == 0) {
@@ -92,13 +90,9 @@ static void cb_print_info(CPXCALLBACKCONTEXTptr& context, const double& cost, co
         double incumbent = CPX_INFBOUND;
         CPX_HANDLE_CALL(log, CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_SOL, &incumbent));
         double gap = (1 - lower_bound / incumbent) * 100;
-        pthread_mutex_lock(&cb_print_info_mutex);
         log.print_info("ILP  -  Pruned infeasible integer solution  - cost: %3d, gap: %4.2f%%.", static_cast<int>(cost), gap);
-        pthread_mutex_unlock(&cb_print_info_mutex);
     }
-    pthread_mutex_lock(&cb_print_info_mutex);
-    call_count++;
-    pthread_mutex_unlock(&cb_print_info_mutex);
+    call_count++;  // not thread safe, but it's not that important to print at a slightly wrong rate
 }
 
 // ====================================================== //
@@ -491,8 +485,8 @@ void lm::cpx_create_lmcut_model(const hplus::instance& inst, const logger& log, 
 // ====================== CALLBACK ====================== //
 // ====================================================== //
 
-static void cpx_cand_callback(CPXCALLBACKCONTEXTptr& context, const hplus::instance& inst, const hplus::environment& env, hplus::statistics& stats,
-                              const logger& log) {
+static void cpx_cand_callback(CPXCALLBACKCONTEXTptr& context, const hplus::instance& inst, const hplus::environment& env, double& cand_time,
+                              int& usercuts_lm, int& usercuts_sec, const logger& log) {
     double start_time{env.timer.get_time()};
 
     // get candidate point
@@ -580,14 +574,13 @@ static void cpx_cand_callback(CPXCALLBACKCONTEXTptr& context, const hplus::insta
         secind = nullptr;
     }
 
-    pthread_mutex_lock(&(stats.callback_time_mutex));
-    stats.nusercuts += landmarks_list.size() + n_sec;
-    stats.callback += env.timer.get_time() - start_time;
-    pthread_mutex_unlock(&(stats.callback_time_mutex));
+    usercuts_lm += landmarks_list.size();
+    usercuts_sec += n_sec;
+    cand_time += env.timer.get_time() - start_time;
 }
 
-static void cpx_relax_callback(CPXCALLBACKCONTEXTptr& context, const hplus::instance& inst, CPXENVptr& lmcutenv, CPXLPptr& lmcutlp,
-                               hplus::statistics& stats, const logger& log) {
+static void cpx_relax_callback(CPXCALLBACKCONTEXTptr& context, const hplus::instance& inst, const hplus::environment& env,
+                               lm::thread_data& thread_data, const logger& log) {
     // if I reached the termination condition, exit
     if (CHECK_STOP()) return;
 
@@ -595,6 +588,8 @@ static void cpx_relax_callback(CPXCALLBACKCONTEXTptr& context, const hplus::inst
     int nodedepth{-1};
     CPX_HANDLE_CALL(log, CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODEDEPTH, &nodedepth));
     if (nodedepth != 0) return;
+
+    double start_time{env.timer.get_time()};
 
     // get relaxation point (the first inst.m_opt variables are operators indicator variables)
     double* relax_point{new double[inst.m_opt]};
@@ -607,7 +602,7 @@ static void cpx_relax_callback(CPXCALLBACKCONTEXTptr& context, const hplus::inst
         ind[i] = i;
         if (relax_point[i] < HPLUS_EPSILON) relax_point[i] = 0;
     }
-    CPX_HANDLE_CALL(log, CPXchgobj(lmcutenv, lmcutlp, inst.m_opt, ind, relax_point));
+    CPX_HANDLE_CALL(log, CPXchgobj(thread_data.lmcutenv, thread_data.lmcutlp, inst.m_opt, ind, relax_point));
     delete[] ind;
     ind = nullptr;
 #if !HPLUS_INTCHECK
@@ -616,12 +611,10 @@ static void cpx_relax_callback(CPXCALLBACKCONTEXTptr& context, const hplus::inst
 #endif
 
     // run vlm-det model
-    CPX_HANDLE_CALL(log, CPXmipopt(lmcutenv, lmcutlp));
-    int status{CPXgetstat(lmcutenv, lmcutlp)};
+    CPX_HANDLE_CALL(log, CPXmipopt(thread_data.lmcutenv, thread_data.lmcutlp));
+    int status{CPXgetstat(thread_data.lmcutenv, thread_data.lmcutlp)};
     if (status != CPXMIP_OPTIMAL && status != CPXMIP_OPTIMAL_TOL) {
-        pthread_mutex_lock(&cb_print_info_mutex);
         log.print_warn("CPXgetstat: %d.", status);
-        pthread_mutex_unlock(&cb_print_info_mutex);
         delete[] relax_point;
         relax_point = nullptr;
         return;
@@ -629,16 +622,14 @@ static void cpx_relax_callback(CPXCALLBACKCONTEXTptr& context, const hplus::inst
 
     // get obj val --> < 1: a landmark is violated, >= 1: no landmark is violated
     double cutval{-1};
-    CPX_HANDLE_CALL(log, CPXgetobjval(lmcutenv, lmcutlp, &cutval));
+    CPX_HANDLE_CALL(log, CPXgetobjval(thread_data.lmcutenv, thread_data.lmcutlp, &cutval));
     if (cutval >= 1 - HPLUS_EPSILON) {
 #if HPLUS_INTCHECK
         delete[] relax_point;
         relax_point = nullptr;
 #endif
         // [[DEBUG]] exiting callback
-        pthread_mutex_lock(&cb_print_info_mutex);
         log.print_warn(" LP  -  Landmark not violated by lp relax.  - cutval: %f.", cutval);
-        pthread_mutex_unlock(&cb_print_info_mutex);
         return;
     }
 
@@ -646,7 +637,7 @@ static void cpx_relax_callback(CPXCALLBACKCONTEXTptr& context, const hplus::inst
 
     // get the partition of facts
     double* facts_partition{new double[inst.n_opt]};
-    CPX_HANDLE_CALL(log, CPXgetx(lmcutenv, lmcutlp, facts_partition, inst.m_opt, inst.m_opt + inst.n_opt - 1));
+    CPX_HANDLE_CALL(log, CPXgetx(thread_data.lmcutenv, thread_data.lmcutlp, facts_partition, inst.m_opt, inst.m_opt + inst.n_opt - 1));
     binary_set reach(inst.n);
     for (const auto p : inst.var_rem) {
         if (facts_partition[inst.var_opt_conv[p]] >= HPLUS_CPX_INT_ROUNDING) reach.add(p);
@@ -709,48 +700,57 @@ static void cpx_relax_callback(CPXCALLBACKCONTEXTptr& context, const hplus::inst
     val = nullptr;
     delete[] ind;
     ind = nullptr;
-    pthread_mutex_lock(&(stats.callback_time_mutex));
-    stats.nusercuts++;
-    pthread_mutex_unlock(&(stats.callback_time_mutex));
+
+    thread_data.usercuts_lm++;
     double lb{-1};
     CPX_HANDLE_CALL(log, CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_BND, &lb));
-    pthread_mutex_lock(&cb_print_info_mutex);
     log.print_warn(" LP  -  Landmark violated by lp relaxation  - size: %3d, min-cut: %1.3f, min-cost: %3d, lb: %3.3f.", nnz, cutval, costcheck, lb);
-    pthread_mutex_unlock(&cb_print_info_mutex);
+    thread_data.relax_time += env.timer.get_time() - start_time;
 }
 
-static pthread_mutex_t thread_data_reader = PTHREAD_MUTEX_INITIALIZER;
-
 int CPXPUBLIC lm::cpx_callback_hub(CPXCALLBACKCONTEXTptr context, CPXLONG context_id, void* user_handle) {
-    auto& [inst, env, stats, log, thread_data]{*static_cast<lm::cpx_callback_user_handle*>(user_handle)};
+    auto& [inst, env, log, _1, _2, thread_data]{*static_cast<lm::cpx_callback_user_handle*>(user_handle)};
     int thread_id{-1};
     CPX_HANDLE_CALL(log, CPXcallbackgetinfoint(context, CPXCALLBACKINFO_THREADID, &thread_id));
 
     switch (context_id) {
         case CPX_CALLBACKCONTEXT_CANDIDATE:
-            cpx_cand_callback(context, inst, env, stats, log);
+            cpx_cand_callback(context, inst, env, thread_data[thread_id].cand_time, thread_data[thread_id].usercuts_lm,
+                              thread_data[thread_id].usercuts_sec, log);
             break;
         case CPX_CALLBACKCONTEXT_RELAXATION:
-            if (thread_data.thread_data.count(thread_id) <= 0) {
-                pthread_mutex_lock(&thread_data_reader);
-                if (thread_data.thread_data.count(thread_id) <= 0) {
-                    int cpxerror{-1};
-                    CPXENVptr lmcutenv{CPXopenCPLEX(&cpxerror)};
-                    CPX_HANDLE_CALL(log, cpxerror);
-                    CPXreadcopyparam(lmcutenv, HPLUS_CPLEX_OUTPUT_DIR "/.prm");
-                    CPXLPptr lmcutlp{CPXcloneprob(lmcutenv, thread_data.lmcutlp, &cpxerror)};
-                    CPX_HANDLE_CALL(log, cpxerror);
-                    thread_data.thread_data[thread_id] = std::make_pair(lmcutenv, lmcutlp);
-                }
-                pthread_mutex_unlock(&thread_data_reader);
-            }
-            cpx_relax_callback(context, inst, thread_data.thread_data[thread_id].first, thread_data.thread_data[thread_id].second, stats, log);
+            cpx_relax_callback(context, inst, env, thread_data[thread_id], log);
             break;
         default:
             log.raise_error("Unhandled callback context: %ld.", context_id);
     }
 
     return 0;
+}
+
+void lm::create_thread_data(const hplus::instance& inst, const hplus::environment& env, lm::cpx_callback_user_handle& callback_data,
+                            const logger& log) {
+    cpx_create_lmcut_model(inst, log, callback_data.lmcutenv, callback_data.lmcutlp);
+    for (int i = 0; i < env.threads; i++) {
+        int cpxerror{-1};
+        callback_data.thread_data.emplace_back(
+            lm::thread_data{.usercuts_lm = 0, .usercuts_sec = 0, .cand_time = 0, .relax_time = 0, .lmcutenv = nullptr, .lmcutlp = nullptr});
+        callback_data.thread_data[i].lmcutenv = CPXopenCPLEX(&cpxerror);
+        CPX_HANDLE_CALL(log, cpxerror);
+        CPXreadcopyparam(callback_data.thread_data[i].lmcutenv, HPLUS_CPLEX_OUTPUT_DIR "/.prm");
+        callback_data.thread_data[i].lmcutlp = CPXcloneprob(callback_data.thread_data[i].lmcutenv, callback_data.lmcutlp, &cpxerror);
+    }
+}
+
+void lm::sync_and_close_threads(hplus::statistics& stats, lm::cpx_callback_user_handle& callback_data, const logger& log) {
+    for (auto& data : callback_data.thread_data) {
+        stats.cand_callback += data.cand_time;
+        stats.relax_callback += data.relax_time;
+        stats.usercuts_lm += data.usercuts_lm;
+        stats.usercuts_sec += data.usercuts_sec;
+        cpx_close_lmcut_model(data.lmcutenv, data.lmcutlp, log);
+    }
+    cpx_close_lmcut_model(callback_data.lmcutenv, callback_data.lmcutlp, log);
 }
 
 // ##################################################################### //

@@ -41,7 +41,8 @@ def main():
         "avg_stime": 0,
         "avg_htime": 0,
         "avg_btime": 0,
-        "avg_cbtime": 0,
+        "avg_rcbtime": 0,
+        "avg_ccbtime": 0,
         "avg_ctime": 0,
         "avg_time": 0,
         "perc_found": 0,
@@ -93,7 +94,8 @@ def main():
             "stime": -1,
             "htime": -1,
             "btime": -1,
-            "cbtime": -1,
+            "rcbtime": -1,
+            "ccbtime": -1,
             "ctime": -1,
             "time": -1,
             "other": "",
@@ -145,8 +147,13 @@ def main():
                     .partition("s")[0]
                     .strip()
                 )
-                callback_time = float(
-                    content.partition(">>  CPLEX callback time")[2]
+                rcallback_time = float(
+                    content.partition(">>  CPLEX callback time (relax)")[2]
+                    .partition("s")[0]
+                    .strip()
+                )
+                ccallback_time = float(
+                    content.partition(">>  CPLEX callback time (cand)")[2]
                     .partition("s")[0]
                     .strip()
                 )
@@ -162,14 +169,16 @@ def main():
                 runsum["stats"]["avg_stime"] += opt_time
                 runsum["stats"]["avg_htime"] += heur_time
                 runsum["stats"]["avg_btime"] += build_time
-                runsum["stats"]["avg_cbtime"] += callback_time
+                runsum["stats"]["avg_rcbtime"] += rcallback_time
+                runsum["stats"]["avg_ccbtime"] += ccallback_time
                 runsum["stats"]["avg_ctime"] += cplex_time
                 runsum["stats"]["avg_time"] += total_time
                 runsum["results"][instance_name]["ptime"] = parsing_time
                 runsum["results"][instance_name]["stime"] = opt_time
                 runsum["results"][instance_name]["htime"] = heur_time
                 runsum["results"][instance_name]["btime"] = build_time
-                runsum["results"][instance_name]["cbtime"] = callback_time
+                runsum["results"][instance_name]["rcbtime"] = rcallback_time
+                runsum["results"][instance_name]["ccbtime"] = ccallback_time
                 runsum["results"][instance_name]["ctime"] = cplex_time
                 runsum["results"][instance_name]["time"] = total_time
 
@@ -218,7 +227,11 @@ def main():
                         .strip()
                     )
                     runsum["results"][instance_name]["usercuts"] = int(
-                        content.partition(">>  User cuts (cplex callback)")[2]
+                        content.partition(">>  User cuts (landmarks)")[2]
+                        .partition("<<")[0]
+                        .strip()
+                    ) + int(
+                        content.partition(">>  User cuts (S.E.C.)")[2]
                         .partition("<<")[0]
                         .strip()
                     )
@@ -280,7 +293,8 @@ def main():
     runsum["stats"]["avg_stime"] /= n_good
     runsum["stats"]["avg_htime"] /= n_good
     runsum["stats"]["avg_btime"] /= n_good
-    runsum["stats"]["avg_cbtime"] /= n_good
+    runsum["stats"]["avg_rcbtime"] /= n_good
+    runsum["stats"]["avg_ccbtime"] /= n_good
     runsum["stats"]["avg_ctime"] /= n_good
     runsum["stats"]["avg_time"] /= n_good
     runsum["stats"]["perc_found"] /= runsum["n_total"]

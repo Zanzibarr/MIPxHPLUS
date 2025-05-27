@@ -25,6 +25,20 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
+## [2.0.6] - 2025/05/27
+<!-- ### :warning: Known issues -->
+### :ballot_box_with_check: Fixed
+- Bug where if no integer solution is found, the lower bound isn't retrieved
+### :heavy_exclamation_mark: Changed
+- Logger is now thread safe
+- Created a copy of the callback data for each thread CPLEX might use
+- More meaningful callback statistics (time and cuts added)
+### :heavy_plus_sign: Added
+- Flag to decide number of threads to use
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+
+
 ## [2.0.5] - 2025/05/26
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->

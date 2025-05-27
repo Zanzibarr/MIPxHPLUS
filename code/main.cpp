@@ -91,6 +91,7 @@ static void parse_cli(const int& argc, const char** argv, hplus::environment& en
         parser, "0/1",
         "Using fractionary solutions to generate cuts for the lm model (def: " + std::to_string(HPLUS_DEF_FRACT) + "; options: 0 (false), 1 (true)).",
         {"fract"}, HPLUS_DEF_FRACT);
+    args::ValueFlag<int> threads(parser, "positive int", "number of threads to be used", {"threads"}, 4);
     args::ValueFlag<bool> tmp(parser, "0/1", "tmp flag", {"tmp"}, false);
 
     try {
@@ -134,6 +135,17 @@ static void parse_cli(const int& argc, const char** argv, hplus::environment& en
     if (complete_lm) env.complete_landmark = args::get(complete_lm);
     if (sec) env.sec = args::get(sec);
     if (fract) env.fract_cuts = args::get(fract);
+    if (threads) {
+        env.threads = args::get(threads);
+        if (env.threads <= 0) {
+            std::cout << "You cannot use 0 or less threads.";
+            exit(1);
+        }
+        if (env.threads > static_cast<int>(std::thread::hardware_concurrency())) {
+            std::cout << "WARNING: Using only " << std::thread::hardware_concurrency() << " threads.\n";
+            env.threads = std::thread::hardware_concurrency();
+        }
+    }
     if (tmp) env.tmp_choice = args::get(tmp);
 
     if (env.alg != HPLUS_CLI_ALG_TL && env.alg != HPLUS_CLI_ALG_VE && env.alg != HPLUS_CLI_ALG_LM) {
