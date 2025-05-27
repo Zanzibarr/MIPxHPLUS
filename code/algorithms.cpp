@@ -134,7 +134,7 @@ void run_model(hplus::instance& inst, hplus::environment& env, hplus::statistics
     stats.usercuts_lm = 0;
     stats.usercuts_sec = 0;
     lm::cpx_callback_user_handle callback_data{
-        .env = env, .inst = inst, .log = log, .lmcutenv = nullptr, .lmcutlp = nullptr, .thread_specific_data = std::vector<lm::thread_data>(0)};
+        .inst = inst, .env = env, .log = log, .lmcutenv = nullptr, .lmcutlp = nullptr, .thread_specific_data = std::vector<lm::thread_data>(0)};
     if (env.alg == HPLUS_CLI_ALG_LM) {
         CPXLONG callback_context = CPX_CALLBACKCONTEXT_CANDIDATE;
         if (env.fract_cuts) callback_context |= CPX_CALLBACKCONTEXT_RELAXATION;
