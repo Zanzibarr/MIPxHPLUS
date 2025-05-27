@@ -181,6 +181,7 @@ static void show_info(const hplus::instance& inst, const hplus::environment& env
     log.print("Verbose parameter:                               %10d.", HPLUS_VERBOSE);
     log.print("Warnings parameter:                              %10d.", HPLUS_WARN);
     log.print("Integrity checks parameter:                      %10d.", HPLUS_INTCHECK);
+    log.print("Threads:                                         %10d.", env.threads);
 
     log.print(LINE);
 
