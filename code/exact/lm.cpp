@@ -738,19 +738,21 @@ void lm::create_thread_data(const hplus::instance& inst, const hplus::environmen
         callback_data.thread_specific_data[i].lmcutenv = CPXopenCPLEX(&cpxerror);
         CPX_HANDLE_CALL(log, cpxerror);
         CPXreadcopyparam(callback_data.thread_specific_data[i].lmcutenv, HPLUS_CPLEX_OUTPUT_DIR "/.prm");
-        callback_data.thread_specific_data[i].lmcutlp = CPXcloneprob(callback_data.thread_specific_data[i].lmcutenv, callback_data.lmcutlp, &cpxerror);
+        callback_data.thread_specific_data[i].lmcutlp =
+            CPXcloneprob(callback_data.thread_specific_data[i].lmcutenv, callback_data.lmcutlp, &cpxerror);
     }
 }
 
-void lm::sync_and_close_threads(hplus::statistics& stats, lm::cpx_callback_user_handle& callback_data, const logger& log) {
+void lm::sync_and_close_threads(const hplus::environment& env, hplus::statistics& stats, lm::cpx_callback_user_handle& callback_data,
+                                const logger& log) {
     for (auto& data : callback_data.thread_specific_data) {
         stats.cand_callback += data.cand_time;
         stats.relax_callback += data.relax_time;
         stats.usercuts_lm += data.usercuts_lm;
         stats.usercuts_sec += data.usercuts_sec;
-        cpx_close_lmcut_model(data.lmcutenv, data.lmcutlp, log);
+        if (env.fract_cuts) cpx_close_lmcut_model(data.lmcutenv, data.lmcutlp, log);
     }
-    cpx_close_lmcut_model(callback_data.lmcutenv, callback_data.lmcutlp, log);
+    if (env.fract_cuts) cpx_close_lmcut_model(callback_data.lmcutenv, callback_data.lmcutlp, log);
 }
 
 // ##################################################################### //

@@ -57,7 +57,7 @@ void create_thread_data(const hplus::instance& inst, const hplus::environment& e
 /**
  * Sync data gathered among callbacks and correctly free all data allocated for each
  */
-void sync_and_close_threads(hplus::statistics& stats, cpx_callback_user_handle& callback_data, const logger& log);
+void sync_and_close_threads(const hplus::environment& env, hplus::statistics& stats, cpx_callback_user_handle& callback_data, const logger& log);
 
 /**
  * Build the cplex model using the instance described by the inst parameter, with execution details explained in the env parameter

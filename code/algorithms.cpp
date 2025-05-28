@@ -169,9 +169,7 @@ void run_model(hplus::instance& inst, hplus::environment& env, hplus::statistics
     }
 
     cpx_close(cpxenv, cpxlp, log);
-    if (env.fract_cuts && env.alg == HPLUS_CLI_ALG_LM) {
-        lm::sync_and_close_threads(stats, callback_data, log);
-    }
+    if (env.alg == HPLUS_CLI_ALG_LM) lm::sync_and_close_threads(env, stats, callback_data, log);
 
     stats.execution = env.timer.get_time() - start_time;
 }

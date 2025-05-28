@@ -31,6 +31,7 @@ HOW I DO VERSIONING:
 ### :ballot_box_with_check: Fixed
 - Minor visual bugs
 - Bug in CMake file where if a CPLEX path is specified, it is ignored in favour of the defaul ones
+- Bug where number of landmarks and SEC where not shown if the relaxation callback wasn't used
 <!-- ### :heavy_exclamation_mark: Changed -->
 <!-- ### :heavy_plus_sign: Added -->
 <!-- ### :x: Removed -->
