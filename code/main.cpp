@@ -91,7 +91,7 @@ static void parse_cli(const int& argc, const char** argv, hplus::environment& en
         parser, "0/1",
         "Using fractionary solutions to generate cuts for the lm model (def: " + std::to_string(HPLUS_DEF_FRACT) + "; options: 0 (false), 1 (true)).",
         {"fract"}, HPLUS_DEF_FRACT);
-    args::ValueFlag<int> threads(parser, "positive int", "number of threads to be used", {"threads"}, 4);
+    args::ValueFlag<int> threads(parser, "positive int", "number of threads to be used (def: 4)", {"threads"}, 4);
     args::ValueFlag<bool> tmp(parser, "0/1", "tmp flag", {"tmp"}, false);
 
     try {

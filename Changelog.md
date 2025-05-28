@@ -25,6 +25,17 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
+## [2.1.0] - 2025/05/28
+### Tested all features added in 2.0.*
+<!-- ### :warning: Known issues -->
+### :ballot_box_with_check: Fixed
+- Minor visual changes
+<!-- ### :heavy_exclamation_mark: Changed -->
+<!-- ### :heavy_plus_sign: Added -->
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+
+
 ## [2.0.6] - 2025/05/27
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed
