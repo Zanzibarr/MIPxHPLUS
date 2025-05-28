@@ -57,7 +57,9 @@ function(find_cplex)
 
     message(FATAL_ERROR "CPLEX not found. Please specify CPLEX_DIR and CPLEX_INCLUDE manually.")
 endfunction()
-find_cplex()
+if(NOT DEFINED CPLEX_DIR)
+    find_cplex()
+endif()
 
 # Validate CPLEX paths
 if(NOT EXISTS ${CPLEX_DIR})
