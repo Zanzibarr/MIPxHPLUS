@@ -359,6 +359,7 @@ static std::tuple<int*, double*, int, double*, char*, int*> cb_cpxconvert_sec_cu
                 ind[nnz] = inst.m_opt + inst.fadd_cpx_start[cycle[i]] + var_count;
                 val[nnz++] = 1;
                 rhs[sec_counter]++;
+                break;
             }
         }
         var_count = -1;
@@ -369,6 +370,7 @@ static std::tuple<int*, double*, int, double*, char*, int*> cb_cpxconvert_sec_cu
             ind[nnz] = inst.m_opt + inst.fadd_cpx_start[cycle[cycle.size() - 1]] + var_count;
             val[nnz++] = 1;
             rhs[sec_counter]++;
+            break;
         }
 
         sec_counter++;

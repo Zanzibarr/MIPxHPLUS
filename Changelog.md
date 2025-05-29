@@ -25,6 +25,16 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
+## [2.1.1] - 2025/05/29
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+### :heavy_exclamation_mark: Changed
+- Using random dominant S.E.C. if multiple (equivalent) cycles are found
+<!-- ### :heavy_plus_sign: Added -->
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+
+
 ## [2.1.0] - 2025/05/28
 ### Tested all features added in 2.0.*
 <!-- ### :warning: Known issues -->
