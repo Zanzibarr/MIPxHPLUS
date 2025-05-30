@@ -67,7 +67,7 @@ typedef struct {
     /** Execution flags */
     bool preprocessing, warm_start, tight_bounds, using_cplex, log, write_lp;
     /** Landmarks model */
-    bool minimal_landmark, complete_landmark, sec, fract_cuts;
+    bool minimal_landmark, complete_landmark, sec, fract_cuts, fract_sec;
     /** Time limit */
     unsigned int time_limit;
     time_keeper timer;

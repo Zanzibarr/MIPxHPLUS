@@ -30,6 +30,7 @@ HOW I DO VERSIONING:
 <!-- ### :ballot_box_with_check: Fixed -->
 ### :heavy_exclamation_mark: Changed
 - Using justification graph to separate SEC in candidate callback
+- Separating SEC in fractionary solution
 <!-- ### :heavy_plus_sign: Added -->
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->

@@ -247,40 +247,47 @@ static std::tuple<int*, double*, int, double*, char*, int*> cb_cpxconvert_landma
 // ======================= S.E.C. ======================= //
 // ====================================================== //
 
-struct sec_graph_comparator {
+struct sec_cand_graph_comparator {
     bool operator()(const std::pair<size_t, size_t>& a, const std::pair<size_t, size_t>& b) const { return a.first < b.first; }
 };
 
-struct sec_edge {
+struct sec_cand_edge {
     size_t from;
     size_t to;
     size_t label;
 };
 
-static std::vector<sec_edge> sec_find_path(const std::vector<std::set<std::pair<size_t, size_t>, sec_graph_comparator>>& graph, size_t source,
-                                           size_t destination, const std::set<std::pair<size_t, size_t>>& used_edges) {
+static std::vector<sec_cand_edge> sec_cand_find_path(const std::vector<std::set<std::pair<size_t, size_t>, sec_cand_graph_comparator>>& graph,
+                                                     size_t source, size_t destination, const std::set<std::pair<size_t, size_t>>& used_edges) {
     size_t n = graph.size();
     const size_t INF = std::numeric_limits<size_t>::max();
 
+    // initialize distances and list of previous (to compute back the path)
+    std::vector<size_t> distance(n, INF);
     std::vector<size_t> previous(n, INF);
     std::vector<size_t> edge_label(n, INF);
-    std::queue<size_t> q;
-
-    std::vector<size_t> distance(n, INF);
     distance[source] = 0;
+
+    std::queue<size_t> q;
     q.push(source);
 
+    // dfs algorithm
     while (!q.empty()) {
         size_t u = q.front();
         q.pop();
+
+        // early exit condition -> if I found the destination
         if (u == destination) break;
 
+        // look for u's outgoing edges
         for (const auto& edge : graph[u]) {
             size_t v = edge.first;
             size_t label = edge.second;
 
+            // we ignore edges that already are part of a previously found cycle
             if (used_edges.count({u, v})) continue;
 
+            // update distances
             if (distance[v] == INF) {
                 distance[v] = distance[u] + 1;
                 previous[v] = u;
@@ -290,9 +297,11 @@ static std::vector<sec_edge> sec_find_path(const std::vector<std::set<std::pair<
         }
     }
 
+    // no path from source to destination
     if (distance[destination] == INF) return {};
 
-    std::vector<sec_edge> path;
+    // get path from the previous chain
+    std::vector<sec_cand_edge> path;
     for (size_t v = destination; previous[v] != INF; v = previous[v]) {
         path.push_back({previous[v], v, edge_label[v]});
     }
@@ -301,8 +310,8 @@ static std::vector<sec_edge> sec_find_path(const std::vector<std::set<std::pair<
     return path;
 }
 
-static void sec_find_cycles(const std::vector<std::set<std::pair<size_t, size_t>, sec_graph_comparator>>& graph,
-                            std::vector<std::vector<size_t>>& cycles) {
+static void sec_cand_find_cycles(const std::vector<std::set<std::pair<size_t, size_t>, sec_cand_graph_comparator>>& graph,
+                                 std::vector<std::vector<size_t>>& cycles) {
     std::set<std::pair<size_t, size_t>> used_edges;
 
     for (size_t p = 0; p < graph.size(); ++p) {
@@ -310,10 +319,17 @@ static void sec_find_cycles(const std::vector<std::set<std::pair<size_t, size_t>
             size_t q = edge.first;
             size_t label = edge.second;
 
+            // for each edge (p,q)
+
+            // if I already found a cycle with (p,q) in it, I skip this iteration
             if (used_edges.count({p, q}) > 0) continue;
 
+            // regardless of finding or not the cycle, we can remove this edge for future iterations (if a cycle is found, we don't want this edge; if
+            // no cycle is found then this edge won't ever be part of a cycle)
+            used_edges.insert({p, q});
+
             // Find path from q to p avoiding used edges
-            auto path_edges = sec_find_path(graph, q, p, used_edges);
+            auto path_edges = sec_cand_find_path(graph, q, p, used_edges);
             if (!path_edges.empty()) {  // If found a path -> we found a cycle
                 std::vector<size_t> cycle_labels;
 
@@ -324,16 +340,15 @@ static void sec_find_cycles(const std::vector<std::set<std::pair<size_t, size_t>
                 }
 
                 cycle_labels.push_back(label);
-                used_edges.insert({p, q});  // include closing edge
                 cycles.push_back(cycle_labels);
             }
         }
     }
 }
 
-static std::vector<std::vector<size_t>> cb_compute_sec(const hplus::instance& inst, const std::vector<binary_set>& used_first_archievers) {
+static std::vector<std::vector<size_t>> cbcand_compute_sec(const hplus::instance& inst, const std::vector<binary_set>& used_first_archievers) {
     // build justification graph
-    std::vector<std::set<std::pair<size_t, size_t>, sec_graph_comparator>> graph(inst.n);
+    std::vector<std::set<std::pair<size_t, size_t>, sec_cand_graph_comparator>> graph(inst.n);
     for (const auto& p : inst.var_rem) {
         for (const auto& act_i : inst.act_with_pre[p]) {
             int var_count{-1};
@@ -347,7 +362,7 @@ static std::vector<std::vector<size_t>> cb_compute_sec(const hplus::instance& in
     }
     std::vector<std::vector<size_t>> cycles;
 
-    sec_find_cycles(graph, cycles);
+    sec_cand_find_cycles(graph, cycles);
 
     return cycles;
 }
@@ -485,6 +500,148 @@ void lm::cpx_create_lmcut_model(const hplus::instance& inst, const logger& log, 
 }
 
 // ====================================================== //
+// =============== SEC FOR FRACT SOLUTIONS ============== //
+// ====================================================== //
+
+struct sec_relax_graph_comparator {
+    bool operator()(const std::pair<size_t, size_t>& a, const std::pair<size_t, size_t>& b) const { return a.first < b.first; }
+};
+
+struct sec_relax_edge {
+    size_t from;
+    size_t to;
+    size_t label;
+};
+
+static std::vector<sec_relax_edge> sec_relax_find_path_dijkstra(
+    const std::vector<std::set<std::pair<size_t, size_t>, sec_relax_graph_comparator>>& graph, size_t source, size_t destination,
+    const std::set<std::pair<size_t, size_t>>& used_edges, const std::map<std::pair<size_t, size_t>, double>& edge_weights) {
+    size_t n = graph.size();
+    const double INF = std::numeric_limits<double>::infinity();
+
+    // initialize distances and list of previous (to compute back the path)
+    std::vector<double> distance(n, INF);
+    std::vector<size_t> previous(n, n);
+    std::vector<size_t> edge_label(n, n);
+    distance[source] = 0.0;
+
+    // create the priority queue and add the source node to it (pair: <distance, node>)
+    std::priority_queue<std::pair<double, size_t>, std::vector<std::pair<double, size_t>>, std::greater<>> pq;
+    pq.emplace(0.0, source);
+
+    while (!pq.empty()) {
+        auto [dist_u, u] = pq.top();
+        pq.pop();
+
+        // if there's already a more convinient path to u, skip this iteration
+        if (dist_u > distance[u]) continue;
+
+        // early exit condition -> if I found the destination
+        if (u == destination) break;
+
+        // look for u's outgoing edges
+        for (const auto& edge : graph[u]) {
+            size_t v = edge.first;
+            size_t label = edge.second;
+
+            // we ignore edges that already are part of a previously found cycle
+            if (used_edges.count({u, v})) continue;
+
+            double weight = edge_weights.at({u, v});
+
+            // update distances of u's neighbours and set u as v's previous
+            if (distance[u] + weight < distance[v]) {
+                distance[v] = distance[u] + weight;
+                previous[v] = u;
+                edge_label[v] = label;
+                pq.emplace(distance[v], v);
+            }
+        }
+    }
+
+    // no path from source to destination
+    if (distance[destination] == INF) return {};
+
+    // get path from the previous chain
+    std::vector<sec_relax_edge> path;
+    for (size_t v = destination; previous[v] != n; v = previous[v]) path.push_back({previous[v], v, edge_label[v]});
+    std::reverse(path.begin(), path.end());
+
+    return path;
+}
+
+static void sec_relax_find_cycles(const std::vector<std::set<std::pair<size_t, size_t>, sec_relax_graph_comparator>>& graph,
+                                  const std::map<std::pair<size_t, size_t>, double>& edge_weights, std::vector<std::vector<size_t>>& cycles) {
+    std::set<std::pair<size_t, size_t>> used_edges;
+
+    for (size_t p = 0; p < graph.size(); ++p) {
+        for (const auto& edge : graph[p]) {
+            size_t q = edge.first;
+            size_t label = edge.second;
+
+            // for each edge (p,q)
+
+            // if I already found a cycle with (p,q) in it, I skip this iteration
+            if (used_edges.count({p, q}) > 0) continue;
+
+            // look for a path q -> p ...
+            auto path_edges = sec_relax_find_path_dijkstra(graph, q, p, used_edges, edge_weights);
+
+            // ... if found one than there's a cycle p -> q -> p
+            if (!path_edges.empty()) {
+                // get labels of the cycle
+                std::vector<size_t> cycle_labels;
+
+                // compute the weight of the cycle
+                double cycle_weight{0};
+                for (const auto& e : path_edges) {
+                    cycle_labels.push_back(e.label);
+                    cycle_weight += edge_weights.at({e.from, e.to});
+                }
+                cycle_weight += edge_weights.at({p, q});
+
+                // SEC is violated only if cycle_weight < 1
+                if (cycle_weight >= 1) continue;
+
+                // save that the edges in the cycle already have a cycle -> no need to compute others
+                used_edges.insert({p, q});
+                for (const auto& e : path_edges) used_edges.insert({e.from, e.to});
+
+                // add to the cycle the (p,q) edge('s label)
+                cycle_labels.push_back(label);
+
+                // add the cycle to the list
+                cycles.push_back(cycle_labels);
+            }
+        }
+    }
+}
+
+static std::vector<std::vector<size_t>> cbrelax_compute_sec(const hplus::instance& inst,
+                                                            const std::map<std::pair<size_t, size_t>, double>& first_achievers_weights) {
+    // build justification graph
+    std::vector<std::set<std::pair<size_t, size_t>, sec_relax_graph_comparator>> graph(inst.n);
+    std::map<std::pair<size_t, size_t>, double> edge_weights;
+    for (const auto& p : inst.var_rem) {
+        for (const auto& act_i : inst.act_with_pre[p]) {
+            int var_count{-1};
+            for (const auto& q : inst.actions[act_i].eff_sparse) {
+                var_count++;
+                if (first_achievers_weights.at({inst.act_opt_conv[act_i], q}) == 0) continue;
+                // add also the label so we can easily reconstruct the cycle as the labels of the edges that compose it
+                graph[p].insert(std::make_pair(q, inst.fadd_cpx_start[inst.act_opt_conv[act_i]] + var_count));
+                edge_weights[{p, q}] = first_achievers_weights.at({inst.act_opt_conv[act_i], q});
+            }
+        }
+    }
+    std::vector<std::vector<size_t>> cycles;
+
+    sec_relax_find_cycles(graph, edge_weights, cycles);
+
+    return cycles;
+}
+
+// ====================================================== //
 // ====================== CALLBACK ====================== //
 // ====================================================== //
 
@@ -561,7 +718,7 @@ static void cpx_cand_callback(CPXCALLBACKCONTEXTptr& context, const hplus::insta
     if (env.sec) {
         std::vector<size_t> unreachable_acts;
         std::set_difference(used_acts.begin(), used_acts.end(), reachable_acts.begin(), reachable_acts.end(), std::back_inserter(unreachable_acts));
-        const auto& cycles{cb_compute_sec(inst, used_first_archievers)};
+        const auto& cycles{cbcand_compute_sec(inst, used_first_archievers)};
         auto [secind, secval, secsize, secrhs, secsense, secizero] = cb_cpxconvert_sec_cut(inst, cycles);
         n_sec = cycles.size();
         CPX_HANDLE_CALL(log, CPXcallbackrejectcandidate(context, cycles.size(), secsize, secrhs, secsense, secizero, secind, secval));
@@ -595,15 +752,26 @@ static void cpx_relax_callback(CPXCALLBACKCONTEXTptr& context, const hplus::inst
     double start_time{env.timer.get_time()};
 
     // get relaxation point (the first inst.m_opt variables are operators indicator variables)
-    double* relax_point{new double[inst.m_opt]};
+    double* relax_point{new double[inst.m_opt + inst.n_fadd]};
     double _{CPX_INFBOUND};
-    CPX_HANDLE_CALL(log, CPXcallbackgetrelaxationpoint(context, relax_point, 0, inst.m_opt - 1, &_));
+    CPX_HANDLE_CALL(log, CPXcallbackgetrelaxationpoint(context, relax_point, 0, inst.m_opt + inst.n_fadd - 1, &_));
+    std::map<std::pair<size_t, size_t>, double> first_achievers_weights;
 
     // change objective function to vlm-det MIP model
     int* ind{new int[inst.m_opt]};
-    for (size_t i = 0; i < inst.m_opt; i++) {
-        ind[i] = i;
-        if (relax_point[i] < HPLUS_EPSILON) relax_point[i] = 0;
+    for (size_t idx = 0; idx < inst.m_opt; idx++) {
+        ind[idx] = idx;
+        if (relax_point[idx] < HPLUS_EPSILON) relax_point[idx] = 0.0;
+        if (relax_point[idx] > 1 - HPLUS_EPSILON) relax_point[idx] = 1.0;
+    }
+    for (const auto& act_i : inst.act_rem) {
+        size_t act_i_cpx{inst.act_opt_conv[act_i]};
+        for (size_t i = 0; i < inst.actions[act_i].eff_sparse.size(); i++) {
+            size_t idx{inst.m_opt + inst.fadd_cpx_start[act_i_cpx] + i};
+            if (relax_point[idx] < HPLUS_EPSILON) relax_point[idx] = 0.0;
+            if (relax_point[idx] > 1 - HPLUS_EPSILON) relax_point[idx] = 1.0;
+            first_achievers_weights[{act_i_cpx, inst.actions[act_i].eff_sparse[i]}] = relax_point[idx];
+        }
     }
     CPX_HANDLE_CALL(log, CPXchgobj(thread_data.lmcutenv, thread_data.lmcutlp, inst.m_opt, ind, relax_point));
     delete[] ind;
@@ -708,6 +876,40 @@ static void cpx_relax_callback(CPXCALLBACKCONTEXTptr& context, const hplus::inst
     double lb{-1};
     CPX_HANDLE_CALL(log, CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_BND, &lb));
     log.print_warn(" LP  -  Landmark violated by lp relaxation  - size: %3d, min-cut: %1.3f, min-cost: %3d, lb: %3.3f.", nnz, cutval, costcheck, lb);
+
+    // ~~~~~~~~~~~~~~~~~ SEC ~~~~~~~~~~~~~~~~~ //
+    if (env.fract_sec) {
+        const auto& cycles{cbrelax_compute_sec(inst, first_achievers_weights)};
+        if (!cycles.empty()) {
+            auto [secind, secval, secnnz, secrhs, secsense, secizero]{cb_cpxconvert_sec_cut(inst, cycles)};
+            int* secpurgeable = new int[cycles.size()];
+            int* seclocal = new int[cycles.size()];
+            for (size_t i = 0; i < cycles.size(); i++) {
+                secpurgeable[i] = CPX_USECUT_FORCE;
+                seclocal[i] = 0;
+            }
+            log.print_warn("Found %d violated SEC in relaxation.", cycles.size());
+            CPX_HANDLE_CALL(
+                log, CPXcallbackaddusercuts(context, cycles.size(), secnnz, secrhs, secsense, secizero, secind, secval, secpurgeable, seclocal));
+
+            thread_data.usercuts_sec += cycles.size();
+
+            delete[] seclocal;
+            seclocal = nullptr;
+            delete[] secpurgeable;
+            secpurgeable = nullptr;
+            delete[] secizero;
+            secizero = nullptr;
+            delete[] secsense;
+            secsense = nullptr;
+            delete[] secrhs;
+            secrhs = nullptr;
+            delete[] secval;
+            secval = nullptr;
+            delete[] secind;
+            secind = nullptr;
+        }
+    }
     thread_data.relax_time += env.timer.get_time() - start_time;
 }
 

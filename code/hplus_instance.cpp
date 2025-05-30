@@ -50,6 +50,7 @@ void hplus::init(environment& env) {
                       .complete_landmark = HPLUS_DEF_CLM,
                       .sec = HPLUS_DEF_SEC,
                       .fract_cuts = HPLUS_DEF_FRACT,
+                      .fract_sec = HPLUS_DEF_FRACT_SEC,
                       .time_limit = HPLUS_DEF_TIME_LIMIT,
                       .timer = time_keeper(),
                       .tmp_choice = false};

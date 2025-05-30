@@ -74,6 +74,7 @@
 #define HPLUS_DEF_CLM true
 #define HPLUS_DEF_SEC true
 #define HPLUS_DEF_FRACT true
+#define HPLUS_DEF_FRACT_SEC false
 
 // ====================================================== //
 // ================== CPLEX PARAMETERS ================== //

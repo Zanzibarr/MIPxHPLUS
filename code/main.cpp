@@ -91,6 +91,10 @@ static void parse_cli(const int& argc, const char** argv, hplus::environment& en
         parser, "0/1",
         "Using fractionary solutions to generate cuts for the lm model (def: " + std::to_string(HPLUS_DEF_FRACT) + "; options: 0 (false), 1 (true)).",
         {"fract"}, HPLUS_DEF_FRACT);
+    args::ValueFlag<bool> fract_sec(parser, "0/1",
+                                    "Using fractionary solutions to generate SEC for the lm model (def: " + std::to_string(HPLUS_DEF_FRACT_SEC) +
+                                        "; options: 0 (false), 1 (true)).",
+                                    {"fractsec"}, HPLUS_DEF_FRACT_SEC);
     args::ValueFlag<int> threads(parser, "positive int", "number of threads to be used (def: 4)", {"threads"}, 4);
     args::ValueFlag<bool> tmp(parser, "0/1", "tmp flag", {"tmp"}, false);
 
@@ -135,6 +139,7 @@ static void parse_cli(const int& argc, const char** argv, hplus::environment& en
     if (complete_lm) env.complete_landmark = args::get(complete_lm);
     if (sec) env.sec = args::get(sec);
     if (fract) env.fract_cuts = args::get(fract);
+    if (fract_sec) env.fract_sec = args::get(fract_sec);
     if (threads) {
         env.threads = args::get(threads);
         if (env.threads <= 0) {
@@ -208,7 +213,8 @@ static void show_info(const hplus::instance& inst, const hplus::environment& env
         log.print("Minimal landmarks:                               %10s", env.minimal_landmark ? "Y" : "N");
         log.print("Complete landmarks:                              %10s", env.complete_landmark ? "Y" : "N");
         log.print("S.E.C.:                                          %10s", env.sec ? "Y" : "N");
-        log.print("Fractional cuts:                                 %10s", env.fract_cuts ? "Y" : "N");
+        log.print("Fractional cuts (landmarks):                     %10s", env.fract_cuts ? "Y" : "N");
+        log.print("Fractional cuts (S.E.C.):                        %10s", env.fract_sec ? "Y" : "N");
     }
     log.print("Time limit:                                     %10us.", env.time_limit);
     log.print(LINE);
