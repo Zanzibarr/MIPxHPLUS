@@ -25,6 +25,16 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
+## [2.1.2] - 2025/05/30
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+### :heavy_exclamation_mark: Changed
+- Using justification graph to separate SEC in candidate callback
+<!-- ### :heavy_plus_sign: Added -->
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+
+
 ## [2.1.1] - 2025/05/29
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->

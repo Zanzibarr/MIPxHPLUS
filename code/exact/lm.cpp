@@ -246,92 +246,112 @@ static std::tuple<int*, double*, int, double*, char*, int*> cb_cpxconvert_landma
 // ======================= S.E.C. ======================= //
 // ====================================================== //
 
-static bool cycles_dfs(const std::vector<std::set<size_t>>& graph, const size_t& start, const size_t& current, std::vector<size_t>& path,
-                       std::unordered_set<size_t>& in_path, std::unordered_set<size_t>& visited, std::vector<std::vector<size_t>>& cycles,
-                       const std::unordered_set<size_t>& cycle_found) {
-    // Skip if current node is already in another cycle
-    if (cycle_found.count(current)) return false;
+struct sec_graph_comparator {
+    bool operator()(const std::pair<size_t, size_t>& a, const std::pair<size_t, size_t>& b) const { return a.first < b.first; }
+};
 
-    path.push_back(current);
-    in_path.insert(current);
-    visited.insert(current);
+struct sec_edge {
+    size_t from;
+    size_t to;
+    size_t label;
+};
 
-    for (size_t neighbor : graph[current]) {
-        // If we find the start node, we've found a cycle
-        if (neighbor == start) {
-            cycles.push_back(path);
-            return true;
+static std::vector<sec_edge> sec_find_path(const std::vector<std::set<std::pair<size_t, size_t>, sec_graph_comparator>>& graph, size_t source,
+                                           size_t destination, const std::set<std::pair<size_t, size_t>>& used_edges) {
+    size_t n = graph.size();
+    const size_t INF = std::numeric_limits<size_t>::max();
+
+    std::vector<size_t> previous(n, INF);
+    std::vector<size_t> edge_label(n, INF);
+    std::queue<size_t> q;
+
+    std::vector<size_t> distance(n, INF);
+    distance[source] = 0;
+    q.push(source);
+
+    while (!q.empty()) {
+        size_t u = q.front();
+        q.pop();
+        if (u == destination) break;
+
+        for (const auto& edge : graph[u]) {
+            size_t v = edge.first;
+            size_t label = edge.second;
+
+            if (used_edges.count({u, v})) continue;
+
+            if (distance[v] == INF) {
+                distance[v] = distance[u] + 1;
+                previous[v] = u;
+                edge_label[v] = label;
+                q.push(v);
+            }
         }
-
-        // If neighbor is already in another cycle, skip
-        if (cycle_found.count(neighbor)) continue;
-
-        // If neighbor is already in current path, we found a smaller cycle
-        if (in_path.count(neighbor)) {
-            // Extract the cycle from the current path
-            std::vector<size_t> small_cycle;
-            auto it = path.begin();
-            // Find the position of neighbor in path
-            while (it != path.end() && *it != neighbor) ++it;
-
-            // Copy from neighbor position to end of path
-            small_cycle.assign(it, path.end());
-
-            cycles.push_back(small_cycle);
-            return true;
-        }
-
-        // Skip if already visited in another path and didn't lead to a cycle
-        if (visited.count(neighbor)) continue;
-
-        // Recurse
-        if (cycles_dfs(graph, start, neighbor, path, in_path, visited, cycles, cycle_found)) return true;
     }
 
-    // Backtrack
-    path.pop_back();
-    in_path.erase(current);
-    return false;
+    if (distance[destination] == INF) return {};
+
+    std::vector<sec_edge> path;
+    for (size_t v = destination; previous[v] != INF; v = previous[v]) {
+        path.push_back({previous[v], v, edge_label[v]});
+    }
+
+    std::reverse(path.begin(), path.end());
+    return path;
 }
 
-static std::vector<std::vector<size_t>> cb_compute_sec(const hplus::instance& inst, const std::vector<binary_set>& used_first_archievers,
-                                                       const std::vector<size_t>& unreachable_acts) {
-    // build graph G=<A, {(ai, aj) ai, aj in A | ai is first archiever (in the current solution) to a precondition of aj}>
-    std::vector<std::set<size_t>> graph(inst.m_opt);
-    for (const auto& act_i_cpx : unreachable_acts) {
-        for (const auto& p : used_first_archievers[act_i_cpx]) {
-            for (const auto& act_j : inst.act_with_pre[p]) {
-                if (std::binary_search(unreachable_acts.begin(), unreachable_acts.end(), inst.act_opt_conv[act_j]))
-                    graph[act_i_cpx].insert(inst.act_opt_conv[act_j]);
+static void sec_find_cycles(const std::vector<std::set<std::pair<size_t, size_t>, sec_graph_comparator>>& graph,
+                            std::vector<std::vector<size_t>>& cycles) {
+    std::set<std::pair<size_t, size_t>> used_edges;
+
+    for (size_t p = 0; p < graph.size(); ++p) {
+        for (const auto& edge : graph[p]) {
+            size_t q = edge.first;
+            size_t label = edge.second;
+
+            if (used_edges.count({p, q}) > 0) continue;
+
+            // Find path from q to p avoiding used edges
+            auto path_edges = sec_find_path(graph, q, p, used_edges);
+            if (!path_edges.empty()) {  // If found a path -> we found a cycle
+                std::vector<size_t> cycle_labels;
+
+                // Collect labels and mark edges as used
+                for (const auto& e : path_edges) {
+                    cycle_labels.push_back(e.label);
+                    used_edges.insert({e.from, e.to});
+                }
+
+                cycle_labels.push_back(label);
+                used_edges.insert({p, q});  // include closing edge
+                cycles.push_back(cycle_labels);
             }
         }
     }
+}
 
+static std::vector<std::vector<size_t>> cb_compute_sec(const hplus::instance& inst, const std::vector<binary_set>& used_first_archievers) {
+    // build justification graph
+    std::vector<std::set<std::pair<size_t, size_t>, sec_graph_comparator>> graph(inst.n);
+    for (const auto& p : inst.var_rem) {
+        for (const auto& act_i : inst.act_with_pre[p]) {
+            int var_count{-1};
+            for (const auto& q : inst.actions[act_i].eff_sparse) {
+                var_count++;
+                if (!used_first_archievers[inst.act_opt_conv[act_i]][q]) continue;
+                // add also the label so we can easily reconstruct the cycle as the labels of the edges that compose it
+                graph[p].insert(std::make_pair(q, inst.fadd_cpx_start[inst.act_opt_conv[act_i]] + var_count));
+            }
+        }
+    }
     std::vector<std::vector<size_t>> cycles;
-    std::unordered_set<size_t> cycle_found;
 
-    for (size_t start = 0; start < graph.size(); start++) {
-        // Skip if we already found a cycle containing this node
-        if (cycle_found.count(start)) continue;
-
-        std::vector<size_t> path;
-        std::unordered_set<size_t> in_path;
-        std::unordered_set<size_t> visited;
-
-        // Run DFS to find a cycle starting from this node
-        if (cycles_dfs(graph, start, start, path, in_path, visited, cycles, cycle_found)) {
-            // Mark all nodes in the found cycle as having a cycle
-            for (size_t node : cycles.back()) {
-                cycle_found.insert(node);
-            }
-        }
-    }
+    sec_find_cycles(graph, cycles);
 
     return cycles;
 }
 
 static std::tuple<int*, double*, int, double*, char*, int*> cb_cpxconvert_sec_cut(const hplus::instance& inst,
-                                                                                  const std::vector<binary_set> used_first_archievers,
                                                                                   const std::vector<std::vector<size_t>>& cycles) {
     const size_t max_size = cycles.size() * inst.n_opt;
 
@@ -348,31 +368,11 @@ static std::tuple<int*, double*, int, double*, char*, int*> cb_cpxconvert_sec_cu
         izero[sec_counter] = nnz;
         rhs[sec_counter] = -1;
 
-        // first archievers in the cycle
-        int var_count{-1};
-        for (size_t i = 0; i < cycle.size() - 1; i++) {
-            var_count = -1;
-            for (const auto& p : inst.actions[inst.act_cpxtoidx[cycle[i]]].eff_sparse) {
-                var_count++;
-                if (!used_first_archievers[cycle[i]][p] || !inst.actions[inst.act_cpxtoidx[cycle[i + 1]]].pre[p]) continue;
-
-                ind[nnz] = inst.m_opt + inst.fadd_cpx_start[cycle[i]] + var_count;
-                val[nnz++] = 1;
-                rhs[sec_counter]++;
-                break;
-            }
-        }
-        var_count = -1;
-        for (const auto& p : inst.actions[inst.act_cpxtoidx[cycle[cycle.size() - 1]]].eff_sparse) {
-            var_count++;
-            if (!used_first_archievers[cycle[cycle.size() - 1]][p] || !inst.actions[inst.act_cpxtoidx[cycle[0]]].pre[p]) continue;
-
-            ind[nnz] = inst.m_opt + inst.fadd_cpx_start[cycle[cycle.size() - 1]] + var_count;
+        for (const auto& first_achiever : cycle) {
+            ind[nnz] = inst.m_opt + first_achiever;
             val[nnz++] = 1;
             rhs[sec_counter]++;
-            break;
         }
-
         sec_counter++;
     }
 
@@ -560,8 +560,8 @@ static void cpx_cand_callback(CPXCALLBACKCONTEXTptr& context, const hplus::insta
     if (env.sec) {
         std::vector<size_t> unreachable_acts;
         std::set_difference(used_acts.begin(), used_acts.end(), reachable_acts.begin(), reachable_acts.end(), std::back_inserter(unreachable_acts));
-        const auto& cycles{cb_compute_sec(inst, used_first_archievers, unreachable_acts)};
-        auto [secind, secval, secsize, secrhs, secsense, secizero] = cb_cpxconvert_sec_cut(inst, used_first_archievers, cycles);
+        const auto& cycles{cb_compute_sec(inst, used_first_archievers)};
+        auto [secind, secval, secsize, secrhs, secsense, secizero] = cb_cpxconvert_sec_cut(inst, cycles);
         n_sec = cycles.size();
         CPX_HANDLE_CALL(log, CPXcallbackrejectcandidate(context, cycles.size(), secsize, secrhs, secsense, secizero, secind, secval));
         delete[] secizero;

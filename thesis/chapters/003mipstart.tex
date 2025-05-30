@@ -36,7 +36,7 @@ We can immediatelly improve this algorithm by noting that:
         \State $S\gets I\qquad\quad\;\;\;$\# current state
         \State $p\gets []\qquad\qquad$\# heuristic solution
         \While{$G\not\subseteq S$}
-            \If{$\exists a\in A^{+,f},\,s.t.\;\mbox{pre}(a)\subseteq S$}
+            \If{$\exists a\in A^{+,f}\setminus p,\,s.t.\;\mbox{pre}(a)\subseteq S$}
                 \State enqueue $a$ to $p$
             \Else
                 \State candidates $\gets\{a\in A^+\setminus A^{+,e},\,s.t.\;a\not\in p,\mbox{ pre(}a)\subseteq S,\mbox{ and add}(a)\not\subseteq S\}$
@@ -66,7 +66,7 @@ We proposed in section $(2.3.6)$ a way to efficiently filter among actions, only
         \State candidates $\gets\{a\in A^+\setminus A^{+,e},\,s.t.\;\mbox{pre}(a)=\emptyset\}$
         \State $A^+_{pre,p}\gets\{a\in A^+\setminus A^{+,e},\,s.t.\;p\in\mbox{pre}(a)\}\;\forall p\in P$
         \While{$G\not\subseteq S$}
-            \If{$\exists a\in A^{+,f},\,s.t.\;\mbox{pre}(a)\subseteq S$}
+            \If{$\exists a\in A^{+,f}\setminus p,\,s.t.\;\mbox{pre}(a)\subseteq S$}
                 \State enqueue $a$ to $p$
             \Else
                 \State $a\gets$ greedy\_choice(candidates)
