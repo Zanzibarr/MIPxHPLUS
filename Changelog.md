@@ -31,6 +31,7 @@ HOW I DO VERSIONING:
 ### :heavy_exclamation_mark: Changed
 - Using justification graph to separate SEC in candidate callback
 - Separating SEC in fractionary solution
+- MIP model inside relaxation callback set on single thread
 <!-- ### :heavy_plus_sign: Added -->
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->

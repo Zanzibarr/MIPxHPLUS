@@ -405,6 +405,7 @@ static void cpx_open_lmcut_model(CPXENVptr& lmcutenv, CPXLPptr& lmcutlp, const l
     CPX_HANDLE_CALL(log, cpxerror);
     lmcutlp = CPXcreateprob(lmcutenv, &cpxerror, "lmcutmodel");
     CPX_HANDLE_CALL(log, cpxerror);
+    CPX_HANDLE_CALL(log, CPXsetintparam(lmcutenv, CPXPARAM_Threads, 1));
     // log file
     CPX_HANDLE_CALL(log, CPXsetintparam(lmcutenv, CPXPARAM_ScreenOutput, HPLUS_DEF_CPX_SCREENOUTPUT));
     CPX_HANDLE_CALL(log, CPXsetintparam(lmcutenv, CPX_PARAM_CLONELOG, HPLUS_DEF_CPX_CLONELOG));
