@@ -2,6 +2,7 @@
 
 #include <list>
 #include <numeric>  // std::accumulate
+#include <queue>
 #include <set>
 #include <stack>
 #include <tuple>
