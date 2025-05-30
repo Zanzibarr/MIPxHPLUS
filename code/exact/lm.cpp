@@ -819,7 +819,7 @@ static void cpx_relax_callback(CPXCALLBACKCONTEXTptr& context, const hplus::inst
 
     // filter the solution (actions with xa* = 0 might weaken the partition)
     bool found{false};
-    while (!found) {
+    while (!found && !reach.empty()) {
         for (const auto& p : reach) {
             found = false;
             for (const auto& act_i : inst.act_with_eff[p]) {

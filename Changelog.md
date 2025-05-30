@@ -27,11 +27,12 @@ HOW I DO VERSIONING:
 
 ## [2.1.2] - 2025/05/30
 <!-- ### :warning: Known issues -->
-<!-- ### :ballot_box_with_check: Fixed -->
+### :ballot_box_with_check: Fixed
+- MIP model inside relaxation callback is now set on single thread
+- Bug where an infinite loop might occur in the relaxation callback
 ### :heavy_exclamation_mark: Changed
 - Using justification graph to separate SEC in candidate callback
 - Separating SEC in fractionary solution
-- MIP model inside relaxation callback set on single thread
 <!-- ### :heavy_plus_sign: Added -->
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
