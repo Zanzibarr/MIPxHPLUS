@@ -630,7 +630,7 @@ static std::vector<std::vector<size_t>> cbrelax_compute_sec(const hplus::instanc
                 if (first_achievers_weights.at({inst.act_opt_conv[act_i], q}) == 0) continue;
                 // add also the label so we can easily reconstruct the cycle as the labels of the edges that compose it
                 graph[p].insert(std::make_pair(q, inst.fadd_cpx_start[inst.act_opt_conv[act_i]] + var_count));
-                edge_weights[{p, q}] = first_achievers_weights.at({inst.act_opt_conv[act_i], q});
+                edge_weights[{p, q}] = 1 - first_achievers_weights.at({inst.act_opt_conv[act_i], q});
             }
         }
     }
