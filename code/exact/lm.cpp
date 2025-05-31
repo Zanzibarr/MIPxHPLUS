@@ -247,124 +247,103 @@ static std::tuple<int*, double*, int, double*, char*, int*> cb_cpxconvert_landma
 // ======================= S.E.C. ======================= //
 // ====================================================== //
 
-struct sec_cand_graph_comparator {
-    bool operator()(const std::pair<size_t, size_t>& a, const std::pair<size_t, size_t>& b) const { return a.first < b.first; }
-};
+static bool cycles_dfs(const std::vector<std::set<size_t>>& graph, const size_t& start, const size_t& current, std::vector<size_t>& path,
+                       std::unordered_set<size_t>& in_path, std::unordered_set<size_t>& visited, std::vector<std::vector<size_t>>& cycles,
+                       const std::unordered_set<size_t>& cycle_found) {
+    // Skip if current node is already in another cycle
+    if (cycle_found.count(current)) return false;
 
-struct sec_cand_edge {
-    size_t from;
-    size_t to;
-    size_t label;
-};
+    path.push_back(current);
+    in_path.insert(current);
+    visited.insert(current);
 
-static std::vector<sec_cand_edge> sec_cand_find_path(const std::vector<std::set<std::pair<size_t, size_t>, sec_cand_graph_comparator>>& graph,
-                                                     size_t source, size_t destination, const std::set<std::pair<size_t, size_t>>& used_edges) {
-    size_t n = graph.size();
-    const size_t INF = std::numeric_limits<size_t>::max();
-
-    // initialize distances and list of previous (to compute back the path)
-    std::vector<size_t> distance(n, INF);
-    std::vector<size_t> previous(n, INF);
-    std::vector<size_t> edge_label(n, INF);
-    distance[source] = 0;
-
-    std::queue<size_t> q;
-    q.push(source);
-
-    // dfs algorithm
-    while (!q.empty()) {
-        size_t u = q.front();
-        q.pop();
-
-        // early exit condition -> if I found the destination
-        if (u == destination) break;
-
-        // look for u's outgoing edges
-        for (const auto& edge : graph[u]) {
-            size_t v = edge.first;
-            size_t label = edge.second;
-
-            // we ignore edges that already are part of a previously found cycle
-            if (used_edges.count({u, v})) continue;
-
-            // update distances
-            if (distance[v] == INF) {
-                distance[v] = distance[u] + 1;
-                previous[v] = u;
-                edge_label[v] = label;
-                q.push(v);
-            }
+    for (size_t neighbor : graph[current]) {
+        // If we find the start node, we've found a cycle
+        if (neighbor == start) {
+            cycles.push_back(path);
+            return true;
         }
-    }
 
-    // no path from source to destination
-    if (distance[destination] == INF) return {};
+        // If neighbor is already in another cycle, skip
+        if (cycle_found.count(neighbor)) continue;
 
-    // get path from the previous chain
-    std::vector<sec_cand_edge> path;
-    for (size_t v = destination; previous[v] != INF; v = previous[v]) {
-        path.push_back({previous[v], v, edge_label[v]});
-    }
+        // If neighbor is already in current path, we found a smaller cycle
+        if (in_path.count(neighbor)) {
+            // Extract the cycle from the current path
+            std::vector<size_t> small_cycle;
+            auto it = path.begin();
+            // Find the position of neighbor in path
+            while (it != path.end() && *it != neighbor) ++it;
 
-    std::reverse(path.begin(), path.end());
-    return path;
-}
+            // Copy from neighbor position to end of path
+            small_cycle.assign(it, path.end());
 
-static void sec_cand_find_cycles(const std::vector<std::set<std::pair<size_t, size_t>, sec_cand_graph_comparator>>& graph,
-                                 std::vector<std::vector<size_t>>& cycles) {
-    std::set<std::pair<size_t, size_t>> used_edges;
-
-    for (size_t p = 0; p < graph.size(); ++p) {
-        for (const auto& edge : graph[p]) {
-            size_t q = edge.first;
-            size_t label = edge.second;
-
-            // for each edge (p,q)
-
-            // if I already found a cycle with (p,q) in it, I skip this iteration
-            if (used_edges.count({p, q}) > 0) continue;
-
-            // regardless of finding or not the cycle, we can remove this edge for future iterations (if a cycle is found, we don't want this edge; if
-            // no cycle is found then this edge won't ever be part of a cycle)
-            used_edges.insert({p, q});
-
-            // Find path from q to p avoiding used edges
-            auto path_edges = sec_cand_find_path(graph, q, p, used_edges);
-            if (!path_edges.empty()) {  // If found a path -> we found a cycle
-                std::vector<size_t> cycle_labels;
-
-                // Collect labels and mark edges as used
-                for (const auto& e : path_edges) {
-                    cycle_labels.push_back(e.label);
-                    used_edges.insert({e.from, e.to});
-                }
-
-                cycle_labels.push_back(label);
-                cycles.push_back(cycle_labels);
-            }
+            cycles.push_back(small_cycle);
+            return true;
         }
+
+        // Skip if already visited in another path and didn't lead to a cycle
+        if (visited.count(neighbor)) continue;
+
+        // Recurse
+        if (cycles_dfs(graph, start, neighbor, path, in_path, visited, cycles, cycle_found)) return true;
     }
+
+    // Backtrack
+    path.pop_back();
+    in_path.erase(current);
+    return false;
 }
 
 static std::vector<std::vector<size_t>> cbcand_compute_sec(const hplus::instance& inst, const std::vector<binary_set>& used_first_archievers) {
     // build justification graph
-    std::vector<std::set<std::pair<size_t, size_t>, sec_cand_graph_comparator>> graph(inst.n);
+    std::vector<std::set<size_t>> graph(inst.n);
+    // store edge labels
+    std::map<std::pair<size_t, size_t>, size_t> edge_labels;
     for (const auto& p : inst.var_rem) {
         for (const auto& act_i : inst.act_with_pre[p]) {
             int var_count{-1};
             for (const auto& q : inst.actions[act_i].eff_sparse) {
                 var_count++;
                 if (!used_first_archievers[inst.act_opt_conv[act_i]][q]) continue;
-                // add also the label so we can easily reconstruct the cycle as the labels of the edges that compose it
-                graph[p].insert(std::make_pair(q, inst.fadd_cpx_start[inst.act_opt_conv[act_i]] + var_count));
+                graph[p].insert(q);
+                edge_labels[{p, q}] = inst.fadd_cpx_start[inst.act_opt_conv[act_i]] + var_count;
             }
         }
     }
+
     std::vector<std::vector<size_t>> cycles;
+    std::unordered_set<size_t> cycle_found;
 
-    sec_cand_find_cycles(graph, cycles);
+    for (size_t start = 0; start < graph.size(); start++) {
+        // Skip if we already found a cycle containing this node
+        if (cycle_found.count(start)) continue;
 
-    return cycles;
+        std::vector<size_t> path;
+        std::unordered_set<size_t> in_path;
+        std::unordered_set<size_t> visited;
+
+        // Run DFS to find a cycle starting from this node
+        if (cycles_dfs(graph, start, start, path, in_path, visited, cycles, cycle_found)) {
+            // Mark all nodes in the found cycle as having a cycle
+            for (size_t node : cycles.back()) {
+                cycle_found.insert(node);
+            }
+        }
+    }
+
+    std::vector<std::vector<size_t>> label_cycles;
+    for (const auto& cycle : cycles) {
+        std::vector<size_t> label_cycle;
+        for (size_t i = 0; i < cycle.size(); i++) {
+            size_t from = cycle[i];
+            size_t to{cycle[(i + 1) % cycle.size()]};
+            label_cycle.push_back(edge_labels.at({from, to}));
+        }
+        label_cycles.push_back(label_cycle);
+    }
+
+    return label_cycles;
 }
 
 static std::tuple<int*, double*, int, double*, char*, int*> cb_cpxconvert_sec_cut(const hplus::instance& inst,
