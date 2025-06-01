@@ -295,13 +295,15 @@ static bool cycles_dfs(const std::vector<std::set<size_t>>& graph, const size_t&
     return false;
 }
 
-static std::vector<std::vector<size_t>> cbcand_compute_sec(const hplus::instance& inst, const std::vector<binary_set>& used_first_archievers) {
+static std::vector<std::vector<size_t>> cbcand_compute_sec(const hplus::instance& inst, const std::vector<binary_set>& used_first_archievers,
+                                                           const binary_set& unreachable_acts) {
     // build justification graph
     std::vector<std::set<size_t>> graph(inst.n);
     // store edge labels
     std::map<std::pair<size_t, size_t>, size_t> edge_labels;
     for (const auto& p : inst.var_rem) {
         for (const auto& act_i : inst.act_with_pre[p]) {
+            if (!unreachable_acts[inst.act_opt_conv[act_i]]) continue;
             int var_count{-1};
             for (const auto& q : inst.actions[act_i].eff_sparse) {
                 var_count++;
@@ -698,7 +700,9 @@ static void cpx_cand_callback(CPXCALLBACKCONTEXTptr& context, const hplus::insta
     if (env.sec) {
         std::vector<size_t> unreachable_acts;
         std::set_difference(used_acts.begin(), used_acts.end(), reachable_acts.begin(), reachable_acts.end(), std::back_inserter(unreachable_acts));
-        const auto& cycles{cbcand_compute_sec(inst, used_first_archievers)};
+        binary_set unreachable_acts_set(inst.m_opt);
+        for (const auto& act_i_cpx : unreachable_acts) unreachable_acts_set.add(act_i_cpx);
+        const auto& cycles{cbcand_compute_sec(inst, used_first_archievers, unreachable_acts_set)};
         auto [secind, secval, secsize, secrhs, secsense, secizero] = cb_cpxconvert_sec_cut(inst, cycles);
         n_sec = cycles.size();
         CPX_HANDLE_CALL(log, CPXcallbackrejectcandidate(context, cycles.size(), secsize, secrhs, secsense, secizero, secind, secval));
