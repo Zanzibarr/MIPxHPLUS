@@ -1,7 +1,7 @@
 # HPLUS THESIS
 ![C++](https://img.shields.io/badge/C%2B%2B-00599C?style=for-the-badge&logo=c%2B%2B&logoColor=white)
 
-### Version: 2.1.2  
+### Version: 2.2.0  
 _Refer to the [Changelog](Changelog.md) for info about versions._  
 
 
@@ -36,25 +36,10 @@ make <target_option>
 
 # to run the code on an instance
 ./hplus <input_file> <parameters>
-# to view info about an instance
-./info <input_file>
 ```
 
 ## Build options (CMake parameters)
 
-- **-DVERBOSE=**\<verbose_option> : set the verbose option (default: 5)
-  - = **0** : no output
-  - < **5** : just solution
-  - \>= **5** : view statistics
-  - \>= **10** : basic steps progress
-  - \>= **20** : debugging output
-  - \>= **100** : full verbose
-- **-DWARN=**\<warning_option> : set the warning option (default: 1)
-  - **0** : all warnings suppressed
-  - **1** : warnings will be showed
-- **-DINTCHECK=**\<integrity_check_option> : set the integrity checks option (default: 0)
-  - **0** : no integrity checks
-  - **1** : integrity checks enabled (might slow down the execution)
 - **-DCPLEX_DIR=**\<path_to_cplex_lib>: (abs path), specify a custom path to the CPLEX library (see the CMakeLists.txt to see which is the default one)
 - **-DCPLEX_INCLUDE=**\<path_to_cplex_headers>: (abs path), specify a custom path to the CPLEX headers (see the CMakeLists.txt to see which is the default one)
 
@@ -72,5 +57,4 @@ See the help page:
 ```shell
 # to view commands available
 ./hplus --h
-./info --h
 ```

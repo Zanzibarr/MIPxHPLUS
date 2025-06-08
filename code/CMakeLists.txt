@@ -6,7 +6,6 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 cmake_path(GET CMAKE_HOME_DIRECTORY PARENT_PATH HOME_DIR)
 
 project(hplus)
-set(CODE_VERSION "2.1.2")
 
 # Enforce out-of-source build
 if (CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
@@ -89,36 +88,24 @@ endforeach()
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-# Verbosity and debug settings
-set(VERBOSE "5" CACHE STRING "Verbose setting")
-set(WARN "1" CACHE STRING "Warning message level")
-set(INTCHECK "0" CACHE STRING "Integrity checks level")
-
 # Include directories
 include_directories(
-    .
-    exact
-    heuristics
     external
+    utils
+    domain
+    preprocessing
+    search_heuristics
+    cut_separators
+    search_exact
     ${CPLEX_INCLUDE}
 )
 
 # Generate libraries
-set(SOURCE_DIRS "exact" "heuristics")
+set(SOURCE_DIRS "domain" "search_heuristics" "cut_separators" "preprocessing" "search_exact")
 foreach(SOURCE_DIR ${SOURCE_DIRS})
     file(GLOB SOURCES "${SOURCE_DIR}/*.cpp")
-    foreach(SOURCE ${SOURCES})
-        get_filename_component(LIBNAME ${SOURCE} NAME_WE)
-        add_library(${LIBNAME} ${SOURCE} "${SOURCE_DIR}/${LIBNAME}.hpp")
-    endforeach()
-endforeach()
-
-# Special case libraries
-file(GLOB SPECIAL_SOURCES "*.cpp")
-foreach(SOURCE ${SPECIAL_SOURCES})
-    get_filename_component(LIBNAME ${SOURCE} NAME_WE)
-    if(LIBNAME MATCHES "^(hplus_instance|algorithms)$")
-        add_library(${LIBNAME} ${SOURCE} "${LIBNAME}.hpp")
+    if(SOURCES)
+        add_library(${SOURCE_DIR}_lib ${SOURCES})
     endif()
 endforeach()
 
@@ -135,31 +122,21 @@ endif()
 
 # Executables
 add_executable(hplus main.cpp)
-add_executable(info info.cpp)
 
-# Link libraries
-target_link_libraries(hplus 
-    algorithms
-    hplus_instance
-    tl
-    ve
-    lm
-    greedycost
-    greedycxe
-    hmax_hadd
+target_link_libraries(hplus
+    domain_lib
+    preprocessing_lib
+    search_heuristics_lib
+    cut_separators_lib
+    search_exact_lib
     ${CPLEX_LIBRARY}
     Threads::Threads
     dl
 )
-target_link_libraries(info hplus_instance)
 
 # Define flags and default values
 add_definitions(
     -DHPLUS_HOME_DIR="${HOME_DIR}" 
-    -DHPLUS_VERBOSE=${VERBOSE} 
-    -DHPLUS_WARN=${WARN} 
-    -DHPLUS_INTCHECK=${INTCHECK}
-    -DCODE_VERSION="${CODE_VERSION}"
 )
 
 # Build flags
@@ -167,19 +144,15 @@ set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3")
 set(CMAKE_CXX_FLAGS_DEBUG "-Og -ggdb")
 
 add_custom_target(opt 
-    COMMAND echo "Code version: ${CODE_VERSION}"
-    COMMAND echo "Flags used: ${CMAKE_CXX_FLAGS_RELEASE} -DHPLUS_VERBOSE=${VERBOSE} -DHPLUS_WARN=${WARN} -DHPLUS_INTCHECK=${INTCHECK}"
+    COMMAND echo "Flags used: ${CMAKE_CXX_FLAGS_RELEASE}"
     COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --config Release
     COMMAND_EXPAND_LISTS
 )
 add_custom_target(debug 
-    COMMAND echo "Code version: ${CODE_VERSION}"
-    COMMAND echo "Flags used: ${CMAKE_CXX_FLAGS_RELEASE} -DHPLUS_VERBOSE=${VERBOSE} -DHPLUS_WARN=${WARN} -DHPLUS_INTCHECK=${INTCHECK}"
+    COMMAND echo "Flags used: ${CMAKE_CXX_FLAGS_RELEASE}"
     COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --config Debug
     COMMAND_EXPAND_LISTS
 )
 add_custom_target(clear
     COMMAND rm -r ${CMAKE_HOME_DIRECTORY}/build/*
 )
-
-message(STATUS "Code version: ${CODE_VERSION}")

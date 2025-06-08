@@ -25,6 +25,19 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
+## [2.2.0 - testing] - 2025/06/08
+<!-- ### :warning: Known issues -->
+### :ballot_box_with_check: Fixed
+- Fixed bug where if memory limit is reached inside CPLEX, an error is thrown
+- Fixed bug where if memory limit is reached and no error is thrown (^), the lower bound is not properly updated
+- Fixed bug where in some cases, even with optimal solutions the lowerbound and the incumbent, didn't match
+### :heavy_exclamation_mark: Changed
+- Complete code refactoring
+<!-- ### :heavy_plus_sign: Added -->
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+
+
 ## [2.1.2] - 2025/06/01
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed
