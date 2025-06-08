@@ -10,12 +10,12 @@ namespace callbacks {
 
 // thread_data is defined in relax_callback.hpp (circular dependencies, idk what else to do)
 
-typedef struct {
-    hplus::execution* exec;
-    hplus::instance* inst;
-    hplus::statistics* stats;
+ struct callback_userhandle  {
+    hplus::execution& exec;
+    hplus::instance& inst;
+    hplus::statistics& stats;
     std::vector<thread_data> thread_specific_data;
-} callback_userhandle;
+} ;
 
 inline void open_flmdet_model(CPXENVptr& env, CPXLPptr& lp) {
     int cpxerror;
@@ -40,8 +40,8 @@ inline void open_flmdet_model(CPXENVptr& env, CPXLPptr& lp) {
 inline void build_flmdet_model(const hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
     // ~~~~~~~~~~~~~~ VARIABLES ~~~~~~~~~~~~~~ //
     size_t ncols{inst.m + inst.n};
-    const auto get_za_idx = [&inst](size_t idx) { return idx; };  // 0 -> inst.m - 1: z_a
-    const auto get_yp_idx = [&inst](size_t idx) {                 // inst.m + 1 -> ncols - 1: y_p
+    const auto get_za_idx = [](size_t idx) { return idx; };  // 0 -> inst.m - 1: z_a
+    const auto get_yp_idx = [&inst](size_t idx) {            // inst.m + 1 -> ncols - 1: y_p
         return inst.m + idx;
     };
 
@@ -95,10 +95,10 @@ static int CPXPUBLIC callback_hub(CPXCALLBACKCONTEXTptr context, CPXLONG context
 
     switch (contextid) {
         case CPX_CALLBACKCONTEXT_RELAXATION:
-            relaxation_callback(context, *exec, *inst, thread_data[thread_id]);
+            relaxation_callback(context, exec, inst, thread_data[thread_id]);
             break;
         case CPX_CALLBACKCONTEXT_CANDIDATE:
-            candidate_callback(context, *exec, *inst, *stats, thread_data[thread_id].usercuts_lm, thread_data[thread_id].usercuts_sec,
+            candidate_callback(context, exec, inst, stats, thread_data[thread_id].usercuts_lm, thread_data[thread_id].usercuts_sec,
                                thread_data[thread_id].cand_time);
             break;
         default:
@@ -108,12 +108,8 @@ static int CPXPUBLIC callback_hub(CPXCALLBACKCONTEXTptr context, CPXLONG context
     return 0;
 }
 
-inline callback_userhandle set_cplex_callbacks(hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env,
-                                               CPXLPptr& lp) {
+inline void set_cplex_callbacks(hplus::execution& exec, hplus::instance& inst, callback_userhandle& userhandle, CPXENVptr& env, CPXLPptr& lp) {
     if (BASIC_VERBOSE()) LOG_INFO << "Setting up CPLEX callbacks";
-
-    // Creating the userhandle
-    callback_userhandle userhandle{&exec, &inst, &stats, {}};
 
     for (unsigned int t = 0; t < exec.threads; ++t) {
         thread_data td{
@@ -138,8 +134,6 @@ inline callback_userhandle set_cplex_callbacks(hplus::execution& exec, hplus::in
     // (SEC) need to be separated from the relaxation callback
 
     CPX_HANDLE_CALL(CPXcallbacksetfunc(env, lp, callback_contex, callback_hub, &userhandle));
-
-    return userhandle;  // returning it so that it has the same lifetime as the execution (no need for dynamic allocations etc...)
 }
 
 inline void close_flmdet_model(CPXENVptr& env, CPXLPptr& lp) {

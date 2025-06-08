@@ -19,12 +19,12 @@ unsigned int sec(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst,
 
 namespace callbacks {
 
-typedef struct {
+ struct thread_data{
     unsigned int usercuts_lm, usercuts_sec;
     double cand_time, relax_time;
     CPXENVptr flmdet_env;
     CPXLPptr flmdet_lp;
-} thread_data;
+} ;
 
 void relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, const hplus::instance& inst, thread_data& data);
 

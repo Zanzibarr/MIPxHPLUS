@@ -167,7 +167,7 @@ class binary_set {
     std::vector<unsigned int> sparse() const {
         if (capacity_ == 0) throw std::domain_error("This binary set has a size of 0.");
 
-        return std::move(std::vector<unsigned int>{this->begin(), this->end()});
+        return std::vector<unsigned int>{this->begin(), this->end()};
     }
 
     /**

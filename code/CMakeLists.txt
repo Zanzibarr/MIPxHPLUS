@@ -149,7 +149,7 @@ add_custom_target(opt
     COMMAND_EXPAND_LISTS
 )
 add_custom_target(debug 
-    COMMAND echo "Flags used: ${CMAKE_CXX_FLAGS_RELEASE}"
+    COMMAND echo "Flags used: ${CMAKE_CXX_FLAGS_DEBUG}"
     COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --config Debug
     COMMAND_EXPAND_LISTS
 )

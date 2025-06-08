@@ -14,7 +14,7 @@ enum class algorithm { TL = 0, VE = 1, CUTS = 2, GC = 10, GCXE = 11, GHM = 12, G
 enum class warmstart { NONE = 0, GC = 1, GCXE = 2, GHM = 3, GHA = 4 };
 enum class verbose { NONE = 0, STATISTICS = 1, BASIC = 2, DEBUG = 3 };
 
-typedef struct {
+struct execution {
     // Execution parameters
     exec_type type;
     bool prep;
@@ -32,7 +32,7 @@ typedef struct {
     exec_status exec_s;
     // Testing
     bool testing;
-} execution;
+};
 
 inline void init(execution& exec) {
     exec = hplus::execution{.type = exec_type::RUN,

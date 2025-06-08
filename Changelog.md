@@ -31,6 +31,9 @@ HOW I DO VERSIONING:
 - Fixed bug where if memory limit is reached inside CPLEX, an error is thrown
 - Fixed bug where if memory limit is reached and no error is thrown (^), the lower bound is not properly updated
 - Fixed bug where in some cases, even with optimal solutions the lowerbound and the incumbent, didn't match
+- Fixed bug with memory limit in jobs for cluster
+- Fixed bug with showing statistics
+- Fixed bug with userhandle in callbacks
 ### :heavy_exclamation_mark: Changed
 - Complete code refactoring
 <!-- ### :heavy_plus_sign: Added -->

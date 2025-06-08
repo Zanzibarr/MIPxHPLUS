@@ -107,7 +107,7 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
     double start_time = GET_TIME();
     CPXENVptr env = nullptr;
     CPXLPptr lp = nullptr;
-    callbacks::callback_userhandle callback_userhandle{};
+    callbacks::callback_userhandle callback_userhandle{.exec = exec, .inst = inst, .stats = stats, {}};
 
     stats.build = static_cast<double>(exec.timelimit) - start_time;
     exec.exec_s = hplus::exec_status::MODEL_BUILD;
@@ -122,7 +122,7 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
     if (exec.ws != hplus::warmstart::NONE) post_warm_start(exec, inst, env, lp);
 
     //  CAND, RELAX AND GLOBAL INFO CALLBACKS  //
-    if (exec.alg == hplus::algorithm::CUTS) callback_userhandle = callbacks::set_cplex_callbacks(exec, inst, stats, env, lp);
+    if (exec.alg == hplus::algorithm::CUTS) callbacks::set_cplex_callbacks(exec, inst, callback_userhandle, env, lp);
 
     // Set time limit
     set_cplex_timelimit(exec, env);

@@ -19,13 +19,13 @@ constexpr double hadd(double a, double b) {
     return a + b;
 }
 
-typedef struct {
+struct greedychoice_userhandle {
     std::vector<double> values;                         // hmax/hadd values for each proposition
     std::vector<unsigned int> goal_sparse;              // sparse representation of the goal
     std::stack<std::pair<unsigned int, double>> trail;  // trail for hmax/hadd updates
     priority_queue<double> pq;                          // priority queue for hmax/hadd updates
     binary_set used_actions;
-} greedychoice_userhandle;
+};
 
 void greedy(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats,
             std::pair<bool, unsigned int> (*greedy_choice)(const hplus::instance& inst, const std::list<unsigned int>&, const binary_set&,

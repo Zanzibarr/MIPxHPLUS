@@ -25,7 +25,7 @@ inline void set_time_limit(unsigned int seconds) {
     auto start = std::chrono::steady_clock::now();
     auto end = start + std::chrono::seconds(seconds);
 
-    time_thread = std::thread([seconds, end]() {
+    time_thread = std::thread([end]() {
         while (std::chrono::steady_clock::now() <= end) {
             if (stop_flag) return;
             std::this_thread::sleep_for(std::chrono::milliseconds(100));

@@ -26,7 +26,7 @@ static std::tuple<hplus::execution, hplus::instance, hplus::statistics> init() {
     hplus::init(inst);
     hplus::statistics stats;
     hplus::init(stats);
-    return std::move(std::tuple(exec, inst, stats));
+    return std::tuple(exec, inst, stats);
 }
 
 static void close() { timelim::cancel_time_limit(); }

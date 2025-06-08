@@ -43,7 +43,7 @@ build_graph(const hplus::execution& exec, const hplus::instance& inst, const bin
         }
     }
 
-    return std::move(std::tuple(graph, edge_labels));
+    return std::tuple(graph, edge_labels);
 }
 
 [[nodiscard]]

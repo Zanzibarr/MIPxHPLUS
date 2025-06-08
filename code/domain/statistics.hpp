@@ -5,7 +5,7 @@
 
 namespace hplus {
 
-typedef struct {
+struct statistics {
     // Time
     double parsing, preprocessing, heur_time, build, relax_callback, cand_callback, cplex_execution, total;
     // Costs
@@ -16,7 +16,7 @@ typedef struct {
     int status;
     unsigned int nodes, var_base, var_acyc, const_base, const_acyc, cuts_lm, cuts_sec;
     double lower_bound;
-} statistics;
+};
 
 inline void init(statistics& stats) {
     stats = statistics{.parsing = 0,

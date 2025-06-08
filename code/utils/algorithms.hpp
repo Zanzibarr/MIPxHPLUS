@@ -10,7 +10,7 @@
 #include <vector>
 
 template <typename T>
-inline void insert_sorted(std::vector<T>& vec, T value) {
+static inline void insert_sorted(std::vector<T>& vec, T value) {
     auto it = std::lower_bound(vec.begin(), vec.end(), value);
     if (it == vec.end() || *it != value) {
         vec.insert(it, value);
@@ -19,7 +19,7 @@ inline void insert_sorted(std::vector<T>& vec, T value) {
 
 template <typename T>
 [[nodiscard]]
-inline size_t sorted_find(const std::vector<T>& vec, T value) {
+static inline size_t sorted_find(const std::vector<T>& vec, T value) {
     auto it = std::lower_bound(vec.begin(), vec.end(), value);
     if (it != vec.end() && *it == value) {
         return static_cast<size_t>(it - vec.begin());
@@ -46,9 +46,9 @@ struct dfs_state {
  * compose the found cycle, skipping removed edges and removed nodes
  */
 template <typename T>
-inline void cycle_dfs(const std::vector<std::vector<unsigned int>>& graph,
-                      const std::unordered_map<std::pair<unsigned int, unsigned int>, T, pair_hash>& edge_labels, unsigned int start_vertex,
-                      std::vector<std::vector<bool>>& removed_edges, std::vector<bool>& removed_nodes, std::vector<std::vector<T>>& cycles) {
+static inline void cycle_dfs(const std::vector<std::vector<unsigned int>>& graph,
+                             const std::unordered_map<std::pair<unsigned int, unsigned int>, T, pair_hash>& edge_labels, unsigned int start_vertex,
+                             std::vector<std::vector<bool>>& removed_edges, std::vector<bool>& removed_nodes, std::vector<std::vector<T>>& cycles) {
     std::vector<dfs_state> stack;
     std::vector<unsigned int> current_path;
     std::vector<std::pair<unsigned int, unsigned int>> current_path_edges;
@@ -143,7 +143,7 @@ inline void cycle_dfs(const std::vector<std::vector<unsigned int>>& graph,
  */
 template <typename T>
 [[nodiscard]]
-inline std::vector<std::vector<T>> find_cycles_unweighted(
+static inline std::vector<std::vector<T>> find_cycles_unweighted(
     const std::vector<std::vector<unsigned int>>& graph, const std::unordered_map<std::pair<unsigned int, unsigned int>, T, pair_hash>& edge_labels) {
     std::vector<std::vector<T>> cycles;
     if (graph.empty()) return cycles;
@@ -183,7 +183,7 @@ inline std::vector<std::vector<T>> find_cycles_unweighted(
  * @param max_edge_weight Maximum allowed weight for any single edge in the path (for pruning)
  */
 [[nodiscard]]
-static std::pair<std::vector<std::pair<unsigned int, unsigned int>>, std::vector<unsigned int>> dijkstra_with_path_info(
+static inline std::pair<std::vector<std::pair<unsigned int, unsigned int>>, std::vector<unsigned int>> dijkstra_with_path_info(
     const std::vector<std::vector<unsigned int>>& graph,
     const std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash>& edge_weights, unsigned int source, unsigned int destination,
     const std::vector<std::vector<bool>>& removed_edges, double max_edge_weight = 1.0) {
@@ -264,7 +264,7 @@ static std::pair<std::vector<std::pair<unsigned int, unsigned int>>, std::vector
  */
 template <typename T>
 [[nodiscard]]
-inline std::vector<std::vector<T>> find_cycles_weighted_lessthan1(
+static inline std::vector<std::vector<T>> find_cycles_weighted_lessthan1(
     const std::vector<std::vector<unsigned int>>& graph, const std::unordered_map<std::pair<unsigned int, unsigned int>, T, pair_hash>& edge_labels,
     const std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash>& edge_weights) {
     std::vector<std::vector<T>> cycles;
@@ -308,7 +308,7 @@ inline std::vector<std::vector<T>> find_cycles_weighted_lessthan1(
 
             // Find shortest path from w back to v, with edge weight constraint
             double max_allowed_edge_weight = 1.0 - vw_weight;
-            auto [path_vertices, path_edge_indices] = dijkstra_with_path_info(graph, edge_weights, w, v, used_edges, max_allowed_edge_weight);
+            const auto& [path_vertices, path_edge_indices] = dijkstra_with_path_info(graph, edge_weights, w, v, used_edges, max_allowed_edge_weight);
             if (path_vertices.empty()) continue;
 
             // Calculate total cycle weight

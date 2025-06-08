@@ -4,29 +4,25 @@
 #include "../external/bs.hpp"
 
 #define INFBOUND_DBL 1e20
-#define INFBOUND_INT static_cast<unsigned int>(INFBOUND_DBL)
+#define INFBOUND_INT std::numeric_limits<unsigned int>::max()
 
 namespace hplus {
 
 enum class solution_status { OPT = 0, FEAS = 1, INFEAS = 2, NOTFOUND = 404, LOST = 500 };
 
-typedef struct {
+struct solution {
     std::vector<unsigned int> sequence;
     unsigned int cost;
     bool updating = false;
-} solution;
+};
 
-typedef struct {
+struct action {
     binary_set pre, eff;
     std::vector<unsigned int> pre_sparse, eff_sparse;
     unsigned int cost;
-} action;
+};
 
-typedef struct {
-    // Remember to initialize everything to nullptr in the init() function and to free it in free_resources()
-} resources;
-
-typedef struct {
+struct instance {
     // Instance
     bool equal_costs;
     unsigned int n, m, nfadd;
@@ -45,7 +41,7 @@ typedef struct {
     // Solution
     solution_status sol_s;
     solution sol;
-} instance;
+};
 
 inline void init(instance& inst) {
     inst = instance{.equal_costs = false,
