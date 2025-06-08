@@ -27,7 +27,7 @@ def main():
     instances_folder = os.path.abspath(sys.argv[1])
     execution_parameters = " ".join(sys.argv[2:])
     example_parameters = (
-        execution_parameters + " --t=900 --l=<instance_name>.log --run=<instance_name>"
+        execution_parameters + " --t=900 --mem=16000 --log=<instance_name>.log"
     )
 
     # verify inputs
@@ -40,7 +40,7 @@ def main():
         exit(0)
     if (
         input(
-            f"The execution will have the following structure:\n>> ./hplus <instance> {example_parameters}\nInsert y if it's correct: "
+            f"The execution will have the following structure:\n>> ./hplus --run <instance> {example_parameters}\nInsert y if it's correct: "
         )
         != "y"
     ):
