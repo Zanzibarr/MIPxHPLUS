@@ -101,7 +101,7 @@ ulimit -v 16777216
 
 #####################
 
-{exec_dir}/./hplus --run {inst_path} {execution_parameters} --t=900 --mem=16000 --log={inst_name}.log
+{exec_dir}/./hplus --run {inst_path} {execution_parameters} --t=900 --mem=16000 --v=3 --log={inst_name}.log
 
 #####################
 
