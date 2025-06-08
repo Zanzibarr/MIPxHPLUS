@@ -27,7 +27,7 @@ def main():
     instances_folder = os.path.abspath(sys.argv[1])
     execution_parameters = " ".join(sys.argv[2:])
     example_parameters = (
-        execution_parameters + " --t=900 --mem=16000 --log=<instance_name>.log"
+        execution_parameters + " --t=900 --mem=16000 --v=3 --log=<instance_name>.log"
     )
 
     # verify inputs
