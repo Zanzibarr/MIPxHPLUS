@@ -10,12 +10,12 @@ namespace callbacks {
 
 // thread_data is defined in relax_callback.hpp (circular dependencies, idk what else to do)
 
- struct callback_userhandle  {
+struct callback_userhandle {
     hplus::execution& exec;
     hplus::instance& inst;
     hplus::statistics& stats;
     std::vector<thread_data> thread_specific_data;
-} ;
+};
 
 inline void open_flmdet_model(CPXENVptr& env, CPXLPptr& lp) {
     int cpxerror;

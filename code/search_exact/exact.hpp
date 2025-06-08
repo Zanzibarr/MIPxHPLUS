@@ -107,7 +107,7 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
     double start_time = GET_TIME();
     CPXENVptr env = nullptr;
     CPXLPptr lp = nullptr;
-    callbacks::callback_userhandle callback_userhandle{.exec = exec, .inst = inst, .stats = stats, {}};
+    callbacks::callback_userhandle callback_userhandle{.exec = exec, .inst = inst, .stats = stats, .thread_specific_data = {}};
 
     stats.build = static_cast<double>(exec.timelimit) - start_time;
     exec.exec_s = hplus::exec_status::MODEL_BUILD;
