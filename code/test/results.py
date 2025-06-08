@@ -227,6 +227,20 @@ def main():
         instance_data["ctime"] = cplex_time
         instance_data["time"] = total_time
 
+        if status in (0, 1, 2):
+            run_summary["stats"]["perc_found"] += 1
+            if status in (0, 1):
+                run_summary["stats"]["perc_opt"] += 1
+
+        run_summary["stats"]["avg_ptime"] += parsing_time
+        run_summary["stats"]["avg_stime"] += preprocessing_time
+        run_summary["stats"]["avg_htime"] += heuristic_time
+        run_summary["stats"]["avg_btime"] += model_build_time
+        run_summary["stats"]["avg_rcbtime"] += relax_callback_time
+        run_summary["stats"]["avg_ccbtime"] += cand_callback_time
+        run_summary["stats"]["avg_ctime"] += cplex_time
+        run_summary["stats"]["avg_time"] += total_time
+
         cpxlogfile = f"{cpxlogsdir}/{file.replace('.log', '.sas.log')}"
         if os.path.isfile(cpxlogfile):
             with open(cpxlogfile, "r") as f:
