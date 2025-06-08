@@ -268,7 +268,7 @@ def main():
         for key in sorted(run_summary["results"].keys())
     }
 
-    with open(f"{save_logs_dir}/001_{run_name}.json", "w") as f:
+    with open(f"{save_logs_dir}/002_{run_name}.json", "w") as f:
         json.dump(run_summary, f, indent=4)
 
 
