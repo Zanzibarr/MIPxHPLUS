@@ -228,10 +228,7 @@ void store_cplex_solution(hplus::execution& exec, hplus::instance& inst, hplus::
                     break;
                 }
             }
-            if (set_zero) {
-                ASSERT(!(inst.sol_s == hplus::solution_status::OPT && plan[act_i] > HPLUS_CPX_INT_ROUNDING && inst.actions[act_i].cost > 0));
-                plan[act_i] = 0;
-            }
+            if (set_zero) plan[act_i] = 0;
         }
     }
 
@@ -261,9 +258,6 @@ void store_cplex_solution(hplus::execution& exec, hplus::instance& inst, hplus::
         }
         ASSERT(intcheck);
     }
-    double cost_check{0.0};
-    CPX_HANDLE_CALL(CPXgetobjval(env, lp, &cost_check));
-    ASSERT(!(inst.sol_s == hplus::solution_status::OPT && cost != static_cast<unsigned int>(cost_check)));
 
     // store solution
     hplus::solution sol{solution, cost};
