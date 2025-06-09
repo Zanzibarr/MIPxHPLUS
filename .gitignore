@@ -11,7 +11,9 @@ code/test/jobs/
 code/test/jobs_output/
 local/
 logs/
-results/
+results/old*
+results/csv
+results/*.json
 
 # thesis
 thesis/*.aux
