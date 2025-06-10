@@ -14,6 +14,7 @@ logs/
 results/old*
 results/csv
 results/*.json
+results/tmp
 
 # thesis
 thesis/*.aux

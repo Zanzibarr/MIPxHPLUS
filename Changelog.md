@@ -25,7 +25,7 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
-## [2.2.0 - testing] - 2025/06/08
+## [2.2.0] - 2025/06/08
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed
 - Fixed bug where if memory limit is reached inside CPLEX, an error is thrown
