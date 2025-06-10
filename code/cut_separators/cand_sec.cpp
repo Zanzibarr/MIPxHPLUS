@@ -8,19 +8,17 @@ build_graph(const hplus::execution& exec, const hplus::instance& inst, const bin
     std::vector<std::vector<unsigned int>> graph;
     std::unordered_map<std::pair<unsigned int, unsigned int>, unsigned int, pair_hash> edge_labels;
 
-    // TODO: Test which of these two methods works best
-
     // Facts as nodes
     if (exec.testing) {
         graph = std::vector<std::vector<unsigned int>>(inst.n);
         for (unsigned int p = 0; p < inst.n; ++p) {
             for (const auto& act_i : inst.act_with_pre[p]) {
                 if (!unreachable_actions[act_i]) continue;
-                for (unsigned int i = 0; i < inst.actions[act_i].eff_sparse.size(); ++i) {
-                    unsigned int q = inst.actions[act_i].eff_sparse[i];
-                    if (!used_first_achievers[act_i][q]) continue;
+                for (const auto& q : used_first_achievers[act_i]) {
                     graph[p].push_back(q);
-                    edge_labels[{p, q}] = inst.m + inst.fadd_cpx_start[act_i] + i;
+                    edge_labels[{p, q}] = inst.m + inst.fadd_cpx_start[act_i] +
+                                          std::distance(inst.actions[act_i].eff_sparse.begin(),
+                                                        std::find(inst.actions[act_i].eff_sparse.begin(), inst.actions[act_i].eff_sparse.end(), q));
                 }
             }
         }
