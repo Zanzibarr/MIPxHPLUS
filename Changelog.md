@@ -41,9 +41,9 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 Here are shown the improvements achieved by the refactoring (001* before, 002* after):  
-<img src="results/plots/refactoring2.2.0_effects_tl.svg" width="300"/>
-<img src="results/plots/refactoring2.2.0_effects_ve.svg" width="300"/>
-<img src="results/plots/refactoring2.2.0_effects_lms.svg" width="300"/>
+<img src="results/plots/2.2.0_refactoring_effects_tl.svg" width="300"/>
+<img src="results/plots/2.2.0_refactoring_effects_ve.svg" width="300"/>
+<img src="results/plots/2.2.0_refactoring_effects_lms.svg" width="300"/>
 
 
 ## [2.1.2] - 2025/06/01
