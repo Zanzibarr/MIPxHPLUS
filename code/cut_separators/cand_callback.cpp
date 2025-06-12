@@ -146,7 +146,7 @@ void callbacks::candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::e
     if (exec.cand_cuts.find('f') != std::string::npos) usercuts_lm += cand_cuts::frontier_lm(context, inst, unused_actions, reachable_state);
     if (exec.cand_cuts.find('c') != std::string::npos)
         usercuts_lm += cand_cuts::complementary_lm(context, inst, unreachable_actions, unused_actions, reachable_state);
-    if (exec.cand_cuts.find('s') != std::string::npos) usercuts_sec += cand_cuts::sec(context, exec, inst, unreachable_actions, used_first_achievers);
+    if (exec.cand_cuts.find('s') != std::string::npos) usercuts_sec += cand_cuts::sec(context, inst, unreachable_actions, used_first_achievers);
 
     // std::cout << std::string(reachable_state) << std::endl;
     // int a;
