@@ -16,21 +16,6 @@ results/csv
 results/*.json
 results/tmp
 
-# thesis
-thesis/*.aux
-thesis/*.bbl
-thesis/*.bcf
-thesis/*.blg
-thesis/*.fdb_latexmk
-thesis/*.fls
-thesis/*.log
-thesis/*.out
-thesis/*.run.xml
-thesis/*.synctex.gz
-thesis/*.toc
-thesis/*.xmpi
-thesis/*.pdf
-
 # files
 
 # other
