@@ -47,6 +47,8 @@ inline void init_cplex(hplus::execution& exec, CPXENVptr& env, CPXLPptr& lp) {
     CPX_HANDLE_CALL(CPXsetintparam(env, CPXPARAM_MIP_Strategy_File, HPLUS_DEF_CPX_STRAT_FILE));
     // terminate condition
     CPX_HANDLE_CALL(CPXsetterminate(env, &GLOBAL_TERMINATE_CONDITION));
+    // testing flag
+    if (exec.testing) CPX_HANDLE_CALL(CPXsetdblparam(env, CPX_PARAM_HEUREFFORT, 0.0));
 }
 
 void build_base_model(hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp);
