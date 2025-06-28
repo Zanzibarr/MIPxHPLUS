@@ -1814,7 +1814,7 @@ scanalyzer-08-strips-p25,0,24
 scanalyzer-08-strips-p26,0,26
 scanalyzer-08-strips-p27,0,28
 scanalyzer-08-strips-p28,0,36
-scanalyzer-08-strips-p29,2,40
+scanalyzer-08-strips-p29,0,40
 scanalyzer-08-strips-p30,2,52
 scanalyzer-opt11-strips-p01,0,12
 scanalyzer-opt11-strips-p02,0,20
@@ -1854,7 +1854,7 @@ scanalyzer-sat11-strips-p15,0,62
 scanalyzer-sat11-strips-p16,0,62
 scanalyzer-sat11-strips-p17,0,70
 scanalyzer-sat11-strips-p18,0,36
-scanalyzer-sat11-strips-p19,2,40
+scanalyzer-sat11-strips-p19,0,40
 scanalyzer-sat11-strips-p20,2,52
 schedule-probschedule-10-0,0,10
 schedule-probschedule-10-1,0,8

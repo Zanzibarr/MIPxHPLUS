@@ -147,7 +147,7 @@ inline void gather_stats_from_threads(const hplus::execution& exec, hplus::stati
         stats.relax_callback += data.relax_time;
         stats.cuts_lm += data.usercuts_lm;
         stats.cuts_sec += data.usercuts_sec;
-        if (exec.fract_cuts != "0") close_flmdet_model(data.flmdet_env, data.flmdet_lp);
+        if (exec.fract_cuts.find('l') != std::string::npos) close_flmdet_model(data.flmdet_env, data.flmdet_lp);
     }
 }
 }  // namespace callbacks
