@@ -1,14 +1,14 @@
 #include "../cut_separators/relax_callback.hpp"
 #include "exact.hpp"
 
-inline void init_cutloop([[maybe_unused]] CPXENVptr& env, [[maybe_unused]] CPXLPptr& lp) {
-    // TODO
-    LOG_TODO;
+inline void init_cutloop(CPXENVptr& env, CPXLPptr& lp) {
+    CPX_HANDLE_CALL(CPXchgprobtype(env, lp, CPXPROB_LP));
+    // TODO (ask) : Is this enough?
 }
 
-inline void exit_cutloop([[maybe_unused]] CPXENVptr& env, [[maybe_unused]] CPXLPptr& lp) {
-    // TODO
-    LOG_TODO;
+inline void exit_cutloop(CPXENVptr& env, CPXLPptr& lp) {
+    CPX_HANDLE_CALL(CPXchgprobtype(env, lp, CPXPROB_MILP));
+    // TODO (ask) : Maybe the fixed variables are not fixed anymore???
 }
 
 inline void solve_relaxation(CPXENVptr& env, CPXLPptr& lp) { CPX_HANDLE_CALL(CPXlpopt(env, lp)); }
