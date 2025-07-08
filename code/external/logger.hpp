@@ -245,5 +245,7 @@ class logger {
 #define LOG_WARNING logger::get_instance().warning()
 #define LOG_ERROR logger::get_instance().error()
 #define LOG_SUCCESS logger::get_instance().success()
+#define LOG_TODO LOG_ERROR << __func__ << "(): " << __FILE__ << ":" << __LINE__ << " : unimplemented."
+#define LOG_TODO_WARN LOG_WARNING << __func__ << "(): " << __FILE__ << ":" << __LINE__ << " : unimplemented."
 
 #endif  // LOGGER_HPP
