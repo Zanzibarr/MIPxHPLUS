@@ -4,7 +4,6 @@
 ### Version: 2.2.2  
 _Refer to the [Changelog](Changelog.md) for info about versions._  
 
-
 Using a MIP solver (CPLEX) to solve the (optimal) delete free relaxation of a planning task.  
 
 This software requires as input the SAS file produced by the [Fast Downward translator](https://www.fast-downward.org/).
