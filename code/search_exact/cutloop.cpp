@@ -24,9 +24,8 @@ inline bool generate_cuts(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& i
     // Get info on the relaxation point
     const auto& fadd_weights = callbacks::relaxationpoint_info(inst, xstar);
 
-    unsigned int new_cuts{0};
-
     // TODO : Generate cuts
+    unsigned int new_cuts{0};
     LOG_TODO;
 
     return new_cuts;
