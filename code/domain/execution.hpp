@@ -21,6 +21,7 @@ struct execution {
     warmstart ws;
     algorithm alg;
     std::string fract_cuts, cand_cuts;
+    bool custom_cutloop;
     std::string log_file;
     unsigned int threads;
     unsigned int timelimit;
@@ -41,6 +42,7 @@ inline void init(execution& exec) {
                             .alg = static_cast<algorithm>(HPLUS_DEF_ALG),
                             .fract_cuts = HPLUS_DEF_FRACTCUTS,
                             .cand_cuts = HPLUS_DEF_CANDCUTS,
+                            .custom_cutloop = HPLUS_DEF_CUSTOM_CUTLOOP,
                             .log_file = HPLUS_DEF_LOG,
                             .threads = HPLUS_DEF_THREADS,
                             .timelimit = HPLUS_DEF_TIMELIMIT,

@@ -130,7 +130,7 @@ inline void set_cplex_callbacks(hplus::execution& exec, hplus::instance& inst, c
     // Setting up callbacks
     CPXLONG callback_contex = CPX_CALLBACKCONTEXT_CANDIDATE;  // The candidate callback is ALWAYS needed
     if (exec.fract_cuts != "0")
-        callback_contex |= CPX_CALLBACKCONTEXT_RELAXATION;  // Input has been sanitized, so is this is not empty, then at leats l (landmarks) or s
+        callback_contex |= CPX_CALLBACKCONTEXT_RELAXATION;  // Input has been sanitized, so if this is not empty, then at leats l (landmarks) or s
     // (SEC) need to be separated from the relaxation callback
 
     CPX_HANDLE_CALL(CPXcallbacksetfunc(env, lp, callback_contex, callback_hub, &userhandle));

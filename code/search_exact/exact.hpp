@@ -22,6 +22,10 @@ namespace cuts {
 void post_warm_start(const hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp);
 }  // namespace cuts
 
+namespace cutloop {
+void cutloop(CPXENVptr& env, CPXLPptr& lp, const hplus::execution& exec, const hplus::instance& inst, const hplus::statistics& stats);
+}
+
 namespace exact {
 
 inline void init_cplex(hplus::execution& exec, CPXENVptr& env, CPXLPptr& lp) {
@@ -123,9 +127,6 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
     // ~~~~~~~~~~~~~~ WARM START ~~~~~~~~~~~~~ //
     if (exec.ws != hplus::warmstart::NONE) post_warm_start(exec, inst, env, lp);
 
-    //  CAND, RELAX AND GLOBAL INFO CALLBACKS  //
-    if (exec.alg == hplus::algorithm::CUTS) callbacks::set_cplex_callbacks(exec, inst, callback_userhandle, env, lp);
-
     // Set time limit
     set_cplex_timelimit(exec, env);
 
@@ -142,6 +143,9 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
     // Run cplex
     if (BASIC_VERBOSE()) LOG_INFO << "Running CPLEX MIP";
     try {
+        if (exec.custom_cutloop) cutloop::cutloop(env, lp, exec, inst, stats);
+        if (exec.alg == hplus::algorithm::CUTS)
+            callbacks::set_cplex_callbacks(exec, inst, callback_userhandle, env, lp);  // TODO (ask): Le callback le imposto prima del cutloop custom?
         CPX_HANDLE_CALL(CPXmipopt(env, lp));
     } catch (std::bad_alloc& e) {
         LOG_WARNING << "OUT OF MEMORY";
@@ -151,8 +155,7 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
     // =============== GATHER INFO AND CLOSING ============== //
     // ====================================================== //
 
-    // There are info to gather or resources to free only if we used the CUTS algorithm -> the other algorithms only readed global informations in the
-    // callback
+    // There are info to gather or resources to free only if we used the CUTS algorithm
     if (exec.alg == hplus::algorithm::CUTS) callbacks::gather_stats_from_threads(exec, stats, callback_userhandle);
     get_cplex_solution(exec, inst, stats, env, lp);
     close_cplex(env, lp);

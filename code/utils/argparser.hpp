@@ -64,8 +64,11 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
             " ALGORITHM) Specify what cuts to separate from the candidate (integer) solutions (def: " + std::string(HPLUS_DEF_CANDCUTS) +
             "; options: 0 (don's separate cuts), a combination of ['f','c','s'] (respectively for frontier / complementary landmarks and SEC))",
         {HPLUS_CLI_CANDCUTS_FLAG}, HPLUS_DEF_CANDCUTS);
+    args::ValueFlag<bool> custom_cutloop(
+        parser, "bool", "Flag for using the custom cutloop (def: 0; options: 0 (don't use the custom cutloop), 1 (use the custom cutloop))",
+        {HPLUS_CLI_CUTLOOP_FLAG}, HPLUS_DEF_CUSTOM_CUTLOOP);
     args::ValueFlag<bool> testing(parser, "bool",
-                                  "Flag for testing or debugging) (def: 0; options: 0 (testing flag set to false), 1 (testing flag set to true))",
+                                  "Flag for testing or debugging (def: 0; options: 0 (testing flag set to false), 1 (testing flag set to true))",
                                   {HPLUS_CLI_TESTING_FLAG}, false);
 
     try {
@@ -191,6 +194,7 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         if (s.find('c') != std::string::npos) exec.cand_cuts += "c";
         if (s.find('s') != std::string::npos) exec.cand_cuts += "s";
     }
+    if (custom_cutloop) exec.custom_cutloop = args::get(custom_cutloop);
     if (testing) {
         exec.testing = args::get(testing);
         if (exec.testing) LOG_DEBUG << "Testing flag set to true";
@@ -233,6 +237,10 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
     if (exec.alg != hplus::algorithm::CUTS && !exec.cand_cuts.empty()) {
         if (warm_start) LOG_WARNING << "Cuts on the candidate solutions aren't needed with this algorithm: disabling candidate cuts";
         exec.cand_cuts = "";
+    }
+    if (exec.alg != hplus::algorithm::CUTS && exec.custom_cutloop) {
+        if (warm_start) LOG_WARNING << "Custom cutloop isn't needed with this algorithm: disabling custom cutloop";
+        exec.custom_cutloop = false;
     }
 }
 

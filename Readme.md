@@ -1,7 +1,7 @@
 # HPLUS THESIS
 ![C++](https://img.shields.io/badge/C%2B%2B-00599C?style=for-the-badge&logo=c%2B%2B&logoColor=white)
 
-### Version: 2.2.1  
+### Version: 2.2.2  
 _Refer to the [Changelog](Changelog.md) for info about versions._  
 
 
@@ -41,7 +41,7 @@ make <target_option>
 ## Build options (CMake parameters)
 
 - **-DCPLEX_PATH=**\<path_to_cplex>: (abs path), specify a custom path to the CPLEX installation (see the CMakeLists.txt to see which is the default one)
-- **-DENABLE_WARNINGS=** 1: enable all types of compile warnings (default is 0)
+- **-DENABLE_WARNINGS=** ON: enable all types of compile warnings (default is OFF)
 
 ## Target options (Make parameters)
 

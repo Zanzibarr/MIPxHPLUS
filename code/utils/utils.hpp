@@ -5,7 +5,7 @@
 // ############################## VERSION ############################## //
 // ##################################################################### //
 
-#define VERSION "2.2.1"
+#define VERSION "2.2.2"
 
 // ##################################################################### //
 // ############################## IMPORTS ############################## //
@@ -44,6 +44,7 @@
 #define HPLUS_CLI_VERBOSE_FLAG "v"
 #define HPLUS_CLI_FRACTCUTS_FLAG "fract"
 #define HPLUS_CLI_CANDCUTS_FLAG "cand"
+#define HPLUS_CLI_CUTLOOP_FLAG "cloop"
 #define HPLUS_CLI_TESTING_FLAG "test"
 
 // ##################################################################### //
@@ -72,6 +73,7 @@
 #define HPLUS_DEF_VERBOSE 2
 #define HPLUS_DEF_FRACTCUTS "0"
 #define HPLUS_DEF_CANDCUTS "fcs"
+#define HPLUS_DEF_CUSTOM_CUTLOOP 0
 
 // ##################################################################### //
 // ######################### EXECUTION DEFAULTS ######################## //
