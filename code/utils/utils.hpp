@@ -88,6 +88,12 @@
 #define HPLUS_DEF_WORKMEM HPLUS_DEF_MEMORYLIMIT
 #define HPLUS_DEF_CPX_STRAT_FILE 3
 
+#define HPLUS_STATUS_OPT 0
+#define HPLUS_STATUS_INFEAS 1
+#define HPLUS_STATUS_FEAS 2
+#define HPLUS_STATUS_NOTFOUND 3
+#define HPLUS_STATUS_LOST 4
+
 // ##################################################################### //
 // #################### UTILITY FUNCTIONS AND MACROS ################### //
 // ##################################################################### //

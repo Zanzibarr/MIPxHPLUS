@@ -52,6 +52,7 @@ inline void init(execution& exec) {
                             .testing = false};
 }
 
+[[nodiscard]]
 inline std::string to_string(exec_type t) {
     switch (t) {
         case exec_type::INFO:
@@ -62,6 +63,7 @@ inline std::string to_string(exec_type t) {
     return "ERR";
 }
 
+[[nodiscard]]
 inline std::string to_string(algorithm a) {
     switch (a) {
         case algorithm::TL:
@@ -82,6 +84,7 @@ inline std::string to_string(algorithm a) {
     return "ERR";
 }
 
+[[nodiscard]]
 inline std::string to_string(warmstart ws) {
     switch (ws) {
         case warmstart::NONE:

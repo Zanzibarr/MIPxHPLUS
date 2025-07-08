@@ -13,6 +13,7 @@ static void signal_callback_handler([[maybe_unused]] const int _) {
     GLOBAL_TERMINATE_CONDITION = 1;
 }
 
+[[nodiscard]]
 static std::tuple<hplus::execution, hplus::instance, hplus::statistics> init() {
     signal(SIGINT, signal_callback_handler);
     // Hide ^C from terminal
@@ -62,7 +63,7 @@ int main(const int argc, const char** argv) {
 
         hplus::print_sol(inst);
         if (inst.sol_s == hplus::solution_status::INFEAS) stats.lower_bound = 1e20;
-        if (inst.sol_s == hplus::solution_status::LOST) stats.status = 4;
+        if (inst.sol_s == hplus::solution_status::LOST) stats.status = HPLUS_STATUS_LOST;
         if (STATS_VERBOSE()) hplus::print(stats);
         close();
 

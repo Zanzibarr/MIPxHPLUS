@@ -40,8 +40,8 @@ make <target_option>
 
 ## Build options (CMake parameters)
 
-- **-DCPLEX_DIR=**\<path_to_cplex_lib>: (abs path), specify a custom path to the CPLEX library (see the CMakeLists.txt to see which is the default one)
-- **-DCPLEX_INCLUDE=**\<path_to_cplex_headers>: (abs path), specify a custom path to the CPLEX headers (see the CMakeLists.txt to see which is the default one)
+- **-DCPLEX_PATH=**\<path_to_cplex>: (abs path), specify a custom path to the CPLEX installation (see the CMakeLists.txt to see which is the default one)
+- **-DENABLE_WARNINGS=** 1: enable all types of compile warnings (default is 0)
 
 ## Target options (Make parameters)
 

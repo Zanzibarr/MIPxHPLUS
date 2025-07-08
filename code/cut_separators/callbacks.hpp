@@ -47,8 +47,8 @@ inline void build_flmdet_model(const hplus::instance& inst, CPXENVptr& env, CPXL
 
     std::vector<double> objs(ncols, 0.0);  // the coefficients of the objective function will be set in the callback, based on the fractional solution
     std::vector<double> lbs(ncols, 0.0);
-    std::vector<double> ubs(ncols, 1.0);
-    std::vector<char> types(ncols, 'B');
+    std::vector<double> ubs(ncols, 1.0);  // binary variables, so lower bound is 0 and upper bound is 1
+    std::vector<char> types(ncols, 'B');  // B for binary variables
     CPX_HANDLE_CALL(CPXnewcols(env, lp, ncols, objs.data(), lbs.data(), ubs.data(), types.data(), nullptr));
 
     // ~~~~~~~~~~~~~ CONSTRAINTS ~~~~~~~~~~~~~ //

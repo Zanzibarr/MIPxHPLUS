@@ -184,16 +184,16 @@ void parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp, const hplus::e
 
     switch (inst.sol_s) {
         case hplus::solution_status::OPT:
-            stats.status = 0;
+            stats.status = HPLUS_STATUS_OPT;
             break;
         case hplus::solution_status::INFEAS:
-            stats.status = 1;
+            stats.status = HPLUS_STATUS_INFEAS;
             break;
         case hplus::solution_status::FEAS:
-            stats.status = 2;
+            stats.status = HPLUS_STATUS_FEAS;
             break;
         case hplus::solution_status::NOTFOUND:
-            stats.status = 3;
+            stats.status = HPLUS_STATUS_NOTFOUND;
             break;
         default:
             LOG_ERROR << "Unhandled solution status: " << static_cast<int>(inst.sol_s);

@@ -25,11 +25,13 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
-## [2.2.1] - 2025/07/28
+## [2.2.1] - 2025/07/08
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed
-- Bug with the closing of flmdet model
-<!-- ### :heavy_exclamation_mark: Changed -->
+- Bug with the closing of flmdet model (25/06/28)
+- Removed some magic numbers for better code clarity
+### :heavy_exclamation_mark: Changed
+- Now compiling with a specific version of CPLEX just needs the root directory of CPLEX
 <!-- ### :heavy_plus_sign: Added -->
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->

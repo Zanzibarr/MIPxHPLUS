@@ -16,7 +16,7 @@ void heur::greedy(const hplus::execution& exec, hplus::instance& inst, hplus::st
     greedychoice_userhandle userhandle;
     if (exec.ws >= hplus::warmstart::GHM) {
         // Userhandle for hmax-hadd heuristic
-        userhandle.values.clear(); 
+        userhandle.values.clear();
         userhandle.values.resize(inst.n, std::numeric_limits<double>::infinity());
         userhandle.goal_sparse = inst.goal.sparse();
         userhandle.trail = std::stack<std::pair<unsigned int, double>>{};
@@ -28,14 +28,14 @@ void heur::greedy(const hplus::execution& exec, hplus::instance& inst, hplus::st
     while (!state.contains(inst.goal)) {
         if (candidates.empty()) [[unlikely]] {
             inst.sol_s = hplus::solution_status::INFEAS;
-            stats.status = 1;
+            stats.status = HPLUS_STATUS_INFEAS;
             return;
         }
 
         const auto [found, choice]{greedy_choice(inst, candidates, state, userhandle)};
         if (!found) [[unlikely]] {
             inst.sol_s = hplus::solution_status::INFEAS;
-            stats.status = 1;
+            stats.status = HPLUS_STATUS_INFEAS;
             return;
         }
 
@@ -65,5 +65,5 @@ void heur::greedy(const hplus::execution& exec, hplus::instance& inst, hplus::st
     hplus::update_sol(exec, inst, sol, stats);
     inst.sol_s = hplus::solution_status::FEAS;
     stats.heur_cost = sol.cost;
-    stats.status = 2;
+    stats.status = HPLUS_STATUS_FEAS;
 }

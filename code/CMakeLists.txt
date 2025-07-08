@@ -28,37 +28,33 @@ if(ENABLE_WARNINGS)
     endif()
 endif()
 
-# CPLEX detection
-set(CPLEX_POSSIBLE_PATHS
-    "/Applications/CPLEX_Studio2211"
-    "/opt/ibm/ILOG/CPLEX_Studio2211"
-    "/nfsd/rop/sw/ibm/cos221"
-)
-function(find_cplex)
-    foreach(CPLEX_PATH ${CPLEX_POSSIBLE_PATHS})
-        if(EXISTS "${CPLEX_PATH}/cplex/lib")
-            # Detect architecture and OS
-            if(CMAKE_SYSTEM_NAME MATCHES "Darwin")
-                set(ARCH "arm64_osx")
-            elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
-                set(ARCH "x86-64_linux")
-            else()
-                message(FATAL_ERROR "Unsupported operating system")
-            endif()
-
-            set(CPLEX_DIR "${CPLEX_PATH}/cplex/lib/${ARCH}/static_pic" CACHE PATH "CPLEX library directory")
-            set(CPLEX_INCLUDE "${CPLEX_PATH}/cplex/include/ilcplex" CACHE PATH "CPLEX include directory")
-            
-            message(STATUS "Found CPLEX: ${CPLEX_PATH}")
-            return()
+if(NOT DEFINED CPLEX_PATH)
+    # CPLEX detection
+    set(CPLEX_POSSIBLE_PATHS
+        "/Applications/CPLEX_Studio2211"
+        "/opt/ibm/ILOG/CPLEX_Studio2211"
+        "/nfsd/rop/sw/ibm/cos221"
+    )
+    foreach(PATH ${CPLEX_POSSIBLE_PATHS})
+        if(EXISTS "${PATH}/cplex/lib")
+            set(CPLEX_PATH ${PATH})
         endif()
     endforeach()
-
-    message(FATAL_ERROR "CPLEX not found. Please specify CPLEX_DIR and CPLEX_INCLUDE manually.")
-endfunction()
-if(NOT DEFINED CPLEX_DIR)
-    find_cplex()
 endif()
+
+# Detect architecture and OS
+if(CMAKE_SYSTEM_NAME MATCHES "Darwin")
+    set(ARCH "arm64_osx")
+elseif(CMAKE_SYSTEM_NAME MATCHES "Linux")
+    set(ARCH "x86-64_linux")
+else()
+    message(FATAL_ERROR "Unsupported operating system")
+endif()
+
+set(CPLEX_DIR "${CPLEX_PATH}/cplex/lib/${ARCH}/static_pic" CACHE PATH "CPLEX library directory")
+set(CPLEX_INCLUDE "${CPLEX_PATH}/cplex/include/ilcplex" CACHE PATH "CPLEX include directory")
+
+message(STATUS "Found CPLEX: ${CPLEX_PATH}")
 
 # Validate CPLEX paths
 if(NOT EXISTS ${CPLEX_DIR})

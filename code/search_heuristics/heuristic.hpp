@@ -73,7 +73,6 @@ inline void heuristic(const hplus::execution& exec, hplus::instance& inst, hplus
             LOG_ERROR << "Unhandled algorithm type in heuristic: " << static_cast<int>(exec.ws);
     }
 
-    stats.status = 2;
     stats.heur_time = GET_TIME() - start_time;
 }
 

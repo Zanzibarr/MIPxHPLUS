@@ -227,7 +227,7 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
             if (tmp_istate[i] == tmp_goal[i] || tmp_goal[i] < 0) continue;
             stats.parsing = GET_TIME();
             inst.sol_s = solution_status::INFEAS;
-            stats.status = 1;
+            stats.status = HPLUS_STATUS_INFEAS;
             return;
         }
     }
@@ -308,7 +308,7 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
 
     if (is_infeasible) {
         inst.sol_s = solution_status::INFEAS;
-        stats.status = 1;
+        stats.status = HPLUS_STATUS_INFEAS;
     }
 
     return;
