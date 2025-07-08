@@ -4,25 +4,27 @@
 inline void init_cutloop(CPXENVptr& env, CPXLPptr& lp) {
     CPX_HANDLE_CALL(CPXchgprobtype(env, lp, CPXPROB_LP));
     // TODO (ask) : Is this enough?
+    LOG_TODO_WARN;
 }
 
 inline void exit_cutloop(CPXENVptr& env, CPXLPptr& lp) {
     CPX_HANDLE_CALL(CPXchgprobtype(env, lp, CPXPROB_MILP));
     // TODO (ask) : Maybe the fixed variables are not fixed anymore???
+    LOG_TODO_WARN;
 }
 
 inline void solve_relaxation(CPXENVptr& env, CPXLPptr& lp) { CPX_HANDLE_CALL(CPXlpopt(env, lp)); }
 
 inline bool generate_cuts(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& inst) {
     const int ncols{CPXgetnumcols(env, lp)};
-    std::vector<double> xstar(ncols);
-    CPXgetx(env, lp, xstar.data(), 0, ncols - 1);
+    std::vector<double> relaxed_solution(ncols);
+    CPXgetx(env, lp, relaxed_solution.data(), 0, ncols - 1);
 
     // TODO : In-Out strategies
     LOG_TODO_WARN;
 
     // Get info on the relaxation point
-    const auto& fadd_weights = callbacks::relaxationpoint_info(inst, xstar);
+    const auto& fadd_weights = callbacks::relaxationpoint_info(inst, relaxed_solution);
 
     // TODO : Generate cuts
     unsigned int new_cuts{0};

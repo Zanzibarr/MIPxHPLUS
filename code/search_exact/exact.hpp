@@ -143,8 +143,10 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
     // Run cplex
     if (BASIC_VERBOSE()) LOG_INFO << "Running CPLEX MIP";
     try {
-        if (exec.custom_cutloop) cutloop::cutloop(env, lp, inst, stats);
-        if (exec.alg == hplus::algorithm::CUTS) callbacks::set_cplex_callbacks(exec, inst, callback_userhandle, env, lp);
+        if (exec.alg == hplus::algorithm::CUTS) {
+            if (exec.custom_cutloop) cutloop::cutloop(env, lp, inst, stats);
+            callbacks::set_cplex_callbacks(exec, inst, callback_userhandle, env, lp);
+        }
         CPX_HANDLE_CALL(CPXmipopt(env, lp));
     } catch (std::bad_alloc& e) {
         LOG_WARNING << "OUT OF MEMORY";
