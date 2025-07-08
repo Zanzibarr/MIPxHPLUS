@@ -1,7 +1,7 @@
 #include "relax_callback.hpp"
 
 [[nodiscard]]
-static std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash> relaxationpoint_info(const hplus::instance& inst,
+std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash> callbacks::relaxationpoint_info(const hplus::instance& inst,
                                                                                                          std::vector<double>& relax_point) {
     std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash> fadd_weights;
     for (unsigned int idx = 0; idx < inst.m; ++idx) {

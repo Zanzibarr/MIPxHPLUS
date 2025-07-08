@@ -19,12 +19,15 @@ unsigned int sec(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst,
 
 namespace callbacks {
 
- struct thread_data{
+struct thread_data {
     unsigned int usercuts_lm, usercuts_sec;
     double cand_time, relax_time;
     CPXENVptr flmdet_env;
     CPXLPptr flmdet_lp;
-} ;
+};
+
+std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash> relaxationpoint_info(const hplus::instance& inst,
+                                                                                                  std::vector<double>& relax_point);
 
 void relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, const hplus::instance& inst, thread_data& data);
 

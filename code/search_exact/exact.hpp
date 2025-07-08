@@ -23,7 +23,7 @@ void post_warm_start(const hplus::execution& exec, hplus::instance& inst, CPXENV
 }  // namespace cuts
 
 namespace cutloop {
-void cutloop(CPXENVptr& env, CPXLPptr& lp, const hplus::execution& exec, const hplus::instance& inst, const hplus::statistics& stats);
+void cutloop(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& inst, hplus::statistics& stats);
 }
 
 namespace exact {
@@ -143,9 +143,8 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
     // Run cplex
     if (BASIC_VERBOSE()) LOG_INFO << "Running CPLEX MIP";
     try {
-        if (exec.custom_cutloop) cutloop::cutloop(env, lp, exec, inst, stats);
-        if (exec.alg == hplus::algorithm::CUTS)
-            callbacks::set_cplex_callbacks(exec, inst, callback_userhandle, env, lp);  // TODO (ask): Le callback le imposto prima del cutloop custom?
+        if (exec.custom_cutloop) cutloop::cutloop(env, lp, inst, stats);
+        if (exec.alg == hplus::algorithm::CUTS) callbacks::set_cplex_callbacks(exec, inst, callback_userhandle, env, lp);
         CPX_HANDLE_CALL(CPXmipopt(env, lp));
     } catch (std::bad_alloc& e) {
         LOG_WARNING << "OUT OF MEMORY";
