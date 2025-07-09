@@ -126,6 +126,7 @@ inline void print(const execution& exec) {
         LOG << "Fractional cuts:                                      " << std::setw(2) << exec.fract_cuts;
     if (exec.alg == hplus::algorithm::CUTS && !exec.cand_cuts.empty())
         LOG << "Candidate cuts:                                    " << std::setw(5) << exec.cand_cuts;
+    if (exec.alg == hplus::algorithm::CUTS) LOG << "Custom cut-loop                                        " << exec.custom_cutloop;
     if (exec.testing) LOG << "Testing mode:                                          1";
     LOG << "--------------------------------------------------------";
 }

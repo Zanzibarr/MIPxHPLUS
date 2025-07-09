@@ -36,7 +36,7 @@ void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::
     const auto& fadd_weights = relax_cuts::relaxationpoint_info(inst, relax_point);
 
     if (exec.fract_cuts.find('l') != std::string::npos)
-        data.usercuts_lm += relax_cuts::lm(context, data.flmdet_env, data.flmdet_lp, inst, relax_point);
+        data.usercuts_lm += relax_cuts::lm(context, data.flmdet_env, data.flmdet_lp, exec, inst, relax_point);
     if (exec.fract_cuts.find('s') != std::string::npos) data.usercuts_sec += relax_cuts::sec(context, inst, fadd_weights);
 
     // Update the candidate time

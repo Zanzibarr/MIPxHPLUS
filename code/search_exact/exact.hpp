@@ -23,7 +23,7 @@ void post_warm_start(const hplus::execution& exec, hplus::instance& inst, CPXENV
 }  // namespace cuts
 
 namespace cutloop {
-void cutloop(CPXENVptr& env, CPXLPptr& lp, const hplus::instance& inst, hplus::statistics& stats);
+void cutloop(CPXENVptr& env, CPXLPptr& lp, const hplus::execution& exec, const hplus::instance& inst, hplus::statistics& stats);
 }
 
 namespace exact {
@@ -140,12 +140,13 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
     // Run cplex
     try {
         if (exec.alg == hplus::algorithm::CUTS) {
-            if (exec.custom_cutloop) cutloop::cutloop(env, lp, inst, stats);
+            if (exec.custom_cutloop) cutloop::cutloop(env, lp, exec, inst, stats);
             callbacks::set_cplex_callbacks(exec, inst, callback_userhandle, env, lp);
-            if (exec.ws != hplus::warmstart::NONE)
-                post_warm_start(exec, inst, env, lp);  // TODO (ask) : Il warm start lo posto anche prima del cutloop? Non ha tanto senso in quanto il
-                                                       // cut loop è solo per soluzioni frazionarie, quindi il warm start verrebbe scartato subito...
         }
+        if (exec.ws != hplus::warmstart::NONE)
+            post_warm_start(exec, inst, env, lp);  // TODO (ask) : Il warm start lo posto anche prima del cutloop? Non ha tanto senso in quanto il
+                                                   // cut loop è solo per soluzioni frazionarie, quindi il warm start verrebbe scartato subito e poi
+                                                   // dimenticato ora che entriamo nel B&C...
         if (BASIC_VERBOSE()) LOG_INFO << "Running CPLEX MIP";
         CPX_HANDLE_CALL(CPXmipopt(env, lp));
     } catch (std::bad_alloc& e) {

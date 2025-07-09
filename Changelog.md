@@ -30,7 +30,7 @@ HOW I DO VERSIONING:
 <!-- ### :ballot_box_with_check: Fixed -->
 <!-- ### :heavy_exclamation_mark: Changed -->
 ### :heavy_plus_sign: Added
-- Started implementing the custom cutloop (25/07/08)
+- First implementation of custom cutloop -> only landmarks and basic termination condition
 - Added questions for Salvagnin and TODOs
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->

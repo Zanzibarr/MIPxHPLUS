@@ -6,24 +6,15 @@
 #include "cand_callback.hpp"
 #include "relax_callback.hpp"
 
-namespace callbacks {
+namespace relax_cuts {
 
-// thread_data is defined in relax_callback.hpp (circular dependencies, idk what else to do)
-
-struct callback_userhandle {
-    hplus::execution& exec;
-    hplus::instance& inst;
-    hplus::statistics& stats;
-    std::vector<thread_data> thread_specific_data;
-};
-
-inline void open_flmdet_model(CPXENVptr& env, CPXLPptr& lp) {
+inline void open_flmdet_model(CPXENVptr& env, CPXLPptr& lp, int threads = 1) {
     int cpxerror;
     env = CPXopenCPLEX(&cpxerror);
     CPX_HANDLE_CALL(cpxerror);
     lp = CPXcreateprob(env, &cpxerror, "flmdet");
     CPX_HANDLE_CALL(cpxerror);
-    CPX_HANDLE_CALL(CPXsetintparam(env, CPXPARAM_Threads, 1));
+    CPX_HANDLE_CALL(CPXsetintparam(env, CPXPARAM_Threads, threads));
     // log file
     CPX_HANDLE_CALL(CPXsetintparam(env, CPXPARAM_ScreenOutput, HPLUS_DEF_CPX_SCREENOUTPUT));
     CPX_HANDLE_CALL(CPXsetintparam(env, CPX_PARAM_CLONELOG, HPLUS_DEF_CPX_CLONELOG));
@@ -83,10 +74,27 @@ inline void build_flmdet_model(const hplus::instance& inst, CPXENVptr& env, CPXL
     CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &begin, ind.data(), val.data(), nullptr, nullptr));
 }
 
-inline void create_flmdet_model(const hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
-    open_flmdet_model(env, lp);
+inline void create_flmdet_model(const hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp, int threads = 1) {
+    open_flmdet_model(env, lp, threads);
     build_flmdet_model(inst, env, lp);
 }
+
+inline void close_flmdet_model(CPXENVptr& env, CPXLPptr& lp) {
+    CPX_HANDLE_CALL(CPXfreeprob(env, &lp));
+    CPX_HANDLE_CALL(CPXcloseCPLEX(&env));
+}
+}  // namespace relax_cuts
+
+namespace callbacks {
+
+// thread_data is defined in relax_callback.hpp (circular dependencies, idk what else to do)
+
+struct callback_userhandle {
+    hplus::execution& exec;
+    hplus::instance& inst;
+    hplus::statistics& stats;
+    std::vector<thread_data> thread_specific_data;
+};
 
 static int CPXPUBLIC callback_hub(CPXCALLBACKCONTEXTptr context, CPXLONG contextid, void* userhandle) {
     auto& [exec, inst, stats, thread_data]{*static_cast<callback_userhandle*>(userhandle)};
@@ -122,7 +130,7 @@ inline void set_cplex_callbacks(hplus::execution& exec, hplus::instance& inst, c
         };
 
         if (exec.fract_cuts.find('l') != std::string::npos)  // l here stands for landmarks -> if we need landmarks we need the mip that detects them
-            create_flmdet_model(inst, td.flmdet_env, td.flmdet_lp);
+            relax_cuts::create_flmdet_model(inst, td.flmdet_env, td.flmdet_lp);
 
         userhandle.thread_specific_data.push_back(std::move(td));
     }
@@ -136,18 +144,13 @@ inline void set_cplex_callbacks(hplus::execution& exec, hplus::instance& inst, c
     CPX_HANDLE_CALL(CPXcallbacksetfunc(env, lp, callback_contex, callback_hub, &userhandle));
 }
 
-inline void close_flmdet_model(CPXENVptr& env, CPXLPptr& lp) {
-    CPX_HANDLE_CALL(CPXfreeprob(env, &lp));
-    CPX_HANDLE_CALL(CPXcloseCPLEX(&env));
-}
-
 inline void gather_stats_from_threads(const hplus::execution& exec, hplus::statistics& stats, callback_userhandle& thread_data) {
     for (auto& data : thread_data.thread_specific_data) {
         stats.cand_callback += data.cand_time;
         stats.relax_callback += data.relax_time;
         stats.cuts_lm += data.usercuts_lm;
         stats.cuts_sec += data.usercuts_sec;
-        if (exec.fract_cuts.find('l') != std::string::npos) close_flmdet_model(data.flmdet_env, data.flmdet_lp);
+        if (exec.fract_cuts.find('l') != std::string::npos) relax_cuts::close_flmdet_model(data.flmdet_env, data.flmdet_lp);
     }
 }
 }  // namespace callbacks
