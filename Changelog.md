@@ -25,12 +25,13 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
-## [2.2.2] - 2025/07/08
+## [2.2.2] - 2025/07/09
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->
 <!-- ### :heavy_exclamation_mark: Changed -->
 ### :heavy_plus_sign: Added
-- Started implementing the custom cutloop
+- Started implementing the custom cutloop (25/07/08)
+- Added questions for Salvagnin and TODOs
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
 

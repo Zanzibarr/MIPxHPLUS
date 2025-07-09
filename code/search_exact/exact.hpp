@@ -124,9 +124,6 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
     build_base_model(exec, inst, stats, env, lp);
     if (exec.alg != hplus::algorithm::CUTS) add_acyclicity_constraints(exec, inst, stats, env, lp);
 
-    // ~~~~~~~~~~~~~~ WARM START ~~~~~~~~~~~~~ //
-    if (exec.ws != hplus::warmstart::NONE) post_warm_start(exec, inst, env, lp);
-
     // Set time limit
     set_cplex_timelimit(exec, env);
 
@@ -141,12 +138,15 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
     exec.exec_s = hplus::exec_status::CPX_EXEC;
 
     // Run cplex
-    if (BASIC_VERBOSE()) LOG_INFO << "Running CPLEX MIP";
     try {
         if (exec.alg == hplus::algorithm::CUTS) {
             if (exec.custom_cutloop) cutloop::cutloop(env, lp, inst, stats);
             callbacks::set_cplex_callbacks(exec, inst, callback_userhandle, env, lp);
+            if (exec.ws != hplus::warmstart::NONE)
+                post_warm_start(exec, inst, env, lp);  // TODO (ask) : Il warm start lo posto anche prima del cutloop? Non ha tanto senso in quanto il
+                                                       // cut loop è solo per soluzioni frazionarie, quindi il warm start verrebbe scartato subito...
         }
+        if (BASIC_VERBOSE()) LOG_INFO << "Running CPLEX MIP";
         CPX_HANDLE_CALL(CPXmipopt(env, lp));
     } catch (std::bad_alloc& e) {
         LOG_WARNING << "OUT OF MEMORY";

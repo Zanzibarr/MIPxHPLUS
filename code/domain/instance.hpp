@@ -94,7 +94,7 @@ inline void print_sol(instance& inst) {
             [[fallthrough]];
         case solution_status::OPT:
             LOG << "Solution cost: " << inst.sol.cost;
-            for (const auto& act_idx : inst.sol.sequence) LOG << "(" << inst.actions_names[act_idx] << ")";
+            // for (const auto& act_idx : inst.sol.sequence) LOG << "(" << inst.actions_names[act_idx] << ")";
             break;
         default:
             LOG_ERROR << "Unhandled solution status in hplus::print_sol(hplus::instance): " << static_cast<int>(inst.sol_s);

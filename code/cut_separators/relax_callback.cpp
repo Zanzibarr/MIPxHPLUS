@@ -1,8 +1,8 @@
 #include "relax_callback.hpp"
 
 [[nodiscard]]
-std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash> callbacks::relaxationpoint_info(const hplus::instance& inst,
-                                                                                                         std::vector<double>& relax_point) {
+std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash> relax_cuts::relaxationpoint_info(const hplus::instance& inst,
+                                                                                                              std::vector<double>& relax_point) {
     std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash> fadd_weights;
     for (unsigned int idx = 0; idx < inst.m; ++idx) {
         if (relax_point[idx] <= HPLUS_EPSILON)
@@ -33,7 +33,7 @@ void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::
     CPX_HANDLE_CALL(CPXcallbackgetrelaxationpoint(context, relax_point.data(), 0, inst.m + inst.nfadd - 1, &_));
 
     // Get info on the relaxation point
-    const auto& fadd_weights = relaxationpoint_info(inst, relax_point);
+    const auto& fadd_weights = relax_cuts::relaxationpoint_info(inst, relax_point);
 
     if (exec.fract_cuts.find('l') != std::string::npos)
         data.usercuts_lm += relax_cuts::lm(context, data.flmdet_env, data.flmdet_lp, inst, relax_point);

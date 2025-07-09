@@ -7,6 +7,9 @@
 #include "../utils/algorithms.hpp"
 
 namespace relax_cuts {
+[[nodiscard]]
+std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash> relaxationpoint_info(const hplus::instance& inst,
+                                                                                                  std::vector<double>& relax_point);
 
 [[nodiscard]]
 unsigned int lm(CPXCALLBACKCONTEXTptr context, CPXENVptr& env, CPXLPptr& lp, const hplus::instance& inst, const std::vector<double>& relax_point);
@@ -25,9 +28,6 @@ struct thread_data {
     CPXENVptr flmdet_env;
     CPXLPptr flmdet_lp;
 };
-
-std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash> relaxationpoint_info(const hplus::instance& inst,
-                                                                                                  std::vector<double>& relax_point);
 
 void relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, const hplus::instance& inst, thread_data& data);
 
