@@ -40,7 +40,7 @@ inline unsigned int generate_cuts(CPXENVptr& env, CPXLPptr& lp, CPXENVptr& flmde
 
     while (inout_it++ <= max_inout_it && new_cuts == 0) {
         std::vector<double> inout_relax_point(relax_point.begin(), relax_point.end());
-        if (inout_it == max_inout_it) w = 1;
+        if (inout_it == max_inout_it) w = 0;
         for (int i = 0; i < ncols; i++) inout_relax_point[i] = relax_point[i] * (1 - w) + incumbent[i] * w;
         w /= 2;  // TODO : Maybe this could be a CLI parameter too
         relax_point = std::move(inout_relax_point);
