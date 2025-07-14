@@ -38,10 +38,13 @@ inline unsigned int generate_cuts(CPXENVptr& env, CPXLPptr& lp, CPXENVptr& flmde
     double w = .4;
     unsigned int new_cuts{0};
 
+    // FIXME : If there's no warm start we need to skip the InOut and simply generate the cuts
+
     while (inout_it++ <= max_inout_it && new_cuts == 0) {
         std::vector<double> inout_relax_point(relax_point.begin(), relax_point.end());
         if (inout_it == max_inout_it) w = 0;
         for (int i = 0; i < ncols; i++) inout_relax_point[i] = relax_point[i] * (1 - w) + incumbent[i] * w;
+        LOG_DEBUG << w;
         w /= 2;  // TODO : Maybe this could be a CLI parameter too
         relax_point = std::move(inout_relax_point);
 
@@ -87,8 +90,6 @@ inline unsigned int generate_cuts(CPXENVptr& env, CPXLPptr& lp, CPXENVptr& flmde
             new_cuts += cycles.size();
         }
     }
-
-    LOG_DEBUG << w * 2;
 
     return new_cuts;
 }
@@ -175,7 +176,6 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
     while (repeat_cutloop() && !CHECK_STOP()) {
         new_cuts = generate_cuts(env, lp, flmdetenv, flmdetlp, exec, inst, incumbent);
         solve_relaxation(env, lp, exec);
-        stats.const_acyc += new_cuts;
         iteration++;
     }
 
@@ -186,6 +186,8 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
 
     // Purging of slack constraints
     pruning(env, lp, base_constraints);
+
+    stats.const_acyc += CPXgetnumrows(env, lp) - base_constraints;
 
     exit_cutloop(env, lp, flmdetenv, flmdetlp);
     stats.cutloop = GET_TIME() - start_time;
