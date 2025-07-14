@@ -33,7 +33,7 @@ HOW I DO VERSIONING:
 - First implementation of custom cutloop -> only landmarks and basic termination condition (25/07/09)
 - Added questions for Salvagnin and TODOs (25/07/09)
 - Added S.E.C. detection for custom cutloop
-- Added questions for Salvagnin
+- Added In-Out strategy
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
 

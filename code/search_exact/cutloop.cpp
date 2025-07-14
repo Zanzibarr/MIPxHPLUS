@@ -27,72 +27,78 @@ inline void solve_relaxation(CPXENVptr& env, CPXLPptr& lp, const hplus::executio
     CPX_HANDLE_CALL(CPXlpopt(env, lp));
 }
 
-inline bool generate_cuts(CPXENVptr& env, CPXLPptr& lp, CPXENVptr& flmdetenv, CPXLPptr& flmdetlp, const hplus::execution& exec,
-                          const hplus::instance& inst) {
+inline unsigned int generate_cuts(CPXENVptr& env, CPXLPptr& lp, CPXENVptr& flmdetenv, CPXLPptr& flmdetlp, const hplus::execution& exec,
+                                  const hplus::instance& inst, const std::vector<double>& incumbent) {
     const int ncols{CPXgetnumcols(env, lp)};
     std::vector<double> relax_point(ncols);
     CPXgetx(env, lp, relax_point.data(), 0, ncols - 1);
 
-    // TODO : In-Out strategies
-    // LOG_TODO_WARN << "in-out strategy";
-
-    // Get info on the relaxation point
-    const auto& fadd_weights = relax_cuts::relaxationpoint_info(inst, relax_point);
-
-    if (exec.verbosity == hplus::verbose::DEBUG) {
-        double cost{-1};
-        CPX_HANDLE_CALL(CPXgetobjval(env, lp, &cost));
-        LOG_DEBUG << cost;
-    }
-
+    // TODO : CLI parameters
+    unsigned int inout_it{0}, max_inout_it{4};
+    double w = .4;
     unsigned int new_cuts{0};
-    int nnz{0};
-    std::vector<int> ind, begin;
-    std::vector<double> val, rhs;
-    std::vector<char> sense;
 
-    // Adding landmark as new constraint
-    const auto& [found_lm, landmark]{relax_cuts::get_violated_landmark(flmdetenv, flmdetlp, exec, inst, relax_point)};
-    if (found_lm) {
-        ind = std::vector<int>(landmark.begin(), landmark.end());
-        val = std::vector<double>(landmark.size(), 1.0);
-        rhs = std::vector<double>(1, 1);
-        sense = std::vector<char>(1, 'G');
-        begin = std::vector<int>(1, 0);
-        CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, landmark.size(), rhs.data(), sense.data(), begin.data(), ind.data(), val.data(), nullptr, nullptr));
-        new_cuts++;
-    }
+    while (inout_it++ <= max_inout_it && new_cuts == 0) {
+        std::vector<double> inout_relax_point(relax_point.begin(), relax_point.end());
+        if (inout_it == max_inout_it) w = 1;
+        for (int i = 0; i < ncols; i++) inout_relax_point[i] = relax_point[i] * (1 - w) + incumbent[i] * w;
+        w /= 2;  // TODO : Maybe this could be a CLI parameter too
+        relax_point = std::move(inout_relax_point);
 
-    // Adding SEC as new constraint
-    const auto& [found_sec, cycles]{relax_cuts::get_violated_sec(inst, fadd_weights)};
-    if (found_sec) {
-        ind.clear();
-        begin.clear();
-        val.clear();
-        rhs.clear();
-        sense = std::vector<char>(cycles.size(), 'L');
-        for (const auto& cycle : cycles) {
-            begin.push_back(static_cast<int>(ind.size()));
-            rhs.push_back(static_cast<double>(cycle.size() - 1));
-            std::copy(cycle.begin(), cycle.end(),
-                      std::back_inserter(ind));  // labels in the cycle are the indexes for the first adders in the cplex model
-            val.insert(val.end(), cycle.size(), 1.0);
-            nnz += cycle.size();
+        // Get info on the relaxation point
+        const auto& fadd_weights = relax_cuts::relaxationpoint_info(inst, relax_point);
+
+        int nnz{0};
+        std::vector<int> ind, begin;
+        std::vector<double> val, rhs;
+        std::vector<char> sense;
+
+        // Adding landmark as new constraint
+        const auto& [found_lm, landmark]{relax_cuts::get_violated_landmark(flmdetenv, flmdetlp, exec, inst, relax_point)};
+        if (found_lm) {
+            ind = std::vector<int>(landmark.begin(), landmark.end());
+            val = std::vector<double>(landmark.size(), 1.0);
+            rhs = std::vector<double>(1, 1);
+            sense = std::vector<char>(1, 'G');
+            begin = std::vector<int>(1, 0);
+            CPX_HANDLE_CALL(
+                CPXaddrows(env, lp, 0, 1, landmark.size(), rhs.data(), sense.data(), begin.data(), ind.data(), val.data(), nullptr, nullptr));
+            new_cuts++;
         }
-        CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, cycles.size(), nnz, rhs.data(), sense.data(), begin.data(), ind.data(), val.data(), nullptr, nullptr));
-        new_cuts += cycles.size();
+
+        // Adding SEC as new constraint
+        const auto& [found_sec, cycles]{relax_cuts::get_violated_sec(inst, fadd_weights)};
+        if (found_sec) {
+            ind.clear();
+            begin.clear();
+            val.clear();
+            rhs.clear();
+            sense = std::vector<char>(cycles.size(), 'L');
+            for (const auto& cycle : cycles) {
+                begin.push_back(static_cast<int>(ind.size()));
+                rhs.push_back(static_cast<double>(cycle.size() - 1));
+                std::copy(cycle.begin(), cycle.end(),
+                          std::back_inserter(ind));  // labels in the cycle are the indexes for the first adders in the cplex model
+                val.insert(val.end(), cycle.size(), 1.0);
+                nnz += cycle.size();
+            }
+            CPX_HANDLE_CALL(
+                CPXaddrows(env, lp, 0, cycles.size(), nnz, rhs.data(), sense.data(), begin.data(), ind.data(), val.data(), nullptr, nullptr));
+            new_cuts += cycles.size();
+        }
     }
+
+    LOG_DEBUG << w * 2;
 
     return new_cuts;
 }
 
 inline void pruning(CPXENVptr& env, CPXLPptr& lp, int base_constraints) {
-    // TODO (ask) : Rimuovendo questi constraints nel cutloop di CPLEX perdiamo il lowerbound...
     const int nrows{CPXgetnumrows(env, lp)};
     if (nrows != base_constraints) {
         std::vector<double> slack(nrows - base_constraints);  // We don't remove base constraints... only those added in the cutloop
         std::vector<int> deleted(nrows, 0);
-        CPX_HANDLE_CALL(CPXgetslack(env, lp, slack.data(), base_constraints + 1, nrows - 1));
+        CPX_HANDLE_CALL(CPXgetslack(env, lp, slack.data(), base_constraints, nrows - 1));
         for (unsigned int i = 0; i < slack.size(); ++i) {
             if (abs(slack[i]) > HPLUS_EPSILON)
                 deleted[base_constraints + i] = 1;  // If the slack value for row i is not 0, mark that row as to be deleted
@@ -112,19 +118,62 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
     exec.exec_s = hplus::exec_status::CUTLOOP;
 
     const int base_constraints{CPXgetnumrows(env, lp)};
-    unsigned int iteration{0};
-    unsigned int new_cuts{1};
+    unsigned int new_cuts{1}, iteration{0};
+
+    std::vector<double> lb_history;
+    // TODO : CLI parameters
+    const double k_percent = 0.005;
+    const int lookback_iterations = 10;
 
     // Logic for cut-loop termination
-    const auto& repeat_cutloop = [&]() { return new_cuts > 0; };
+    const auto& repeat_cutloop = [&]() {
+        if (new_cuts == 0) return false;
+
+        double current_lb;
+        CPX_HANDLE_CALL(CPXgetobjval(env, lp, &current_lb));
+        lb_history.push_back(current_lb);
+
+        LOG_DEBUG << "Current lb:      " << current_lb;
+
+        if (iteration < 20) return true;  // TODO : Maybe this could be CLI too... (?)
+
+        if (lb_history.size() <= lookback_iterations) return true;
+
+        double old_lb = lb_history[lb_history.size() - lookback_iterations - 1];
+        if (old_lb < 1e-9) return current_lb - old_lb >= HPLUS_EPSILON;
+
+        double improvement = (current_lb - old_lb) / old_lb;
+        return improvement >= k_percent;
+    };
 
     CPXENVptr flmdetenv = nullptr;
     CPXLPptr flmdetlp = nullptr;
     init_cutloop(exec, env, lp, flmdetenv, flmdetlp, inst);
 
+    binary_set state{inst.n};
+    const auto& warm_start{inst.sol.sequence};
+
+    const unsigned int ncols{static_cast<unsigned int>(CPXgetnumcols(env, lp))};
+    std::vector<double> incumbent(ncols, 0.0);
+
+    for (const auto& act_i : warm_start) {
+        incumbent[act_i] = 1;
+        int var_count{-1};
+        for (const auto& var_i : inst.actions[act_i].eff_sparse) {
+            var_count++;
+            if (state[var_i]) continue;
+
+            unsigned int fadd_idx = inst.m + inst.fadd_cpx_start[act_i] + var_count;
+            incumbent[fadd_idx] = 1;
+            unsigned int var_idx = inst.m + inst.nfadd + var_i;
+            incumbent[var_idx] = 1;
+        }
+        state |= inst.actions[act_i].eff;
+    }
+
     solve_relaxation(env, lp, exec);
     while (repeat_cutloop() && !CHECK_STOP()) {
-        new_cuts = generate_cuts(env, lp, flmdetenv, flmdetlp, exec, inst);
+        new_cuts = generate_cuts(env, lp, flmdetenv, flmdetlp, exec, inst, incumbent);
         solve_relaxation(env, lp, exec);
         stats.const_acyc += new_cuts;
         iteration++;
@@ -136,7 +185,7 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
     }
 
     // Purging of slack constraints
-    // pruning(env, lp, base_constraints);
+    pruning(env, lp, base_constraints);
 
     exit_cutloop(env, lp, flmdetenv, flmdetlp);
     stats.cutloop = GET_TIME() - start_time;

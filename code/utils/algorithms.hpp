@@ -6,6 +6,7 @@
 #include <algorithm>  // std::lower_bound
 #include <numeric>    //std::iota
 #include <queue>
+#include <string>
 #include <unordered_map>
 #include <vector>
 
@@ -342,6 +343,28 @@ static inline std::vector<std::vector<T>> find_cycles_weighted_lessthan1(
     }
 
     return cycles;
+}
+
+/**
+ * @brief Convert to string the content of a vector
+ *
+ * @tparam T The type of the elements in the vector (note: the elements of the vector will be added to the string using the std::to_string function)
+ * @param v The vector
+ * @param size = 20 The number of elements to be shown in the string (first size/2 and last size/2 if v.size() > size)
+ * @return st::string The string representation of the vector (using std::to_string for each T element of the vector)
+ */
+template <typename T>
+[[nodiscard]]
+static inline std::string vtos(std::vector<T> v, unsigned int size = 20) {
+    std::string s;
+    if (v.size() <= size)
+        for (const auto& x : v) s.append(std::to_string(x)).append(";");
+    else {
+        for (unsigned int i = 0; i < size / 2; i++) s.append(std::to_string(v[i])).append(";");
+        s.append("...[").append(std::to_string(v.size() - size)).append("];");
+        for (unsigned int i = size / 2; i > 0; i--) s.append(std::to_string(v[v.size() - i])).append(";");
+    }
+    return s;
 }
 
 #endif
