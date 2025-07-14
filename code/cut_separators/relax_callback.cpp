@@ -25,6 +25,11 @@ std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash> rel
 }
 
 void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, const hplus::instance& inst, thread_data& data) {
+    int nodedepth{-1};
+    CPX_HANDLE_CALL(CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODEDEPTH, &nodedepth));
+    // If we have our custom cutloop in place, we don't need to generate cuts from fractionary solutions in the root node (we exited for a reason)
+    if (exec.custom_cutloop && nodedepth == 0) return;
+
     // Get the current time
     double start_time = GET_TIME();
 
@@ -35,9 +40,13 @@ void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::
     // Get info on the relaxation point
     const auto& fadd_weights = relax_cuts::relaxationpoint_info(inst, relax_point);
 
-    if (exec.fract_cuts.find('l') != std::string::npos)
-        data.usercuts_lm += relax_cuts::lm(context, data.flmdet_env, data.flmdet_lp, exec, inst, relax_point);
-    if (exec.fract_cuts.find('s') != std::string::npos) data.usercuts_sec += relax_cuts::sec(context, inst, fadd_weights);
+    try {
+        if (exec.fract_cuts.find('l') != std::string::npos)
+            data.usercuts_lm += relax_cuts::lm(context, data.flmdet_env, data.flmdet_lp, exec, inst, relax_point);
+        if (exec.fract_cuts.find('s') != std::string::npos) data.usercuts_sec += relax_cuts::sec(context, inst, fadd_weights);
+    } catch (timelimit_exception& e) {
+        return;
+    }
 
     // Update the candidate time
     data.relax_time += GET_TIME() - start_time;

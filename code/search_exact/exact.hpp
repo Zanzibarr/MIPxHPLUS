@@ -23,7 +23,7 @@ void post_warm_start(const hplus::execution& exec, hplus::instance& inst, CPXENV
 }  // namespace cuts
 
 namespace cutloop {
-void cutloop(CPXENVptr& env, CPXLPptr& lp, const hplus::execution& exec, const hplus::instance& inst, hplus::statistics& stats);
+void cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, const hplus::instance& inst, hplus::statistics& stats);
 }
 
 namespace exact {
@@ -51,8 +51,6 @@ inline void init_cplex(hplus::execution& exec, CPXENVptr& env, CPXLPptr& lp) {
     CPX_HANDLE_CALL(CPXsetintparam(env, CPXPARAM_MIP_Strategy_File, HPLUS_DEF_CPX_STRAT_FILE));
     // terminate condition
     CPX_HANDLE_CALL(CPXsetterminate(env, &GLOBAL_TERMINATE_CONDITION));
-    // testing flag
-    if (exec.testing) CPX_HANDLE_CALL(CPXsetdblparam(env, CPX_PARAM_HEUREFFORT, 0.0));
 }
 
 void build_base_model(hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp);
@@ -101,6 +99,18 @@ inline void close_cplex(CPXENVptr& env, CPXLPptr& lp) {
     CPX_HANDLE_CALL(CPXcloseCPLEX(&env));
 }
 
+inline void run_cplex(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, hplus::statistics& stats) {
+    exec.exec_s = hplus::exec_status::CPX_EXEC;
+
+    double start_time{GET_TIME()};
+    stats.cplex_execution = static_cast<double>(exec.timelimit) - start_time;
+    if (BASIC_VERBOSE()) LOG_INFO << "Running CPLEX MIP";
+
+    CPX_HANDLE_CALL(CPXmipopt(env, lp));
+
+    stats.cplex_execution = GET_TIME() - start_time;
+}
+
 inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats) {
     if (BASIC_VERBOSE()) LOG_INFO << "Running exact search algorithm";
 
@@ -124,18 +134,13 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
     build_base_model(exec, inst, stats, env, lp);
     if (exec.alg != hplus::algorithm::CUTS) add_acyclicity_constraints(exec, inst, stats, env, lp);
 
-    // Set time limit
-    set_cplex_timelimit(exec, env);
-
     stats.build = GET_TIME() - start_time;
 
     // ====================================================== //
     // =================== CPLEX EXECUTION ================== //
     // ====================================================== //
 
-    start_time = GET_TIME();
-    stats.cplex_execution = static_cast<double>(exec.timelimit) - start_time;
-    exec.exec_s = hplus::exec_status::CPX_EXEC;
+    set_cplex_timelimit(exec, env);
 
     // Run cplex
     try {
@@ -143,12 +148,10 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
             if (exec.custom_cutloop) cutloop::cutloop(env, lp, exec, inst, stats);
             callbacks::set_cplex_callbacks(exec, inst, callback_userhandle, env, lp);
         }
-        if (exec.ws != hplus::warmstart::NONE)
-            post_warm_start(exec, inst, env, lp);  // TODO (ask) : Il warm start lo posto anche prima del cutloop? Non ha tanto senso in quanto il
-                                                   // cut loop è solo per soluzioni frazionarie, quindi il warm start verrebbe scartato subito e poi
-                                                   // dimenticato ora che entriamo nel B&C...
-        if (BASIC_VERBOSE()) LOG_INFO << "Running CPLEX MIP";
-        CPX_HANDLE_CALL(CPXmipopt(env, lp));
+        if (exec.ws != hplus::warmstart::NONE) post_warm_start(exec, inst, env, lp);
+
+        run_cplex(env, lp, exec, stats);
+
     } catch (std::bad_alloc& e) {
         LOG_WARNING << "OUT OF MEMORY";
     }
@@ -161,8 +164,6 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
     if (exec.alg == hplus::algorithm::CUTS) callbacks::gather_stats_from_threads(exec, stats, callback_userhandle);
     get_cplex_solution(exec, inst, stats, env, lp);
     close_cplex(env, lp);
-
-    stats.cplex_execution = GET_TIME() - start_time;
 }
 
 }  // namespace exact

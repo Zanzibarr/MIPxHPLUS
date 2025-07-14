@@ -20,8 +20,8 @@ unsigned int lm(CPXCALLBACKCONTEXTptr context, CPXENVptr& env, CPXLPptr& lp, con
                 const std::vector<double>& relax_point);
 
 [[nodiscard]]
-std::vector<unsigned int> get_violated_sec(const std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash>& fadd_weights,
-                                           const hplus::instance& inst);
+std::pair<bool, std::vector<std::vector<unsigned int>>> get_violated_sec(
+    const hplus::instance& inst, const std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash>& fadd_weights);
 
 [[nodiscard]]
 unsigned int sec(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst,

@@ -7,7 +7,16 @@
 
 namespace hplus {
 
-enum class exec_status { START = 0, INSTANCE_BUILDING = 10, PREPROCESSING = 20, HEURISTIC = 30, MODEL_BUILD = 40, CPX_EXEC = 50, EXIT = 100 };
+enum class exec_status {
+    START = 0,
+    INSTANCE_BUILDING = 10,
+    PREPROCESSING = 20,
+    HEURISTIC = 30,
+    MODEL_BUILD = 40,
+    CUTLOOP = 45,
+    CPX_EXEC = 50,
+    EXIT = 100
+};
 
 enum class exec_type { INFO, RUN };
 enum class algorithm { TL = 0, VE = 1, CUTS = 2, GC = 10, GCXE = 11, GHM = 12, GHA = 13 };

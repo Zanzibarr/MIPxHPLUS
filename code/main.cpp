@@ -8,6 +8,9 @@
 #include "utils/argparser.hpp"
 
 static void signal_callback_handler([[maybe_unused]] const int _) {
+    LOG_WARNING << "---------------------------------------------------";
+    LOG_WARNING << " > Ctrl+C signal detected, terminating execution. <";
+    LOG_WARNING << "---------------------------------------------------";
     if (CHECK_STOP()) [[unlikely]]
         _Exit(EXIT_FAILURE);
     GLOBAL_TERMINATE_CONDITION = 1;

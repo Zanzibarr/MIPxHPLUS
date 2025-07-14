@@ -25,11 +25,18 @@ build_graph(const hplus::instance& inst, const std::unordered_map<std::pair<unsi
     return {graph, edge_labels, edge_weights};
 }
 
+std::pair<bool, std::vector<std::vector<unsigned int>>> relax_cuts::get_violated_sec(
+    const hplus::instance& inst, const std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash>& fadd_weights) {
+    const auto& [graph, edge_labels, edge_weights] = build_graph(inst, fadd_weights);
+    const auto& cycles{find_cycles_weighted_lessthan1(graph, edge_labels, edge_weights)};
+    return {!cycles.empty(), cycles};
+}
+
 [[nodiscard]]
 unsigned int relax_cuts::sec(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst,
                              const std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash>& fadd_weights) {
-    const auto& [graph, edge_labels, edge_weights] = build_graph(inst, fadd_weights);
-    const auto& cycles = find_cycles_weighted_lessthan1(graph, edge_labels, edge_weights);
+    const auto& [found, cycles]{get_violated_sec(inst, fadd_weights)};
+    if (!found) return 0;
     std::vector<int> ind, begin;
     std::vector<double> val;
     std::vector<double> rhs;

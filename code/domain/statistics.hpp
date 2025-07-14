@@ -7,7 +7,7 @@ namespace hplus {
 
 struct statistics {
     // Time
-    double parsing, preprocessing, heur_time, build, relax_callback, cand_callback, cplex_execution, total;
+    double parsing, preprocessing, heur_time, build, relax_callback, cand_callback, cutloop, cplex_execution, total;
     // Costs
     unsigned int heur_cost, cost;
     // Preprocessing
@@ -25,6 +25,7 @@ inline void init(statistics& stats) {
                        .build = 0,
                        .relax_callback = 0,
                        .cand_callback = 0,
+                       .cutloop = 0,
                        .cplex_execution = 0,
                        .total = 0,
                        .heur_cost = INFBOUND_INT,
@@ -67,6 +68,7 @@ inline void print(const statistics& stats) {
     LOG << " >> Model build time    " << std::setw(27) << std::fixed << std::setprecision(4) << stats.build << "s <<";
     LOG << " >> Relax callback time " << std::setw(27) << std::fixed << std::setprecision(4) << stats.relax_callback << "s <<";
     LOG << " >> Cand callback time  " << std::setw(27) << std::fixed << std::setprecision(4) << stats.cand_callback << "s <<";
+    LOG << " >> Cutloop time        " << std::setw(27) << std::fixed << std::setprecision(4) << stats.cutloop << "s <<";
     LOG << " >> CPLEX time          " << std::setw(27) << std::fixed << std::setprecision(4) << stats.cplex_execution << "s <<";
     LOG << " >> Total time          " << std::setw(27) << std::fixed << std::setprecision(4) << stats.total << "s <<";
     LOG << "--------------------------------------------------------";

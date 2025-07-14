@@ -385,6 +385,7 @@ void hplus::run(execution& exec, instance& inst, statistics& stats) {
         stopcheck();
 
     } catch (timelimit_exception& e) {
+        LOG_WARNING << "OUT OF TIME";
     } catch (std::bad_alloc& e) {
         LOG_WARNING << "OUT OF MEMORY";
     }

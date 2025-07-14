@@ -5,7 +5,7 @@
 // ############################## VERSION ############################## //
 // ##################################################################### //
 
-#define VERSION "2.2.2"
+#define VERSION "2.2.2:1"
 
 // ##################################################################### //
 // ############################## IMPORTS ############################## //
@@ -71,7 +71,7 @@
 #define HPLUS_DEF_THREADS 32
 #define HPLUS_DEF_MEMORYLIMIT 4050
 #define HPLUS_DEF_VERBOSE 3
-#define HPLUS_DEF_FRACTCUTS "0"
+#define HPLUS_DEF_FRACTCUTS "ls"
 #define HPLUS_DEF_CANDCUTS "fcs"
 #define HPLUS_DEF_CUSTOM_CUTLOOP 0
 

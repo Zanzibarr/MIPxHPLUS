@@ -13,10 +13,7 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(CPX
     CPX_HANDLE_CALL(CPXchgobj(env, lp, inst.m, ind.data(), relax_point.data()));
     CPX_HANDLE_CALL(CPXmipopt(env, lp));
     int status = CPXgetstat(env, lp);
-    if (status != CPXMIP_OPTIMAL && status != CPXMIP_OPTIMAL_TOL) {
-        LOG_WARNING << "CPXgetstat: " << status;
-        return {false, {}};
-    }
+    if (status != CPXMIP_OPTIMAL && status != CPXMIP_OPTIMAL_TOL) return {false, {}};  // For time-limit breaching -> no solution found
     double cutval{CPX_INFBOUND};
     CPX_HANDLE_CALL(CPXgetobjval(env, lp, &cutval));
     if (cutval >= 1 - HPLUS_EPSILON) return {false, {}};
@@ -43,8 +40,6 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(CPX
     for (unsigned int act_i = 0; act_i < inst.m; ++act_i) {
         if (reach.contains(inst.actions[act_i].pre) && !reach.contains(inst.actions[act_i].eff)) landmark.push_back(act_i);
     }
-
-    LOG_DEBUG << cutval << " - " << landmark.size();
 
     return {true, landmark};
 }
