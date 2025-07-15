@@ -86,13 +86,12 @@ inline unsigned int generate_cuts(CPXENVptr& env, CPXLPptr& lp, CPXENVptr& flmde
 
     if (exec.ws != hplus::warmstart::NONE) {  // In Out
         while (inout_it++ <= max_inout_it && new_cuts == 0) {
-            std::vector<double> inout_relax_point(relax_point.begin(), relax_point.end());
+            std::vector<double> inout_relax_point;
             if (inout_it == max_inout_it) w = 0;
-            for (int i = 0; i < ncols; i++) inout_relax_point[i] = relax_point[i] * (1 - w) + incumbent[i] * w;
+            for (int i = 0; i < ncols; i++) inout_relax_point.push_back(relax_point[i] * (1 - w) + incumbent[i] * w);
             LOG_DEBUG << w;
             w *= w_update;
-            relax_point = std::move(inout_relax_point);
-            add_cuts(relax_point);
+            add_cuts(inout_relax_point);
         }
     } else  // Normal
         add_cuts(relax_point);

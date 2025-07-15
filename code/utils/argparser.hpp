@@ -231,16 +231,19 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
     if (exec.alg == hplus::algorithm::CUTS && exec.cand_cuts.empty())
         LOG_ERROR << "You can't disable all three candidate cuts from the " << HPLUS_CLI_ALG_FLAG_CUTS << " algorithm";
     if (exec.alg != hplus::algorithm::CUTS && !exec.fract_cuts.empty()) {
-        if (warm_start) LOG_WARNING << "Cuts on the fractional solutions aren't needed with this algorithm: disabling fractional cuts";
+        LOG_WARNING << "Cuts on the fractional solutions aren't needed with this algorithm: disabling fractional cuts";
         exec.fract_cuts = "";
     }
     if (exec.alg != hplus::algorithm::CUTS && !exec.cand_cuts.empty()) {
-        if (warm_start) LOG_WARNING << "Cuts on the candidate solutions aren't needed with this algorithm: disabling candidate cuts";
+        LOG_WARNING << "Cuts on the candidate solutions aren't needed with this algorithm: disabling candidate cuts";
         exec.cand_cuts = "";
     }
     if (exec.alg != hplus::algorithm::CUTS && exec.custom_cutloop) {
-        if (warm_start) LOG_WARNING << "Custom cutloop isn't needed with this algorithm: disabling custom cutloop";
+        LOG_WARNING << "Custom cutloop isn't needed with this algorithm: disabling custom cutloop";
         exec.custom_cutloop = false;
+    }
+    if (exec.ws == hplus::warmstart::NONE && exec.custom_cutloop) {
+        LOG_WARNING << "No warm start used: not using InOut strategy.";
     }
 }
 
