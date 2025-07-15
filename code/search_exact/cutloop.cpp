@@ -34,20 +34,9 @@ inline unsigned int generate_cuts(CPXENVptr& env, CPXLPptr& lp, CPXENVptr& flmde
     CPXgetx(env, lp, relax_point.data(), 0, ncols - 1);
 
     // TODO : CLI parameters
-    unsigned int inout_it{0}, max_inout_it{4};
-    double w = .4;
     unsigned int new_cuts{0};
 
-    // FIXME : If there's no warm start we need to skip the InOut and simply generate the cuts
-
-    while (inout_it++ <= max_inout_it && new_cuts == 0) {
-        std::vector<double> inout_relax_point(relax_point.begin(), relax_point.end());
-        if (inout_it == max_inout_it) w = 0;
-        for (int i = 0; i < ncols; i++) inout_relax_point[i] = relax_point[i] * (1 - w) + incumbent[i] * w;
-        LOG_DEBUG << w;
-        w /= 2;  // TODO : Maybe this could be a CLI parameter too
-        relax_point = std::move(inout_relax_point);
-
+    const auto& add_cuts = [&](std::vector<double> relax_point) {
         // Get info on the relaxation point
         const auto& fadd_weights = relax_cuts::relaxationpoint_info(inst, relax_point);
 
@@ -89,7 +78,24 @@ inline unsigned int generate_cuts(CPXENVptr& env, CPXLPptr& lp, CPXENVptr& flmde
                 CPXaddrows(env, lp, 0, cycles.size(), nnz, rhs.data(), sense.data(), begin.data(), ind.data(), val.data(), nullptr, nullptr));
             new_cuts += cycles.size();
         }
-    }
+    };
+
+    // TODO : CLI parameters
+    unsigned int inout_it{0}, max_inout_it{4};
+    double w = .4, w_update = .5;
+
+    if (exec.ws != hplus::warmstart::NONE) {  // In Out
+        while (inout_it++ <= max_inout_it && new_cuts == 0) {
+            std::vector<double> inout_relax_point(relax_point.begin(), relax_point.end());
+            if (inout_it == max_inout_it) w = 0;
+            for (int i = 0; i < ncols; i++) inout_relax_point[i] = relax_point[i] * (1 - w) + incumbent[i] * w;
+            LOG_DEBUG << w;
+            w *= w_update;
+            relax_point = std::move(inout_relax_point);
+            add_cuts(relax_point);
+        }
+    } else  // Normal
+        add_cuts(relax_point);
 
     return new_cuts;
 }
