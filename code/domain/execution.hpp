@@ -147,6 +147,7 @@ inline void print(const execution& exec) {
         LOG << "Candidate cuts:                                    " << std::setw(5) << exec.cand_cuts;
     if (exec.alg == hplus::algorithm::CUTS) LOG << "Custom cut-loop                                        " << exec.custom_cutloop;
     if (exec.custom_cutloop) {
+        LOG << "Custom cutloop gap exit condition:                " << std::fixed << std::setprecision(4) << exec.cl_gap_stop;
         LOG << "Custom cutloop minimum iterations:                 " << std::setw(5) << exec.cl_min_iter;
         LOG << "Custom cutloop improvement threshold:             " << std::fixed << std::setprecision(4) << exec.cl_improv;
         LOG << "Custom cutloop past iterations comparison:         " << std::setw(5) << exec.cl_past_iter;
