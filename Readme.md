@@ -17,9 +17,9 @@ _Work in progress_
 
 - [Requirements](#requirements)
 - [Build/Run](#buildrun-instructions)
-- [Parameters](#parameters)
-  - [CMake](#cmake-flags)
-  - [Make](#make-flags)
+- [Parameters](#build-options-cmake-parameters)
+  - [CMake](#build-options-cmake-parameters)
+  - [Make](#target-options-make-parameters)
   - [Execution](#run-options)
 
 ## Requirements
