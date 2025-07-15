@@ -50,6 +50,7 @@ def main():
         "avg_btime": 0,
         "avg_rcbtime": 0,
         "avg_ccbtime": 0,
+        "avg_cltime": 0,
         "avg_ctime": 0,
         "avg_time": 0,
         "perc_found": 0,
@@ -93,6 +94,7 @@ def main():
             "btime": 0,
             "rcbtime": 0,
             "ccbtime": 0,
+            "cltime": 0,
             "ctime": 0,
             "time": 0,
             "other": "",
@@ -200,6 +202,7 @@ def main():
         cand_callback_time = float(
             re.search(r">> Cand callback time\s+([\d.]+)s <<", stats).group(1)
         )
+        cloop_time = float(re.search(r">> Cutloop time\s+([\d.]+)s <<", stats).group(1))
         cplex_time = float(re.search(r">> CPLEX time\s+([\d.]+)s <<", stats).group(1))
         total_time = float(re.search(r">> Total time\s+([\d.]+)s <<", stats).group(1))
 
@@ -224,6 +227,7 @@ def main():
         instance_data["btime"] = model_build_time
         instance_data["rcbtime"] = relax_callback_time
         instance_data["ccbtime"] = cand_callback_time
+        instance_data["cltime"] = cloop_time
         instance_data["ctime"] = cplex_time
         instance_data["time"] = total_time
 
@@ -238,6 +242,7 @@ def main():
         run_summary["stats"]["avg_btime"] += model_build_time
         run_summary["stats"]["avg_rcbtime"] += relax_callback_time
         run_summary["stats"]["avg_ccbtime"] += cand_callback_time
+        run_summary["stats"]["avg_cltime"] += cloop_time
         run_summary["stats"]["avg_ctime"] += cplex_time
         run_summary["stats"]["avg_time"] += total_time
 
@@ -272,6 +277,7 @@ def main():
     run_summary["stats"]["avg_btime"] /= n_good
     run_summary["stats"]["avg_rcbtime"] /= n_good
     run_summary["stats"]["avg_ccbtime"] /= n_good
+    run_summary["stats"]["avg_cltime"] /= n_good
     run_summary["stats"]["avg_ctime"] /= n_good
     run_summary["stats"]["avg_time"] /= n_good
     run_summary["stats"]["perc_found"] /= run_summary["n_total"]

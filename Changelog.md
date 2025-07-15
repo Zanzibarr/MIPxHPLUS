@@ -27,7 +27,8 @@ HOW I DO VERSIONING:
 
 ## [2.2.3] - 2025/07/15
 <!-- ### :warning: Known issues -->
-<!-- ### :ballot_box_with_check: Fixed -->
+### :ballot_box_with_check: Fixed
+- Missing cutloop time in batch test results script
 ### :heavy_exclamation_mark: Changed
 - Improved Readme
 - Improved help output
