@@ -128,6 +128,7 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
     const unsigned int lookback_iterations = exec.cl_past_iter, min_iteration = exec.cl_min_iter;
 
     // Logic for cut-loop termination
+    // TODO : Maybe check also the distance between lower bound and incumbent... if the gap is <10% maybe we can exit directly (?)
     const auto& repeat_cutloop = [&]() {
         if (new_cuts == 0) return false;
 
@@ -138,6 +139,8 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
         LOG_DEBUG << "Current lb:      " << current_lb;
 
         if (iteration < min_iteration || lb_history.size() <= lookback_iterations) return true;
+
+        if (1 - current_lb / static_cast<double>(inst.sol.cost == 0 ? 1 : inst.sol.cost) < exec.cl_gap_stop) return false;
 
         double old_lb = lb_history[lb_history.size() - lookback_iterations - 1];
         if (old_lb < 1e-9) return current_lb - old_lb >= HPLUS_EPSILON;

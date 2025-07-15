@@ -5,7 +5,7 @@
 // ############################## VERSION ############################## //
 // ##################################################################### //
 
-#define VERSION "2.2.2:5"
+#define VERSION "2.2.2:6"
 
 // ##################################################################### //
 // ############################## IMPORTS ############################## //
@@ -48,6 +48,7 @@
 #define HPLUS_CLI_CUTLOOP_MIN_ITER_FLAG "cl-min-iter"
 #define HPLUS_CLI_CUTLOOP_IMPROVEMENT_FLAG "cl-improv"
 #define HPLUS_CLI_CUTLOOP_PAST_ITER_FLAG "cl-past-iter"
+#define HPLUS_CLI_CUTLOOP_GAP_STOP_FLAG "cl-gap"
 #define HPLUS_CLI_INOUT_FLAG "inout"
 #define HPLUS_CLI_INOUT_MAX_ITER_FLAG "io-max-it"
 #define HPLUS_CLI_INOUT_WEIGHT_FLAG "io-w"
@@ -84,6 +85,7 @@
 #define HPLUS_DEF_CL_MIN_ITER 20
 #define HPLUS_DEF_CL_IMPROV 0.005
 #define HPLUS_DEF_CL_PAST_ITER 10
+#define HPLUS_DEF_CL_GAP_STOP .1
 #define HPLUS_DEF_INOUT true
 #define HPLUS_DEF_IO_MAX_IT 4
 #define HPLUS_DEF_IO_WEIGHT .4

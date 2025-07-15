@@ -84,6 +84,10 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         "How many iterations in the past the current lower bound should be compared to for the custom cutloop (def: " +
             std::to_string(HPLUS_DEF_CL_PAST_ITER) + ")",
         {HPLUS_CLI_CUTLOOP_PAST_ITER_FLAG}, HPLUS_DEF_CL_PAST_ITER);
+    args::ValueFlag<double> cl_gap_stop(
+        parser, "non-negative double, [0,1]",
+        "Threshold for custom cutloop's termination condition on incumbent - lower bound gap (def: " + std::to_string(HPLUS_DEF_CL_GAP_STOP) + ")",
+        {HPLUS_CLI_CUTLOOP_GAP_STOP_FLAG}, HPLUS_DEF_CL_GAP_STOP);
     args::ValueFlag<bool> inout(parser, "bool",
                                 "Using In-Out strategy in custom cutloop (def: " + std::to_string(HPLUS_DEF_INOUT) +
                                     "; options: 0 (don't use In-Out strategy, 1 (use In-Out strategy))",
@@ -244,6 +248,14 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
                         << "; using default value: " << std::to_string(HPLUS_DEF_CL_PAST_ITER);
         else
             exec.cl_past_iter = it;
+    }
+    if (cl_gap_stop) {
+        double gap = args::get(cl_improv);
+        if (gap < 0 || gap > 1)
+            LOG_WARNING << "Illegal value for " << HPLUS_CLI_CUTLOOP_GAP_STOP_FLAG
+                        << "; using default value: " << std::to_string(HPLUS_DEF_CL_GAP_STOP);
+        else
+            exec.cl_gap_stop = gap;
     }
     if (inout) exec.inout = args::get(inout);
     if (io_max_it) {

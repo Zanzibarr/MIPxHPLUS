@@ -32,7 +32,7 @@ struct execution {
     std::string fract_cuts, cand_cuts;
     bool custom_cutloop, inout;
     unsigned int cl_min_iter, cl_past_iter, io_max_iter;
-    double cl_improv, io_weight, io_weight_update;
+    double cl_improv, cl_gap_stop, io_weight, io_weight_update;
     std::string log_file;
     unsigned int threads;
     unsigned int timelimit;
@@ -59,6 +59,7 @@ inline void init(execution& exec) {
                             .cl_past_iter = HPLUS_DEF_CL_PAST_ITER,
                             .io_max_iter = HPLUS_DEF_IO_MAX_IT,
                             .cl_improv = HPLUS_DEF_CL_IMPROV,
+                            .cl_gap_stop = HPLUS_DEF_CL_GAP_STOP,
                             .io_weight = HPLUS_DEF_IO_WEIGHT,
                             .io_weight_update = HPLUS_DEF_IO_WEIGHT_UPD,
                             .log_file = HPLUS_DEF_LOG,
