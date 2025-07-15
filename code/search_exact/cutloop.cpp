@@ -33,7 +33,6 @@ inline unsigned int generate_cuts(CPXENVptr& env, CPXLPptr& lp, CPXENVptr& flmde
     std::vector<double> relax_point(ncols);
     CPXgetx(env, lp, relax_point.data(), 0, ncols - 1);
 
-    // TODO : CLI parameters
     unsigned int new_cuts{0};
 
     const auto& add_cuts = [&](std::vector<double> relax_point) {
@@ -80,11 +79,10 @@ inline unsigned int generate_cuts(CPXENVptr& env, CPXLPptr& lp, CPXENVptr& flmde
         }
     };
 
-    // TODO : CLI parameters
-    unsigned int inout_it{0}, max_inout_it{4};
-    double w = .4, w_update = .5;
+    unsigned int inout_it{0}, max_inout_it{exec.io_max_iter};
+    double w = exec.io_weight, w_update = exec.io_weight_update;
 
-    if (exec.ws != hplus::warmstart::NONE) {  // In Out
+    if (exec.inout) {  // In Out
         while (inout_it++ <= max_inout_it && new_cuts == 0) {
             std::vector<double> inout_relax_point;
             if (inout_it == max_inout_it) w = 0;
@@ -112,8 +110,7 @@ inline void pruning(CPXENVptr& env, CPXLPptr& lp, int base_constraints) {
         CPX_HANDLE_CALL(CPXdelsetrows(env, lp, deleted.data()));
     }
 
-    LOG_DEBUG << "Added " << nrows - base_constraints << " rows";
-    LOG_DEBUG << "Deleted " << nrows - CPXgetnumrows(env, lp) << " rows";
+    LOG_DEBUG << "Pruning: Added " << nrows - base_constraints << " rows; Deleted " << nrows - CPXgetnumrows(env, lp) << " rows";
 }
 
 void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, const hplus::instance& inst, hplus::statistics& stats) {
@@ -127,9 +124,8 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
     unsigned int new_cuts{1}, iteration{0};
 
     std::vector<double> lb_history;
-    // TODO : CLI parameters
-    const double k_percent = 0.005;
-    const int lookback_iterations = 10;
+    const double k_percent = exec.cl_improv;
+    const unsigned int lookback_iterations = exec.cl_past_iter, min_iteration = exec.cl_min_iter;
 
     // Logic for cut-loop termination
     const auto& repeat_cutloop = [&]() {
@@ -141,14 +137,13 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
 
         LOG_DEBUG << "Current lb:      " << current_lb;
 
-        if (iteration < 20) return true;  // TODO : Maybe this could be CLI too... (?)
-
-        if (lb_history.size() <= lookback_iterations) return true;
+        if (iteration < min_iteration || lb_history.size() <= lookback_iterations) return true;
 
         double old_lb = lb_history[lb_history.size() - lookback_iterations - 1];
         if (old_lb < 1e-9) return current_lb - old_lb >= HPLUS_EPSILON;
 
         double improvement = (current_lb - old_lb) / old_lb;
+        if (improvement < HPLUS_EPSILON) improvement = 0;  // Fix for precision issues
         return improvement >= k_percent;
     };
 
@@ -179,21 +174,21 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
 
     solve_relaxation(env, lp, exec);
     while (repeat_cutloop() && !CHECK_STOP()) {
+        // Purging of slack constraints every 5 iterations
+        if ((iteration + 1) % 5 == 0) pruning(env, lp, base_constraints);
         new_cuts = generate_cuts(env, lp, flmdetenv, flmdetlp, exec, inst, incumbent);
         solve_relaxation(env, lp, exec);
         iteration++;
     }
 
-    if (CHECK_STOP()) {
-        exit_cutloop(env, lp, flmdetenv, flmdetlp);
-        throw timelimit_exception("");
-    }
-
-    // Purging of slack constraints
-    pruning(env, lp, base_constraints);
+    // Purging of slack constraints (if we exited due to time limit, we might not have a full solution, so pruning constraints might remove more than
+    // necessary)
+    if (!CHECK_STOP()) pruning(env, lp, base_constraints);
 
     stats.const_acyc += CPXgetnumrows(env, lp) - base_constraints;
 
     exit_cutloop(env, lp, flmdetenv, flmdetlp);
     stats.cutloop = GET_TIME() - start_time;
+
+    if (CHECK_STOP()) throw timelimit_exception("");
 }

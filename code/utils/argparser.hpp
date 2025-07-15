@@ -49,24 +49,57 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
                                                    " MB; options: <positive int (!= 0)> (setting that as memory limit (MB)))",
                                                {HPLUS_CLI_MEMORYLIMIT_FLAG}, HPLUS_DEF_MEMORYLIMIT);
     args::ValueFlag<unsigned int> verbosity(
-        parser, "non-negative int",
+        parser, "non-negative int, [0,3]",
         "Set the verbosity (def: " + std::to_string(HPLUS_DEF_VERBOSE) +
             "; options: 0 (only final solution), 1 (statistics), 2 (execution log), 3 (debugging + integrity checks))",
         {HPLUS_CLI_VERBOSE_FLAG}, HPLUS_DEF_VERBOSE);
     args::ValueFlag<std::string> fract_cuts(
         parser, "string",
         "(ONLY FOR " + std::string(HPLUS_CLI_ALG_FLAG_CUTS) + " ALGORITHM) Specify what cuts to separate from the fractional solutions (def: " +
-            std::string(HPLUS_DEF_FRACTCUTS) + "; options: 0 (don's separate cuts), a combination of ['l','s'] (respectively for landmarks and SEC))",
+            std::string(HPLUS_DEF_FRACTCUTS) + "; options: 0 (don't separate cuts), a combination of ['l','s'] (respectively for landmarks and SEC))",
         {HPLUS_CLI_FRACTCUTS_FLAG}, HPLUS_DEF_FRACTCUTS);
     args::ValueFlag<std::string> cand_cuts(
         parser, "string",
         "(ONLY FOR " + std::string(HPLUS_CLI_ALG_FLAG_CUTS) +
             " ALGORITHM) Specify what cuts to separate from the candidate (integer) solutions (def: " + std::string(HPLUS_DEF_CANDCUTS) +
-            "; options: 0 (don's separate cuts), a combination of ['f','c','s'] (respectively for frontier / complementary landmarks and SEC))",
+            "; options: 0 (don't separate cuts), a combination of ['f','c','s'] (respectively for frontier / complementary landmarks and SEC))",
         {HPLUS_CLI_CANDCUTS_FLAG}, HPLUS_DEF_CANDCUTS);
-    args::ValueFlag<bool> custom_cutloop(
-        parser, "bool", "Flag for using the custom cutloop (def: 0; options: 0 (don't use the custom cutloop), 1 (use the custom cutloop))",
-        {HPLUS_CLI_CUTLOOP_FLAG}, HPLUS_DEF_CUSTOM_CUTLOOP);
+    args::ValueFlag<bool> custom_cutloop(parser, "bool",
+                                         "Flag for using the custom cutloop (def: " + std::to_string(HPLUS_DEF_CUSTOM_CUTLOOP) +
+                                             "; options: 0 (don't use the custom cutloop), 1 (use the custom cutloop))",
+                                         {HPLUS_CLI_CUTLOOP_FLAG}, HPLUS_DEF_CUSTOM_CUTLOOP);
+    args::ValueFlag<unsigned int> cl_min_iter(parser, "non-negative integer",
+                                              "Minimum number of iterations in the custom cutloop (unless no new cuts are being found) (def: " +
+                                                  std::to_string(HPLUS_DEF_CL_MIN_ITER) + ")",
+                                              {HPLUS_CLI_CUTLOOP_MIN_ITER_FLAG}, HPLUS_DEF_CL_MIN_ITER);
+    args::ValueFlag<double> cl_improv(
+        parser, "non-negative double, [0,1]",
+        "Threshold for custom cutloop's termination condition on relative lower bound improvements (def: " + std::to_string(HPLUS_DEF_CL_IMPROV) +
+            "; options: 0 (stay in the cutloop till no new cuts are found), > 0 (exit whenever the lower bound hasn't improved more than this "
+            "percentage in the last [" +
+            HPLUS_CLI_CUTLOOP_PAST_ITER_FLAG + "] iterations))",
+        {HPLUS_CLI_CUTLOOP_IMPROVEMENT_FLAG}, HPLUS_DEF_CL_IMPROV);
+    args::ValueFlag<unsigned int> cl_past_iter(
+        parser, "positive integer",
+        "How many iterations in the past the current lower bound should be compared to for the custom cutloop (def: " +
+            std::to_string(HPLUS_DEF_CL_PAST_ITER) + ")",
+        {HPLUS_CLI_CUTLOOP_PAST_ITER_FLAG}, HPLUS_DEF_CL_PAST_ITER);
+    args::ValueFlag<bool> inout(parser, "bool",
+                                "Using In-Out strategy in custom cutloop (def: " + std::to_string(HPLUS_DEF_INOUT) +
+                                    "; options: 0 (don't use In-Out strategy, 1 (use In-Out strategy))",
+                                {HPLUS_CLI_INOUT_FLAG}, HPLUS_DEF_INOUT);
+    args::ValueFlag<unsigned int> io_max_it(parser, "positive integer",
+                                            "Maximum number of iterations on In-Out strategy (def: " + std::to_string(HPLUS_DEF_IO_MAX_IT) + ")",
+                                            {HPLUS_CLI_INOUT_MAX_ITER_FLAG}, HPLUS_DEF_IO_MAX_IT);
+    args::ValueFlag<double> io_weight(
+        parser, "non-negative double, [0,1]",
+        "Weight to be used as similarity to the incumbent in In-Out strategy (def: " + std::to_string(HPLUS_DEF_IO_WEIGHT) + ")",
+        {HPLUS_CLI_INOUT_WEIGHT_FLAG}, HPLUS_DEF_IO_WEIGHT);
+    args::ValueFlag<double> io_weight_upd(
+        parser, "non-negative double, [0,1)",
+        "Quantity the [" + std::string(HPLUS_CLI_INOUT_WEIGHT_FLAG) +
+            "] parameter will be multiplied for at each In-Out iteration (def: " + std::to_string(HPLUS_DEF_IO_WEIGHT_UPD) + ")",
+        {HPLUS_CLI_INOUT_WEIGHT_UPD_FLAG}, HPLUS_DEF_IO_WEIGHT_UPD);
     args::ValueFlag<bool> testing(parser, "bool",
                                   "Flag for testing or debugging (def: 0; options: 0 (testing flag set to false), 1 (testing flag set to true))",
                                   {HPLUS_CLI_TESTING_FLAG}, false);
@@ -195,6 +228,46 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         if (s.find('s') != std::string::npos) exec.cand_cuts += "s";
     }
     if (custom_cutloop) exec.custom_cutloop = args::get(custom_cutloop);
+    if (cl_min_iter) exec.cl_min_iter = args::get(cl_min_iter);
+    if (cl_improv) {
+        double improv = args::get(cl_improv);
+        if (improv < 0 || improv > 1)
+            LOG_WARNING << "Illegal value for " << HPLUS_CLI_CUTLOOP_IMPROVEMENT_FLAG
+                        << "; using default value: " << std::to_string(HPLUS_DEF_CL_IMPROV);
+        else
+            exec.cl_improv = improv;
+    }
+    if (cl_past_iter) {
+        unsigned int it = args::get(cl_past_iter);
+        if (it == 0)
+            LOG_WARNING << "Illegal value for " << HPLUS_CLI_CUTLOOP_PAST_ITER_FLAG
+                        << "; using default value: " << std::to_string(HPLUS_DEF_CL_PAST_ITER);
+        else
+            exec.cl_past_iter = it;
+    }
+    if (inout) exec.inout = args::get(inout);
+    if (io_max_it) {
+        unsigned int it = args::get(io_max_it);
+        if (it == 0)
+            LOG_WARNING << "Illegal value for " << HPLUS_CLI_INOUT_MAX_ITER_FLAG << "; using default value: " << std::to_string(HPLUS_DEF_IO_MAX_IT);
+        else
+            exec.io_max_iter = it;
+    }
+    if (io_weight) {
+        double weight = args::get(io_weight);
+        if (weight < 0 || weight > 1)
+            LOG_WARNING << "Illegal value for " << HPLUS_CLI_INOUT_WEIGHT_FLAG << "; using default value: " << std::to_string(HPLUS_DEF_IO_WEIGHT);
+        else
+            exec.io_weight = weight;
+    }
+    if (io_weight_upd) {
+        double weight = args::get(io_weight_upd);
+        if (weight < 0 || weight >= 1)
+            LOG_WARNING << "Illegal value for " << HPLUS_CLI_INOUT_WEIGHT_UPD_FLAG
+                        << "; using default value: " << std::to_string(HPLUS_DEF_IO_WEIGHT_UPD);
+        else
+            exec.io_weight_update = weight;
+    }
     if (testing) {
         exec.testing = args::get(testing);
         if (exec.testing) LOG_DEBUG << "Testing flag set to true";
@@ -242,8 +315,9 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         LOG_WARNING << "Custom cutloop isn't needed with this algorithm: disabling custom cutloop";
         exec.custom_cutloop = false;
     }
-    if (exec.ws == hplus::warmstart::NONE && exec.custom_cutloop) {
-        LOG_WARNING << "No warm start used: not using InOut strategy.";
+    if (exec.custom_cutloop && exec.ws == hplus::warmstart::NONE && exec.inout) {
+        LOG_WARNING << "Warmstart disabled: disabling In-Out strategy";
+        exec.inout = false;
     }
 }
 

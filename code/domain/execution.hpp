@@ -30,7 +30,9 @@ struct execution {
     warmstart ws;
     algorithm alg;
     std::string fract_cuts, cand_cuts;
-    bool custom_cutloop;
+    bool custom_cutloop, inout;
+    unsigned int cl_min_iter, cl_past_iter, io_max_iter;
+    double cl_improv, io_weight, io_weight_update;
     std::string log_file;
     unsigned int threads;
     unsigned int timelimit;
@@ -52,6 +54,13 @@ inline void init(execution& exec) {
                             .fract_cuts = HPLUS_DEF_FRACTCUTS,
                             .cand_cuts = HPLUS_DEF_CANDCUTS,
                             .custom_cutloop = HPLUS_DEF_CUSTOM_CUTLOOP,
+                            .inout = HPLUS_DEF_INOUT,
+                            .cl_min_iter = HPLUS_DEF_CL_MIN_ITER,
+                            .cl_past_iter = HPLUS_DEF_CL_PAST_ITER,
+                            .io_max_iter = HPLUS_DEF_IO_MAX_IT,
+                            .cl_improv = HPLUS_DEF_CL_IMPROV,
+                            .io_weight = HPLUS_DEF_IO_WEIGHT,
+                            .io_weight_update = HPLUS_DEF_IO_WEIGHT_UPD,
                             .log_file = HPLUS_DEF_LOG,
                             .threads = HPLUS_DEF_THREADS,
                             .timelimit = HPLUS_DEF_TIMELIMIT,
@@ -136,6 +145,17 @@ inline void print(const execution& exec) {
     if (exec.alg == hplus::algorithm::CUTS && !exec.cand_cuts.empty())
         LOG << "Candidate cuts:                                    " << std::setw(5) << exec.cand_cuts;
     if (exec.alg == hplus::algorithm::CUTS) LOG << "Custom cut-loop                                        " << exec.custom_cutloop;
+    if (exec.custom_cutloop) {
+        LOG << "Custom cutloop minimum iterations:                 " << std::setw(5) << exec.cl_min_iter;
+        LOG << "Custom cutloop improvement threshold:             " << std::fixed << std::setprecision(4) << exec.cl_improv;
+        LOG << "Custom cutloop past iterations comparison:         " << std::setw(5) << exec.cl_past_iter;
+        LOG << "In-Out strategy:                                       " << exec.inout;
+        if (exec.inout) {
+            LOG << "In-Out maximum iterations:                         " << std::setw(5) << exec.io_max_iter;
+            LOG << "In-Out initial incumbent weight:                    " << std::fixed << std::setprecision(2) << exec.io_weight;
+            LOG << "In-Out weight update:                               " << std::fixed << std::setprecision(2) << exec.io_weight_update;
+        }
+    }
     if (exec.testing) LOG << "Testing mode:                                          1";
     LOG << "--------------------------------------------------------";
 }

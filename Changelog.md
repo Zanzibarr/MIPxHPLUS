@@ -25,15 +25,16 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
-## [2.2.2] - 2025/07/14
+## [2.2.2] - 2025/07/15
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->
 <!-- ### :heavy_exclamation_mark: Changed -->
 ### :heavy_plus_sign: Added
 - First implementation of custom cutloop -> only landmarks and basic termination condition (25/07/09)
 - Added questions for Salvagnin and TODOs (25/07/09)
-- Added S.E.C. detection for custom cutloop
-- Added In-Out strategy
+- Added S.E.C. detection for custom cutloop (25/07/14)
+- Added In-Out strategy (25/07/14)
+- Parametrized Cutloop and In-Out parameters
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
 
