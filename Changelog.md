@@ -37,6 +37,9 @@ HOW I DO VERSIONING:
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
 
+Here are shown the improvements achieved with the In-Out, Purging and Exit strategy in the custom cutloop
+<img src="results/plots/2.2.2_cloopv1_vs_cloopv2.svg" width="300"/>
+
 
 ## [2.2.2] - 2025/07/15
 <!-- ### :warning: Known issues -->
