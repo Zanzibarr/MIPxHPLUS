@@ -127,24 +127,27 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
     const double k_percent = exec.cl_improv;
     const unsigned int lookback_iterations = exec.cl_past_iter, min_iteration = exec.cl_min_iter;
 
-    // Logic for cut-loop termination
-    // TODO : Maybe check also the distance between lower bound and incumbent... if the gap is <10% maybe we can exit directly (?)
     const auto& repeat_cutloop = [&]() {
-        if (new_cuts == 0) return false;
-
         double current_lb;
         CPX_HANDLE_CALL(CPXgetobjval(env, lp, &current_lb));
         lb_history.push_back(current_lb);
 
         LOG_DEBUG << "Current lb:      " << current_lb;
 
+        // No more cuts
+        if (new_cuts == 0) return false;
+
+        // Check gap with incumbent
+        if (1 - current_lb / static_cast<double>(inst.sol.cost == 0 ? 1 : inst.sol.cost) <= exec.cl_gap_stop + HPLUS_EPSILON) return false;
+
+        // Do the minimum number of iterations
         if (iteration < min_iteration || lb_history.size() <= lookback_iterations) return true;
 
-        if (1 - current_lb / static_cast<double>(inst.sol.cost == 0 ? 1 : inst.sol.cost) < exec.cl_gap_stop) return false;
-
+        // Absolute gap with past iteration
         double old_lb = lb_history[lb_history.size() - lookback_iterations - 1];
         if (old_lb < 1e-9) return current_lb - old_lb >= HPLUS_EPSILON;
 
+        // Relative gap with past iteration
         double improvement = (current_lb - old_lb) / old_lb;
         if (improvement < HPLUS_EPSILON) improvement = 0;  // Fix for precision issues
         return improvement >= k_percent;

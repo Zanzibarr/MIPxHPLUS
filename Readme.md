@@ -1,13 +1,17 @@
 # HPLUS THESIS
 ![C++](https://img.shields.io/badge/C%2B%2B-00599C?style=for-the-badge&logo=c%2B%2B&logoColor=white)
 
-### Version: 2.2.2:6  
+### Version: 2.2.3  
 _Refer to the [Changelog](Changelog.md) for info about versions._  
 
 
-Using a MIP solver (CPLEX) to solve the (optimal) delete free relaxation of a planning task.  
+## Abstract
+We compare current state-of-the-art M.I.P. formulations for solving the delete-free relaxation in cost-optimal planning, integrating various preprocessing techniques from different publications and developing primal heuristics to provide warm-start solutions to the M.I.P. solver.  
+We then explore a novel approach to model acyclicity by computing violated landmarks (aswell as S.E.C.) and adding them as constraints: computing all landmarks a priori is intractable, since the number of potential landmarks grows exponentially with the problem size, just like S.E.C., making any brute-force approach computationally infeasible; instead we employ a constraint generation approach where new constraints are identified dynamically: upon encountering an infeasible solution, we detect violated cuts within that solution and incorporate them as additional constraints, progressively constructing the minimal constraint set required for both feasibility and optimality.  
+Our experimental evaluation demonstrates that this landmark-based formulation achieves competitive performance with existing methods in both space and time efficiency.
 
-This software requires as input the SAS file produced by the [Fast Downward translator](https://www.fast-downward.org/).
+## Publication associated to this code
+_Work in progress_
 
 ## Index
 
@@ -22,6 +26,7 @@ This software requires as input the SAS file produced by the [Fast Downward tran
 
 - UNIX based OS
 - cmake 3.20 +
+- This software requires as input the SAS file produced by the [Fast Downward translator](https://www.fast-downward.org/latest/documentation/translator-output-format/) (this software was produced with version 3 of the FDW translator as a reference)
 
 ## Build/Run instructions
 
@@ -40,8 +45,8 @@ make <target_option>
 
 ## Build options (CMake parameters)
 
-- **-DCPLEX_PATH=**\<path_to_cplex>: (abs path), specify a custom path to the CPLEX installation (see the CMakeLists.txt to see which is the default one)
-- **-DENABLE_WARNINGS=** ON: enable all types of compile warnings (default is OFF)
+- **-DCPLEX_PATH=**\<path_to_cplex>: (absolute path), specify a custom path to the CPLEX installation (see the CMakeLists.txt to see which are the default ones (CPLEX_POSSIBLE_PATHS) or append your to that list to avoid specifying it every time)
+- **-DENABLE_WARNINGS=** 1: enable all types of compile warnings (default is 0)
 
 ## Target options (Make parameters)
 

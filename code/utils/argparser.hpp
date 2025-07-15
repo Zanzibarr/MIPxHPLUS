@@ -36,15 +36,15 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         parser, "string",
         "Write on stdout / file (def: " + std::string(HPLUS_DEF_LOG) + "; options: 0 (stdout), <file_path> (absolute path to the file to write to))",
         {HPLUS_CLI_LOG_FLAG}, HPLUS_DEF_LOG);
-    args::ValueFlag<unsigned int> time_limit(parser, "non-negative int",
+    args::ValueFlag<unsigned int> time_limit(parser, "non-negative int, [0,+inf)",
                                              "Set the time limit (def: " + std::to_string(HPLUS_DEF_TIMELIMIT) +
-                                                 " s; options: 0 (no timelimit), <positive int> (setting that as timelimit (seconds)))",
+                                                 " s; options: 0 (no timelimit), <positive int (!=0)> (setting that as timelimit (seconds)))",
                                              {HPLUS_CLI_TIMELIMIT_FLAG}, HPLUS_DEF_TIMELIMIT);
-    args::ValueFlag<unsigned int> threads(parser, "positive int",
+    args::ValueFlag<unsigned int> threads(parser, "positive int, (0,+inf)",
                                           "Set the number of threads to use (def: " + std::to_string(HPLUS_DEF_THREADS) +
                                               " threads; options: <positive int (!= 0)> (setting that as number of threads to be used))",
                                           {HPLUS_CLI_THREADS_FLAG}, HPLUS_DEF_THREADS);
-    args::ValueFlag<unsigned int> memory_limit(parser, "positive int",
+    args::ValueFlag<unsigned int> memory_limit(parser, "positive int, (0,+inf)",
                                                "Set the memory limit (def: " + std::to_string(HPLUS_DEF_MEMORYLIMIT) +
                                                    " MB; options: <positive int (!= 0)> (setting that as memory limit (MB)))",
                                                {HPLUS_CLI_MEMORYLIMIT_FLAG}, HPLUS_DEF_MEMORYLIMIT);
@@ -55,23 +55,25 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         {HPLUS_CLI_VERBOSE_FLAG}, HPLUS_DEF_VERBOSE);
     args::ValueFlag<std::string> fract_cuts(
         parser, "string",
-        "(ONLY FOR " + std::string(HPLUS_CLI_ALG_FLAG_CUTS) + " ALGORITHM) Specify what cuts to separate from the fractional solutions (def: " +
+        "(ONLY FOR [" + std::string(HPLUS_CLI_ALG_FLAG_CUTS) + "] ALGORITHM) Specify what cuts to separate from the fractional solutions (def: " +
             std::string(HPLUS_DEF_FRACTCUTS) + "; options: 0 (don't separate cuts), a combination of ['l','s'] (respectively for landmarks and SEC))",
         {HPLUS_CLI_FRACTCUTS_FLAG}, HPLUS_DEF_FRACTCUTS);
     args::ValueFlag<std::string> cand_cuts(
         parser, "string",
-        "(ONLY FOR " + std::string(HPLUS_CLI_ALG_FLAG_CUTS) +
-            " ALGORITHM) Specify what cuts to separate from the candidate (integer) solutions (def: " + std::string(HPLUS_DEF_CANDCUTS) +
+        "(ONLY FOR [" + std::string(HPLUS_CLI_ALG_FLAG_CUTS) +
+            "] ALGORITHM) Specify what cuts to separate from the candidate (integer) solutions (def: " + std::string(HPLUS_DEF_CANDCUTS) +
             "; options: 0 (don't separate cuts), a combination of ['f','c','s'] (respectively for frontier / complementary landmarks and SEC))",
         {HPLUS_CLI_CANDCUTS_FLAG}, HPLUS_DEF_CANDCUTS);
-    args::ValueFlag<bool> custom_cutloop(parser, "bool",
-                                         "Flag for using the custom cutloop (def: " + std::to_string(HPLUS_DEF_CUSTOM_CUTLOOP) +
+    args::ValueFlag<bool> custom_cutloop(parser, "0/1",
+                                         "(ONLY FOR [" + std::string(HPLUS_CLI_ALG_FLAG_CUTS) +
+                                             "] ALGORITHM) Flag for using the custom cutloop (def: " + std::to_string(HPLUS_DEF_CUSTOM_CUTLOOP) +
                                              "; options: 0 (don't use the custom cutloop), 1 (use the custom cutloop))",
                                          {HPLUS_CLI_CUTLOOP_FLAG}, HPLUS_DEF_CUSTOM_CUTLOOP);
-    args::ValueFlag<unsigned int> cl_min_iter(parser, "non-negative integer",
-                                              "Minimum number of iterations in the custom cutloop (unless no new cuts are being found) (def: " +
-                                                  std::to_string(HPLUS_DEF_CL_MIN_ITER) + ")",
-                                              {HPLUS_CLI_CUTLOOP_MIN_ITER_FLAG}, HPLUS_DEF_CL_MIN_ITER);
+    args::ValueFlag<unsigned int> cl_min_iter(
+        parser, "non-negative integer, [0,+inf)",
+        "Minimum number of iterations in the custom cutloop (unless no new cuts are being found or we closed enough the gap with respect to [" +
+            std::string(HPLUS_CLI_CUTLOOP_GAP_STOP_FLAG) + "]) (def: " + std::to_string(HPLUS_DEF_CL_MIN_ITER) + "; options: <non-negative integer>)",
+        {HPLUS_CLI_CUTLOOP_MIN_ITER_FLAG}, HPLUS_DEF_CL_MIN_ITER);
     args::ValueFlag<double> cl_improv(
         parser, "non-negative double, [0,1]",
         "Threshold for custom cutloop's termination condition on relative lower bound improvements (def: " + std::to_string(HPLUS_DEF_CL_IMPROV) +
@@ -80,31 +82,33 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
             HPLUS_CLI_CUTLOOP_PAST_ITER_FLAG + "] iterations))",
         {HPLUS_CLI_CUTLOOP_IMPROVEMENT_FLAG}, HPLUS_DEF_CL_IMPROV);
     args::ValueFlag<unsigned int> cl_past_iter(
-        parser, "positive integer",
+        parser, "positive integer, (0,+inf)",
         "How many iterations in the past the current lower bound should be compared to for the custom cutloop (def: " +
-            std::to_string(HPLUS_DEF_CL_PAST_ITER) + ")",
+            std::to_string(HPLUS_DEF_CL_PAST_ITER) + "; options: <positive int (!=0)>)",
         {HPLUS_CLI_CUTLOOP_PAST_ITER_FLAG}, HPLUS_DEF_CL_PAST_ITER);
-    args::ValueFlag<double> cl_gap_stop(
-        parser, "non-negative double, [0,1]",
-        "Threshold for custom cutloop's termination condition on incumbent - lower bound gap (def: " + std::to_string(HPLUS_DEF_CL_GAP_STOP) + ")",
-        {HPLUS_CLI_CUTLOOP_GAP_STOP_FLAG}, HPLUS_DEF_CL_GAP_STOP);
-    args::ValueFlag<bool> inout(parser, "bool",
-                                "Using In-Out strategy in custom cutloop (def: " + std::to_string(HPLUS_DEF_INOUT) +
-                                    "; options: 0 (don't use In-Out strategy, 1 (use In-Out strategy))",
+    args::ValueFlag<double> cl_gap_stop(parser, "non-negative double, [0,1]",
+                                        "Threshold for custom cutloop's termination condition on (lower bound / incumbent) gap (def: " +
+                                            std::to_string(HPLUS_DEF_CL_GAP_STOP) + "; options: <double in range [0,1]>)",
+                                        {HPLUS_CLI_CUTLOOP_GAP_STOP_FLAG}, HPLUS_DEF_CL_GAP_STOP);
+    args::ValueFlag<bool> inout(parser, "0/1",
+                                "(ONLY FOR [" + std::string(HPLUS_CLI_ALG_FLAG_CUTS) + "] ALGORITHM with custom cutloop [" +
+                                    std::string(HPLUS_CLI_CUTLOOP_FLAG) + "]) Using In-Out strategy in custom cutloop (def: " +
+                                    std::to_string(HPLUS_DEF_INOUT) + "; options: 0 (don't use In-Out strategy, 1 (use In-Out strategy))",
                                 {HPLUS_CLI_INOUT_FLAG}, HPLUS_DEF_INOUT);
-    args::ValueFlag<unsigned int> io_max_it(parser, "positive integer",
-                                            "Maximum number of iterations on In-Out strategy (def: " + std::to_string(HPLUS_DEF_IO_MAX_IT) + ")",
-                                            {HPLUS_CLI_INOUT_MAX_ITER_FLAG}, HPLUS_DEF_IO_MAX_IT);
-    args::ValueFlag<double> io_weight(
-        parser, "non-negative double, [0,1]",
-        "Weight to be used as similarity to the incumbent in In-Out strategy (def: " + std::to_string(HPLUS_DEF_IO_WEIGHT) + ")",
-        {HPLUS_CLI_INOUT_WEIGHT_FLAG}, HPLUS_DEF_IO_WEIGHT);
-    args::ValueFlag<double> io_weight_upd(
-        parser, "non-negative double, [0,1)",
-        "Quantity the [" + std::string(HPLUS_CLI_INOUT_WEIGHT_FLAG) +
-            "] parameter will be multiplied for at each In-Out iteration (def: " + std::to_string(HPLUS_DEF_IO_WEIGHT_UPD) + ")",
-        {HPLUS_CLI_INOUT_WEIGHT_UPD_FLAG}, HPLUS_DEF_IO_WEIGHT_UPD);
-    args::ValueFlag<bool> testing(parser, "bool",
+    args::ValueFlag<unsigned int> io_max_it(
+        parser, "positive integer, (0,+inf)",
+        "Maximum number of iterations on In-Out strategy (def: " + std::to_string(HPLUS_DEF_IO_MAX_IT) + "; options: <positive int (!=0)>)",
+        {HPLUS_CLI_INOUT_MAX_ITER_FLAG}, HPLUS_DEF_IO_MAX_IT);
+    args::ValueFlag<double> io_weight(parser, "non-negative double, [0,1]",
+                                      "Weight to be used as initial similarity to the incumbent in In-Out strategy (def: " +
+                                          std::to_string(HPLUS_DEF_IO_WEIGHT) + "; options: <double in range [0,1]>)",
+                                      {HPLUS_CLI_INOUT_WEIGHT_FLAG}, HPLUS_DEF_IO_WEIGHT);
+    args::ValueFlag<double> io_weight_upd(parser, "non-negative double, [0,1)",
+                                          "Quantity the [" + std::string(HPLUS_CLI_INOUT_WEIGHT_FLAG) +
+                                              "] parameter will be multiplied for at each In-Out iteration (def: " +
+                                              std::to_string(HPLUS_DEF_IO_WEIGHT_UPD) + "; options: <double in range [0,1)>)",
+                                          {HPLUS_CLI_INOUT_WEIGHT_UPD_FLAG}, HPLUS_DEF_IO_WEIGHT_UPD);
+    args::ValueFlag<bool> testing(parser, "0/1",
                                   "Flag for testing or debugging (def: 0; options: 0 (testing flag set to false), 1 (testing flag set to true))",
                                   {HPLUS_CLI_TESTING_FLAG}, false);
 
