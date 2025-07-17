@@ -260,7 +260,7 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
             exec.cl_past_iter = it;
     }
     if (cl_gap_stop) {
-        double gap = args::get(cl_improv);
+        double gap = args::get(cl_gap_stop);
         if (gap < 0 || gap > 1)
             LOG_WARNING << "Illegal value for " << HPLUS_CLI_CUTLOOP_GAP_STOP_FLAG
                         << "; using default value: " << std::to_string(HPLUS_DEF_CL_GAP_STOP);
