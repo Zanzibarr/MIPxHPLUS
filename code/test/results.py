@@ -84,6 +84,8 @@ def main():
             "usercuts_lm": 0,
             "usercuts_sec": 0,
             "nnodes": 0,
+            "cl_iter": 0,
+            "cl_lb": 0,
             "lb": 0,
             "hcost": 1e20,
             "fcost": 1e20,
@@ -164,6 +166,12 @@ def main():
             re.search(r">> User cuts \(sec\)\s+(\d+) <<", stats).group(1)
         )
         nodes_expanded = int(re.search(r">> Nodes expanded\s+(\d+) <<", stats).group(1))
+        cutloop_iterations = int(
+            re.search(r">> Cutloop iterations\s+(\d+) <<", stats).group(1)
+        )
+        cutloop_lb = float(
+            re.search(r"Lower bound after cutloop : ([\d.]+)", content).group(1)
+        )
         lower_bound_str = re.search(
             r">> Lower bound\s+([\d.]+(?:e\d+)?) <<", stats
         ).group(1)
@@ -218,6 +226,8 @@ def main():
         instance_data["usercuts_lm"] = user_cuts_lm
         instance_data["usercuts_sec"] = user_cuts_sec
         instance_data["nnodes"] = nodes_expanded
+        instance_data["cl_iter"] = cutloop_iterations
+        instance_data["cl_lb"] = cutloop_lb
         instance_data["lb"] = lower_bound
         instance_data["hcost"] = heuristic
         instance_data["fcost"] = final_cost

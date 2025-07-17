@@ -28,7 +28,7 @@ inline void solve_relaxation(CPXENVptr& env, CPXLPptr& lp, const hplus::executio
 }
 
 inline unsigned int generate_cuts(CPXENVptr& env, CPXLPptr& lp, CPXENVptr& flmdetenv, CPXLPptr& flmdetlp, const hplus::execution& exec,
-                                  const hplus::instance& inst, const std::vector<double>& incumbent) {
+                                  const hplus::instance& inst, const std::vector<double>& incumbent, double& inout_w) {
     const int ncols{CPXgetnumcols(env, lp)};
     std::vector<double> relax_point(ncols);
     CPXgetx(env, lp, relax_point.data(), 0, ncols - 1);
@@ -80,19 +80,25 @@ inline unsigned int generate_cuts(CPXENVptr& env, CPXLPptr& lp, CPXENVptr& flmde
     };
 
     unsigned int inout_it{0}, max_inout_it{exec.io_max_iter};
-    double w = exec.io_weight, w_update = exec.io_weight_update;
+    double w = inout_w, w_update = exec.io_weight_update;
 
     if (exec.inout) {  // In Out
-        while (inout_it++ <= max_inout_it && new_cuts == 0) {
+        while (inout_it <= max_inout_it && new_cuts == 0) {
+            inout_it++;
             std::vector<double> inout_relax_point;
             if (inout_it == max_inout_it) w = 0;
             for (int i = 0; i < ncols; i++) inout_relax_point.push_back(relax_point[i] * (1 - w) + incumbent[i] * w);
-            LOG_DEBUG << w;
-            w *= w_update;
             add_cuts(inout_relax_point);
+            if (new_cuts == 0) w *= w_update;
         }
+        if (inout_it == 1 && inout_w < 0.85)
+            inout_w += 0.1;
+        else if (inout_it > 1)
+            inout_w = w;
     } else  // Normal
         add_cuts(relax_point);
+
+    LOG_DEBUG << inout_w;
 
     return new_cuts;
 }
@@ -178,20 +184,27 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
         state |= inst.actions[act_i].eff;
     }
 
+    double inout_w = exec.io_weight;
+
     solve_relaxation(env, lp, exec);
     while (repeat_cutloop() && !CHECK_STOP()) {
         // Purging of slack constraints every 5 iterations
         if ((iteration + 1) % 5 == 0 && exec.cl_pruning) pruning(env, lp, base_constraints);
-        new_cuts = generate_cuts(env, lp, flmdetenv, flmdetlp, exec, inst, incumbent);
+        new_cuts = generate_cuts(env, lp, flmdetenv, flmdetlp, exec, inst, incumbent, inout_w);
         solve_relaxation(env, lp, exec);
         iteration++;
     }
+
+    double tmp_lb;
+    CPX_HANDLE_CALL(CPXgetobjval(env, lp, &tmp_lb));
+    LOG_DEBUG << "Lower bound after cutloop : " << tmp_lb;
 
     // Purging of slack constraints (if we exited due to time limit, we might not have a full solution, so pruning constraints might remove more than
     // necessary)
     if (!CHECK_STOP() && exec.cl_pruning) pruning(env, lp, base_constraints);
 
     stats.const_acyc += CPXgetnumrows(env, lp) - base_constraints;
+    stats.cutloop_it = iteration;
 
     exit_cutloop(env, lp, flmdetenv, flmdetlp);
     stats.cutloop = GET_TIME() - start_time;
