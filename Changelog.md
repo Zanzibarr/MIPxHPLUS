@@ -30,7 +30,8 @@ HOW I DO VERSIONING:
 <!-- ### :ballot_box_with_check: Fixed -->
 ### :heavy_exclamation_mark: Changed
 - Added parameters for cutloop
-<!-- ### :heavy_plus_sign: Added -->
+### :heavy_plus_sign: Added
+- Added test script for testing on small sets of instances
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
 
