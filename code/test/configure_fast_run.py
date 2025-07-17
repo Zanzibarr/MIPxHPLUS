@@ -28,6 +28,7 @@ def main():
     instances_list = os.listdir(instances_folder)
     random.shuffle(instances_list)
     selected_instances = instances_list[:1000]
+    selected_instances = sorted(selected_instances)
 
     # Create instances configuration file
     instances_config = {
