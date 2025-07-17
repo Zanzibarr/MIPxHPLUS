@@ -30,7 +30,7 @@ struct execution {
     warmstart ws;
     algorithm alg;
     std::string fract_cuts, cand_cuts;
-    bool custom_cutloop, inout;
+    bool custom_cutloop, cl_pruning, inout;
     unsigned int cl_min_iter, cl_past_iter, io_max_iter;
     double cl_improv, cl_gap_stop, io_weight, io_weight_update;
     std::string log_file;
@@ -54,6 +54,7 @@ inline void init(execution& exec) {
                             .fract_cuts = HPLUS_DEF_FRACTCUTS,
                             .cand_cuts = HPLUS_DEF_CANDCUTS,
                             .custom_cutloop = HPLUS_DEF_CUSTOM_CUTLOOP,
+                            .cl_pruning = HPLUS_DEF_CL_PRUNING,
                             .inout = HPLUS_DEF_INOUT,
                             .cl_min_iter = HPLUS_DEF_CL_MIN_ITER,
                             .cl_past_iter = HPLUS_DEF_CL_PAST_ITER,
@@ -147,6 +148,7 @@ inline void print(const execution& exec) {
         LOG << "Candidate cuts:                                    " << std::setw(5) << exec.cand_cuts;
     if (exec.alg == hplus::algorithm::CUTS) LOG << "Custom cut-loop                                        " << exec.custom_cutloop;
     if (exec.custom_cutloop) {
+        LOG << "Custom cutloop pruning                                 " << exec.cl_pruning;
         LOG << "Custom cutloop gap exit condition:                " << std::fixed << std::setprecision(4) << exec.cl_gap_stop;
         LOG << "Custom cutloop minimum iterations:                 " << std::setw(5) << exec.cl_min_iter;
         LOG << "Custom cutloop improvement threshold:             " << std::fixed << std::setprecision(4) << exec.cl_improv;

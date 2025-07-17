@@ -69,6 +69,11 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
                                              "] ALGORITHM) Flag for using the custom cutloop (def: " + std::to_string(HPLUS_DEF_CUSTOM_CUTLOOP) +
                                              "; options: 0 (don't use the custom cutloop), 1 (use the custom cutloop))",
                                          {HPLUS_CLI_CUTLOOP_FLAG}, HPLUS_DEF_CUSTOM_CUTLOOP);
+    args::ValueFlag<bool> cl_pruning(parser, "0/1",
+                                     "(ONLY FOR [" + std::string(HPLUS_CLI_ALG_FLAG_CUTS) +
+                                         "] ALGORITHM) Flag for pruning in/after the cutloop (def: " + std::to_string(HPLUS_DEF_CL_PRUNING) +
+                                         "; options: 0 (don't do pruning in the cutloop), 1 (do pruning in the cutloop))",
+                                     {HPLUS_CLI_CL_PRUNING_FLAG}, HPLUS_DEF_CL_PRUNING);
     args::ValueFlag<unsigned int> cl_min_iter(
         parser, "non-negative integer, [0,+inf)",
         "Minimum number of iterations in the custom cutloop (unless no new cuts are being found or we closed enough the gap with respect to [" +
@@ -236,6 +241,7 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         if (s.find('s') != std::string::npos) exec.cand_cuts += "s";
     }
     if (custom_cutloop) exec.custom_cutloop = args::get(custom_cutloop);
+    if (cl_pruning) exec.cl_pruning = args::get(cl_pruning);
     if (cl_min_iter) exec.cl_min_iter = args::get(cl_min_iter);
     if (cl_improv) {
         double improv = args::get(cl_improv);

@@ -5,7 +5,7 @@
 // ############################## VERSION ############################## //
 // ##################################################################### //
 
-#define VERSION "2.2.3"
+#define VERSION "2.2.4"
 
 // ##################################################################### //
 // ############################## IMPORTS ############################## //
@@ -45,6 +45,7 @@
 #define HPLUS_CLI_FRACTCUTS_FLAG "fract"
 #define HPLUS_CLI_CANDCUTS_FLAG "cand"
 #define HPLUS_CLI_CUTLOOP_FLAG "cloop"
+#define HPLUS_CLI_CL_PRUNING_FLAG "cl-prune"
 #define HPLUS_CLI_CUTLOOP_MIN_ITER_FLAG "cl-min-iter"
 #define HPLUS_CLI_CUTLOOP_IMPROVEMENT_FLAG "cl-improv"
 #define HPLUS_CLI_CUTLOOP_PAST_ITER_FLAG "cl-past-iter"
@@ -82,6 +83,7 @@
 #define HPLUS_DEF_CANDCUTS "fcs"
 #define HPLUS_DEF_FRACTCUTS "0"
 #define HPLUS_DEF_CUSTOM_CUTLOOP false
+#define HPLUS_DEF_CL_PRUNING true
 #define HPLUS_DEF_CL_MIN_ITER 20
 #define HPLUS_DEF_CL_IMPROV 0.005
 #define HPLUS_DEF_CL_PAST_ITER 10

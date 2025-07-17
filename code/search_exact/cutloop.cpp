@@ -181,7 +181,7 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
     solve_relaxation(env, lp, exec);
     while (repeat_cutloop() && !CHECK_STOP()) {
         // Purging of slack constraints every 5 iterations
-        if ((iteration + 1) % 5 == 0) pruning(env, lp, base_constraints);
+        if ((iteration + 1) % 5 == 0 && exec.cl_pruning) pruning(env, lp, base_constraints);
         new_cuts = generate_cuts(env, lp, flmdetenv, flmdetlp, exec, inst, incumbent);
         solve_relaxation(env, lp, exec);
         iteration++;
@@ -189,7 +189,7 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
 
     // Purging of slack constraints (if we exited due to time limit, we might not have a full solution, so pruning constraints might remove more than
     // necessary)
-    if (!CHECK_STOP()) pruning(env, lp, base_constraints);
+    if (!CHECK_STOP() && exec.cl_pruning) pruning(env, lp, base_constraints);
 
     stats.const_acyc += CPXgetnumrows(env, lp) - base_constraints;
 
