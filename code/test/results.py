@@ -169,9 +169,9 @@ def main():
         cutloop_iterations = int(
             re.search(r">> Cutloop iterations\s+(\d+) <<", stats).group(1)
         )
-        cutloop_lb = float(
-            re.search(r"Lower bound after cutloop : ([\d.]+)", content).group(1)
-        )
+        tmp = re.search(r"Lower bound after cutloop : ([\d.]+)", content)
+        if tmp != None:
+            cutloop_lb = float(tmp.group(1))
         lower_bound_str = re.search(
             r">> Lower bound\s+([\d.]+(?:e\d+)?) <<", stats
         ).group(1)
