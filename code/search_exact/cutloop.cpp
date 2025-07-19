@@ -91,10 +91,10 @@ inline unsigned int generate_cuts(CPXENVptr& env, CPXLPptr& lp, CPXENVptr& flmde
             add_cuts(inout_relax_point);
             if (new_cuts == 0) w *= w_update;
         }
-        if (inout_it == 1 && inout_w < 0.85)
-            inout_w += 0.1;
-        else if (inout_it > 1)
-            inout_w = w;
+        // if (inout_it == 1 && inout_w < 0.85)
+        //     inout_w += 0.1;
+        // else if (inout_it > 1)
+        //     inout_w = w;
     } else  // Normal
         add_cuts(relax_point);
 
