@@ -96,6 +96,25 @@ def sgm(values: list[float]) -> float:
     return np.exp(np.mean(np.log([x + 1 for x in values]))) - 1
 
 
+def compute_ratios(data: dict, metric: str) -> tuple[list[str], list[float]]:
+    categories = ["[0,1)", "[1,10)", "[10,100)", "[100,900)", "[900+)"]
+    values_1 = {cat: [] for cat in categories}
+    values_2 = {cat: [] for cat in categories}
+    ratios = []
+
+    for key in data:
+        cat = data[key]["diff"]
+        values_1[cat].append(data[key][f"{metric}_1"])
+        values_2[cat].append(data[key][f"{metric}_2"])
+
+    for cat in categories:
+        sgm1 = sgm(values_1[cat]) if values_1[cat] else 1e-6
+        sgm2 = sgm(values_2[cat]) if values_2[cat] else 1e-6
+        ratios.append(sgm2 / sgm1)
+
+    return categories, ratios
+
+
 def print_table(merged: dict, metric: str) -> None:
     data1 = {"[0,1)": [], "[1,10)": [], "[10,100)": [], "[100,900)": [], "[900+)": []}
     data2 = {"[0,1)": [], "[1,10)": [], "[10,100)": [], "[100,900)": [], "[900+)": []}

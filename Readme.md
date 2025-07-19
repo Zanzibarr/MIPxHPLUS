@@ -44,12 +44,12 @@ make <target_option>
 ./hplus <input_file> <parameters>
 ```
 
-## Build options (CMake parameters)
+### Build options (CMake parameters)
 
 - **-DCPLEX_PATH=**\<path_to_cplex>: (absolute path), specify a custom path to the CPLEX installation (see the CMakeLists.txt to see which are the default ones (CPLEX_POSSIBLE_PATHS) or append your to that list to avoid specifying it every time)
 - **-DENABLE_WARNINGS=** 1: enable all types of compile warnings (default is 0)
 
-## Target options (Make parameters)
+### Target options (Make parameters)
 
 - \<target_option> : specify the target build
   - _none_ : no flag added (default build)
@@ -57,7 +57,7 @@ make <target_option>
   - **debug** : debugging flags added (debug build)
   - **clear** : removes all files inside the code/build folder
 
-## Run options
+### Run options
 
 See the help page:
 ```shell
@@ -80,7 +80,7 @@ Testing is ment to be working as follows:
 # this will create the folder code/test/jobs, where the batches will be created, each in a folder batch_[idx], and code/test/jobs_output where all jobs stdout/stderr will be located (note that the hplus program output will be located in logs/output_logs/ instead)
 python3 create.py <path_to_instances> [<execution>, <parameters>]
 ```
-2) Run the jobs one batch at the time, specifying the index of the batch to be run (if 4 batches have been created, the indexes will be [0,1,2,3])
+2) Run the jobs one batch at the time with the [run.py](code/test/run.py) script, specifying the index of the batch to be run (if 4 batches have been created, the indexes will be [0,1,2,3])
 ```bash
 # this will run the jobs in the folder jobs/batch_0/
 python3 run.py 0
@@ -92,6 +92,27 @@ python3 run.py 0
 python3 results.py <run_name>
 ```
 4) Once you have enough json files, you can perform analysis on them, using the following scripts:
+- [comparison.py](code/test/comparison.py)
+- [comparison_plots.py](code/test/comparison_plots.py)
+- [show_times.py](code/test/show_times.py)
+
+### Dependencies
+For this scripts to run you will need to have those python modules installed:
+```
+numpy
+matplotlib
+scipy
+```
+You can easily install them only for this project by creating a virtual environment:
+```bash
+# creating the virtual environment and installing dependencies
+python3 -m venv testing_environment
+source testing_environment/bin/activate
+pip install numpy matplotlib scipy
+```
+_Remember to enter the environment with the "source ..." command each time you want to run those scripts on a new terminal_
+
+### How to use these scripts
 ```bash
 # to perform an 1-1 comparison between a specific metric on two runs (e.g. measure the number of nodes cplex expanded)
 # this script divides the instances based on the lowest time among the two runs for that instance

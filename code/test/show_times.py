@@ -3,7 +3,7 @@ import sys
 sys.dont_write_bytecode = True
 import numpy as np
 from pathlib import Path
-from comparison import *
+from comparison import load_data_from_file, filter_data
 import matplotlib.pyplot as plt
 import os
 

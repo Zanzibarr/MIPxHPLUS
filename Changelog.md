@@ -25,13 +25,14 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
-## [2.2.4] - 2025/07/17
+## [2.2.4] - 2025/07/19
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->
 ### :heavy_exclamation_mark: Changed
-- Added parameters for cutloop
+- Added parameters for cutloop (25/07/17)
 ### :heavy_plus_sign: Added
-- Added test script for testing on small sets of instances
+- Added test script for testing on small sets of instances (25/07/17)
+- Added test scripts for results analysis
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
 
