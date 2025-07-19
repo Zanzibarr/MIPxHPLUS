@@ -21,6 +21,7 @@ _Work in progress_
   - [CMake](#build-options-cmake-parameters)
   - [Make](#target-options-make-parameters)
   - [Execution](#run-options)
+- [Testing](#testing)
 
 ## Requirements
 
@@ -62,4 +63,41 @@ See the help page:
 ```shell
 # to view commands available
 ./hplus --h
+```
+
+## Testing
+All python3 scripts used for testing are available in the [test](code/test/) folder.
+The scripts with this line as the first line:
+```python
+# ONLY FOR CLUSTER USE
+```
+are meant to be used inside UNIPD's cluster for testing, hence those will not work out of the box in another machine/environment.
+
+Testing is ment to be working as follows:
+
+1) Create the jobs with the [create.py](code/test/create.py) script -- this will create batches of 1000 jobs each, located inside the code/test/jobs/ folder (that will be created upon running this script)
+```bash
+# this will create the folder code/test/jobs, where the batches will be created, each in a folder batch_[idx], and code/test/jobs_output where all jobs stdout/stderr will be located (note that the hplus program output will be located in logs/output_logs/ instead)
+python3 create.py <path_to_instances> [<execution>, <parameters>]
+```
+2) Run the jobs one batch at the time, specifying the index of the batch to be run (if 4 batches have been created, the indexes will be [0,1,2,3])
+```bash
+# this will run the jobs in the folder jobs/batch_0/
+python3 run.py 0
+```
+3) As stated before, execution logs will be stored in the logs/output_logs folder: from now on, whichever was the way the jobs were executed, if the execution of all instances to be tested have a log inside the logs/output_logs folder, you can use the [results.py](code/test/results.py) script
+```bash
+# this will create a json file containing all usefull info about all the run logs stored in the logs/output_logs folder
+# all the logs will be stored inside logs/saved_logs/<run_name>, aswell as the json summary, saved as 002_<run_name>.json inside the same folder
+python3 results.py <run_name>
+```
+4) Once you have enough json files, you can perform analysis on them, using the following scripts:
+```bash
+# to perform an 1-1 comparison between a specific metric on two runs (e.g. measure the number of nodes cplex expanded)
+# this script divides the instances based on the lowest time among the two runs for that instance
+python3 comparison.py <metric> <run_1> <run_2>
+# to plot the basic comparisons between two runs -- the plot will be saved at code/test/plots/comparison.svg
+python3 comparison_plots.py <run_1> <run_2>
+# to view the number of instances solved within a certain time (cumulative plot) -- the plot will be saved at code/test/plots/times.svg
+python3 show_times.py <run_1> ...
 ```
