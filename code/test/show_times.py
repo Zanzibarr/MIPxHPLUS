@@ -7,6 +7,14 @@ from comparison import load_data_from_file, filter_data
 import matplotlib.pyplot as plt
 import os
 
+labels = {
+    "002_2.2.0:2_ve_e_h__250608": "$VE^e_h$",
+    "002_2.2.0:2_tl_e_h__250609": "$TL^e_h$",
+    "002_2.2.0:4_sec_e_h__250614": "$SEC^e_h$",
+    "002_2.2.0:4_lm_e_h__250613": "$LM^e_h$",
+    "002_2.2.0:4_lms_e_h_candsecfacts__250610": "$LMS^e_h$",
+}
+
 
 def load_data(files: list[str]) -> dict:
     data = {}
@@ -78,7 +86,13 @@ def plot(
             if high_ylimit < count:
                 high_ylimit = count
 
-        plt.semilogx(x_points, y_points, **styles[style_idx], linewidth=1.5, label=run)
+        plt.semilogx(
+            x_points,
+            y_points,
+            **styles[style_idx],
+            linewidth=1.5,
+            label=labels[run] if run in labels else run,
+        )
 
     plt.grid(True, which="both", ls="--", lw=0.5)
     plt.tick_params(axis="both", which="major", length=6, direction="in")
