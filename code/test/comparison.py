@@ -34,26 +34,23 @@ def filter_data(data: dict, status_list: list[int] = (0, 2)) -> dict:
     return copy
 
 
-def merge(data1: dict, data2: dict) -> dict:
+def merge(data_list: list[dict]) -> dict:
     merged = {}
-    for key in data1:
-        if key not in data2:
-            continue
-        merged[key] = {}
-        for x in data1[key]:
-            merged[key][f"{x}_1"] = data1[key][x]
-        for x in data2[key]:
-            merged[key][f"{x}_2"] = data2[key][x]
-
+    for key in data_list[0]:
+        if all(key in data for data in data_list):
+            merged[key] = {}
+            for i, data in enumerate(data_list):
+                for x in data[key]:
+                    merged[key][f"{x}_{i+1}"] = data[key][x]
     return merged
 
 
-def find_min_time(data: dict) -> dict:
+def find_min_time(data: dict, num_files: int) -> dict:
     new_data = data
 
     for key in new_data:
         new_data[key]["min_time"] = min(
-            (new_data[key]["time_1"], new_data[key]["time_2"])
+            new_data[key][f"time_{i+1}"] for i in range(num_files)
         )
 
     return new_data
@@ -77,17 +74,15 @@ def categorize(data: dict) -> dict:
     return new_data
 
 
-def prepare_data(json1: str, json2: str, metric: str) -> dict:
-    data1 = load_data_from_file(json1)
-    data2 = load_data_from_file(json2)
-    if metric not in data1[list(data1.keys())[0]]:
+def prepare_data(json_files: list[str], metric: str) -> dict:
+    data_list = [load_data_from_file(jf) for jf in json_files]
+    if metric not in data_list[0][list(data_list[0].keys())[0]]:
         print(f"{metric} not found in the json files.\nList of the available metrics:")
-        print(data1[list(data1.keys())[0]].keys())
+        print(data_list[0][list(data_list[0].keys())[0]].keys())
         exit(1)
-    data1_filtered = filter_data(data1)
-    data2_filtered = filter_data(data2)
-    merged = merge(data1_filtered, data2_filtered)
-    merged = find_min_time(merged)
+    filtered_data = [filter_data(data) for data in data_list]
+    merged = merge(filtered_data)
+    merged = find_min_time(merged, len(json_files))
     merged = categorize(merged)
     return merged
 
@@ -115,40 +110,46 @@ def compute_ratios(data: dict, metric: str) -> tuple[list[str], list[float]]:
     return categories, ratios
 
 
-def print_table(merged: dict, metric: str) -> None:
-    data1 = {"[0,1)": [], "[1,10)": [], "[10,100)": [], "[100,900)": [], "[900+)": []}
-    data2 = {"[0,1)": [], "[1,10)": [], "[10,100)": [], "[100,900)": [], "[900+)": []}
+def print_table(merged: dict, metric: str, num_files: int) -> None:
+    categories = ["[0,1)", "[1,10)", "[10,100)", "[100,900)", "[900+)"]
+    data = {cat: [[] for _ in range(num_files)] for cat in categories}
 
     for key in merged:
-        data1[merged[key]["diff"]].append(merged[key][f"{metric}_1"])
-        data2[merged[key]["diff"]].append(merged[key][f"{metric}_2"])
+        for i in range(num_files):
+            data[merged[key]["diff"]][i].append(merged[key][f"{metric}_{i+1}"])
 
-    print("=" * 89)
-    print(
-        f"{'Category':<15} || {'Count':>15} || {f'{metric}_1':>15} | {f'{metric}_2':>15} | {f'{metric}_ratio':>15}"
+    header = f"{'Category':<15} || {'Count':>15} || " + " | ".join(
+        [f"{metric + '_' + str(i + 1):>15}" for i in range(num_files)]
     )
-    print("-" * 89)
-    for key in data1:
-        list1 = data1[key]
-        list2 = data2[key]
-        sgm1 = sgm(list1)
-        sgm2 = sgm(list2)
-        print(
-            f"{key:<15} || {f'{len(list1)}':>15} || {f'{sgm1:.3f}':>15} | {f'{sgm2:.3f}':>15} | {f'{(sgm2 / sgm1):.3f}':>15}"
+    if num_files == 2:
+        header += f" | {f'{metric}_ratio':>15}"
+    print("=" * len(header))
+    print(header)
+    print("-" * len(header))
+
+    for key in categories:
+        sgms = [sgm(data[key][i]) for i in range(num_files)]
+        line = f"{key:<15} || {f'{len(data[key][0])}':>15} || " + " | ".join(
+            [f"{s:>15.3f}" for s in sgms]
         )
-    print("=" * 89)
+        if num_files == 2:
+            ratio = sgms[1] / sgms[0] if sgms[0] != 0 else 0
+            line += f" | {f'{ratio:.3f}':>15}"
+        print(line)
+    print("=" * len(header))
 
 
 def main():
-    if len(sys.argv) != 4:
-        print(f"Usage: > python3 {Path(__file__).name} <metric> <json1> <json2>")
+    if len(sys.argv) < 4:
+        print(
+            f"Usage: > python3 {Path(__file__).name} <metric> <json1> <json2> ... <jsonN>"
+        )
         exit(1)
 
     metric = sys.argv[1]
-    json1 = sys.argv[2]
-    json2 = sys.argv[3]
-    data = prepare_data(json1, json2, metric)
-    print_table(data, metric)
+    json_files = sys.argv[2:]
+    data = prepare_data(json_files, metric)
+    print_table(data, metric, len(json_files))
 
 
 if __name__ == "__main__":
