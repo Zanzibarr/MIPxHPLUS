@@ -1284,11 +1284,11 @@ organic-synthesis-split-sat18-strips-p08,0,108
 organic-synthesis-split-sat18-strips-p09,2,238
 organic-synthesis-split-sat18-strips-p10,2,304
 organic-synthesis-split-sat18-strips-p11,2,362
-organic-synthesis-split-sat18-strips-p12,2,1482706
-organic-synthesis-split-sat18-strips-p14,2,1424581
+organic-synthesis-split-sat18-strips-p12,2,4302
+organic-synthesis-split-sat18-strips-p14,2,8913
 organic-synthesis-split-sat18-strips-p15,0,273
 organic-synthesis-split-sat18-strips-p16,0,540
-organic-synthesis-split-sat18-strips-p17,2,1540128
+organic-synthesis-split-sat18-strips-p17,2,6561
 organic-synthesis-split-sat18-strips-p18,2,803
 parcprinter-08-strips-p01,0,169009
 parcprinter-08-strips-p02,0,438047
@@ -2384,7 +2384,7 @@ tidybot-sat11-strips-p08,0,18
 tidybot-sat11-strips-p09,2,24
 tidybot-sat11-strips-p10,2,27
 tidybot-sat11-strips-p11,2,28
-tidybot-sat11-strips-p12,2,22
+tidybot-sat11-strips-p12,0,21
 tidybot-sat11-strips-p13,2,26
 tidybot-sat11-strips-p14,0,26
 tidybot-sat11-strips-p15,0,28
