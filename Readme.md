@@ -1,14 +1,12 @@
 # MIP formulations for Deletefree AI Planning
 ![C++](https://img.shields.io/badge/C%2B%2B-00599C?style=for-the-badge&logo=c%2B%2B&logoColor=white)
 
-### Version: 2.2.4:2  
+### Version: 2.2.5  
 _Refer to the [Changelog](Changelog.md) for info about versions._  
 
 
 ## Abstract
-We compare current state-of-the-art M.I.P. formulations for solving the delete-free relaxation in cost-optimal planning, integrating various preprocessing techniques from different publications and developing primal heuristics to provide warm-start solutions to the M.I.P. solver.  
-We then explore a novel approach to model acyclicity by computing violated landmarks (aswell as S.E.C.) and adding them as constraints: computing all landmarks a priori is intractable, since the number of potential landmarks grows exponentially with the problem size, just like S.E.C., making any brute-force approach computationally infeasible; instead we employ a constraint generation approach where new constraints are identified dynamically: upon encountering an infeasible solution, we detect violated cuts within that solution and incorporate them as additional constraints, progressively constructing the minimal constraint set required for both feasibility and optimality.  
-Our experimental evaluation demonstrates that this landmark-based formulation achieves competitive performance with existing methods in both space and time efficiency.
+We compare current state-of-the-art MIP formulations for solving the delete-free relaxation in cost-optimal planning, integrating various preprocessing techniques from different publications and developing primal heuristics to provide warm-start solutions to the MIP solver. We then explore a novel approach to model acyclicity by computing violated landmarks (as well as S.E.C.) and adding them as constraints: computing all landmarks a priori is intractable, since the number of potential landmarks grows exponentially with the problem size, just like S.E.C., making any brute-force approach computationally infeasible; instead we employ a constraint generation approach where new constraints are identified dynamically: upon encountering an infeasible solution, we detect violated cuts within that solution and incorporate them as additional constraints, progressively constructing the minimal constraint set required for both feasibility and optimality. Our experimental evaluation demonstrates that this landmark-based formulation achieves competitive performance with existing methods in both space and time efficiency.
 
 ## Publication associated to this code
 _Work in progress_

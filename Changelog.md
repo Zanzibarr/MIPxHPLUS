@@ -25,6 +25,16 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
+## [2.2.5] - 2025/08/14
+This is the Master Thesis version (results of this version shown in my Master's Thesis) 
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+<!-- ### :heavy_exclamation_mark: Changed -->
+<!-- ### :heavy_plus_sign: Added -->
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+
+
 ## [2.2.4] - 2025/07/19
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->
