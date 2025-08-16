@@ -33,6 +33,7 @@ struct instance {
     binary_set fixed_facts, fixed_actions;
     std::vector<unsigned int> fadd_cpx_start;
     std::vector<std::vector<unsigned int>> act_with_pre, act_with_eff;
+    std::vector<std::vector<unsigned int>> landmarks;
     // Vertex elimination graph
     std::vector<unsigned int> veg_starts;
     std::vector<std::vector<unsigned int>> veg_cumulative_graph;
@@ -57,6 +58,7 @@ inline void init(instance& inst) {
                     .fadd_cpx_start = std::vector<unsigned int>(),
                     .act_with_pre = std::vector<std::vector<unsigned int>>(),
                     .act_with_eff = std::vector<std::vector<unsigned int>>(),
+                    .landmarks = std::vector<std::vector<unsigned int>>(),
                     .veg_starts = std::vector<unsigned int>(),
                     .veg_cumulative_graph = std::vector<std::vector<unsigned int>>(),
                     .goal = binary_set(),

@@ -4,7 +4,7 @@
 inline void init_cutloop(const hplus::execution& exec, CPXENVptr& env, CPXLPptr& lp, CPXENVptr& flmdetenv, CPXLPptr& flmdetlp,
                          const hplus::instance& inst) {
     CPX_HANDLE_CALL(CPXchgprobtype(env, lp, CPXPROB_LP));
-    relax_cuts::create_flmdet_model(inst, flmdetenv, flmdetlp, exec.threads);
+    relax_cuts::create_flmdet_model(inst, flmdetenv, flmdetlp, exec.threads);   // In our cutloop we can enable multithreading on the flmdet model, cause there's only one (thread running the) cutloop
 }
 
 inline void exit_cutloop(CPXENVptr& env, CPXLPptr& lp, CPXENVptr& flmdetenv, CPXLPptr& flmdetlp) {
@@ -79,26 +79,27 @@ inline unsigned int generate_cuts(CPXENVptr& env, CPXLPptr& lp, CPXENVptr& flmde
         }
     };
 
-    unsigned int inout_it{0}, max_inout_it{exec.io_max_iter};
-    double w = inout_w, w_update = exec.io_weight_update;
+    unsigned int inout_it{0};
+    double w = inout_w;
 
-    if (exec.inout) {  // In Out
-        while (inout_it <= max_inout_it && new_cuts == 0) {
+    if (exec.inout) {  // In-Out
+        while (inout_it <= exec.io_max_iter && new_cuts == 0) {
             inout_it++;
             std::vector<double> inout_relax_point;
-            if (inout_it == max_inout_it) w = 0;
+            if (inout_it == exec.io_max_iter) w = 0;
             for (int i = 0; i < ncols; i++) inout_relax_point.push_back(relax_point[i] * (1 - w) + incumbent[i] * w);
             add_cuts(inout_relax_point);
-            if (new_cuts == 0) w *= w_update;
+            if (new_cuts == 0) w *= exec.io_weight_update;
         }
-        // if (inout_it == 1 && inout_w < 0.85)
-        //     inout_w += 0.1;
-        // else if (inout_it > 1)
-        //     inout_w = w;
+
+        // Dynamic In-Out weight adjustment
+        if (inout_it == 1 && inout_w < 0.85)
+            inout_w += 0.1;
+        else if (inout_it > 1)
+            inout_w = w;
+
     } else  // Normal
         add_cuts(relax_point);
-
-    LOG_DEBUG << inout_w;
 
     return new_cuts;
 }
@@ -115,8 +116,6 @@ inline void pruning(CPXENVptr& env, CPXLPptr& lp, int base_constraints) {
         }
         CPX_HANDLE_CALL(CPXdelsetrows(env, lp, deleted.data()));
     }
-
-    LOG_DEBUG << "Pruning: Added " << nrows - base_constraints << " rows; Deleted " << nrows - CPXgetnumrows(env, lp) << " rows";
 }
 
 void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, const hplus::instance& inst, hplus::statistics& stats) {
@@ -130,15 +129,11 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
     unsigned int new_cuts{1}, iteration{0};
 
     std::vector<double> lb_history;
-    const double k_percent = exec.cl_improv;
-    const unsigned int lookback_iterations = exec.cl_past_iter, min_iteration = exec.cl_min_iter;
 
     const auto& repeat_cutloop = [&]() {
         double current_lb;
         CPX_HANDLE_CALL(CPXgetobjval(env, lp, &current_lb));
         lb_history.push_back(current_lb);
-
-        LOG_DEBUG << "Current lb:      " << current_lb;
 
         // No more cuts
         if (new_cuts == 0) return false;
@@ -147,16 +142,16 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
         if (1 - current_lb / static_cast<double>(inst.sol.cost == 0 ? 1 : inst.sol.cost) <= exec.cl_gap_stop + HPLUS_EPSILON) return false;
 
         // Do the minimum number of iterations
-        if (iteration < min_iteration || lb_history.size() <= lookback_iterations) return true;
+        if (iteration < exec.cl_min_iter || lb_history.size() <= exec.cl_past_iter) return true;
 
-        // Absolute gap with past iteration
-        double old_lb = lb_history[lb_history.size() - lookback_iterations - 1];
-        if (old_lb < 1e-9) return current_lb - old_lb >= HPLUS_EPSILON;
+        // Absolute gap with past iteration (only if old_lb is 0 -> we cannot compute the relative gap if it is 0)
+        double old_lb = lb_history[lb_history.size() - exec.cl_past_iter - 1];
+        if (old_lb <= HPLUS_EPSILON) return current_lb - old_lb >= HPLUS_EPSILON;
 
         // Relative gap with past iteration
-        double improvement = (current_lb - old_lb) / old_lb;
-        if (improvement < HPLUS_EPSILON) improvement = 0;  // Fix for precision issues
-        return improvement >= k_percent;
+        double improvement = current_lb / old_lb - 1;
+        if (improvement < HPLUS_EPSILON) improvement = 0;  // Set to 0 for precision issues
+        return improvement >= exec.cl_improv;
     };
 
     CPXENVptr flmdetenv = nullptr;
@@ -195,9 +190,9 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
         iteration++;
     }
 
-    double tmp_lb;
-    CPX_HANDLE_CALL(CPXgetobjval(env, lp, &tmp_lb));
-    LOG_DEBUG << "Lower bound after cutloop : " << tmp_lb;
+    double cl_lb;
+    CPX_HANDLE_CALL(CPXgetobjval(env, lp, &cl_lb));
+    if (exec.verbosity >= hplus::verbose::BASIC) LOG_INFO << "Lower bound after cutloop : " << cl_lb;
 
     // Purging of slack constraints (if we exited due to time limit, we might not have a full solution, so pruning constraints might remove more than
     // necessary)

@@ -25,6 +25,17 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
+
+## [2.2.6] - YYYY/MM/DD
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+<!-- ### :heavy_exclamation_mark: Changed -->
+### :heavy_plus_sign: Added
+- LM-CUT disjunctive action landmarks for preprocessing
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+
+
 ## [2.2.5] - 2025/08/14
 This is the Master Thesis version (results of this version shown in my Master's Thesis) 
 <!-- ### :warning: Known issues -->

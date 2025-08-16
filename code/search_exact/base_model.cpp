@@ -75,8 +75,8 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplu
     std::vector<int> ind(inst.m + 1);
     std::vector<double> val(inst.m + 1);
     int nnz{0};
-    constexpr char sense_e{'E'}, sense_l{'L'};
-    constexpr double rhs_0{0};
+    constexpr char sense_e{'E'}, sense_l{'L'}, sense_g{'G'};
+    constexpr double rhs_0{0}, rhs_1{1};
     constexpr int begin{0};
 
     for (unsigned int var_i = 0; var_i < inst.n; var_i++) {
@@ -95,8 +95,7 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplu
         // if nnz == 1, then we'd have p = 0, meaning we could simply fix this variable to 0
         if (nnz == 1) {
             const char fix = 'B';
-            const double zero = 0;
-            CPX_HANDLE_CALL(CPXchgbds(env, lp, 1, ind.data(), &fix, &zero));
+            CPX_HANDLE_CALL(CPXchgbds(env, lp, 1, ind.data(), &fix, &rhs_0));
         } else {
             stats.const_base++;
             CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, nnz, &rhs_0, &sense_e, &begin, ind.data(), val.data(), nullptr, nullptr));
@@ -136,6 +135,32 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplu
             val[1] = 1;
             stats.const_base++;
             CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind.data(), val.data(), nullptr, nullptr));
+        }
+        stopcheck();
+    }
+
+    // If preprocessing is used, there might be Disjunctive Action Landmarks to add as constraints... those must be counted as acyclicity constraints,
+    // since those are not needed for the base model correctness
+    if (exec.prep) {
+        for (const auto& landmark : inst.landmarks) {
+            // TODO: remove once properly tested
+            // Debugging -> landmarks should not be empty
+            ASSERT(!landmark.empty());
+            // If the landmark is composed of only one action, that that action has to be used -> fix it instead of creating a landmark (CPLEX
+            // preprocessing would fix it anyways)
+            if (landmark.size() == 1) {
+                const char fix = 'B';
+                ind[0] = static_cast<int>(landmark[0]);
+                CPX_HANDLE_CALL(CPXchgbds(env, lp, 1, ind.data(), &fix, &rhs_1));
+                continue;
+            }
+            nnz = 0;
+            for (const auto& act_i : landmark) {
+                ind[nnz] = static_cast<int>(act_i);
+                val[nnz++] = 1;
+            }
+            stats.const_acyc++;
+            CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, nnz, &rhs_1, &sense_g, &begin, ind.data(), val.data(), nullptr, nullptr));
         }
         stopcheck();
     }

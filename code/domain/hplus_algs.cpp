@@ -360,8 +360,9 @@ void hplus::run(execution& exec, instance& inst, statistics& stats) {
         if (exec.prep) {
             exec.exec_s = exec_status::PREPROCESSING;
             prep::preprocess(exec, inst, stats);
+        } else {  // prepare_optimization_helpers is already in the preprocess function but needs to be called even if no preprocessing is done
+            prep::prepare_optimization_helpers(inst);
         }
-        prep::prepare_optimization_helpers(exec, inst, stats);
         stopcheck();
 
         // ~~~~~~~~~~~~~~ HEURISTIC ~~~~~~~~~~~~~~ //

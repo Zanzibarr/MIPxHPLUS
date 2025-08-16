@@ -7,11 +7,11 @@ static double htype(const std::vector<unsigned int>& state, const std::vector<do
     return hvalue;
 }
 
-static void update_htype_values(const hplus::instance& inst, const binary_set& state, std::vector<double>& values, priority_queue<double>& pq,
+static void update_htype_values(const hplus::instance& inst, const binary_set& new_facts, std::vector<double>& values, priority_queue<double>& pq,
                                 std::stack<std::pair<unsigned int, double>>& trail, const binary_set& used_actions,
                                 double (*h_eqtype)(double, double)) {
     binary_set trail_flags{inst.n};
-    for (const auto& p : state) {
+    for (const auto& p : new_facts) {
         trail.emplace(p, values[p]);
         trail_flags.add(p);
         values[p] = 0;

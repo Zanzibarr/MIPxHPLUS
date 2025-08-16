@@ -130,7 +130,8 @@ inline void set_cplex_callbacks(hplus::execution& exec, hplus::instance& inst, c
         };
 
         if (exec.fract_cuts.find('l') != std::string::npos)  // l here stands for landmarks -> if we need landmarks we need the mip that detects them
-            relax_cuts::create_flmdet_model(inst, td.flmdet_env, td.flmdet_lp);
+            relax_cuts::create_flmdet_model(
+                inst, td.flmdet_env, td.flmdet_lp);  // We use only 1 thread since CPLEX might run in multithreading before it finds an initial basis
 
         userhandle.thread_specific_data.push_back(std::move(td));
     }
