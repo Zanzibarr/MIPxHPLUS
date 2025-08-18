@@ -36,6 +36,7 @@ labels = {
     "002_2.2.0:4_lm_e_h__250613": r"$\mathrm{LM}^e_h$",
     "002_2.2.0:4_lms_e_h_candsecfacts__250610": r"$\mathrm{LMS}^e_h$",
     "002_2.2.5_lms_e_h_lmcut__250817": r"$\mathrm{LMS}^e_h+\mbox{LMCUT}$",
+    "002_2.2.5_ve_e_h_lmcut__250818": r"$\mathrm{VE}^e_h+\mbox{LMCUT}$",
 }
 
 

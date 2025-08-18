@@ -283,7 +283,7 @@ data-network-sat18-strips-p02,0,218
 data-network-sat18-strips-p03,0,315
 data-network-sat18-strips-p04,0,459
 data-network-sat18-strips-p05,0,454
-data-network-sat18-strips-p06,2,577
+data-network-sat18-strips-p06,0,577
 data-network-sat18-strips-p07,0,518
 data-network-sat18-strips-p08,0,468
 data-network-sat18-strips-p09,0,721
@@ -296,8 +296,8 @@ data-network-sat18-strips-p15,0,478
 data-network-sat18-strips-p16,2,525
 data-network-sat18-strips-p17,0,589
 data-network-sat18-strips-p18,2,472
-data-network-sat18-strips-p19,2,1232
-data-network-sat18-strips-p20,2,776
+data-network-sat18-strips-p19,2,1227
+data-network-sat18-strips-p20,2,712
 depot-p01,0,10
 depot-p02,0,14
 depot-p03,0,22
@@ -1271,7 +1271,7 @@ organic-synthesis-split-opt18-strips-p15,2,505
 organic-synthesis-split-opt18-strips-p16,0,103
 organic-synthesis-split-opt18-strips-p17,2,479
 organic-synthesis-split-opt18-strips-p18,2,637
-organic-synthesis-split-opt18-strips-p19,2,161
+organic-synthesis-split-opt18-strips-p19,2,157
 organic-synthesis-split-opt18-strips-p20,2,448
 organic-synthesis-split-sat18-strips-p01,0,216
 organic-synthesis-split-sat18-strips-p02,0,247
@@ -2293,7 +2293,7 @@ tetris-sat14-strips-p037,0,34
 tetris-sat14-strips-p038,0,33
 tetris-sat14-strips-p039,0,41
 tetris-sat14-strips-p040,0,39
-thoughtful-mco14-strips-p11_6_65-typed,2,71
+thoughtful-mco14-strips-p11_6_65-typed,2,70
 thoughtful-mco14-strips-p11_6_74-typed,2,73
 thoughtful-mco14-strips-p11_6_75-typed,2,76
 thoughtful-mco14-strips-p11_6_78-typed,2,69
@@ -2329,7 +2329,7 @@ thoughtful-sat14-strips-target-typed-21,2,92
 thoughtful-sat14-strips-target-typed-22,2,101
 thoughtful-sat14-strips-target-typed-23,2,85
 thoughtful-sat14-strips-target-typed-24,2,82
-thoughtful-sat14-strips-target-typed-25,2,92
+thoughtful-sat14-strips-target-typed-25,2,86
 thoughtful-sat14-strips-target-typed-26,2,97
 thoughtful-sat14-strips-target-typed-27,2,81
 thoughtful-sat14-strips-target-typed-28,2,84
@@ -2353,7 +2353,7 @@ tidybot-opt11-strips-p17,2,26
 tidybot-opt11-strips-p18,0,20
 tidybot-opt11-strips-p19,0,23
 tidybot-opt11-strips-p20,0,28
-tidybot-opt14-strips-p01,2,26
+tidybot-opt14-strips-p01,0,26
 tidybot-opt14-strips-p02,2,27
 tidybot-opt14-strips-p03,0,21
 tidybot-opt14-strips-p04,0,20
@@ -2373,7 +2373,7 @@ tidybot-opt14-strips-p17,2,26
 tidybot-opt14-strips-p18,0,20
 tidybot-opt14-strips-p19,0,23
 tidybot-opt14-strips-p20,0,28
-tidybot-sat11-strips-p01,2,26
+tidybot-sat11-strips-p01,0,26
 tidybot-sat11-strips-p02,2,27
 tidybot-sat11-strips-p03,0,21
 tidybot-sat11-strips-p04,0,20
@@ -2498,7 +2498,7 @@ transport-sat08-strips-p02,0,152
 transport-sat08-strips-p03,0,211
 transport-sat08-strips-p04,0,240
 transport-sat08-strips-p05,0,290
-transport-sat08-strips-p06,2,361
+transport-sat08-strips-p06,2,360
 transport-sat08-strips-p07,2,425
 transport-sat08-strips-p08,0,339
 transport-sat08-strips-p09,2,406
@@ -2510,7 +2510,7 @@ transport-sat08-strips-p14,0,493
 transport-sat08-strips-p15,0,517
 transport-sat08-strips-p16,2,585
 transport-sat08-strips-p17,2,684
-transport-sat08-strips-p18,2,661
+transport-sat08-strips-p18,2,640
 transport-sat08-strips-p19,2,757
 transport-sat08-strips-p20,2,733
 transport-sat08-strips-p21,0,386
@@ -2528,7 +2528,7 @@ transport-sat11-strips-p02,2,406
 transport-sat11-strips-p03,2,958
 transport-sat11-strips-p04,2,585
 transport-sat11-strips-p05,2,684
-transport-sat11-strips-p06,2,661
+transport-sat11-strips-p06,2,640
 transport-sat11-strips-p07,2,757
 transport-sat11-strips-p08,2,495
 transport-sat11-strips-p09,2,733
