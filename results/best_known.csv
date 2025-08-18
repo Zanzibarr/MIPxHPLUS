@@ -283,7 +283,7 @@ data-network-sat18-strips-p02,0,218
 data-network-sat18-strips-p03,0,315
 data-network-sat18-strips-p04,0,459
 data-network-sat18-strips-p05,0,454
-data-network-sat18-strips-p06,2,582
+data-network-sat18-strips-p06,2,577
 data-network-sat18-strips-p07,0,518
 data-network-sat18-strips-p08,0,468
 data-network-sat18-strips-p09,0,721
@@ -291,12 +291,12 @@ data-network-sat18-strips-p10,0,601
 data-network-sat18-strips-p11,0,203
 data-network-sat18-strips-p12,0,257
 data-network-sat18-strips-p13,0,320
-data-network-sat18-strips-p14,2,345
-data-network-sat18-strips-p15,2,478
+data-network-sat18-strips-p14,0,345
+data-network-sat18-strips-p15,0,478
 data-network-sat18-strips-p16,2,525
-data-network-sat18-strips-p17,2,589
+data-network-sat18-strips-p17,0,589
 data-network-sat18-strips-p18,2,472
-data-network-sat18-strips-p19,2,1251
+data-network-sat18-strips-p19,2,1232
 data-network-sat18-strips-p20,2,776
 depot-p01,0,10
 depot-p02,0,14
@@ -781,7 +781,7 @@ logistics98-prob25,0,177
 logistics98-prob26,0,175
 logistics98-prob27,0,135
 logistics98-prob28,0,243
-logistics98-prob29,2,274
+logistics98-prob29,0,274
 logistics98-prob30,0,124
 logistics98-prob31,0,12
 logistics98-prob32,0,18
@@ -2347,7 +2347,7 @@ tidybot-opt11-strips-p11,0,18
 tidybot-opt11-strips-p12,0,25
 tidybot-opt11-strips-p13,0,19
 tidybot-opt11-strips-p14,0,18
-tidybot-opt11-strips-p15,2,21
+tidybot-opt11-strips-p15,0,21
 tidybot-opt11-strips-p16,0,25
 tidybot-opt11-strips-p17,2,26
 tidybot-opt11-strips-p18,0,20
@@ -2356,7 +2356,7 @@ tidybot-opt11-strips-p20,0,28
 tidybot-opt14-strips-p01,2,26
 tidybot-opt14-strips-p02,2,27
 tidybot-opt14-strips-p03,0,21
-tidybot-opt14-strips-p04,2,20
+tidybot-opt14-strips-p04,0,20
 tidybot-opt14-strips-p05,0,22
 tidybot-opt14-strips-p06,2,27
 tidybot-opt14-strips-p07,0,25
@@ -2364,10 +2364,10 @@ tidybot-opt14-strips-p08,0,18
 tidybot-opt14-strips-p09,2,24
 tidybot-opt14-strips-p10,2,27
 tidybot-opt14-strips-p11,0,18
-tidybot-opt14-strips-p12,2,25
+tidybot-opt14-strips-p12,0,25
 tidybot-opt14-strips-p13,0,19
 tidybot-opt14-strips-p14,0,18
-tidybot-opt14-strips-p15,2,21
+tidybot-opt14-strips-p15,0,21
 tidybot-opt14-strips-p16,0,25
 tidybot-opt14-strips-p17,2,26
 tidybot-opt14-strips-p18,0,20
@@ -2376,7 +2376,7 @@ tidybot-opt14-strips-p20,0,28
 tidybot-sat11-strips-p01,2,26
 tidybot-sat11-strips-p02,2,27
 tidybot-sat11-strips-p03,0,21
-tidybot-sat11-strips-p04,2,20
+tidybot-sat11-strips-p04,0,20
 tidybot-sat11-strips-p05,0,22
 tidybot-sat11-strips-p06,2,27
 tidybot-sat11-strips-p07,0,25
@@ -2392,7 +2392,7 @@ tidybot-sat11-strips-p16,2,28
 tidybot-sat11-strips-p17,2,27
 tidybot-sat11-strips-p18,2,25
 tidybot-sat11-strips-p19,2,58
-tidybot-sat11-strips-p20,2,46
+tidybot-sat11-strips-p20,2,45
 tpp-p01,0,4
 tpp-p02,0,7
 tpp-p03,0,10

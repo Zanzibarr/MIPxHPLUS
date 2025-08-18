@@ -143,9 +143,6 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplu
     // since those are not needed for the base model correctness
     if (exec.prep) {
         for (const auto& landmark : inst.landmarks) {
-            // TODO: remove once properly tested
-            // Debugging -> landmarks should not be empty
-            ASSERT(!landmark.empty());
             // If the landmark is composed of only one action, that that action has to be used -> fix it instead of creating a landmark (CPLEX
             // preprocessing would fix it anyways)
             if (landmark.size() == 1) {

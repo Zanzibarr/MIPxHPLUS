@@ -152,7 +152,7 @@ def main():
 
     json1, json2 = sys.argv[1], sys.argv[2]
     names = [Path(json1).stem, Path(json2).stem]
-    data = prepare_data(json1, json2, "time")
+    data = prepare_data([json1, json2], "time")
     os.makedirs("plots", exist_ok=True)
     plot_comparison(data, names)
 
