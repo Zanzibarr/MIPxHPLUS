@@ -4,11 +4,6 @@
 #include "../utils/algorithms.hpp"
 #include "preprocessing.hpp"
 
-void mypause() {
-    std::string _;
-    std::cin >> _;
-}
-
 std::pair<int, int> hmax(const std::vector<unsigned int>& preconditions, const std::vector<int>& hmax_values) {
     int pcf{-1}, hmax{-1};
     for (const auto& p : preconditions) {
@@ -107,9 +102,9 @@ int compute_cut(hplus::instance& inst, const std::vector<int>& hmax_values, cons
         }
     }
 
+    // Compute the pre_goal section and the cut
     std::vector<unsigned int> cut;
     int min_redcost_cut{std::numeric_limits<int>::max()};
-
     explored.clear();
 
     const auto& check_cut = [&inst, &reduced_costs, &cut, &min_redcost_cut, &section_detect_queue, &pre_goal_section, &goal_section,
@@ -130,7 +125,6 @@ int compute_cut(hplus::instance& inst, const std::vector<int>& hmax_values, cons
         }
     };
 
-    // Compute the pre_goal section
     for (const auto& act_i : initial_actions) check_cut(act_i);
 
     while (!section_detect_queue.empty()) {
@@ -150,7 +144,7 @@ int compute_cut(hplus::instance& inst, const std::vector<int>& hmax_values, cons
     return min_redcost_cut;
 }
 
-void prep::lmcut_landmarks_extraction(hplus::instance& inst) {
+void prep::lmcut_landmarks_extraction(const hplus::execution& exec, hplus::instance& inst) {
     std::vector<int> hmax_values(inst.n, std::numeric_limits<int>::max()), pcf(inst.m, -1), pcf_hmax(inst.m, std::numeric_limits<int>::max());
 
     const std::vector<unsigned int> goal_sparse{inst.goal.sparse()};
@@ -177,5 +171,5 @@ void prep::lmcut_landmarks_extraction(hplus::instance& inst) {
         if (CHECK_STOP()) throw timelimit_exception("Reached time limit.");
     }
 
-    LOG_INFO << "Computed a lm-cut value of: " << lmcut_value;
+    if (exec.verbosity >= hplus::verbose::BASIC) LOG_INFO << "Computed a lm-cut value of: " << lmcut_value;
 }

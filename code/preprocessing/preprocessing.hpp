@@ -19,7 +19,7 @@ void eliminated_facts_removal(hplus::instance& inst, hplus::statistics& stats, s
 
 void eliminated_actions_removal(hplus::instance& inst, hplus::statistics& stats);
 
-void lmcut_landmarks_extraction(hplus::instance& inst);
+void lmcut_landmarks_extraction(const hplus::execution& exec, hplus::instance& inst);
 
 inline void prepare_preprocessing(hplus::instance& inst) {
     inst.fixed_facts = binary_set{inst.n};
@@ -66,7 +66,7 @@ inline void preprocess(const hplus::execution& exec, hplus::instance& inst, hplu
 
     prepare_optimization_helpers(inst);
 
-    lmcut_landmarks_extraction(inst);
+    lmcut_landmarks_extraction(exec, inst);
 
     stats.preprocessing = GET_TIME() - start_time;
 }
