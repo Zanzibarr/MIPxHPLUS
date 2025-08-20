@@ -1,18 +1,37 @@
 #include <deque>
+#include <random>
 
 #include "../external/pq.hpp"
 #include "../utils/algorithms.hpp"
 #include "preprocessing.hpp"
 
 std::pair<int, int> hmax(const std::vector<unsigned int>& preconditions, const std::vector<int>& hmax_values) {
-    int pcf{-1}, hmax{-1};
+    if (preconditions.empty()) return {-1, -1};
+
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+
+    int max_hmax = -1;
+    unsigned int selected_pcf = 0;
+    int count = 0;
+
     for (const auto& p : preconditions) {
-        if (hmax < hmax_values[p]) {
-            hmax = hmax_values[p];
-            pcf = p;
+        int current_hmax = hmax_values[p];
+
+        if (current_hmax > max_hmax) {
+            // Found new maximum - reset
+            max_hmax = current_hmax;
+            selected_pcf = p;
+            count = 1;
+        } else if (current_hmax == max_hmax) {
+            // Same as current max - randomly decide whether to replace
+            count++;
+            std::uniform_int_distribution<int> dist(1, count);
+            if (dist(gen) == 1) selected_pcf = p;
         }
     }
-    return {pcf, hmax};
+
+    return {static_cast<int>(selected_pcf), max_hmax};
 }
 
 void update_hmax_values(const hplus::instance& inst, std::vector<int>& hmax_values, std::vector<int>& pcf, std::vector<int>& pcf_hmax,
