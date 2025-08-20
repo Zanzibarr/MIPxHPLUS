@@ -32,6 +32,7 @@ HOW I DO VERSIONING:
 ### :heavy_plus_sign: Added
 - LM-CUT disjunctive action landmarks for preprocessing (25/08/17)
 - Testing random lmcut preprocessing \[:1\]
+- Reverting random lmcut preprocessing to arbitrary \[:2\]
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
 
