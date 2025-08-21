@@ -67,6 +67,24 @@ std::pair<int, int> hmax_random(const std::vector<unsigned int>& preconditions, 
     return {pcf, hmax};
 }
 
+void init_hmax(const hplus::instance& inst, std::vector<int>& hmax_values, std::vector<int>& pcf, std::vector<int>& pcf_hmax,
+               std::vector<int>& reduced_costs, std::vector<unsigned int>& initial_actions) {
+    for (unsigned int i = 0; i < inst.n; i++) hmax_values[i] = std::numeric_limits<int>::max();
+    for (unsigned int i = 0; i < inst.m; i++) {
+        pcf[i] = -1;
+        pcf_hmax[i] = std::numeric_limits<int>::max();
+        reduced_costs[i] = static_cast<int>(inst.actions[i].cost);
+    }
+
+    for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
+        if (inst.actions[act_i].pre_sparse.empty()) {
+            initial_actions.push_back(act_i);
+            pcf[act_i] = static_cast<int>(inst.n);
+            pcf_hmax[act_i] = 0;
+        }
+    }
+}
+
 void update_hmax_values(const hplus::instance& inst, std::vector<int>& hmax_values, std::vector<int>& pcf, std::vector<int>& pcf_hmax,
                         const std::vector<int>& reduced_costs, const std::vector<unsigned int>& modified_actions,
                         const hmax_function_type& hmax_function, const std::vector<int>& initial_hmax_values) {
@@ -196,30 +214,6 @@ int compute_and_store_cut(hplus::instance& inst, const std::vector<int>& hmax_va
     inst.landmarks.push_back(std::move(cut));
 
     return min_redcost_cut;
-}
-
-void init_hmax(const hplus::instance& inst, std::vector<int>& hmax_values, std::vector<int>& pcf, std::vector<int>& pcf_hmax,
-               std::vector<int>& reduced_costs, std::vector<unsigned int>& initial_actions) {
-    for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
-        if (inst.actions[act_i].pre_sparse.empty()) {
-            initial_actions.push_back(act_i);
-            pcf[act_i] = static_cast<int>(inst.n);
-            pcf_hmax[act_i] = 0;
-        }
-    }
-    for (unsigned int i = 0; i < inst.n; i++) hmax_values[i] = std::numeric_limits<int>::max();
-    int k{0};
-    for (unsigned int i = 0; i < inst.m; i++) {
-        if (initial_actions[k] == i) {
-            pcf[i] = static_cast<int>(inst.n);
-            pcf_hmax[i] = 0;
-            k++;
-        } else {
-            pcf[i] = -1;
-            pcf_hmax[i] = std::numeric_limits<int>::max();
-        }
-        reduced_costs[i] = static_cast<int>(inst.actions[i].cost);
-    }
 }
 
 void compute_lmcut(hplus::instance& inst, const hplus::execution& exec, std::vector<int> hmax_values, std::vector<int> pcf, std::vector<int> pcf_hmax,

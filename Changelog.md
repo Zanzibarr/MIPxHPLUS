@@ -27,14 +27,15 @@ HOW I DO VERSIONING:
 
 ## [2.2.6] - 2025/08/21
 <!-- ### :warning: Known issues -->
-<!-- ### :ballot_box_with_check: Fixed -->
+### :ballot_box_with_check: Fixed
+- Fixed bug with LMCUT in version 2.2.6:4 \[:5\] (25/08/21)
 <!-- ### :heavy_exclamation_mark: Changed -->
 ### :heavy_plus_sign: Added
 - LM-CUT disjunctive action landmarks for preprocessing (25/08/17)
 - Testing random LMCUT preprocessing \[:1\] (25/08/20)
 - Reverting random LMCUT preprocessing to arbitrary \[:2\] (25/08/20)
-- Testing combination of multiple tie breaking in LMCUT \[:3\]
-- Randomization as second level tie-breaking for VDM in LMCUT \[:4\]
+- Testing combination of multiple tie breaking in LMCUT \[:3\] (25/08/21)
+- Randomization as second level tie-breaking for VDM in LMCUT \[:4\] (25/08/21)
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
 
