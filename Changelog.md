@@ -31,9 +31,10 @@ HOW I DO VERSIONING:
 <!-- ### :heavy_exclamation_mark: Changed -->
 ### :heavy_plus_sign: Added
 - LM-CUT disjunctive action landmarks for preprocessing (25/08/17)
-- Testing random lmcut preprocessing \[:1\] (25/08/20)
-- Reverting random lmcut preprocessing to arbitrary \[:2\] (25/08/20)
-- Testing combination of multiple tie breaking in lmcut \[:3\]
+- Testing random LMCUT preprocessing \[:1\] (25/08/20)
+- Reverting random LMCUT preprocessing to arbitrary \[:2\] (25/08/20)
+- Testing combination of multiple tie breaking in LMCUT \[:3\]
+- Randomization as second level tie-breaking for VDM in LMCUT \[:4\]
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
 

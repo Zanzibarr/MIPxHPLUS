@@ -22,31 +22,25 @@ std::pair<int, int> hmax_arbitrary(const std::vector<unsigned int>& precondition
 
 std::pair<int, int> hmax_value_decrease_minimization(const std::vector<unsigned int>& preconditions, const std::vector<int>& hmax_values,
                                                      const std::vector<int>& initial_hmax_values) {
-    int pcf{-1}, hmax{-1}, min_decrease{std::numeric_limits<int>::max()};
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+    int pcf{-1}, hmax{-1}, min_decrease{std::numeric_limits<int>::max()}, count{0};
     for (const auto& p : preconditions) {
         if (hmax < hmax_values[p]) {
             hmax = hmax_values[p];
             pcf = p;
             min_decrease = initial_hmax_values[p] - hmax_values[p];
-        } else if (hmax == hmax_values[p] && (initial_hmax_values[p] - hmax_values[p] < min_decrease)) {
-            pcf = p;
-            min_decrease = initial_hmax_values[p] - hmax_values[p];
-        }
-    }
-    return {pcf, hmax};
-}
-
-std::pair<int, int> hmax_value_decrease_maximization(const std::vector<unsigned int>& preconditions, const std::vector<int>& hmax_values,
-                                                     const std::vector<int>& initial_hmax_values) {
-    int pcf{-1}, hmax{-1}, max_decrease{-1};
-    for (const auto& p : preconditions) {
-        if (hmax < hmax_values[p]) {
-            hmax = hmax_values[p];
-            pcf = p;
-            max_decrease = initial_hmax_values[p] - hmax_values[p];
-        } else if (hmax == hmax_values[p] && (initial_hmax_values[p] - hmax_values[p] > max_decrease)) {
-            pcf = p;
-            max_decrease = initial_hmax_values[p] - hmax_values[p];
+            count = 1;
+        } else if (hmax == hmax_values[p]) {  // First level tie-breaking: pcf with the smallest value decrease since the first hmax iteration
+            if (initial_hmax_values[p] - hmax_values[p] < min_decrease) {
+                pcf = p;
+                min_decrease = initial_hmax_values[p] - hmax_values[p];
+                count = 1;
+            } else if (initial_hmax_values[p] - hmax_values[p] == min_decrease) {  // Second level tie-breaking: random
+                count++;
+                std::uniform_int_distribution<int> dist(1, count);
+                if (dist(gen) == 1) pcf = p;
+            }
         }
     }
     return {pcf, hmax};
