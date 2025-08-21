@@ -1,11 +1,15 @@
 #include <deque>
+#include <functional>
 #include <random>
 
 #include "../external/pq.hpp"
 #include "../utils/algorithms.hpp"
 #include "preprocessing.hpp"
 
-std::pair<int, int> hmax(const std::vector<unsigned int>& preconditions, const std::vector<int>& hmax_values) {
+using hmax_function_type = std::function<std::pair<int, int>(const std::vector<unsigned int>&, const std::vector<int>&, const std::vector<int>&)>;
+
+std::pair<int, int> hmax_arbitrary(const std::vector<unsigned int>& preconditions, const std::vector<int>& hmax_values,
+                                   [[maybe_unused]] const std::vector<int>& _) {
     int pcf{-1}, hmax{-1};
     for (const auto& p : preconditions) {
         if (hmax < hmax_values[p]) {
@@ -16,8 +20,62 @@ std::pair<int, int> hmax(const std::vector<unsigned int>& preconditions, const s
     return {pcf, hmax};
 }
 
+std::pair<int, int> hmax_value_decrease_minimization(const std::vector<unsigned int>& preconditions, const std::vector<int>& hmax_values,
+                                                     const std::vector<int>& initial_hmax_values) {
+    int pcf{-1}, hmax{-1}, min_decrease{std::numeric_limits<int>::max()};
+    for (const auto& p : preconditions) {
+        if (hmax < hmax_values[p]) {
+            hmax = hmax_values[p];
+            pcf = p;
+            min_decrease = initial_hmax_values[p] - hmax_values[p];
+        } else if (hmax == hmax_values[p] && (initial_hmax_values[p] - hmax_values[p] < min_decrease)) {
+            pcf = p;
+            min_decrease = initial_hmax_values[p] - hmax_values[p];
+        }
+    }
+    return {pcf, hmax};
+}
+
+std::pair<int, int> hmax_value_decrease_maximization(const std::vector<unsigned int>& preconditions, const std::vector<int>& hmax_values,
+                                                     const std::vector<int>& initial_hmax_values) {
+    int pcf{-1}, hmax{-1}, max_decrease{-1};
+    for (const auto& p : preconditions) {
+        if (hmax < hmax_values[p]) {
+            hmax = hmax_values[p];
+            pcf = p;
+            max_decrease = initial_hmax_values[p] - hmax_values[p];
+        } else if (hmax == hmax_values[p] && (initial_hmax_values[p] - hmax_values[p] > max_decrease)) {
+            pcf = p;
+            max_decrease = initial_hmax_values[p] - hmax_values[p];
+        }
+    }
+    return {pcf, hmax};
+}
+
+std::pair<int, int> hmax_random(const std::vector<unsigned int>& preconditions, const std::vector<int>& hmax_values,
+                                [[maybe_unused]] const std::vector<int>& _) {
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+
+    int pcf{-1}, hmax{-1}, count{0};
+    for (const auto& p : preconditions) {
+        if (hmax < hmax_values[p]) {
+            hmax = hmax_values[p];
+            pcf = p;
+            count = 1;
+        } else if (hmax == hmax_values[p]) {
+            count++;
+            std::uniform_int_distribution<int> dist(1, count);
+            if (dist(gen) == 1) pcf = p;
+        }
+    }
+
+    return {pcf, hmax};
+}
+
 void update_hmax_values(const hplus::instance& inst, std::vector<int>& hmax_values, std::vector<int>& pcf, std::vector<int>& pcf_hmax,
-                        const std::vector<int>& reduced_costs, const std::vector<unsigned int>& modified_actions) {
+                        const std::vector<int>& reduced_costs, const std::vector<unsigned int>& modified_actions,
+                        const hmax_function_type& hmax_function, const std::vector<int>& initial_hmax_values) {
     priority_queue<int> pq{inst.n};
 
     for (const auto& act_i : modified_actions) {
@@ -45,7 +103,7 @@ void update_hmax_values(const hplus::instance& inst, std::vector<int>& hmax_valu
             const int old_hmax{pcf_hmax[act_i]};
 
             // Compute hmax and the pcf
-            const auto& [act_pcf, act_hmax]{hmax(inst.actions[act_i].pre_sparse, hmax_values)};
+            const auto& [act_pcf, act_hmax]{hmax_function(inst.actions[act_i].pre_sparse, hmax_values, initial_hmax_values)};
 
             // If this action has no pcf or it's infinite, skip
             if (act_pcf == -1 || act_hmax == std::numeric_limits<int>::max()) continue;
@@ -72,12 +130,13 @@ void update_hmax_values(const hplus::instance& inst, std::vector<int>& hmax_valu
     }
 }
 
-int compute_cut(hplus::instance& inst, const std::vector<int>& hmax_values, const std::vector<int>& pcf, std::vector<int>& reduced_costs,
-                const std::vector<unsigned int>& goal_sparse, const std::vector<unsigned int>& initial_actions) {
+int compute_and_store_cut(hplus::instance& inst, const std::vector<int>& hmax_values, const std::vector<int>& pcf, std::vector<int>& reduced_costs,
+                          const std::vector<unsigned int>& goal_sparse, const std::vector<unsigned int>& initial_actions,
+                          const hmax_function_type& hmax_function, const std::vector<int>& initial_hmax_values) {
     binary_set pre_goal_section(inst.n), goal_section(inst.n);
     std::deque<int> section_detect_queue;
     // Simulate a 0-cost action with precondition the goal state -> set its pcf as starting goal_section
-    int goal_pcf{hmax(goal_sparse, hmax_values).first};
+    int goal_pcf{hmax_function(goal_sparse, hmax_values, initial_hmax_values).first};
     goal_section.add(goal_pcf);
     section_detect_queue.push_back(goal_pcf);
 
@@ -145,15 +204,8 @@ int compute_cut(hplus::instance& inst, const std::vector<int>& hmax_values, cons
     return min_redcost_cut;
 }
 
-void prep::lmcut_landmarks_extraction(const hplus::execution& exec, hplus::instance& inst) {
-    std::vector<int> hmax_values(inst.n, std::numeric_limits<int>::max()), pcf(inst.m, -1), pcf_hmax(inst.m, std::numeric_limits<int>::max());
-
-    const std::vector<unsigned int> goal_sparse{inst.goal.sparse()};
-
-    std::vector<int> reduced_costs(inst.m);
-    for (unsigned int i = 0; i < inst.m; i++) reduced_costs[i] = static_cast<int>(inst.actions[i].cost);
-
-    std::vector<unsigned int> initial_actions;
+void init_hmax(const hplus::instance& inst, std::vector<int>& hmax_values, std::vector<int>& pcf, std::vector<int>& pcf_hmax,
+               std::vector<int>& reduced_costs, std::vector<unsigned int>& initial_actions) {
     for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
         if (inst.actions[act_i].pre_sparse.empty()) {
             initial_actions.push_back(act_i);
@@ -161,16 +213,46 @@ void prep::lmcut_landmarks_extraction(const hplus::execution& exec, hplus::insta
             pcf_hmax[act_i] = 0;
         }
     }
+    for (unsigned int i = 0; i < inst.n; i++) hmax_values[i] = std::numeric_limits<int>::max();
+    int k{0};
+    for (unsigned int i = 0; i < inst.m; i++) {
+        if (initial_actions[k] == i) {
+            pcf[i] = static_cast<int>(inst.n);
+            pcf_hmax[i] = 0;
+            k++;
+        } else {
+            pcf[i] = -1;
+            pcf_hmax[i] = std::numeric_limits<int>::max();
+        }
+        reduced_costs[i] = static_cast<int>(inst.actions[i].cost);
+    }
+}
 
+void compute_lmcut(hplus::instance& inst, const hplus::execution& exec, std::vector<int> hmax_values, std::vector<int> pcf, std::vector<int> pcf_hmax,
+                   std::vector<int> reduced_costs, const std::vector<unsigned int>& goal_sparse, const std::vector<unsigned int>& initial_actions,
+                   const hmax_function_type& hmax_function) {
     int lmcut_value{0};
-
-    update_hmax_values(inst, hmax_values, pcf, pcf_hmax, reduced_costs, initial_actions);
-    while (hmax(goal_sparse, hmax_values).second > 0) {
-        lmcut_value += compute_cut(inst, hmax_values, pcf, reduced_costs, goal_sparse, initial_actions);
-        update_hmax_values(inst, hmax_values, pcf, pcf_hmax, reduced_costs, inst.landmarks[inst.landmarks.size() - 1]);
+    update_hmax_values(inst, hmax_values, pcf, pcf_hmax, reduced_costs, initial_actions, hmax_function, hmax_values);
+    const std::vector<int> initial_hmax_values{hmax_values.begin(), hmax_values.end()};
+    while (hmax_function(goal_sparse, hmax_values, initial_hmax_values).second > 0) {
+        lmcut_value += compute_and_store_cut(inst, hmax_values, pcf, reduced_costs, goal_sparse, initial_actions, hmax_function, initial_hmax_values);
+        update_hmax_values(inst, hmax_values, pcf, pcf_hmax, reduced_costs, inst.landmarks[inst.landmarks.size() - 1], hmax_function,
+                           initial_hmax_values);
 
         if (CHECK_STOP()) throw timelimit_exception("Reached time limit.");
     }
-
     if (exec.verbosity >= hplus::verbose::BASIC) LOG_INFO << "Computed a lm-cut value of: " << lmcut_value;
+}
+
+void prep::lmcut_landmarks_extraction(const hplus::execution& exec, hplus::instance& inst) {
+    std::vector<int> hmax_values(inst.n), pcf(inst.m), pcf_hmax(inst.m), reduced_costs(inst.m);
+    const std::vector<unsigned int> goal_sparse{inst.goal.sparse()};
+    std::vector<unsigned int> initial_actions;
+
+    init_hmax(inst, hmax_values, pcf, pcf_hmax, reduced_costs, initial_actions);
+
+    std::vector<hmax_function_type> hmax_functions{hmax_arbitrary, hmax_value_decrease_minimization, hmax_random};
+
+    for (const auto& hmax_function : hmax_functions)
+        compute_lmcut(inst, exec, hmax_values, pcf, pcf_hmax, reduced_costs, goal_sparse, initial_actions, hmax_function);
 }

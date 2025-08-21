@@ -25,14 +25,15 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
-## [2.2.6] - 2025/08/20
+## [2.2.6] - 2025/08/21
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->
 <!-- ### :heavy_exclamation_mark: Changed -->
 ### :heavy_plus_sign: Added
 - LM-CUT disjunctive action landmarks for preprocessing (25/08/17)
-- Testing random lmcut preprocessing \[:1\]
-- Reverting random lmcut preprocessing to arbitrary \[:2\]
+- Testing random lmcut preprocessing \[:1\] (25/08/20)
+- Reverting random lmcut preprocessing to arbitrary \[:2\] (25/08/20)
+- Testing combination of multiple tie breaking in lmcut \[:3\]
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
 
