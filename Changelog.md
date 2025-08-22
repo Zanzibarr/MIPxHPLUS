@@ -25,7 +25,7 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
-## [2.2.6] - 2025/08/21
+## [2.2.6] - 2025/08/22
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed
 - Fixed bug with LMCUT in version 2.2.6:4 \[:5\] (25/08/21)
@@ -36,6 +36,7 @@ HOW I DO VERSIONING:
 - Reverting random LMCUT preprocessing to arbitrary \[:2\] (25/08/20)
 - Testing combination of multiple tie breaking in LMCUT \[:3\] (25/08/21)
 - Randomization as second level tie-breaking for VDM in LMCUT \[:4\] (25/08/21)
+- Testing another combination of tie-breaking in LMCUT \[:6\] (25/08/22)
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
 

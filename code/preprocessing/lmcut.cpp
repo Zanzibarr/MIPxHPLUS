@@ -20,6 +20,18 @@ std::pair<int, int> hmax_arbitrary(const std::vector<unsigned int>& precondition
     return {pcf, hmax};
 }
 
+std::pair<int, int> hmax_inverse(const std::vector<unsigned int>& preconditions, const std::vector<int>& hmax_values,
+                                 [[maybe_unused]] const std::vector<int>& _) {
+    int pcf{-1}, hmax{-1};
+    for (const auto& p : preconditions) {
+        if (hmax <= hmax_values[p]) {
+            hmax = hmax_values[p];
+            pcf = p;
+        }
+    }
+    return {pcf, hmax};
+}
+
 std::pair<int, int> hmax_value_decrease_minimization(const std::vector<unsigned int>& preconditions, const std::vector<int>& hmax_values,
                                                      const std::vector<int>& initial_hmax_values) {
     static std::random_device rd;
@@ -239,7 +251,7 @@ void prep::lmcut_landmarks_extraction(const hplus::execution& exec, hplus::insta
 
     init_hmax(inst, hmax_values, pcf, pcf_hmax, reduced_costs, initial_actions);
 
-    std::vector<hmax_function_type> hmax_functions{hmax_arbitrary, hmax_value_decrease_minimization, hmax_random};
+    std::vector<hmax_function_type> hmax_functions{hmax_arbitrary, hmax_inverse, hmax_value_decrease_minimization};
 
     for (const auto& hmax_function : hmax_functions)
         compute_lmcut(inst, exec, hmax_values, pcf, pcf_hmax, reduced_costs, goal_sparse, initial_actions, hmax_function);
