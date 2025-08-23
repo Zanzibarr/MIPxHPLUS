@@ -293,10 +293,10 @@ data-network-sat18-strips-p12,0,257
 data-network-sat18-strips-p13,0,320
 data-network-sat18-strips-p14,0,345
 data-network-sat18-strips-p15,0,478
-data-network-sat18-strips-p16,2,525
+data-network-sat18-strips-p16,2,518
 data-network-sat18-strips-p17,0,589
 data-network-sat18-strips-p18,2,472
-data-network-sat18-strips-p19,2,1227
+data-network-sat18-strips-p19,0,1224
 data-network-sat18-strips-p20,2,712
 depot-p01,0,10
 depot-p02,0,14
@@ -1271,13 +1271,13 @@ organic-synthesis-split-opt18-strips-p15,2,505
 organic-synthesis-split-opt18-strips-p16,0,103
 organic-synthesis-split-opt18-strips-p17,2,479
 organic-synthesis-split-opt18-strips-p18,2,637
-organic-synthesis-split-opt18-strips-p19,2,157
+organic-synthesis-split-opt18-strips-p19,0,155
 organic-synthesis-split-opt18-strips-p20,2,448
 organic-synthesis-split-sat18-strips-p01,0,216
 organic-synthesis-split-sat18-strips-p02,0,247
 organic-synthesis-split-sat18-strips-p03,0,246
 organic-synthesis-split-sat18-strips-p04,0,158
-organic-synthesis-split-sat18-strips-p05,2,228
+organic-synthesis-split-sat18-strips-p05,2,224
 organic-synthesis-split-sat18-strips-p06,0,45
 organic-synthesis-split-sat18-strips-p07,0,48
 organic-synthesis-split-sat18-strips-p08,0,108
@@ -2362,7 +2362,7 @@ tidybot-opt14-strips-p06,2,27
 tidybot-opt14-strips-p07,0,25
 tidybot-opt14-strips-p08,0,18
 tidybot-opt14-strips-p09,2,24
-tidybot-opt14-strips-p10,2,27
+tidybot-opt14-strips-p10,0,27
 tidybot-opt14-strips-p11,0,18
 tidybot-opt14-strips-p12,0,25
 tidybot-opt14-strips-p13,0,19
@@ -2374,7 +2374,7 @@ tidybot-opt14-strips-p18,0,20
 tidybot-opt14-strips-p19,0,23
 tidybot-opt14-strips-p20,0,28
 tidybot-sat11-strips-p01,0,26
-tidybot-sat11-strips-p02,2,27
+tidybot-sat11-strips-p02,0,27
 tidybot-sat11-strips-p03,0,21
 tidybot-sat11-strips-p04,0,20
 tidybot-sat11-strips-p05,0,22
@@ -2382,7 +2382,7 @@ tidybot-sat11-strips-p06,2,27
 tidybot-sat11-strips-p07,0,25
 tidybot-sat11-strips-p08,0,18
 tidybot-sat11-strips-p09,2,24
-tidybot-sat11-strips-p10,2,27
+tidybot-sat11-strips-p10,0,27
 tidybot-sat11-strips-p11,2,28
 tidybot-sat11-strips-p12,0,21
 tidybot-sat11-strips-p13,2,26
