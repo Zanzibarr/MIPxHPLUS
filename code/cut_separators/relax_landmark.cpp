@@ -25,27 +25,14 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(CPX
 
     std::vector<double> facts_partition(inst.n);
     CPX_HANDLE_CALL(CPXgetx(env, lp, facts_partition.data(), inst.m, inst.m + inst.n - 1));
-    binary_set left(inst.n);
-    // Obtain the left side of the cut (variables set to 1)
+    binary_set reach(inst.n);
+    // Obtain the reach side of the cut (variables set to 1)
     for (unsigned int p = 0; p < inst.n; ++p) {
-        if (facts_partition[p] >= HPLUS_CPX_INT_ROUNDING) left.add(p);
+        if (facts_partition[p] >= HPLUS_CPX_INT_ROUNDING) reach.add(p);
     }
-    binary_set right(!left);
-    bool found{false};
-    while (!found && !right.empty()) {
-        for (const auto& p : right) {
-            found = false;
-            for (const auto& act_i : inst.act_with_eff[p]) {
-                if (left.contains(inst.actions[act_i].pre)) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) right.remove(p);
-        }
-    }
+    // Actions crossing the cut are those that have all effects in the left side, and at least one effect in the right side
     for (unsigned int act_i = 0; act_i < inst.m; ++act_i) {
-        if (left.contains(inst.actions[act_i].pre) && !left.contains(inst.actions[act_i].eff)) landmark.push_back(act_i);
+        if (reach.contains(inst.actions[act_i].pre) && !reach.contains(inst.actions[act_i].eff)) landmark.push_back(act_i);
     }
 
     return {true, landmark};
