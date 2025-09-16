@@ -25,6 +25,16 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
+## [2.2.7] - 2025/09/16
+<!-- ### :warning: Known issues -->
+### :ballot_box_with_check: Fixed
+- Fixed issue with landmark generated from the relaxed solutions
+<!-- ### :heavy_exclamation_mark: Changed -->
+<!-- ### :heavy_plus_sign: Added -->
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+
+
 ## [2.2.6] - 2025/08/22
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed

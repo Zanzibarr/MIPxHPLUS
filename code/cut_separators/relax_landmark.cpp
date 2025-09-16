@@ -10,35 +10,42 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(CPX
         CPX_HANDLE_CALL(CPXsetdblparam(env, CPXPARAM_TimeLimit, static_cast<double>(exec.timelimit) - GET_TIME()));
     } else
         throw timelimit_exception("Reached time limit.");
+    // Update the objective function -> adapt the model to the current relaxed solution
     CPX_HANDLE_CALL(CPXchgobj(env, lp, inst.m, ind.data(), relax_point.data()));
     CPX_HANDLE_CALL(CPXmipopt(env, lp));
     int status = CPXgetstat(env, lp);
     if (status != CPXMIP_OPTIMAL && status != CPXMIP_OPTIMAL_TOL) return {false, {}};  // For time-limit breaching -> no solution found
     double cutval{CPX_INFBOUND};
     CPX_HANDLE_CALL(CPXgetobjval(env, lp, &cutval));
+
+    // If the value of the cut is greater than 1, than no landmark has been violated
     if (cutval >= 1 - HPLUS_EPSILON) return {false, {}};
+
+    // Now we know that a landmark is violated
 
     std::vector<double> facts_partition(inst.n);
     CPX_HANDLE_CALL(CPXgetx(env, lp, facts_partition.data(), inst.m, inst.m + inst.n - 1));
-    binary_set reach(inst.n);
+    binary_set left(inst.n);
+    // Obtain the left side of the cut (variables set to 1)
     for (unsigned int p = 0; p < inst.n; ++p) {
-        if (facts_partition[p] >= HPLUS_CPX_INT_ROUNDING) reach.add(p);
+        if (facts_partition[p] >= HPLUS_CPX_INT_ROUNDING) left.add(p);
     }
+    binary_set right(!left);
     bool found{false};
-    while (!found && !reach.empty()) {
-        for (const auto& p : reach) {
+    while (!found && !right.empty()) {
+        for (const auto& p : right) {
             found = false;
             for (const auto& act_i : inst.act_with_eff[p]) {
-                if (reach.contains(inst.actions[act_i].pre)) {
+                if (left.contains(inst.actions[act_i].pre)) {
                     found = true;
                     break;
                 }
             }
-            if (!found) reach.remove(p);
+            if (!found) right.remove(p);
         }
     }
     for (unsigned int act_i = 0; act_i < inst.m; ++act_i) {
-        if (reach.contains(inst.actions[act_i].pre) && !reach.contains(inst.actions[act_i].eff)) landmark.push_back(act_i);
+        if (left.contains(inst.actions[act_i].pre) && !left.contains(inst.actions[act_i].eff)) landmark.push_back(act_i);
     }
 
     return {true, landmark};
