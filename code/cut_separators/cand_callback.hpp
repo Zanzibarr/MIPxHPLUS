@@ -1,3 +1,9 @@
+/**
+ * Methods for CPLEX candidate callback
+ *
+ * @author Zanella Matteo (matteozanella2@gmail.com)
+ */
+
 #ifndef HPLUS_CAND_CALLBACK_HPP
 #define HPLUS_CAND_CALLBACK_HPP
 
@@ -7,6 +13,9 @@
 
 namespace cand_cuts {
 
+/**
+ * Reject the current candidate point with a Landmark Constraint
+ */
 inline void reject_with_lm_cut(CPXCALLBACKCONTEXTptr context, const std::vector<unsigned int>& landmark) {
     std::vector<int> ind(landmark.begin(), landmark.end());
     std::vector<double> val(landmark.size(), 1.0);
@@ -16,6 +25,9 @@ inline void reject_with_lm_cut(CPXCALLBACKCONTEXTptr context, const std::vector<
     CPX_HANDLE_CALL(CPXcallbackrejectcandidate(context, 1, landmark.size(), &rhs, &sense, &begin, ind.data(), val.data()));
 }
 
+/**
+ * Reject the current candidate point with a Subtour Elimination Constraint
+ */
 inline void reject_with_sec_cut(CPXCALLBACKCONTEXTptr context, const std::vector<std::vector<unsigned int>>& cycles) {
     std::vector<int> ind, begin;
     std::vector<double> val;
@@ -32,14 +44,24 @@ inline void reject_with_sec_cut(CPXCALLBACKCONTEXTptr context, const std::vector
                                                ind.data(), val.data()));
 }
 
+/**
+ * Method to compute a violated landmark by using the complementary landmarks technique out of the candidate solutions and reject the candidate
+ * solution
+ */
 [[nodiscard]]
 unsigned int complementary_lm(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const binary_set& unreachable_actions,
                               const std::vector<unsigned int>& unused_actions, const binary_set& reachable_state);
 
+/**
+ * Method to compute a violated landmark by using the fontier landmarks technique out of the candidate solutions and reject the candidate solution
+ */
 [[nodiscard]]
 unsigned int frontier_lm(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const std::vector<unsigned int>& unused_actions,
                          const binary_set& reachable_state);
 
+/**
+ * Method to compute a violated S.E.C. out of the candidate solutions and reject the candidate solution
+ */
 [[nodiscard]]
 unsigned int sec(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const binary_set& unreachable_actions,
                  const std::vector<binary_set>& used_first_achievers);

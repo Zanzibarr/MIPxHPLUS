@@ -1,3 +1,9 @@
+/**
+ * CLI parser for this project
+ *
+ * @author Zanella Matteo (matteozanella2@gmail.com)
+ */
+
 #ifndef HPLUS_ARGPARSER_HPP
 #define HPLUS_ARGPARSER_HPP
 

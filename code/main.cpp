@@ -43,11 +43,9 @@ int main(const int argc, const char** argv) {
         parse_cli(argc, argv, exec);
         hplus::print(exec);
 
-        // Input file reading
         hplus::read_file(exec, inst, stats);
         if (exec.type == hplus::exec_type::INFO || STATS_VERBOSE()) hplus::print(inst);
 
-        // Execution
         switch (exec.type) {
             case hplus::exec_type::INFO:
                 close();

@@ -1,3 +1,9 @@
+/**
+ * Methods and objects for data structures related to this project execution
+ *
+ * @author Zanella Matteo (matteozanella2@gmail.com)
+ */
+
 #ifndef HPLUS_INST_HPP
 #define HPLUS_INST_HPP
 

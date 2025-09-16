@@ -29,8 +29,10 @@ HOW I DO VERSIONING:
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed
 - Fixed issue with landmark generated from the relaxed solutions
+- Bug where lower bound for the cutloop didn't get updated for timelimit termination
 <!-- ### :heavy_exclamation_mark: Changed -->
-<!-- ### :heavy_plus_sign: Added -->
+### :heavy_plus_sign: Added
+- Added insightful comments throughout the codebase
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
 

@@ -27,6 +27,7 @@ build_graph(const hplus::instance& inst, const binary_set& unreachable_actions, 
 unsigned int cand_cuts::sec(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const binary_set& unreachable_actions,
                             const std::vector<binary_set>& used_first_achievers) {
     const auto& [graph, edge_labels] = build_graph(inst, unreachable_actions, used_first_achievers);
+    // Find cycles in the giustification graph using a DFS approach
     const auto& cycles = find_cycles_unweighted(graph, edge_labels);
     reject_with_sec_cut(context, cycles);
     return static_cast<unsigned int>(cycles.size());

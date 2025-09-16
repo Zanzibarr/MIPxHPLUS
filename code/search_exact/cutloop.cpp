@@ -4,7 +4,9 @@
 inline void init_cutloop(const hplus::execution& exec, CPXENVptr& env, CPXLPptr& lp, CPXENVptr& flmdetenv, CPXLPptr& flmdetlp,
                          const hplus::instance& inst) {
     CPX_HANDLE_CALL(CPXchgprobtype(env, lp, CPXPROB_LP));
-    relax_cuts::create_flmdet_model(inst, flmdetenv, flmdetlp, exec.threads);   // In our cutloop we can enable multithreading on the flmdet model, cause there's only one (thread running the) cutloop
+    relax_cuts::create_flmdet_model(
+        inst, flmdetenv, flmdetlp,
+        exec.threads);  // In our cutloop we can enable multithreading on the flmdet model, cause there's only one (thread running the) cutloop
 }
 
 inline void exit_cutloop(CPXENVptr& env, CPXLPptr& lp, CPXENVptr& flmdetenv, CPXLPptr& flmdetlp) {
@@ -188,6 +190,11 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
         new_cuts = generate_cuts(env, lp, flmdetenv, flmdetlp, exec, inst, incumbent, inout_w);
         solve_relaxation(env, lp, exec);
         iteration++;
+
+        // Obtain and store the current lower bound
+        double cl_lb;
+        CPX_HANDLE_CALL(CPXgetobjval(env, lp, &cl_lb));
+        if (stats.lower_bound < cl_lb) stats.lower_bound = cl_lb;
     }
 
     double cl_lb;

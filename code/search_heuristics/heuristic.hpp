@@ -1,3 +1,9 @@
+/**
+ * Methods used to compute a primal heuristic solution of h+
+ *
+ * @author Zanella Matteo (matteozanella2@gmail.com)
+ */
+
 #ifndef HPLUS_HEUR_HPP
 #define HPLUS_HEUR_HPP
 

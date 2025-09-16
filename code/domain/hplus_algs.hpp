@@ -1,3 +1,9 @@
+/**
+ * Methods for the main parts of this project execution
+ *
+ * @author Zanella Matteo (matteozanella2@gmail.com)
+ */
+
 #ifndef HPLUS_HPLUS_HPP
 #define HPLUS_HPLUS_HPP
 

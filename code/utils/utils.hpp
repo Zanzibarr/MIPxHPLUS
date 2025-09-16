@@ -1,3 +1,9 @@
+/**
+ * Utilities and constants used in various parts of this project
+ *
+ * @author Zanella Matteo (matteozanella2@gmail.com)
+ */
+
 #ifndef HPLUS_UTILS_HPP
 #define HPLUS_UTILS_HPP
 

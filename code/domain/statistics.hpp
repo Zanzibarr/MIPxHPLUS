@@ -1,3 +1,9 @@
+/**
+ * Methods and objects for data structures related to the statistics to gather about this project execution
+ *
+ * @author Zanella Matteo (matteozanella2@gmail.com)
+ */
+
 #ifndef HPLUS_STATS_HPP
 #define HPLUS_STATS_HPP
 

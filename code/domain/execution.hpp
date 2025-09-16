@@ -1,3 +1,10 @@
+/**
+ * Methods and objects related to the context of this project execution
+ * CLI parameters, shared data structures, ...
+ *
+ * @author Zanella Matteo (matteozanella2@gmail.com)
+ */
+
 #ifndef HPLUS_EXECUTION_HPP
 #define HPLUS_EXECUTION_HPP
 

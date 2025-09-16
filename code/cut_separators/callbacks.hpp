@@ -1,3 +1,11 @@
+/**
+ * Methods for CPLEX generic callbacks
+ * Extends to cand_callback.hpp for the methods used for CPLEX's candidate callback, and relax_callback.hpp for the methods used for CPLEX's
+ * relaxation callback
+ *
+ * @author Zanella Matteo (matteozanella2@gmail.com)
+ */
+
 #ifndef HPLUS_CALLBACKS_HPP
 #define HPLUS_CALLBACKS_HPP
 
@@ -8,6 +16,9 @@
 
 namespace relax_cuts {
 
+/**
+ * FLM-DET is the model used for Fractional LandMarks DETection in the relax callback
+ */
 inline void open_flmdet_model(CPXENVptr& env, CPXLPptr& lp, int threads = 1) {
     int cpxerror;
     env = CPXopenCPLEX(&cpxerror);
@@ -28,6 +39,15 @@ inline void open_flmdet_model(CPXENVptr& env, CPXLPptr& lp, int threads = 1) {
     CPX_HANDLE_CALL(CPXsetterminate(env, &GLOBAL_TERMINATE_CONDITION));
 }
 
+/**
+ * FLM-DET is the model used for Fractional LandMarks DETection in the relax callback
+ * Model (minimum cut in a source-sink partition):
+ * { min \sum_{a\in A} x_a^* z_a
+ * { z_a >= \sum_{p\in pre(a)}y_p - |pre(a)| + 1 - y_q        \forall a,\forall q\in add(a)             (An action is crossing the cut if all
+ * precondition are on the left side (y_p = 1 \forall p\in pre(a)) and at least one effect is on the right side (y_q = 1))
+ * { \sum_{p\in G}y_p <= |G| - 1                                                                        (We cannot have all facts of the goal in the
+ * left side)
+ */
 inline void build_flmdet_model(const hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
     // ~~~~~~~~~~~~~~ VARIABLES ~~~~~~~~~~~~~~ //
     size_t ncols{inst.m + inst.n};
@@ -38,8 +58,8 @@ inline void build_flmdet_model(const hplus::instance& inst, CPXENVptr& env, CPXL
 
     std::vector<double> objs(ncols, 0.0);  // the coefficients of the objective function will be set in the callback, based on the fractional solution
     std::vector<double> lbs(ncols, 0.0);
-    std::vector<double> ubs(ncols, 1.0);  // binary variables, so lower bound is 0 and upper bound is 1
-    std::vector<char> types(ncols, 'B');  // B for binary variables
+    std::vector<double> ubs(ncols, 1.0);
+    std::vector<char> types(ncols, 'B');
     CPX_HANDLE_CALL(CPXnewcols(env, lp, ncols, objs.data(), lbs.data(), ubs.data(), types.data(), nullptr));
 
     // ~~~~~~~~~~~~~ CONSTRAINTS ~~~~~~~~~~~~~ //
@@ -87,7 +107,7 @@ inline void close_flmdet_model(CPXENVptr& env, CPXLPptr& lp) {
 
 namespace callbacks {
 
-// thread_data is defined in relax_callback.hpp (circular dependencies, idk what else to do)
+// thread_data is defined in relax_callback.hpp (circular dependencies, idk how to avoid it
 
 struct callback_userhandle {
     hplus::execution& exec;
@@ -96,6 +116,10 @@ struct callback_userhandle {
     std::vector<thread_data> thread_specific_data;
 };
 
+/**
+ * Method called in CPLEX's generic callback
+ * This methods handles the routing of the callbacks based on the context
+ */
 static int CPXPUBLIC callback_hub(CPXCALLBACKCONTEXTptr context, CPXLONG contextid, void* userhandle) {
     auto& [exec, inst, stats, thread_data]{*static_cast<callback_userhandle*>(userhandle)};
     int thread_id{-1};
@@ -130,17 +154,19 @@ inline void set_cplex_callbacks(hplus::execution& exec, hplus::instance& inst, c
         };
 
         if (exec.fract_cuts.find('l') != std::string::npos)  // l here stands for landmarks -> if we need landmarks we need the mip that detects them
-            relax_cuts::create_flmdet_model(
-                inst, td.flmdet_env, td.flmdet_lp);  // We use only 1 thread since CPLEX might run in multithreading before it finds an initial basis
+            relax_cuts::create_flmdet_model(inst, td.flmdet_env,
+                                            td.flmdet_lp);  // We use only 1 thread since CPLEX might run in multithreading before it finds an initial
+                                                            // basis (we must assure that the number of threads specified is used, and not more)
 
         userhandle.thread_specific_data.push_back(std::move(td));
     }
 
     // Setting up callbacks
-    CPXLONG callback_contex = CPX_CALLBACKCONTEXT_CANDIDATE;  // The candidate callback is ALWAYS needed
+    CPXLONG callback_contex = CPX_CALLBACKCONTEXT_CANDIDATE;  // The candidate callback is ALWAYS needed (otherwise the model might be incomplete due
+                                                              // to missing causal acyclicity)
     if (exec.fract_cuts != "0")
         callback_contex |= CPX_CALLBACKCONTEXT_RELAXATION;  // Input has been sanitized, so if this is not empty, then at leats l (landmarks) or s
-    // (SEC) need to be separated from the relaxation callback
+                                                            // (SEC) need to be separated from the relaxation callback
 
     CPX_HANDLE_CALL(CPXcallbacksetfunc(env, lp, callback_contex, callback_hub, &userhandle));
 }

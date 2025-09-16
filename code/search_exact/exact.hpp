@@ -1,3 +1,9 @@
+/**
+ * Methods used to compute the exact h+ solution
+ *
+ * @author Zanella Matteo (matteozanella2@gmail.com)
+ */
+
 #ifndef HPLUS_EXACT_HPP
 #define HPLUS_EXACT_HPP
 

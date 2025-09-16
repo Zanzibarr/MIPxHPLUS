@@ -30,7 +30,7 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(CPX
     for (unsigned int p = 0; p < inst.n; ++p) {
         if (facts_partition[p] >= HPLUS_CPX_INT_ROUNDING) reach.add(p);
     }
-    // Actions crossing the cut are those that have all effects in the left side, and at least one effect in the right side
+    // Actions crossing the cut are those that have all preconditions in the left side, and at least one effect in the right side
     for (unsigned int act_i = 0; act_i < inst.m; ++act_i) {
         if (reach.contains(inst.actions[act_i].pre) && !reach.contains(inst.actions[act_i].eff)) landmark.push_back(act_i);
     }

@@ -1,3 +1,9 @@
+/**
+ * Methods for preprocessing an instance
+ *
+ * @author Zanella Matteo (matteozanella2@gmail.com)
+ */
+
 #ifndef HPLUS_PREP_HPP
 #define HPLUS_PREP_HPP
 

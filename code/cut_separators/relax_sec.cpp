@@ -28,6 +28,7 @@ build_graph(const hplus::instance& inst, const std::unordered_map<std::pair<unsi
 std::pair<bool, std::vector<std::vector<unsigned int>>> relax_cuts::get_violated_sec(
     const hplus::instance& inst, const std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash>& fadd_weights) {
     const auto& [graph, edge_labels, edge_weights] = build_graph(inst, fadd_weights);
+    // Find cycles in the (weighted) giustification graph using a DFS approach
     const auto& cycles{find_cycles_weighted_lessthan1(graph, edge_labels, edge_weights)};
     return {!cycles.empty(), cycles};
 }
