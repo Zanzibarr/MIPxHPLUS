@@ -25,6 +25,16 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
+## [2.2.8] - 2025/09/25
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+### :heavy_exclamation_mark: Changed
+- Relaxation callback now executes at most once per node, except for nodes with depth 0 (root nodes, either at the start or after a restart)
+<!-- ### :heavy_plus_sign: Added -->
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+
+
 ## [2.2.7] - 2025/09/16
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed

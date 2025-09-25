@@ -1,5 +1,7 @@
 #include "relax_callback.hpp"
 
+#include <set>
+
 [[nodiscard]]
 std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash> relax_cuts::relaxationpoint_info(const hplus::instance& inst,
                                                                                                               std::vector<double>& relax_point) {
@@ -27,10 +29,15 @@ std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash> rel
 }
 
 void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, const hplus::instance& inst, thread_data& data) {
-    int nodedepth{-1};
+    int nodeuid{-1}, nodedepth{-1};
+    CPX_HANDLE_CALL(CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODEUID, &nodeuid));
     CPX_HANDLE_CALL(CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODEDEPTH, &nodedepth));
-    // If we have our custom cutloop in place, we don't need to generate cuts from fractionary solutions in the root node (we exited for a reason)
-    if (exec.custom_cutloop && nodedepth == 0) return;
+    static std::set<int> visited_nodes;
+    // If we have our custom cutloop in place, we don't need to generate cuts from fractionary solutions in the first root node relaxation
+    if (exec.custom_cutloop && nodeuid == 0) return;
+    // If we already called this callback from this node, we skip (unless we are in a root node... in this case we try CPLEX's cutloop)
+    if (nodedepth != 0 && visited_nodes.count(nodeuid) > 0) return;
+    visited_nodes.insert(nodeuid);
 
     double start_time = GET_TIME();
 
