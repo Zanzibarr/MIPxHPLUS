@@ -62,6 +62,7 @@ unsigned int cand_cuts::complementary_lm(CPXCALLBACKCONTEXTptr context, const hp
     // Compute the landmark as the set of actions that are unused, but not in the extension
     std::vector<unsigned int> landmark;
     std::set_difference(unused_actions.begin(), unused_actions.end(), extension.begin(), extension.end(), std::back_inserter(landmark));
+    // TODO: Remove, this is for debugging
     LOG_DEBUG << "Landmark size: " << landmark.size();
     reject_with_lm_cut(context, landmark);
     return 1;
@@ -74,6 +75,7 @@ unsigned int cand_cuts::frontier_lm(CPXCALLBACKCONTEXTptr context, const hplus::
     for (unsigned int act_i : unused_actions) {
         if (reachable_state.contains(inst.actions[act_i].pre) && !reachable_state.contains(inst.actions[act_i].eff)) landmark.push_back(act_i);
     }
+    // TODO: Remove, this is for debugging
     LOG_DEBUG << "Landmark size: " << landmark.size();
     reject_with_lm_cut(context, landmark);
     return 1;

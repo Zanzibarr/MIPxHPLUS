@@ -29,6 +29,7 @@ unsigned int cand_cuts::sec(CPXCALLBACKCONTEXTptr context, const hplus::instance
     const auto& [graph, edge_labels] = build_graph(inst, unreachable_actions, used_first_achievers);
     // Find cycles in the giustification graph using a DFS approach
     const auto& cycles = find_cycles_unweighted(graph, edge_labels);
+    // TODO: Remove, this is for debugging
     LOG_DEBUG << "SEC size: " << cycles.size() << " // "
               << (std::accumulate(cycles.begin(), cycles.end(), 0, [](const unsigned int sum, const auto& v) { return sum + v.size(); }) /
                   cycles.size());

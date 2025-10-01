@@ -16,8 +16,9 @@
 #include "../external/args.hxx"
 
 static void parse_cli(const int argc, const char** argv, hplus::execution& exec) {
-    args::ArgumentParser parser("Find a solution / the optimal solution to the deletefree relaxation of a SAS+ planning task",
-                                "Copyright 2025 Matteo Zanella, Domenico Salvagnin");
+    args::ArgumentParser parser(
+        "Find a solution / the optimal solution to the deletefree relaxation of a SAS+ planning task\nVersion: " + std::string(VERSION),
+        "Copyright 2025 Matteo Zanella, Domenico Salvagnin");
     args::HelpFlag help(parser, "help", "Display the help menu", {HPLUS_CLI_HELP_FLAG});
     args::Positional<std::string> input_file(parser, "input file", "Specify the input file (a .sas file provided by the FastDownward translator)");
     args::Flag info(parser, "info flag", "Show info about an instance", {HPLUS_CLI_INFO_FLAG});
