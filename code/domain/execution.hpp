@@ -37,7 +37,7 @@ struct execution {
     warmstart ws;
     algorithm alg;
     std::string fract_cuts, cand_cuts;
-    bool custom_cutloop, cl_pruning, inout;
+    bool fract_cuts_at_nodes, custom_cutloop, cl_pruning, inout;
     unsigned int cl_min_iter, cl_past_iter, io_max_iter;
     double cl_improv, cl_gap_stop, io_weight, io_weight_update;
     std::string log_file;
@@ -60,6 +60,7 @@ inline void init(execution& exec) {
                             .alg = static_cast<algorithm>(HPLUS_DEF_ALG),
                             .fract_cuts = HPLUS_DEF_FRACTCUTS,
                             .cand_cuts = HPLUS_DEF_CANDCUTS,
+                            .fract_cuts_at_nodes = HPLUS_DEF_FRACTCUTS_AT_NODES,
                             .custom_cutloop = HPLUS_DEF_CUSTOM_CUTLOOP,
                             .cl_pruning = HPLUS_DEF_CL_PRUNING,
                             .inout = HPLUS_DEF_INOUT,
@@ -149,11 +150,13 @@ inline void print(const execution& exec) {
     LOG << "Preprocessing:                                         " << exec.prep;
     LOG << "Algorithm:                                    " << std::setw(10) << to_string(exec.alg);
     if (exec.alg < hplus::algorithm::GC) LOG << "Warm start:                                   " << std::setw(10) << to_string(exec.ws);
-    if (exec.alg == hplus::algorithm::CUTS && !exec.fract_cuts.empty())
+    if (exec.alg == hplus::algorithm::CUTS) {
         LOG << "Fractional cuts:                                      " << std::setw(2) << exec.fract_cuts;
-    if (exec.alg == hplus::algorithm::CUTS && !exec.cand_cuts.empty())
-        LOG << "Candidate cuts:                                    " << std::setw(5) << exec.cand_cuts;
-    if (exec.alg == hplus::algorithm::CUTS) LOG << "Custom cut-loop                                        " << exec.custom_cutloop;
+        if (exec.fract_cuts != "0") LOG << "Fractional cuts at nodes:                              " << exec.fract_cuts_at_nodes;
+
+        if (!exec.cand_cuts.empty()) LOG << "Candidate cuts:                                    " << std::setw(5) << exec.cand_cuts;
+        LOG << "Custom cut-loop                                        " << exec.custom_cutloop;
+    }
     if (exec.custom_cutloop) {
         LOG << "Custom cutloop pruning                                 " << exec.cl_pruning;
         LOG << "Custom cutloop gap exit condition:                " << std::fixed << std::setprecision(4) << exec.cl_gap_stop;

@@ -164,9 +164,12 @@ inline void set_cplex_callbacks(hplus::execution& exec, hplus::instance& inst, c
     // Setting up callbacks
     CPXLONG callback_contex = CPX_CALLBACKCONTEXT_CANDIDATE;  // The candidate callback is ALWAYS needed (otherwise the model might be incomplete due
                                                               // to missing causal acyclicity)
-    if (exec.fract_cuts != "0")
-        callback_contex |= CPX_CALLBACKCONTEXT_RELAXATION;  // Input has been sanitized, so if this is not empty, then at leats l (landmarks) or s
-                                                            // (SEC) need to be separated from the relaxation callback
+
+    // If we have no cust to add -> no callback
+    // If we have cuts and we have no cutloop, we need to add the callback, since cuts at root must be done somewhere (wether cuts must be done at
+    // nodes or not) -> yes callback
+    // If we have cuts and we have cuts at nodes -> yes callback
+    if (exec.fract_cuts != "0" && (exec.fract_cuts_at_nodes || !exec.custom_cutloop)) callback_contex |= CPX_CALLBACKCONTEXT_RELAXATION;
 
     CPX_HANDLE_CALL(CPXcallbacksetfunc(env, lp, callback_contex, callback_hub, &userhandle));
 }

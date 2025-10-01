@@ -70,6 +70,14 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
             "] ALGORITHM) Specify what cuts to separate from the candidate (integer) solutions (def: " + std::string(HPLUS_DEF_CANDCUTS) +
             "; options: 0 (don't separate cuts), a combination of ['f','c','s'] (respectively for frontier / complementary landmarks and SEC))",
         {HPLUS_CLI_CANDCUTS_FLAG}, HPLUS_DEF_CANDCUTS);
+    args::ValueFlag<bool> fract_cuts_at_nodes(
+        parser, "0/1",
+        "(ONLY FOR [" + std::string(HPLUS_CLI_ALG_FLAG_CUTS) +
+            "] ALGORITHM) Specify wether to separate cuts also at nodes or not (if not, specified cuts, will be applied only at the root node) "
+            "(def: " +
+            std::to_string(HPLUS_DEF_FRACTCUTS_AT_NODES) + "; options: 0 (don't separate cuts at nodes), 1 (separate cuts also at nodes))",
+        {HPLUS_CLI_FRACTCUTS_AT_NODES_FLAG}, HPLUS_DEF_FRACTCUTS_AT_NODES);
+
     args::ValueFlag<bool> custom_cutloop(parser, "0/1",
                                          "(ONLY FOR [" + std::string(HPLUS_CLI_ALG_FLAG_CUTS) +
                                              "] ALGORITHM) Flag for using the custom cutloop (def: " + std::to_string(HPLUS_DEF_CUSTOM_CUTLOOP) +
@@ -238,7 +246,10 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
             if (s.find('l') != std::string::npos) exec.fract_cuts += "l";
             if (s.find('s') != std::string::npos) exec.fract_cuts += "s";
         }
+        if (exec.fract_cuts.empty()) exec.fract_cuts = HPLUS_DEF_FRACTCUTS;
     }
+    if (fract_cuts_at_nodes) exec.fract_cuts_at_nodes = args::get(fract_cuts_at_nodes);
+
     if (cand_cuts) {
         exec.cand_cuts = "";
         std::string s{args::get(cand_cuts)};
@@ -331,10 +342,11 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
     }
     if (exec.alg == hplus::algorithm::CUTS && exec.cand_cuts.empty())
         LOG_ERROR << "You can't disable all three candidate cuts from the " << HPLUS_CLI_ALG_FLAG_CUTS << " algorithm";
-    if (exec.alg != hplus::algorithm::CUTS && !exec.fract_cuts.empty()) {
+    if (exec.alg != hplus::algorithm::CUTS && exec.fract_cuts != "0") {
         LOG_WARNING << "Cuts on the fractional solutions aren't needed with this algorithm: disabling fractional cuts";
-        exec.fract_cuts = "";
+        exec.fract_cuts = "0";
     }
+    if (exec.fract_cuts == "0" && exec.fract_cuts_at_nodes) exec.fract_cuts_at_nodes = false;
     if (exec.alg != hplus::algorithm::CUTS && !exec.cand_cuts.empty()) {
         LOG_WARNING << "Cuts on the candidate solutions aren't needed with this algorithm: disabling candidate cuts";
         exec.cand_cuts = "";

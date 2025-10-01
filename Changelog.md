@@ -25,6 +25,17 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
+## [2.2.9] - 2025/10/01
+<!-- ### :warning: Known issues -->
+### :ballot_box_with_check: Fixed
+- Bug with choice of fractional cuts to use, both in the cutloop or in CPLEX callbacks
+<!-- ### :heavy_exclamation_mark: Changed -->
+### :heavy_plus_sign: Added
+- Option to remove fractional cuts at nodes
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+
+
 ## [2.2.8] - 2025/09/25
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->

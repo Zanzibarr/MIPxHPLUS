@@ -35,6 +35,8 @@ void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::
     static std::set<int> visited_nodes;
     // If we have our custom cutloop in place, we don't need to generate cuts from fractionary solutions in the first root node relaxation
     if (exec.custom_cutloop && nodeuid == 0) return;
+    // If we don't want cut at nodes we exit
+    if (!exec.fract_cuts_at_nodes && nodedepth != 0) return;
     // If we already called this callback from this node, we skip (unless we are in a root node... in this case we try CPLEX's cutloop)
     if (nodedepth != 0 && visited_nodes.count(nodeuid) > 0) return;
     visited_nodes.insert(nodeuid);

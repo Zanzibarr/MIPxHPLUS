@@ -47,37 +47,41 @@ inline unsigned int generate_cuts(CPXENVptr& env, CPXLPptr& lp, CPXENVptr& flmde
         std::vector<char> sense;
 
         // Adding landmark as new constraint
-        const auto& [found_lm, landmark]{relax_cuts::get_violated_landmark(flmdetenv, flmdetlp, exec, inst, relax_point)};
-        if (found_lm) {
-            ind = std::vector<int>(landmark.begin(), landmark.end());
-            val = std::vector<double>(landmark.size(), 1.0);
-            rhs = std::vector<double>(1, 1);
-            sense = std::vector<char>(1, 'G');
-            begin = std::vector<int>(1, 0);
-            CPX_HANDLE_CALL(
-                CPXaddrows(env, lp, 0, 1, landmark.size(), rhs.data(), sense.data(), begin.data(), ind.data(), val.data(), nullptr, nullptr));
-            new_cuts++;
+        if (exec.fract_cuts.find('l') != std::string::npos) {
+            const auto& [found_lm, landmark]{relax_cuts::get_violated_landmark(flmdetenv, flmdetlp, exec, inst, relax_point)};
+            if (found_lm) {
+                ind = std::vector<int>(landmark.begin(), landmark.end());
+                val = std::vector<double>(landmark.size(), 1.0);
+                rhs = std::vector<double>(1, 1);
+                sense = std::vector<char>(1, 'G');
+                begin = std::vector<int>(1, 0);
+                CPX_HANDLE_CALL(
+                    CPXaddrows(env, lp, 0, 1, landmark.size(), rhs.data(), sense.data(), begin.data(), ind.data(), val.data(), nullptr, nullptr));
+                new_cuts++;
+            }
         }
 
         // Adding SEC as new constraint
-        const auto& [found_sec, cycles]{relax_cuts::get_violated_sec(inst, fadd_weights)};
-        if (found_sec) {
-            ind.clear();
-            begin.clear();
-            val.clear();
-            rhs.clear();
-            sense = std::vector<char>(cycles.size(), 'L');
-            for (const auto& cycle : cycles) {
-                begin.push_back(static_cast<int>(ind.size()));
-                rhs.push_back(static_cast<double>(cycle.size() - 1));
-                std::copy(cycle.begin(), cycle.end(),
-                          std::back_inserter(ind));  // labels in the cycle are the indexes for the first adders in the cplex model
-                val.insert(val.end(), cycle.size(), 1.0);
-                nnz += cycle.size();
+        if (exec.fract_cuts.find('s') != std::string::npos) {
+            const auto& [found_sec, cycles]{relax_cuts::get_violated_sec(inst, fadd_weights)};
+            if (found_sec) {
+                ind.clear();
+                begin.clear();
+                val.clear();
+                rhs.clear();
+                sense = std::vector<char>(cycles.size(), 'L');
+                for (const auto& cycle : cycles) {
+                    begin.push_back(static_cast<int>(ind.size()));
+                    rhs.push_back(static_cast<double>(cycle.size() - 1));
+                    std::copy(cycle.begin(), cycle.end(),
+                              std::back_inserter(ind));  // labels in the cycle are the indexes for the first adders in the cplex model
+                    val.insert(val.end(), cycle.size(), 1.0);
+                    nnz += cycle.size();
+                }
+                CPX_HANDLE_CALL(
+                    CPXaddrows(env, lp, 0, cycles.size(), nnz, rhs.data(), sense.data(), begin.data(), ind.data(), val.data(), nullptr, nullptr));
+                new_cuts += cycles.size();
             }
-            CPX_HANDLE_CALL(
-                CPXaddrows(env, lp, 0, cycles.size(), nnz, rhs.data(), sense.data(), begin.data(), ind.data(), val.data(), nullptr, nullptr));
-            new_cuts += cycles.size();
         }
     };
 
