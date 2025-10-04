@@ -85,6 +85,8 @@ def main():
             "usercuts_sec": 0,
             "nnodes": 0,
             "cl_iter": 0,
+            "ccb_calls": 0,
+            "rcb_calls": 0,
             "cl_lb": 0,
             "lb": 0,
             "hcost": 1e20,
@@ -169,6 +171,12 @@ def main():
         cutloop_iterations = int(
             re.search(r">> Cutloop iterations\s+(\d+) <<", stats).group(1)
         )
+        ccb_calls = int(
+            re.search(r">> Candidate callback calls\s+(\d+) <<", stats).group(1)
+        )
+        rcb_calls = int(
+            re.search(r">> Relax callback calls\s+(\d+) <<", stats).group(1)
+        )
         tmp = re.search(r"Lower bound after cutloop : ([\d.]+)", content)
         cutloop_lb = 0
         if tmp != None:
@@ -228,6 +236,8 @@ def main():
         instance_data["usercuts_sec"] = user_cuts_sec
         instance_data["nnodes"] = nodes_expanded
         instance_data["cl_iter"] = cutloop_iterations
+        instance_data["ccb_calls"] = ccb_calls
+        instance_data["rcb_calls"] = rcb_calls
         instance_data["cl_lb"] = cutloop_lb
         instance_data["lb"] = lower_bound
         instance_data["hcost"] = heuristic
@@ -299,7 +309,7 @@ def main():
         for key in sorted(run_summary["results"].keys())
     }
 
-    with open(f"{save_logs_dir}/002_{run_name}.json", "w") as f:
+    with open(f"{save_logs_dir}/003_{run_name}.json", "w") as f:
         json.dump(run_summary, f, indent=4)
 
 
