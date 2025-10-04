@@ -116,8 +116,9 @@ static void reject_with_new_sol(CPXCALLBACKCONTEXTptr context, const hplus::exec
 }
 
 void callbacks::candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats,
-                                   unsigned int& usercuts_lm, unsigned int& usercuts_sec, double& cand_time) {
+                                   unsigned int& usercuts_lm, unsigned int& usercuts_sec, double& cand_time, unsigned int& cand_calls) {
     double start_time = GET_TIME();
+    cand_calls++;
 
     std::vector<double> xstar(inst.m + inst.nfadd);
     double cost{CPX_INFBOUND};

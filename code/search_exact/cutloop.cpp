@@ -191,7 +191,13 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
     while (repeat_cutloop() && !CHECK_STOP()) {
         // Purging of slack constraints every 5 iterations
         if ((iteration + 1) % 5 == 0 && exec.cl_pruning) pruning(env, lp, base_constraints);
+
+        // Generate new cuts
+        double cuts_time = GET_TIME();
         new_cuts = generate_cuts(env, lp, flmdetenv, flmdetlp, exec, inst, incumbent, inout_w);
+        stats.relax_callback += GET_TIME() - cuts_time;
+        stats.relax_calls++;
+
         solve_relaxation(env, lp, exec);
         iteration++;
 

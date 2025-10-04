@@ -20,7 +20,7 @@ struct statistics {
     unsigned int n_prep, m_prep, nfadd_prep;
     // Cplex informations
     int status;
-    unsigned int nodes, var_base, var_acyc, const_base, const_acyc, cuts_lm, cuts_sec, cutloop_it;
+    unsigned int nodes, var_base, var_acyc, const_base, const_acyc, cuts_lm, cuts_sec, cutloop_it, cand_calls, relax_calls;
     double lower_bound;
 };
 
@@ -48,6 +48,8 @@ inline void init(statistics& stats) {
                        .cuts_lm = 0,
                        .cuts_sec = 0,
                        .cutloop_it = 0,
+                       .cand_calls = 0,
+                       .relax_calls = 0,
                        .lower_bound = 0};
 }
 
@@ -65,6 +67,8 @@ inline void print(const statistics& stats) {
     LOG << " >> User cuts (sec)     " << std::setw(28) << stats.cuts_sec << " <<";
     LOG << " >> Nodes expanded      " << std::setw(28) << stats.nodes << " <<";
     LOG << " >> Cutloop iterations  " << std::setw(28) << stats.cutloop_it << " <<";
+    LOG << " >> Candidate callback calls " << std::setw(23) << stats.cand_calls << " <<";
+    LOG << " >> Relax callback calls     " << std::setw(23) << stats.relax_calls << " <<";
     LOG << " >> Lower bound         " << std::setw(28)
         << (stats.lower_bound >= INFBOUND_DBL ? "1e20" : (std::ostringstream() << std::fixed << std::setprecision(3) << stats.lower_bound).str())
         << " <<";

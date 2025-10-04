@@ -41,6 +41,8 @@ void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::
     if (nodedepth != 0 && visited_nodes.count(nodeuid) > 0) return;
     visited_nodes.insert(nodeuid);
 
+    data.relax_calls++;
+
     double start_time = GET_TIME();
 
     std::vector<double> relax_point(inst.m + inst.nfadd);

@@ -57,7 +57,7 @@ namespace callbacks {
  * Thread-specific data for CPLEX callbacks
  */
 struct thread_data {
-    unsigned int usercuts_lm, usercuts_sec;
+    unsigned int usercuts_lm, usercuts_sec, relax_calls, cand_calls;
     double cand_time, relax_time;
     CPXENVptr flmdet_env;
     CPXLPptr flmdet_lp;

@@ -131,7 +131,7 @@ static int CPXPUBLIC callback_hub(CPXCALLBACKCONTEXTptr context, CPXLONG context
             break;
         case CPX_CALLBACKCONTEXT_CANDIDATE:
             candidate_callback(context, exec, inst, stats, thread_data[thread_id].usercuts_lm, thread_data[thread_id].usercuts_sec,
-                               thread_data[thread_id].cand_time);
+                               thread_data[thread_id].cand_time, thread_data[thread_id].cand_calls);
             break;
         default:
             LOG_ERROR << "Unhandled CPLEX callback context: " << contextid;
@@ -147,6 +147,8 @@ inline void set_cplex_callbacks(hplus::execution& exec, hplus::instance& inst, c
         thread_data td{
             .usercuts_lm = 0,
             .usercuts_sec = 0,
+            .relax_calls = 0,
+            .cand_calls = 0,
             .cand_time = 0.0,
             .relax_time = 0.0,
             .flmdet_env = nullptr,
@@ -180,6 +182,8 @@ inline void gather_stats_from_threads(const hplus::execution& exec, hplus::stati
         stats.relax_callback += data.relax_time;
         stats.cuts_lm += data.usercuts_lm;
         stats.cuts_sec += data.usercuts_sec;
+        stats.cand_calls += data.cand_calls;
+        stats.relax_calls += data.relax_calls;
         if (exec.fract_cuts.find('l') != std::string::npos) relax_cuts::close_flmdet_model(data.flmdet_env, data.flmdet_lp);
     }
 }
