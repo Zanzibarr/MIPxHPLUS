@@ -1,6 +1,5 @@
 #include "cand_callback.hpp"
 
-#include <atomic>
 #include <deque>
 #include <numeric>
 
