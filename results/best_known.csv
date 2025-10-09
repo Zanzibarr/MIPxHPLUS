@@ -1277,7 +1277,7 @@ organic-synthesis-split-sat18-strips-p01,0,216
 organic-synthesis-split-sat18-strips-p02,0,247
 organic-synthesis-split-sat18-strips-p03,0,246
 organic-synthesis-split-sat18-strips-p04,0,158
-organic-synthesis-split-sat18-strips-p05,2,224
+organic-synthesis-split-sat18-strips-p05,0,224
 organic-synthesis-split-sat18-strips-p06,0,45
 organic-synthesis-split-sat18-strips-p07,0,48
 organic-synthesis-split-sat18-strips-p08,0,108
@@ -1815,7 +1815,7 @@ scanalyzer-08-strips-p26,0,26
 scanalyzer-08-strips-p27,0,28
 scanalyzer-08-strips-p28,0,36
 scanalyzer-08-strips-p29,0,40
-scanalyzer-08-strips-p30,2,52
+scanalyzer-08-strips-p30,2,48
 scanalyzer-opt11-strips-p01,0,12
 scanalyzer-opt11-strips-p02,0,20
 scanalyzer-opt11-strips-p03,0,22

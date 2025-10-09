@@ -138,6 +138,7 @@ static inline void cycle_dfs(const std::vector<std::vector<unsigned int>>& graph
     }
 }
 
+// TODO: Find other possible implementations, and test them (BFS, ALL_CYCLES, ONLY_SOME_CYCLES, ...)
 /**
  * @brief Find (some) cycles in a directed unweighted graph -> an edge can't be in more than one cycle
  * NOTE! IF A CYCLE IS PRESENT IN THE GRAPH, THIS ALGORITHM WILL RETURN AT LEAST ONE OF THEM (it never happens that it returns no cycle even if there

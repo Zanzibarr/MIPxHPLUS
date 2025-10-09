@@ -3,6 +3,7 @@
 #include "../utils/algorithms.hpp"
 #include "cand_callback.hpp"
 
+// TODO: Find ways of making this faster (different implementation, priority queue on the order of actions explored, ...)
 [[nodiscard]]
 unsigned int cand_cuts::complementary_lm(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const binary_set& unreachable_actions,
                                          const std::vector<unsigned int>& unused_actions, const binary_set& reachable_state) {
