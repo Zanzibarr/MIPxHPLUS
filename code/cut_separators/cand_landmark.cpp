@@ -62,9 +62,7 @@ unsigned int cand_cuts::complementary_lm(CPXCALLBACKCONTEXTptr context, const hp
 
     // Compute the landmark as the set of actions that are unused, but not in the extension
     std::vector<unsigned int> landmark;
-    for (const auto& act_i : unused_actions) {
-        if (!extension[act_i]) landmark.push_back(act_i);
-    }
+    std::set_difference(unused_actions.begin(), unused_actions.end(), extension.begin(), extension.end(), std::back_inserter(landmark));
     reject_with_lm_cut(context, landmark);
     return 1;
 }
