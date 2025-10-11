@@ -31,39 +31,24 @@ unsigned int cand_cuts::complementary_lm(CPXCALLBACKCONTEXTptr context, const hp
         binary_set state_sim{state | action.eff};
         if (state_sim.contains(goal)) continue;
 
-        std::deque<unsigned int> candidates;
-        binary_set checked(inst.m);
-        for (const auto& act_j : unapplicable) {
-            if (state_sim.contains(inst.actions[act_j].pre)) {
-                candidates.push_back(act_j);
-                checked.add(act_j);
-            }
-        }
-
+        // Simulate the effects of using this action
         binary_set new_reachable(inst.m);
-        while (!candidates.empty()) {
-            const auto act_j{candidates.front()};
-            candidates.pop_front();
-
-            new_reachable.add(act_j);
-
-            if (state_sim.contains(inst.actions[act_j].eff)) continue;
-
-            const binary_set old_state = state_sim;
-            state_sim |= inst.actions[act_j].eff;
-
-            if (state_sim.contains(goal)) break;
-
-            // Add newly applicable actions
-            for (const auto& p : inst.actions[act_j].eff) {
-                if (old_state[p]) continue;
-                for (const auto& act_k : inst.act_with_pre[p]) {
-                    if (unapplicable[act_k] && state_sim.contains(inst.actions[act_k].pre) && !checked[act_k]) {
-                        candidates.push_back(act_k);
-                        checked.add(act_k);
+        while (true) {
+            bool skip{true};
+            for (const auto& act_j : unapplicable) {
+                if (new_reachable[act_j]) continue;
+                // If now a (previously) unapplicable action is applicable, add its effects to the simulated state
+                if (state_sim.contains(inst.actions[act_j].pre)) {
+                    new_reachable.add(act_j);
+                    state_sim |= inst.actions[act_j].eff;
+                    skip = false;
+                    if (state_sim.contains(goal)) {
+                        skip = true;
+                        break;
                     }
                 }
             }
+            if (skip) break;
         }
 
         // If the new state doesn't contain the goal, then we can update the reachable state and remove the applicable actions from the previously
