@@ -64,7 +64,7 @@ unsigned int frontier_lm(CPXCALLBACKCONTEXTptr context, const hplus::instance& i
  */
 [[nodiscard]]
 unsigned int sec(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const binary_set& unreachable_actions,
-                 const std::vector<binary_set>& used_first_achievers);
+                 const std::vector<std::vector<unsigned int>>& used_first_achievers);
 
 }  // namespace cand_cuts
 

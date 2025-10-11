@@ -41,11 +41,11 @@ unsigned int cand_cuts::complementary_lm(CPXCALLBACKCONTEXTptr context, const hp
                 if (state_sim.contains(inst.actions[act_j].pre)) {
                     new_reachable.add(act_j);
                     state_sim |= inst.actions[act_j].eff;
-                    skip = false;
                     if (state_sim.contains(goal)) {
                         skip = true;
                         break;
-                    }
+                    } else
+                        skip = false;
                 }
             }
             if (skip) break;

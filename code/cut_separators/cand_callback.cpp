@@ -7,14 +7,14 @@
  * Analyze the current candidate point: generate data structures to be used in later parts of the callback
  */
 [[nodiscard]]
-static std::tuple<std::vector<unsigned int>, binary_set, std::vector<unsigned int>, binary_set, std::vector<binary_set>> candidatepoint_info(
-    const hplus::instance& inst, const std::vector<double>& xstar) {
+static std::tuple<std::vector<unsigned int>, binary_set, std::vector<unsigned int>, binary_set, std::vector<std::vector<unsigned int>>>
+candidatepoint_info(const hplus::instance& inst, const std::vector<double>& xstar) {
     binary_set used_actions(inst.m);
     std::vector<unsigned int> reachable_action_sequence;
     binary_set unreachable_actions(inst.m);
     std::vector<unsigned int> unused_actions;
     binary_set reachable_state(inst.n);
-    std::vector<binary_set> used_first_achievers(inst.m, binary_set(inst.n));
+    std::vector<std::vector<unsigned int>> used_first_achievers(inst.m);
 
     for (unsigned int act_i = 0; act_i < inst.m; ++act_i) {
         // Divide actions in used or unused
@@ -25,7 +25,7 @@ static std::tuple<std::vector<unsigned int>, binary_set, std::vector<unsigned in
             // Check for used first achievers
             for (unsigned int i = 0; i < inst.actions[act_i].eff_sparse.size(); i++) {
                 unsigned int idx{inst.m + inst.fadd_cpx_start[act_i] + i};
-                if (xstar[idx] > HPLUS_CPX_INT_ROUNDING) used_first_achievers[act_i].add(inst.actions[act_i].eff_sparse[i]);
+                if (xstar[idx] > HPLUS_CPX_INT_ROUNDING) used_first_achievers[act_i].push_back(inst.actions[act_i].eff_sparse[i]);
             }
         } else
             unused_actions.push_back(act_i);
