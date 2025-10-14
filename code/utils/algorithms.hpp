@@ -358,7 +358,7 @@ static inline std::vector<std::vector<T>> find_cycles_unweighted(
         cycle_dfs(graph, edge_labels, v, used_edges, globally_visited, cycles);
     }
 
-    return cycles;
+    return std::move(cycles);
 }
 
 /**
@@ -419,7 +419,7 @@ static inline std::vector<std::vector<T>> find_cycles_unweighted_SCC(
         }
     }
 
-    return cycles;
+    return std::move(cycles);
 }
 
 /**
