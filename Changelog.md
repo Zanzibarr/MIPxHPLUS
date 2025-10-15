@@ -27,9 +27,9 @@ HOW I DO VERSIONING:
 
 ## [2.2.12] - 2025/10/14
 <!-- ### :warning: Known issues -->
-<!-- ### :ballot_box_with_check: Fixed -->
+### :ballot_box_with_check: Fixed
+- Issue with SEC cuts of fractional solution... it was generating cuts that weren't violated (a missing -1 basically T^T)
 ### :heavy_exclamation_mark: Changed
-- Using only the 5 best cycles found at each (candidate) callback
 - Testing sorting of neighbor list for better cycle detection
 <!-- ### :heavy_plus_sign: Added -->
 <!-- ### :x: Removed -->

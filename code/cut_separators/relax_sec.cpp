@@ -17,7 +17,7 @@ build_graph(const hplus::instance& inst, const std::unordered_map<std::pair<unsi
                 if (fadd_weights.at({act_i, q}) == 0) continue;
                 graph[p].push_back(q);
                 edge_labels[{p, q}] = inst.m + inst.fadd_cpx_start[act_i] + i;
-                edge_weights[{p, q}] = fadd_weights.at({act_i, q});
+                edge_weights[{p, q}] = 1 - fadd_weights.at({act_i, q});
             }
         }
     }
