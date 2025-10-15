@@ -21,6 +21,13 @@ build_graph(const hplus::instance& inst, const binary_set& unreachable_actions, 
         }
     }
 
+    // Idea: sort in decreasing order of out_degree... once we get into a hub of nodes we likely will find a cycle in there, since high degree nodes
+    // (hence those in the hub) are explored earlier
+    for (const auto& neighbors : graph)
+        std::sort(neighbors.begin(), neighbors.end(), [&](unsigned int a, unsigned int b) { return graph[a].size() > graph[b].size(); });
+    std::sort(graph.begin(), graph.end(),
+              [&](const std::vector<unsigned int>& a, const std::vector<unsigned int>& b) { return a.size() > b.size(); });
+
     return std::tuple(graph, edge_labels);
 }
 
@@ -30,9 +37,9 @@ unsigned int cand_cuts::sec(CPXCALLBACKCONTEXTptr context, const hplus::instance
     const auto& [graph, edge_labels] = build_graph(inst, unreachable_actions, used_first_achievers);
     // Find cycles in the giustification graph using a DFS approach
     auto cycles = find_cycles_unweighted(graph, edge_labels);
-    std::sort(cycles.begin(), cycles.end(),
-              [&](const std::vector<unsigned int>& a, const std::vector<unsigned int>& b) { return a.size() < b.size(); });
-    cycles.resize(std::min(static_cast<size_t>(5), cycles.size()));
+    // std::sort(cycles.begin(), cycles.end(),
+    //           [&](const std::vector<unsigned int>& a, const std::vector<unsigned int>& b) { return a.size() < b.size(); });
+    // cycles.resize(std::min(static_cast<size_t>(5), cycles.size()));
     reject_with_sec_cut(context, cycles);
     return static_cast<unsigned int>(cycles.size());
 }
