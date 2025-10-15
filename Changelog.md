@@ -25,6 +25,17 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
+## [2.3.0] - 2025/10/15
+### Tested all features added in 2.2.*
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+### :heavy_exclamation_mark: Changed
+- Removed frontier landmarks from default option (candidate callback)
+<!-- ### :heavy_plus_sign: Added -->
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+
+
 ## [2.2.12] - 2025/10/14
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed

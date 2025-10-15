@@ -246,8 +246,9 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         if (s != "0") {
             if (s.find('l') != std::string::npos) exec.fract_cuts += "l";
             if (s.find('s') != std::string::npos) exec.fract_cuts += "s";
-        }
-        if (exec.fract_cuts.empty()) exec.fract_cuts = HPLUS_DEF_FRACTCUTS;
+            if (exec.fract_cuts.empty()) exec.fract_cuts = HPLUS_DEF_FRACTCUTS;
+        } else
+            exec.fract_cuts = s;
     }
     if (fract_cuts_at_nodes) exec.fract_cuts_at_nodes = args::get(fract_cuts_at_nodes);
 
