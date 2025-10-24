@@ -297,7 +297,7 @@ data-network-sat18-strips-p16,2,518
 data-network-sat18-strips-p17,0,589
 data-network-sat18-strips-p18,2,472
 data-network-sat18-strips-p19,0,1224
-data-network-sat18-strips-p20,2,712
+data-network-sat18-strips-p20,2,681
 depot-p01,0,10
 depot-p02,0,14
 depot-p03,0,22
@@ -1605,7 +1605,7 @@ pipesworld-notankage-p42-net5-b22-g4,0,16
 pipesworld-notankage-p43-net5-b24-g3,2,20
 pipesworld-notankage-p44-net5-b24-g5,2,23
 pipesworld-notankage-p45-net5-b26-g4,2,23
-pipesworld-notankage-p46-net5-b26-g6,2,31
+pipesworld-notankage-p46-net5-b26-g6,2,29
 pipesworld-notankage-p47-net5-b28-g5,2,35
 pipesworld-notankage-p48-net5-b28-g7,2,41
 pipesworld-notankage-p49-net5-b30-g6,2,28
@@ -1641,15 +1641,15 @@ pipesworld-tankage-p28-net3-b18-g7-t70,0,26
 pipesworld-tankage-p29-net3-b20-g6-t70,2,21
 pipesworld-tankage-p30-net3-b20-g8-t70,2,31
 pipesworld-tankage-p31-net4-b14-g3-t20,2,19
-pipesworld-tankage-p32-net4-b14-g5-t30,2,21
+pipesworld-tankage-p32-net4-b14-g5-t30,2,20
 pipesworld-tankage-p33-net4-b16-g5-t60,2,19
-pipesworld-tankage-p34-net4-b16-g6-t60,2,28
-pipesworld-tankage-p35-net4-b18-g4-t90,2,17
+pipesworld-tankage-p34-net4-b16-g6-t60,2,27
+pipesworld-tankage-p35-net4-b18-g4-t90,2,16
 pipesworld-tankage-p36-net4-b18-g6-t90,2,22
 pipesworld-tankage-p37-net4-b20-g5-t60,2,14
 pipesworld-tankage-p38-net4-b20-g7-t60,2,20
 pipesworld-tankage-p39-net4-b22-g7-t50,2,21
-pipesworld-tankage-p40-net4-b22-g8-t50,2,25
+pipesworld-tankage-p40-net4-b22-g8-t50,2,23
 pipesworld-tankage-p41-net5-b22-g2-t20,0,8
 pipesworld-tankage-p42-net5-b22-g4-t50,2,18
 pipesworld-tankage-p43-net5-b24-g3-t80,2,21
@@ -2035,7 +2035,7 @@ snake-sat18-strips-p06,2,17
 snake-sat18-strips-p07,2,15
 snake-sat18-strips-p08,0,11
 snake-sat18-strips-p09,2,12
-snake-sat18-strips-p10,2,16
+snake-sat18-strips-p10,2,15
 snake-sat18-strips-p11,2,13
 snake-sat18-strips-p12,2,13
 snake-sat18-strips-p13,2,13
@@ -2303,7 +2303,7 @@ thoughtful-mco14-strips-p11_6_98-typed,2,71
 thoughtful-mco14-strips-p11_6_99-typed,2,79
 thoughtful-mco14-strips-p13_7_55-typed,2,95
 thoughtful-mco14-strips-p13_7_56-typed,2,87
-thoughtful-mco14-strips-p13_7_58-typed,2,87
+thoughtful-mco14-strips-p13_7_58-typed,2,85
 thoughtful-mco14-strips-p13_7_61-typed,2,96
 thoughtful-mco14-strips-p13_7_62-typed,2,85
 thoughtful-mco14-strips-p13_7_64-typed,2,92
@@ -2326,7 +2326,7 @@ thoughtful-sat14-strips-p13_7_79-typed,2,81
 thoughtful-sat14-strips-p13_7_86-typed,2,82
 thoughtful-sat14-strips-target-typed-20,2,86
 thoughtful-sat14-strips-target-typed-21,2,92
-thoughtful-sat14-strips-target-typed-22,2,101
+thoughtful-sat14-strips-target-typed-22,2,100
 thoughtful-sat14-strips-target-typed-23,2,85
 thoughtful-sat14-strips-target-typed-24,2,82
 thoughtful-sat14-strips-target-typed-25,2,86
@@ -2441,7 +2441,7 @@ transport-opt08-strips-p15,0,343
 transport-opt08-strips-p16,0,482
 transport-opt08-strips-p17,2,552
 transport-opt08-strips-p18,2,482
-transport-opt08-strips-p19,2,532
+transport-opt08-strips-p19,2,530
 transport-opt08-strips-p20,2,715
 transport-opt08-strips-p21,0,320
 transport-opt08-strips-p22,0,433
@@ -2512,7 +2512,7 @@ transport-sat08-strips-p16,2,585
 transport-sat08-strips-p17,2,684
 transport-sat08-strips-p18,2,640
 transport-sat08-strips-p19,2,757
-transport-sat08-strips-p20,2,733
+transport-sat08-strips-p20,2,724
 transport-sat08-strips-p21,0,386
 transport-sat08-strips-p22,0,421
 transport-sat08-strips-p23,2,512
@@ -2529,9 +2529,9 @@ transport-sat11-strips-p03,2,958
 transport-sat11-strips-p04,2,585
 transport-sat11-strips-p05,2,684
 transport-sat11-strips-p06,2,640
-transport-sat11-strips-p07,2,757
+transport-sat11-strips-p07,2,748
 transport-sat11-strips-p08,2,495
-transport-sat11-strips-p09,2,733
+transport-sat11-strips-p09,2,724
 transport-sat11-strips-p10,2,1117
 transport-sat11-strips-p11,2,462
 transport-sat11-strips-p12,2,507

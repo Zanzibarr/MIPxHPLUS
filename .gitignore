@@ -14,6 +14,7 @@ code/test/jobs_output/
 local/
 logs/
 results/old*
+results/2.2
 results/csv
 results/*.json
 results/tmp

@@ -29,16 +29,16 @@ plt.rcParams.update(
 
 labels = {
     "002_2.2.0:4_tl_e__250611": r"$\mathrm{TL}^e$",
+    "002_2.2.0:2_tl_e_h__250609": r"$\mathrm{TL}^e_h$",
+    "003_2.3.0_tl_e+lmcut_h__251017": r"$\mathrm{TL}^e_h+\mbox{LMCUT}$",
     "002_2.2.0:4_ve_e__250612": r"$\mathrm{VE}^e$",
     "002_2.2.0:2_ve_e_h__250608": r"$\mathrm{VE}^e_h$",
-    "002_2.2.0:2_tl_e_h__250609": r"$\mathrm{TL}^e_h$",
-    "002_2.2.0:4_sec_e_h__250614": r"$\mathrm{SEC}^e_h$",
-    "002_2.2.0:4_lm_e_h__250613": r"$\mathrm{LM}^e_h$",
-    "002_2.2.0:4_lms_e_h_candsecfacts__250610": r"$\mathrm{LMS}^e_h$",
-    "002_2.2.6_ve_e_h_lmcut__250818": r"$\mathrm{VE}^e_h+\mbox{LMCUT}$",
-    "002_2.2.6_lms_e_h_lmcut__250817": r"$\mathrm{LMS}^e_h+\mbox{LMCUT}_{ARB}$",
-    "002_2.2.6:5_lms_e_h_lmcut_arb_vdm_rnd__250821": r"$\mathrm{LMS}^e_h+\mbox{LMCUT}_{ARB,VDM,RND}$",
-    "002_2.2.6:6_lms_e_h_lmcut_arb_inv_vdm__250823": r"$\mathrm{LMS}^e_h+\mbox{LMCUT}_{ARB,INV,VDM}$",
+    "003_2.3.0_ve_e+lmcut_h__251016": r"$\mathrm{VE}^e_h+\mbox{LMCUT}$",
+    "003_2.3.0_comp_e_h__251020": r"$\mathrm{LMC}^e_h$",
+    "003_2.3.0_sec_e_h__251021": r"$\mathrm{SEC}^e_h$",
+    "003_2.3.0_comp+sec_e_h__251018": r"$\mathrm{(LM+SE)C}^e_h$",
+    "003_2.3.0_comp_e+lmcut_h__251022": r"$\mathrm{LMC}^e_h+\mbox{LMCUT}$",
+    "003_2.3.0_comp+sec_e+lmcut_h__251016": r"$\mathrm{(LM+SE)C}^e_h+\mbox{LMCUT}$",
 }
 
 
@@ -78,6 +78,7 @@ def plot(
         "#9467bd",
         "#8c564b",
         "#e377c2",
+        "#7b0f69",
     ]
 
     styles = [
@@ -88,6 +89,7 @@ def plot(
         {"linestyle": "-", "marker": "x", "markevery": 25, "markersize": 6},
         {"linestyle": "--", "marker": "^", "markevery": 25, "markersize": 5},
         {"linestyle": ":", "marker": "d", "markevery": 25, "markersize": 5},
+        {"linestyle": "--", "marker": "s", "markevery": 25, "markersize": 5},
     ]
 
     x_points = np.logspace(-2, 3, 900)
