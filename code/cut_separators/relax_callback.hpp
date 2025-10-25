@@ -12,6 +12,22 @@
 #include "../domain/hplus_algs.hpp"
 #include "../utils/algorithms.hpp"
 
+namespace callbacks {
+
+/**
+ * Thread-specific data for CPLEX callbacks
+ */
+struct thread_data {
+    unsigned int usercuts_lm, usercuts_sec, relax_calls, cand_calls, flm_0, flm_01;
+    double cand_time, relax_time;
+    CPXENVptr flmdet_env;
+    CPXLPptr flmdet_lp;
+};
+
+void relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, const hplus::instance& inst, thread_data& data);
+
+}  // namespace callbacks
+
 namespace relax_cuts {
 
 /**
@@ -26,14 +42,15 @@ std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash> rel
  */
 [[nodiscard]]
 std::pair<bool, std::vector<unsigned int>> get_violated_landmark(CPXENVptr& env, CPXLPptr& lp, const hplus::execution& exec,
-                                                                 const hplus::instance& inst, const std::vector<double>& relax_point);
+                                                                 const hplus::instance& inst, const std::vector<double>& relax_point,
+                                                                 unsigned int& flm_0, unsigned int& flm_01);
 
 /**
  * Compute the violated landmark (if there's one) out of the relaxed solution and reject the relaxed solution
  */
 [[nodiscard]]
 unsigned int lm(CPXCALLBACKCONTEXTptr context, CPXENVptr& env, CPXLPptr& lp, const hplus::execution& exec, const hplus::instance& inst,
-                const std::vector<double>& relax_point);
+                const std::vector<double>& relax_point, callbacks::thread_data& data);
 
 /**
  * Compute the violated S.E.C. (if there's one) out of the relaxed solution
@@ -50,21 +67,5 @@ unsigned int sec(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst,
                  const std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash>& fadd_weights);
 
 }  // namespace relax_cuts
-
-namespace callbacks {
-
-/**
- * Thread-specific data for CPLEX callbacks
- */
-struct thread_data {
-    unsigned int usercuts_lm, usercuts_sec, relax_calls, cand_calls;
-    double cand_time, relax_time;
-    CPXENVptr flmdet_env;
-    CPXLPptr flmdet_lp;
-};
-
-void relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, const hplus::instance& inst, thread_data& data);
-
-}  // namespace callbacks
 
 #endif

@@ -25,7 +25,12 @@ inline void open_flmdet_model(CPXENVptr& env, CPXLPptr& lp, int threads = 1) {
     CPX_HANDLE_CALL(cpxerror);
     lp = CPXcreateprob(env, &cpxerror, "flmdet");
     CPX_HANDLE_CALL(cpxerror);
-    CPX_HANDLE_CALL(CPXsetintparam(env, CPXPARAM_Threads, threads));
+    LOG_DEBUG << "Debugging options enabled: flmdet model always runs on 1 thread and flmdet presolve is disabled";
+    CPX_HANDLE_CALL(CPXsetintparam(env, CPXPARAM_Threads, 1));                 // TODO: Set to threads
+    CPX_HANDLE_CALL(CPXsetintparam(env, CPXPARAM_Preprocessing_Presolve, 0));  // TODO: Remove... this is only for testing
+    // CPX_HANDLE_CALL(CPXsetlogfilename(env, HPLUS_CPLEX_OUTPUT_DIR "/log/data-network-sat18-strips-p19_fract_nopresolve.log",
+    //                                   "w"));                         // TODO: Remove... this is only for testing
+    CPX_HANDLE_CALL(CPXsetintparam(env, CPXPARAM_MIP_Interval, 1));  // TODO: Remove... this is only for testing
     // log file
     CPX_HANDLE_CALL(CPXsetintparam(env, CPXPARAM_ScreenOutput, HPLUS_DEF_CPX_SCREENOUTPUT));
     CPX_HANDLE_CALL(CPXsetintparam(env, CPX_PARAM_CLONELOG, HPLUS_DEF_CPX_CLONELOG));
@@ -149,6 +154,8 @@ inline void set_cplex_callbacks(hplus::execution& exec, hplus::instance& inst, c
             .usercuts_sec = 0,
             .relax_calls = 0,
             .cand_calls = 0,
+            .flm_0 = 0,
+            .flm_01 = 0,
             .cand_time = 0.0,
             .relax_time = 0.0,
             .flmdet_env = nullptr,
@@ -184,6 +191,8 @@ inline void gather_stats_from_threads(const hplus::execution& exec, hplus::stati
         stats.cuts_sec += data.usercuts_sec;
         stats.cand_calls += data.cand_calls;
         stats.relax_calls += data.relax_calls;
+        stats.flm_0 += data.flm_0;
+        stats.flm_01 += data.flm_01;
         if (exec.fract_cuts.find('l') != std::string::npos) relax_cuts::close_flmdet_model(data.flmdet_env, data.flmdet_lp);
     }
 }

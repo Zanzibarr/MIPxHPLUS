@@ -56,7 +56,7 @@ void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::
     // -> s : SEC
     try {
         if (exec.fract_cuts.find('l') != std::string::npos)
-            data.usercuts_lm += relax_cuts::lm(context, data.flmdet_env, data.flmdet_lp, exec, inst, relax_point);
+            data.usercuts_lm += relax_cuts::lm(context, data.flmdet_env, data.flmdet_lp, exec, inst, relax_point, data);
         if (exec.fract_cuts.find('s') != std::string::npos) data.usercuts_sec += relax_cuts::sec(context, inst, fadd_weights);
     } catch (timelimit_exception& e) {
         return;

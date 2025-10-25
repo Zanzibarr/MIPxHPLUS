@@ -4,7 +4,8 @@
 
 [[nodiscard]]
 std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(CPXENVptr& env, CPXLPptr& lp, const hplus::execution& exec,
-                                                                             const hplus::instance& inst, const std::vector<double>& relax_point) {
+                                                                             const hplus::instance& inst, const std::vector<double>& relax_point,
+                                                                             unsigned int& flm_0, unsigned int& flm_01) {
     // if (!exec.testing) {
     std::vector<int> ind(inst.m);
     std::vector<unsigned int> landmark(0);
@@ -21,6 +22,14 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(CPX
     double cutval{CPX_INFBOUND};
     CPX_HANDLE_CALL(CPXgetobjval(env, lp, &cutval));
 
+    // TODO: Remove, this is for debugging
+    int nodes{CPXgetnodecnt(env, lp)};
+    if (nodes > 0) {
+        // CPX_HANDLE_CALL(CPXwriteprob(env, lp, HPLUS_CPLEX_OUTPUT_DIR "/lp/data-network-sat18-strips-p19_fract_nopresolve.lp",
+        //                              "lp"));  // TODO: Remove... this is only for testing
+        LOG_WARNING << "flmdet model gets solved outside of the root node (" << nodes << ").";
+    }
+
     // If the value of the cut is greater than 1, than no landmark has been violated
     if (cutval >= 1 - HPLUS_EPSILON) {
         // TODO: Remove, this is for debugging
@@ -29,6 +38,12 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(CPX
     }
 
     // Now we know that a landmark is violated
+
+    // TODO: Remove, this is for debugging
+    if (cutval <= HPLUS_EPSILON)
+        flm_0++;
+    else
+        flm_01++;
 
     std::vector<double> facts_partition(inst.n);
     CPX_HANDLE_CALL(CPXgetx(env, lp, facts_partition.data(), inst.m, inst.m + inst.n - 1));
@@ -105,8 +120,8 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(CPX
 
 [[nodiscard]]
 unsigned int relax_cuts::lm(CPXCALLBACKCONTEXTptr context, CPXENVptr& env, CPXLPptr& lp, const hplus::execution& exec, const hplus::instance& inst,
-                            const std::vector<double>& relax_point) {
-    const auto& [found, landmark]{get_violated_landmark(env, lp, exec, inst, relax_point)};
+                            const std::vector<double>& relax_point, callbacks::thread_data& data) {
+    const auto& [found, landmark]{get_violated_landmark(env, lp, exec, inst, relax_point, data.flm_0, data.flm_01)};
     if (!found) return 0;
     std::vector<int> ind(landmark.size());
     int nnz{0};

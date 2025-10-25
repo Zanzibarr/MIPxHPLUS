@@ -25,6 +25,16 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
+## [2.3.1 [branch: flmdet]] - 2025/10/25
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+### :heavy_exclamation_mark: Changed
+- Debugging and testing of flmdet model to try to understand wether separating landmarks from fract solutions is in P or NP-Hard
+<!-- ### :heavy_plus_sign: Added -->
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+
+
 ## [2.3.0] - 2025/10/15
 ### Tested all features added in 2.2.*
 <!-- ### :warning: Known issues -->

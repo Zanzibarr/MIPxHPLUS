@@ -30,7 +30,7 @@ inline void solve_relaxation(CPXENVptr& env, CPXLPptr& lp, const hplus::executio
 }
 
 inline unsigned int generate_cuts(CPXENVptr& env, CPXLPptr& lp, CPXENVptr& flmdetenv, CPXLPptr& flmdetlp, const hplus::execution& exec,
-                                  const hplus::instance& inst, const std::vector<double>& incumbent, double& inout_w) {
+                                  const hplus::instance& inst, const std::vector<double>& incumbent, double& inout_w, hplus::statistics& stats) {
     const int ncols{CPXgetnumcols(env, lp)};
     std::vector<double> relax_point(ncols);
     CPXgetx(env, lp, relax_point.data(), 0, ncols - 1);
@@ -48,7 +48,8 @@ inline unsigned int generate_cuts(CPXENVptr& env, CPXLPptr& lp, CPXENVptr& flmde
 
         // Adding landmark as new constraint
         if (exec.fract_cuts.find('l') != std::string::npos) {
-            const auto& [found_lm, landmark]{relax_cuts::get_violated_landmark(flmdetenv, flmdetlp, exec, inst, relax_point)};
+            const auto& [found_lm,
+                         landmark]{relax_cuts::get_violated_landmark(flmdetenv, flmdetlp, exec, inst, relax_point, stats.flm_0, stats.flm_01)};
             if (found_lm) {
                 ind = std::vector<int>(landmark.begin(), landmark.end());
                 val = std::vector<double>(landmark.size(), 1.0);
@@ -194,7 +195,7 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
 
         // Generate new cuts
         double cuts_time = GET_TIME();
-        new_cuts = generate_cuts(env, lp, flmdetenv, flmdetlp, exec, inst, incumbent, inout_w);
+        new_cuts = generate_cuts(env, lp, flmdetenv, flmdetlp, exec, inst, incumbent, inout_w, stats);
         stats.relax_callback += GET_TIME() - cuts_time;
         stats.relax_calls++;
 

@@ -20,7 +20,7 @@ struct statistics {
     unsigned int n_prep, m_prep, nfadd_prep;
     // Cplex informations
     int status;
-    unsigned int nodes, var_base, var_acyc, const_base, const_acyc, cuts_lm, cuts_sec, cutloop_it, cand_calls, relax_calls;
+    unsigned int nodes, var_base, var_acyc, const_base, const_acyc, cuts_lm, cuts_sec, cutloop_it, cand_calls, relax_calls, flm_0, flm_01;
     double lower_bound;
 };
 
@@ -50,6 +50,8 @@ inline void init(statistics& stats) {
                        .cutloop_it = 0,
                        .cand_calls = 0,
                        .relax_calls = 0,
+                       .flm_0 = 0,
+                       .flm_01 = 0,
                        .lower_bound = 0};
 }
 
@@ -65,6 +67,8 @@ inline void print(const statistics& stats) {
     LOG << " >> Acyc model const    " << std::setw(28) << stats.const_acyc << " <<";
     LOG << " >> User cuts (lm)      " << std::setw(28) << stats.cuts_lm << " <<";
     LOG << " >> User cuts (sec)     " << std::setw(28) << stats.cuts_sec << " <<";
+    LOG << " >> Fract LM at 0       " << std::setw(28) << stats.flm_0 << " <<";
+    LOG << " >> Fract LM in (0,1]   " << std::setw(28) << stats.flm_01 << " <<";
     LOG << " >> Nodes expanded      " << std::setw(28) << stats.nodes << " <<";
     LOG << " >> Cutloop iterations  " << std::setw(28) << stats.cutloop_it << " <<";
     LOG << " >> Candidate callback calls " << std::setw(23) << stats.cand_calls << " <<";
