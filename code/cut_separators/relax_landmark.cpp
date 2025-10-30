@@ -120,7 +120,7 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(CPX
     double cutval{CPX_INFBOUND};
     CPX_HANDLE_CALL(CPXgetobjval(env, lp, &cutval));
 
-    // TODO: Remove, this is for debugging
+    // TODO: Remove, this is only for testing
 
     // Compute R1 and R2
     const auto [r1, r2] = compute_r1_r2(inst, relax_point);

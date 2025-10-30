@@ -139,6 +139,7 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
 
         // No more cuts
         if (new_cuts == 0) return false;
+        return true; // TODO: Remove... this is only for testing
 
         // Check gap with incumbent
         if (1 - current_lb / static_cast<double>(inst.sol.cost == 0 ? 1 : inst.sol.cost) <= exec.cl_gap_stop + HPLUS_EPSILON) return false;
