@@ -1,6 +1,5 @@
 #include <deque>
 #include <functional>
-#include <random>
 
 #include "../external/pq.hpp"
 #include "../utils/algorithms.hpp"
@@ -34,8 +33,6 @@ std::pair<int, int> hmax_inverse(const std::vector<unsigned int>& preconditions,
 
 std::pair<int, int> hmax_value_decrease_minimization(const std::vector<unsigned int>& preconditions, const std::vector<int>& hmax_values,
                                                      const std::vector<int>& initial_hmax_values) {
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
     int pcf{-1}, hmax{-1}, min_decrease{std::numeric_limits<int>::max()}, count{0};
     for (const auto& p : preconditions) {
         if (hmax < hmax_values[p]) {
@@ -51,7 +48,7 @@ std::pair<int, int> hmax_value_decrease_minimization(const std::vector<unsigned 
             } else if (initial_hmax_values[p] - hmax_values[p] == min_decrease) {  // Second level tie-breaking: random
                 count++;
                 std::uniform_int_distribution<int> dist(1, count);
-                if (dist(gen) == 1) pcf = p;
+                if (dist(g_rng) == 1) pcf = p;
             }
         }
     }
@@ -60,9 +57,6 @@ std::pair<int, int> hmax_value_decrease_minimization(const std::vector<unsigned 
 
 std::pair<int, int> hmax_random(const std::vector<unsigned int>& preconditions, const std::vector<int>& hmax_values,
                                 [[maybe_unused]] const std::vector<int>& _) {
-    static std::random_device rd;
-    static std::mt19937 gen(rd());
-
     int pcf{-1}, hmax{-1}, count{0};
     for (const auto& p : preconditions) {
         if (hmax < hmax_values[p]) {
@@ -72,7 +66,7 @@ std::pair<int, int> hmax_random(const std::vector<unsigned int>& preconditions, 
         } else if (hmax == hmax_values[p]) {
             count++;
             std::uniform_int_distribution<int> dist(1, count);
-            if (dist(gen) == 1) pcf = p;
+            if (dist(g_rng) == 1) pcf = p;
         }
     }
 

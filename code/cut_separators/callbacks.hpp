@@ -19,7 +19,7 @@ namespace relax_cuts {
 /**
  * FLM-DET is the model used for Fractional LandMarks DETection in the relax callback
  */
-inline void open_flmdet_model(CPXENVptr& env, CPXLPptr& lp, int threads = 1) {
+inline void open_flmdet_model(CPXENVptr& env, CPXLPptr& lp, const hplus::execution& exec, int threads = 1) {
     int cpxerror;
     env = CPXopenCPLEX(&cpxerror);
     CPX_HANDLE_CALL(cpxerror);
@@ -37,6 +37,8 @@ inline void open_flmdet_model(CPXENVptr& env, CPXLPptr& lp, int threads = 1) {
     CPX_HANDLE_CALL(CPXsetintparam(env, CPXPARAM_MIP_Strategy_File, HPLUS_DEF_CPX_STRAT_FILE));
     // terminate condition
     CPX_HANDLE_CALL(CPXsetterminate(env, &GLOBAL_TERMINATE_CONDITION));
+    // random seed
+    CPX_HANDLE_CALL(CPXsetintparam(env, CPXPARAM_RandomSeed, exec.seed));
 }
 
 /**
@@ -94,8 +96,8 @@ inline void build_flmdet_model(const hplus::instance& inst, CPXENVptr& env, CPXL
     CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, nnz, &rhs, &sense, &begin, ind.data(), val.data(), nullptr, nullptr));
 }
 
-inline void create_flmdet_model(const hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp, int threads = 1) {
-    open_flmdet_model(env, lp, threads);
+inline void create_flmdet_model(const hplus::execution& exec, const hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp, int threads = 1) {
+    open_flmdet_model(env, lp, exec, threads);
     build_flmdet_model(inst, env, lp);
 }
 
@@ -156,7 +158,7 @@ inline void set_cplex_callbacks(hplus::execution& exec, hplus::instance& inst, c
         };
 
         if (exec.fract_cuts.find('l') != std::string::npos)  // l here stands for landmarks -> if we need landmarks we need the mip that detects them
-            relax_cuts::create_flmdet_model(inst, td.flmdet_env,
+            relax_cuts::create_flmdet_model(exec, inst, td.flmdet_env,
                                             td.flmdet_lp);  // We use only 1 thread since CPLEX might run in multithreading before it finds an initial
                                                             // basis (we must assure that the number of threads specified is used, and not more)
 

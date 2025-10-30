@@ -5,7 +5,7 @@ inline void init_cutloop(const hplus::execution& exec, CPXENVptr& env, CPXLPptr&
                          const hplus::instance& inst) {
     CPX_HANDLE_CALL(CPXchgprobtype(env, lp, CPXPROB_LP));
     relax_cuts::create_flmdet_model(
-        inst, flmdetenv, flmdetlp,
+        exec, inst, flmdetenv, flmdetlp,
         exec.threads);  // In our cutloop we can enable multithreading on the flmdet model, cause there's only one (thread running the) cutloop
 }
 
@@ -29,12 +29,8 @@ inline void solve_relaxation(CPXENVptr& env, CPXLPptr& lp, const hplus::executio
     CPX_HANDLE_CALL(CPXlpopt(env, lp));
 }
 
-inline unsigned int generate_cuts(CPXENVptr& env, CPXLPptr& lp, CPXENVptr& flmdetenv, CPXLPptr& flmdetlp, const hplus::execution& exec,
-                                  const hplus::instance& inst, const std::vector<double>& incumbent, double& inout_w) {
-    const int ncols{CPXgetnumcols(env, lp)};
-    std::vector<double> relax_point(ncols);
-    CPXgetx(env, lp, relax_point.data(), 0, ncols - 1);
-
+inline unsigned int generate_cuts(CPXENVptr& env, CPXLPptr& lp, CPXENVptr& flmdetenv, CPXLPptr& flmdetlp, const std::vector<double>& relax_point,
+                                  const hplus::execution& exec, const hplus::instance& inst, const std::vector<double>& incumbent, double& inout_w) {
     unsigned int new_cuts{0};
 
     const auto& add_cuts = [&](std::vector<double> relax_point) {
@@ -93,7 +89,7 @@ inline unsigned int generate_cuts(CPXENVptr& env, CPXLPptr& lp, CPXENVptr& flmde
             inout_it++;
             std::vector<double> inout_relax_point;
             if (inout_it == exec.io_max_iter) w = 0;
-            for (int i = 0; i < ncols; i++) inout_relax_point.push_back(relax_point[i] * (1 - w) + incumbent[i] * w);
+            for (unsigned int i = 0; i < relax_point.size(); i++) inout_relax_point.push_back(relax_point[i] * (1 - w) + incumbent[i] * w);
             add_cuts(inout_relax_point);
             if (new_cuts == 0) w *= exec.io_weight_update;
         }
@@ -189,12 +185,16 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
 
     solve_relaxation(env, lp, exec);
     while (repeat_cutloop() && !CHECK_STOP()) {
-        // Purging of slack constraints every 5 iterations
+        const int ncols{CPXgetnumcols(env, lp)};
+        std::vector<double> relax_point(ncols);
+        CPXgetx(env, lp, relax_point.data(), 0, ncols - 1);
+
+        // Pruning of slack constraints every 5 iterations
         if ((iteration + 1) % 5 == 0 && exec.cl_pruning) pruning(env, lp, base_constraints);
 
         // Generate new cuts
         double cuts_time = GET_TIME();
-        new_cuts = generate_cuts(env, lp, flmdetenv, flmdetlp, exec, inst, incumbent, inout_w);
+        new_cuts = generate_cuts(env, lp, flmdetenv, flmdetlp, relax_point, exec, inst, incumbent, inout_w);
         stats.relax_callback += GET_TIME() - cuts_time;
         stats.relax_calls++;
 

@@ -55,6 +55,9 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
                                                "Set the memory limit (def: " + std::to_string(HPLUS_DEF_MEMORYLIMIT) +
                                                    " MB; options: <positive int (!= 0)> (setting that as memory limit (MB)))",
                                                {HPLUS_CLI_MEMORYLIMIT_FLAG}, HPLUS_DEF_MEMORYLIMIT);
+    args::ValueFlag<int> seed(parser, "int",
+                              "Set a seed for random operations (def: " + std::to_string(HPLUS_DEF_RANDOM_SEED) + "; options: <positive int>)",
+                              {HPLUS_CLI_SEED_FLAG}, HPLUS_DEF_RANDOM_SEED);
     args::ValueFlag<unsigned int> verbosity(
         parser, "non-negative int, [0,3]",
         "Set the verbosity (def: " + std::to_string(HPLUS_DEF_VERBOSE) +
@@ -160,6 +163,9 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         }
         exec.threads = t;
     }
+    if (seed) exec.seed = args::get(seed);
+
+    init_rng(exec.seed);
 
     if (log) {
         exec.log_file = HPLUS_LOG_DIR "/" + args::get(log);

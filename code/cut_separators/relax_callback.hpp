@@ -12,6 +12,22 @@
 #include "../domain/hplus_algs.hpp"
 #include "../utils/algorithms.hpp"
 
+namespace callbacks {
+
+/**
+ * Thread-specific data for CPLEX callbacks
+ */
+struct thread_data {
+    unsigned int usercuts_lm, usercuts_sec, relax_calls, cand_calls;
+    double cand_time, relax_time;
+    CPXENVptr flmdet_env;
+    CPXLPptr flmdet_lp;
+};
+
+void relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, const hplus::instance& inst, thread_data& data);
+
+}  // namespace callbacks
+
 namespace relax_cuts {
 
 /**
@@ -50,21 +66,5 @@ unsigned int sec(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst,
                  const std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash>& fadd_weights);
 
 }  // namespace relax_cuts
-
-namespace callbacks {
-
-/**
- * Thread-specific data for CPLEX callbacks
- */
-struct thread_data {
-    unsigned int usercuts_lm, usercuts_sec, relax_calls, cand_calls;
-    double cand_time, relax_time;
-    CPXENVptr flmdet_env;
-    CPXLPptr flmdet_lp;
-};
-
-void relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, const hplus::instance& inst, thread_data& data);
-
-}  // namespace callbacks
 
 #endif

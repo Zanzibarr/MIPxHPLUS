@@ -11,12 +11,13 @@
 // ############################## VERSION ############################## //
 // ##################################################################### //
 
-#define VERSION "2.3.0"
+#define VERSION "2.3.1"
 
 // ##################################################################### //
 // ############################## IMPORTS ############################## //
 // ##################################################################### //
 
+#include <random>
 #include <vector>
 
 #include "../external/limits.hpp"
@@ -47,6 +48,7 @@
 #define HPLUS_CLI_TIMELIMIT_FLAG "t"
 #define HPLUS_CLI_THREADS_FLAG "threads"
 #define HPLUS_CLI_MEMORYLIMIT_FLAG "mem"
+#define HPLUS_CLI_SEED_FLAG "s"
 #define HPLUS_CLI_VERBOSE_FLAG "v"
 #define HPLUS_CLI_FRACTCUTS_FLAG "fract"
 #define HPLUS_CLI_FRACTCUTS_AT_NODES_FLAG "fract-nodes"
@@ -77,6 +79,7 @@
 // ############################ CLI DEFAULTS ########################### //
 // ##################################################################### //
 
+#define HPLUS_DEF_RANDOM_SEED 2122187
 #define HPLUS_DEF_ALG 2
 #define HPLUS_DEF_ALG_STRING HPLUS_CLI_ALG_FLAG_CUTS
 #define HPLUS_DEF_WS 4
@@ -126,6 +129,11 @@
 // #################### UTILITY FUNCTIONS AND MACROS ################### //
 // ##################################################################### //
 
+// Random number generator
+inline std::mt19937 g_rng;
+
+inline void init_rng(int seed) { g_rng.seed(seed); }
+
 #define ASSERT(cond)                                                                                     \
     {                                                                                                    \
         if (!(cond)) [[unlikely]] {                                                                      \
@@ -149,8 +157,7 @@
         }                                                                                                                           \
     }
 
-[[nodiscard]]
-inline std::string today() {
+[[nodiscard]] inline std::string today() {
     auto now = std::chrono::system_clock::now();
     std::time_t end_time = std::chrono::system_clock::to_time_t(now);
     std::string time_str = std::ctime(&end_time);
