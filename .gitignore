@@ -7,10 +7,7 @@
 # repository organization
 code/.cache
 code/build/
-code/test/plots
-code/test/venv
-code/test/jobs/
-code/test/jobs_output/
+code/test/
 local/
 logs/
 results/old*
