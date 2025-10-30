@@ -5,16 +5,21 @@
 [[nodiscard]]
 std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(CPXENVptr& env, CPXLPptr& lp, const hplus::execution& exec,
                                                                              const hplus::instance& inst, const std::vector<double>& relax_point) {
-    std::vector<int> ind(inst.m);
-    std::vector<unsigned int> landmark(0);
-    std::iota(ind.begin(), ind.end(), 0);
+    // Set the time limit for the flmdet model
     if (exec.timelimit > 0 && static_cast<double>(exec.timelimit) > GET_TIME()) {
         CPX_HANDLE_CALL(CPXsetdblparam(env, CPXPARAM_TimeLimit, static_cast<double>(exec.timelimit) - GET_TIME()));
     } else
         throw timelimit_exception("Reached time limit.");
+
     // Update the objective function -> adapt the model to the current relaxed solution
+    std::vector<int> ind(inst.m);
+    std::iota(ind.begin(), ind.end(), 0);
     CPX_HANDLE_CALL(CPXchgobj(env, lp, inst.m, ind.data(), relax_point.data()));
+
+    // Solve the flmdet model
     CPX_HANDLE_CALL(CPXmipopt(env, lp));
+
+    // Get status and solution
     int status = CPXgetstat(env, lp);
     if (status != CPXMIP_OPTIMAL && status != CPXMIP_OPTIMAL_TOL) return {false, {}};  // For time-limit breaching -> no solution found
     double cutval{CPX_INFBOUND};
@@ -33,6 +38,7 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(CPX
         if (facts_partition[p] >= HPLUS_CPX_INT_ROUNDING) reach.add(p);
     }
     // Actions crossing the cut are those that have all preconditions in the left side, and at least one effect in the right side
+    std::vector<unsigned int> landmark;
     for (unsigned int act_i = 0; act_i < inst.m; ++act_i) {
         if (reach.contains(inst.actions[act_i].pre) && !reach.contains(inst.actions[act_i].eff)) landmark.push_back(act_i);
     }

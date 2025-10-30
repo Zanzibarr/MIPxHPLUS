@@ -49,6 +49,8 @@ struct execution {
     std::string file, file_name;
     // Execution/Solution status
     exec_status exec_s;
+    // Seed
+    int seed;
     // Testing
     bool testing;
 };
@@ -79,6 +81,7 @@ inline void init(execution& exec) {
                             .file = "",
                             .file_name = "",
                             .exec_s = exec_status::START,
+                            .seed = HPLUS_DEF_RANDOM_SEED,
                             .testing = false};
 }
 
@@ -141,6 +144,7 @@ inline void print(const execution& exec) {
     LOG << "Memory limit:                              " << std::setw(exec.memorylimit > 0 ? 10 : 13) << exec.memorylimit
         << (exec.memorylimit > 0 ? " MB" : "");
     LOG << "Number of threads:                               " << std::setw(7) << exec.threads;
+    LOG << "Seed:                                            " << std::setw(7) << exec.seed;
     LOG << "Execution type:                               " << std::setw(10) << to_string(exec.type);
     LOG << "Instance:  " << std::setw(45) << exec.file_name;
     if (exec.type == hplus::exec_type::INFO) {

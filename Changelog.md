@@ -25,6 +25,18 @@ HOW I DO VERSIONING:
 <!-- ### :curly_loop: Other -->
 
 
+## [2.3.1] - 2025/10/30
+<!-- ### :warning: Known issues -->
+### :ballot_box_with_check: Fixed
+- Little bug with cutloop pruning of non-tight constraints
+### :heavy_exclamation_mark: Changed
+- Minor code aestetics changes
+### :heavy_plus_sign: Added
+- Added random seed choice for reproducibility
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+
+
 ## [2.3.0] - 2025/10/15
 ### Tested all features added in 2.2.*
 <!-- ### :warning: Known issues -->
