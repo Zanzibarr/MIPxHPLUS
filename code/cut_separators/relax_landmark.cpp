@@ -3,7 +3,7 @@
 #include "relax_callback.hpp"
 
 [[nodiscard]]
-static inline double compute_r1(const hplus::instance& inst, const std::vector<double>& relax_point) {
+static inline std::pair<double, std::vector<double>> compute_r1(const hplus::instance& inst, const std::vector<double>& relax_point) {
     std::vector<double> var_values(inst.n, 0), act_values(inst.m, 0);
     std::list<unsigned int> actions_queue;
     binary_set state(inst.n), act_in_queue(inst.m);
@@ -43,58 +43,24 @@ static inline double compute_r1(const hplus::instance& inst, const std::vector<d
     double r1{1};
     for (const auto& p : inst.goal) r1 = std::min(r1, var_values[p]);
 
-    return r1;
+    return {r1, var_values};
 }
 
 [[nodiscard]]
-static inline double compute_r2(const hplus::instance& inst, const std::vector<double>& relax_point) {
-    std::vector<double> var_values(inst.n, 0), act_values(inst.m, 0);
-    std::list<unsigned int> actions_queue;
-    binary_set state(inst.n), act_in_queue(inst.m);
+static inline double compute_r2(const hplus::instance& inst, const std::vector<double>& relax_point, const std::vector<double>& r1_values) {
+    LOG_TODO << "Min cut with PCF choice";
 
-    for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
-        if (relax_point[act_i] <= HPLUS_EPSILON) continue;
-        if (inst.actions[act_i].pre_sparse.empty()) {
-            actions_queue.push_back(act_i);
-            act_in_queue.add(act_i);
-        }
-    }
+    // TODO: Create graph
 
-    while (!actions_queue.empty()) {
-        const auto choice{actions_queue.front()};
-        actions_queue.pop_front();
-        act_in_queue.remove(choice);
-
-        double pre_update_act_value{act_values[choice]};
-
-        act_values[choice] = relax_point[choice];
-        for (const auto& p : inst.actions[choice].pre_sparse) act_values[choice] = std::min(act_values[choice], var_values[p]);
-
-        if (act_values[choice] - pre_update_act_value <= HPLUS_EPSILON) continue;
-
-        state |= inst.actions[choice].eff;
-        for (const auto& p : inst.actions[choice].eff_sparse) {
-            if (var_values[p] >= 1 - HPLUS_EPSILON) continue;
-            var_values[p] += (act_values[choice] - pre_update_act_value);
-            for (const auto& act_i : inst.act_with_pre[p]) {
-                if (!state.contains(inst.actions[act_i].pre)) continue;
-                if (act_in_queue[act_i]) continue;
-                if (relax_point[act_i] <= HPLUS_EPSILON) continue;
-                actions_queue.push_back(act_i);
-                act_in_queue.add(act_i);
-            }
-        }
-    }
-
-    double r2{1};
-    for (const auto& p : inst.goal) r2 = std::min(r2, var_values[p]);
-
-    return r2;
+    return compute_max_flow();
 }
 
 [[nodiscard]]
 static inline std::pair<double, double> compute_r1_r2(const hplus::instance& inst, const std::vector<double>& relax_point) {
-    return {compute_r1(inst, relax_point), compute_r2(inst, relax_point)};
+    const auto& [r1, r1_values]{compute_r1(inst, relax_point)};
+    if (r1 >= 1) return {1, 1};
+    double r2{compute_r2(inst, relax_point, r1_values)};
+    return {r1, r2};
 }
 
 [[nodiscard]]

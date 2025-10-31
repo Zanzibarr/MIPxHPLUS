@@ -363,4 +363,10 @@ static inline std::string vtos(std::vector<T> v, unsigned int size = 20) {
     return s;
 }
 
+// TODO
+static inline double compute_max_flow() {}
+
+// TODO
+static inline std::vector<unsigned int> extract_min_cut() {}
+
 #endif
