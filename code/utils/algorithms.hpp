@@ -363,8 +363,52 @@ static inline std::string vtos(std::vector<T> v, unsigned int size = 20) {
     return s;
 }
 
+typedef struct {
+    unsigned int to, rev;
+    double c;
+} network_edge;
+
+static inline std::vector<std::vector<network_edge>> build_max_flow_graph(const hplus::instance& inst, const std::vector<int>& pcf,
+                                                                          const std::vector<double>& actions_weights) {
+    std::vector<std::vector<network_edge>> graph(inst.n + 2);
+    // nodes [0 -> n - 1] => facts
+    // node [n] => source
+    static const unsigned int source{inst.n};
+    // node [n + 1] => sink
+    static const unsigned int sink{inst.n + 1};
+    // nodes [n + 2 -> ...] => dummy nodes for actions effects (at most m)
+    // estimated number of nodes: O(n + m)
+
+    auto add_edge = [&](unsigned int from, unsigned int to, double capacity) {
+        graph[from].emplace_back(to, graph[to].size(), capacity);
+        graph[to].emplace_back(from, graph[from].size() - 1, 0);  // Reverse edge
+    };
+
+    for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
+        const unsigned int from = pcf[act_i] < 0 ? source : static_cast<unsigned int>(pcf[act_i]);
+        switch (inst.actions[act_i].eff_sparse.size()) {
+            case 0:
+                break;
+            case 1:
+                unsigned int to{inst.actions[act_i].eff_sparse[0]};
+                add_edge(from, to, actions_weights[act_i]);
+                break;
+            default:
+                const unsigned int dummy{graph.size()};
+                graph.push_back(std::vector<network_edge>());  // Create new dummy node
+                add_edge(from, dummy, actions_weights[act_i]);
+                for (const auto& to : inst.actions[act_i].eff_sparse) add_edge(dummy, to, actions_weights[act_i]);
+                break;
+        }
+    }
+
+    for (const auto& g : inst.goal) add_edge(g, sink, 1);
+
+    return std::move(graph);
+}
+
 // TODO
-static inline double compute_max_flow() {}
+static inline double compute_max_flow(std::vector<std::vector<network_edge>>& graph) {}
 
 // TODO
 static inline std::vector<unsigned int> extract_min_cut() {}

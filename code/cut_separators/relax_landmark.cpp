@@ -50,7 +50,19 @@ static inline std::pair<double, std::vector<double>> compute_r1(const hplus::ins
 static inline double compute_r2(const hplus::instance& inst, const std::vector<double>& relax_point, const std::vector<double>& r1_values) {
     LOG_TODO << "Min cut with PCF choice";
 
-    // TODO: Create graph
+    // Choose pcf as the precondition with the lowest r1 value
+    std::vector<int> pcf(inst.m, -1);
+    for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
+        double min{2};  // 1 is the max value each r1 value can have... using 2 as initial min guarantees a lower r1 value
+        for (const auto& p : inst.actions[act_i].pre_sparse) {
+            if (r1_values[p] < min) {
+                min = r1_values[p];
+                pcf[act_i] = p;
+            }
+        }
+    }
+
+    auto graph = build_max_flow_graph(inst, pcf, relax_point);
 
     return compute_max_flow();
 }
