@@ -98,20 +98,20 @@ typedef struct {
 } network_edge;
 
 static inline std::vector<std::vector<network_edge>> build_max_flow_graph(const hplus::instance& inst, const std::vector<double>& actions_weights,
-                                                                          const std::vector<double>& r1_values/*,
-                                                                          const std::vector<double>& r2_values*/) {
+                                                                          const std::vector<double>& r1_values,
+                                                                          const std::vector<double>& r2_values) {
     // Choose pcf as the precondition with the lowest r1 value
     std::vector<int> pcf(inst.m, -1);
     for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
-        double min_r1{2} /*, min_r2{2}*/;  // 1 is the max value each r1 value can have... using 2 as initial min guarantees a lower r1 value
+        double min_r1{2}, min_r2{2};  // 1 is the max value each r1 value can have... using 2 as initial min guarantees a lower r1 value
         for (const auto& p : inst.actions[act_i].pre_sparse) {
             if (r1_values[p] < min_r1) {
                 min_r1 = r1_values[p];
-                // min_r2 = r2_values[p];
+                min_r2 = r2_values[p];
                 pcf[act_i] = p;
-                // } else if (r1_values[p] == min_r1 && r2_values[p] < min_r2) {
-                //     min_r2 = r2_values[p];
-                //     pcf[act_i] = p;
+            } else if (r1_values[p] == min_r1 && r2_values[p] < min_r2) {
+                min_r2 = r2_values[p];
+                pcf[act_i] = p;
             }
         }
     }
@@ -147,16 +147,16 @@ static inline std::vector<std::vector<network_edge>> build_max_flow_graph(const 
         }
     }
 
-    double min_r1{2} /*, min_r2{2}*/;
+    double min_r1{2}, min_r2{2};
     unsigned int g_pcf{0};
     for (const auto& g : inst.goal) {
         if (r1_values[g] < min_r1) {
             min_r1 = r1_values[g];
-            // min_r2 = r2_values[g];
+            min_r2 = r2_values[g];
             g_pcf = g;
-            // } else if (r1_values[g] == min_r1 && r2_values[g] < min_r2) {
-            //     min_r2 = r2_values[g];
-            //     g_pcf = g;
+        } else if (r1_values[g] == min_r1 && r2_values[g] < min_r2) {
+            min_r2 = r2_values[g];
+            g_pcf = g;
         }
     }
     add_edge(g_pcf, sink, 1);
@@ -216,9 +216,9 @@ static inline double compute_max_flow(std::vector<std::vector<network_edge>>& gr
 }
 
 [[nodiscard]]
-static inline double compute_r3(const hplus::instance& inst, const std::vector<double>& relax_point, const std::vector<double>& r1_values/*,
-                                const std::vector<double>& r2_values*/) {
-    auto graph = build_max_flow_graph(inst, relax_point, r1_values /*, r2_values*/);
+static inline double compute_r3(const hplus::instance& inst, const std::vector<double>& relax_point, const std::vector<double>& r1_values,
+                                const std::vector<double>& r2_values) {
+    auto graph = build_max_flow_graph(inst, relax_point, r1_values, r2_values);
 
     return compute_max_flow(graph, inst.n, inst.n + 1);
 }
@@ -228,7 +228,7 @@ static inline std::tuple<double, double, double> compute_r1_r2_r3(const hplus::i
     const auto& [r1, r1_values]{compute_r1(inst, relax_point)};
     if (r1 >= 1) return {1, 1, 1};
     const auto& [r2, r2_values]{compute_r2(inst, relax_point)};
-    double r3{compute_r3(inst, relax_point, r1_values /*, r2_values*/)};
+    double r3{compute_r3(inst, relax_point, r1_values, r2_values)};
     return {r1, r2, r3};
 }
 
