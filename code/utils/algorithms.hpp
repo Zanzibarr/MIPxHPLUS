@@ -18,6 +18,7 @@
 #include <unordered_set>
 #include <vector>
 
+#include "../external/bs.hpp"
 #include "utils.hpp"
 
 template <typename T>
@@ -361,6 +362,85 @@ static inline std::string vtos(std::vector<T> v, unsigned int size = 20) {
         for (unsigned int i = size / 2; i > 0; i--) s.append(std::to_string(v[v.size() - i])).append(";");
     }
     return s;
+}
+
+typedef struct {
+    unsigned int to, rev;
+    double c;
+} network_edge;
+
+[[nodiscard]]
+static inline bool max_flow_bfs(std::vector<std::vector<network_edge>>& graph, unsigned int s, unsigned int t, unsigned int n,
+                                std::vector<int>& level) {
+    level.assign(n, -1);
+    std::queue<int> q;
+    level[s] = 0;
+    q.push(s);
+
+    while (!q.empty()) {
+        const auto v{q.front()};
+        q.pop();
+        for (const auto& e : graph[v]) {
+            if (e.c > HPLUS_EPSILON && level[e.to] < -HPLUS_EPSILON) {
+                level[e.to] = level[v] + 1;
+                q.push(e.to);
+            }
+        }
+    }
+
+    return level[t] >= 0;
+}
+
+[[nodiscard]]
+static inline double max_flow_dfs(std::vector<std::vector<network_edge>>& graph, unsigned int v, unsigned int t, double f, std::vector<int>& level,
+                                  std::vector<int>& iter) {
+    if (v == t) return f;
+
+    for (int& i = iter[v]; i < static_cast<int>(graph[v].size()); i++) {
+        auto& e = graph[v][i];
+        if (e.c > HPLUS_EPSILON && level[v] < level[e.to]) {
+            double d{max_flow_dfs(graph, e.to, t, std::min(f, e.c), level, iter)};
+            if (d > HPLUS_EPSILON) {
+                e.c -= d;
+                graph[e.to][e.rev].c += d;
+                return d;
+            }
+        }
+    }
+    return 0;
+}
+
+[[nodiscard]]
+static inline double compute_max_flow(std::vector<std::vector<network_edge>>& graph, unsigned int source, unsigned int sink) {
+    double flow{0};
+    const unsigned int n{static_cast<unsigned int>(graph.size())};
+    std::vector<int> level(n), iter(n);
+    while (max_flow_bfs(graph, source, sink, n, level)) {
+        iter.assign(n, 0);
+        double f;
+        while ((f = max_flow_dfs(graph, source, sink, std::numeric_limits<double>::infinity(), level, iter)) > HPLUS_EPSILON) flow += f;
+    }
+    return flow;
+}
+
+[[nodiscard]] static inline binary_set get_min_cut(const std::vector<std::vector<network_edge>>& graph, unsigned int source) {
+    binary_set reachable(graph.size());
+    std::queue<unsigned int> q;
+    q.push(source);
+
+    while (!q.empty()) {
+        const auto v = q.front();
+        q.pop();
+
+        for (const auto& e : graph[v]) {
+            if (e.c > HPLUS_EPSILON && !reachable[e.to]) {
+                reachable.add(e.to);
+                q.push(e.to);
+            }
+        }
+    }
+
+    return reachable;
 }
 
 #endif

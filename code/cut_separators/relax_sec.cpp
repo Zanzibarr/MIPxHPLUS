@@ -34,8 +34,8 @@ std::pair<bool, std::vector<std::vector<unsigned int>>> relax_cuts::get_violated
 }
 
 [[nodiscard]]
-unsigned int relax_cuts::sec(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst,
-                             const std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash>& fadd_weights) {
+unsigned int relax_cuts::add_sec_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst,
+                                     const std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash>& fadd_weights) {
     const auto& [found, cycles]{get_violated_sec(inst, fadd_weights)};
     if (!found) return 0;
     std::vector<int> ind, begin;

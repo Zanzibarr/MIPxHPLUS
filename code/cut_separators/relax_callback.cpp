@@ -49,15 +49,22 @@ void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::
     double _{CPX_INFBOUND};
     CPX_HANDLE_CALL(CPXcallbackgetrelaxationpoint(context, relax_point.data(), 0, inst.m + inst.nfadd - 1, &_));
 
+    // Fix numerical errors
+    for (auto& x : relax_point) {
+        if (x <= HPLUS_EPSILON)
+            x = 0;
+        else if (x >= 1 - HPLUS_EPSILON)
+            x = 1;
+    }
+
     const auto& fadd_weights = relax_cuts::relaxationpoint_info(inst, relax_point);
 
     // exec.fract_cuts is a string containing one letter per type of cut to be applied
     // -> l : landmark cuts
     // -> s : SEC
     try {
-        if (exec.fract_cuts.find('l') != std::string::npos)
-            data.usercuts_lm += relax_cuts::lm(context, data.flmdet_env, data.flmdet_lp, exec, inst, relax_point);
-        if (exec.fract_cuts.find('s') != std::string::npos) data.usercuts_sec += relax_cuts::sec(context, inst, fadd_weights);
+        if (exec.fract_cuts.find('l') != std::string::npos) data.usercuts_lm += relax_cuts::add_lm_cut(context, inst, relax_point);
+        if (exec.fract_cuts.find('s') != std::string::npos) data.usercuts_sec += relax_cuts::add_sec_cut(context, inst, fadd_weights);
     } catch (timelimit_exception& e) {
         return;
     }

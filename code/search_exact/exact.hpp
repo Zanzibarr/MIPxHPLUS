@@ -154,7 +154,7 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
     try {
         if (exec.alg == hplus::algorithm::CUTS) {
             if (exec.custom_cutloop) cutloop::cutloop(env, lp, exec, inst, stats);
-            callbacks::set_cplex_callbacks(exec, inst, callback_userhandle, env, lp);
+            callbacks::set_cplex_callbacks(exec, callback_userhandle, env, lp);
         }
         if (exec.ws != hplus::warmstart::NONE) post_warm_start(exec, inst, env, lp);
 
@@ -169,7 +169,7 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
     // ====================================================== //
 
     // There are info to gather or resources to free only if we used the CUTS algorithm
-    if (exec.alg == hplus::algorithm::CUTS) callbacks::gather_stats_from_threads(exec, stats, callback_userhandle);
+    if (exec.alg == hplus::algorithm::CUTS) callbacks::gather_stats_from_threads(stats, callback_userhandle);
     get_cplex_solution(exec, inst, stats, env, lp);
     close_cplex(env, lp);
 }

@@ -25,7 +25,7 @@ build_graph(const hplus::instance& inst, const binary_set& unreachable_actions, 
 }
 
 [[nodiscard]]
-unsigned int cand_cuts::sec(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const binary_set& unreachable_actions,
+unsigned int cand_cuts::add_sec_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const binary_set& unreachable_actions,
                             const std::vector<std::vector<unsigned int>>& used_first_achievers) {
     const auto& [graph, edge_labels] = build_graph(inst, unreachable_actions, used_first_achievers);
     // Find cycles in the giustification graph using a DFS approach

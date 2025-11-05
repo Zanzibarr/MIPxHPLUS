@@ -152,10 +152,11 @@ void callbacks::candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::e
     // -> f : frontier landmark cuts
     // -> c : complementary landmark cuts
     // -> s : SEC
-    if (exec.cand_cuts.find('f') != std::string::npos) usercuts_lm += cand_cuts::frontier_lm(context, inst, unused_actions, reachable_state);
+    if (exec.cand_cuts.find('f') != std::string::npos) usercuts_lm += cand_cuts::add_front_lm_cut(context, inst, unused_actions, reachable_state);
     if (exec.cand_cuts.find('c') != std::string::npos)
-        usercuts_lm += cand_cuts::complementary_lm(context, inst, unreachable_actions, unused_actions, reachable_state);
-    if (exec.cand_cuts.find('s') != std::string::npos) usercuts_sec += cand_cuts::sec(context, inst, unreachable_actions, used_first_achievers);
+        usercuts_lm += cand_cuts::add_comp_lm_cut(context, inst, unreachable_actions, unused_actions, reachable_state);
+    if (exec.cand_cuts.find('s') != std::string::npos)
+        usercuts_sec += cand_cuts::add_sec_cut(context, inst, unreachable_actions, used_first_achievers);
 
     cand_time += GET_TIME() - start_time;
 }

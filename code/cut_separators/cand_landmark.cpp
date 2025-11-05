@@ -5,8 +5,8 @@
 #include "cand_callback.hpp"
 
 [[nodiscard]]
-unsigned int cand_cuts::complementary_lm(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const binary_set& unreachable_actions,
-                                         const std::vector<unsigned int>& unused_actions, const binary_set& reachable_state) {
+unsigned int cand_cuts::add_comp_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const binary_set& unreachable_actions,
+                                        const std::vector<unsigned int>& unused_actions, const binary_set& reachable_state) {
     binary_set unapplicable{unreachable_actions}, extension(inst.m), state{reachable_state};
     const auto& goal{inst.goal};
     for (const auto& act_i : unused_actions) {
@@ -68,8 +68,8 @@ unsigned int cand_cuts::complementary_lm(CPXCALLBACKCONTEXTptr context, const hp
 }
 
 [[nodiscard]]
-unsigned int cand_cuts::frontier_lm(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const std::vector<unsigned int>& unused_actions,
-                                    const binary_set& reachable_state) {
+unsigned int cand_cuts::add_front_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const std::vector<unsigned int>& unused_actions,
+                                         const binary_set& reachable_state) {
     std::vector<unsigned int> landmark;
     for (unsigned int act_i : unused_actions) {
         if (reachable_state.contains(inst.actions[act_i].pre) && !reachable_state.contains(inst.actions[act_i].eff)) landmark.push_back(act_i);

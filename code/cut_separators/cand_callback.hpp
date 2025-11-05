@@ -49,22 +49,22 @@ inline void reject_with_sec_cut(CPXCALLBACKCONTEXTptr context, const std::vector
  * solution
  */
 [[nodiscard]]
-unsigned int complementary_lm(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const binary_set& unreachable_actions,
+unsigned int add_comp_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const binary_set& unreachable_actions,
                               const std::vector<unsigned int>& unused_actions, const binary_set& reachable_state);
 
 /**
  * Method to compute a violated landmark by using the fontier landmarks technique out of the candidate solutions and reject the candidate solution
  */
 [[nodiscard]]
-unsigned int frontier_lm(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const std::vector<unsigned int>& unused_actions,
+unsigned int add_front_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const std::vector<unsigned int>& unused_actions,
                          const binary_set& reachable_state);
 
 /**
  * Method to compute a violated S.E.C. out of the candidate solutions and reject the candidate solution
  */
 [[nodiscard]]
-unsigned int sec(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const binary_set& unreachable_actions,
-                 const std::vector<std::vector<unsigned int>>& used_first_achievers);
+unsigned int add_sec_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const binary_set& unreachable_actions,
+                         const std::vector<std::vector<unsigned int>>& used_first_achievers);
 
 }  // namespace cand_cuts
 
