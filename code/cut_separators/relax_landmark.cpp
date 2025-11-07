@@ -81,9 +81,10 @@ static inline std::tuple<double, std::vector<double>, std::vector<double>> compu
     return {r1, r1_values, r2_values};
 }
 
-[[nodiscard]] static inline std::pair<std::vector<std::vector<network_edge>>, std::vector<std::tuple<unsigned int, unsigned int, unsigned int>>>
-build_max_flow_graph(const hplus::instance& inst, const std::vector<double>& actions_weights, const std::vector<double>& r1_values,
-                     const std::vector<double>& r2_values) {
+[[nodiscard]]
+static inline std::vector<std::vector<network_edge>> build_max_flow_graph(const hplus::instance& inst, const std::vector<double>& actions_weights,
+                                                                          const std::vector<double>& r1_values,
+                                                                          const std::vector<double>& r2_values) {
     // Choose pcf as the precondition with the lowest R1 value
     std::vector<int> pcf(inst.m, -1);
     for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
@@ -101,7 +102,6 @@ build_max_flow_graph(const hplus::instance& inst, const std::vector<double>& act
     }
 
     std::vector<std::vector<network_edge>> graph(inst.n + 2);
-    std::vector<std::tuple<unsigned int, unsigned int, unsigned int>> edges;  // Here I store the edges
     // nodes [0 -> n - 1] => facts
     // node [n] => source
     static const unsigned int source{inst.n};
@@ -122,16 +122,12 @@ build_max_flow_graph(const hplus::instance& inst, const std::vector<double>& act
                 break;
             case 1:  // One effect -> Simple edge
                 add_edge(from, inst.actions[act_i].eff_sparse[0], actions_weights[act_i]);
-                edges.emplace_back(from, inst.actions[act_i].eff_sparse[0], act_i);
                 break;
             default:  // Multiple effects -> Create one edge a -> dummy and multiple edges dummy -> effect
                 const unsigned int dummy{static_cast<unsigned int>(graph.size())};
                 graph.push_back(std::vector<network_edge>());  // Create new dummy node
                 add_edge(from, dummy, actions_weights[act_i]);
-                for (const auto& to : inst.actions[act_i].eff_sparse) {
-                    add_edge(dummy, to, actions_weights[act_i]);
-                    edges.emplace_back(from, to, act_i);
-                }
+                for (const auto& to : inst.actions[act_i].eff_sparse) add_edge(dummy, to, 1);
                 break;
         }
     }
@@ -151,26 +147,37 @@ build_max_flow_graph(const hplus::instance& inst, const std::vector<double>& act
     }
     add_edge(g_pcf, sink, 1);
 
-    return {graph, edges};
+    return graph;
 }
 
 [[nodiscard]]
-static inline std::tuple<double, std::vector<std::vector<network_edge>>, std::vector<std::tuple<unsigned int, unsigned int, unsigned int>>>
-compute_r3(const hplus::instance& inst, const std::vector<double>& relax_point, const std::vector<double>& r1_values,
-           const std::vector<double>& r2_values) {
-    auto [graph, edges] = build_max_flow_graph(inst, relax_point, r1_values, r2_values);
-    return {compute_max_flow(graph, inst.n, inst.n + 1), graph, edges};
+static inline std::pair<double, std::vector<std::vector<network_edge>>> compute_r3(const hplus::instance& inst,
+                                                                                   const std::vector<double>& relax_point,
+                                                                                   const std::vector<double>& r1_values,
+                                                                                   const std::vector<double>& r2_values) {
+    auto graph = build_max_flow_graph(inst, relax_point, r1_values, r2_values);
+    double r3{compute_max_flow(graph, inst.n, inst.n + 1)};
+    return {r3, graph};
 }
 
 [[nodiscard]]
-static inline std::vector<unsigned int> get_r3_violated_landmark(const hplus::instance& inst, const std::vector<std::vector<network_edge>>& graph,
-                                                                 const std::vector<std::tuple<unsigned int, unsigned int, unsigned int>>& edges) {
-    binary_set reachable{get_min_cut(graph, inst.n)};
-    std::unordered_set<unsigned int> landmark;
-    for (const auto& [from, to, label] : edges) {
-        if (reachable[from] && !reachable[to]) landmark.insert(label);
+static inline std::vector<unsigned int> get_r3_violated_landmark(const hplus::instance& inst, const std::vector<std::vector<network_edge>>& graph) {
+    binary_set graph_reach{get_min_cut(graph, inst.n)}, facts_reach(inst.n);
+    // This needs to be done since binary_set check for the capacity of the sets... I need to make sure this has the same capacity of the
+    // preconditions and effects of actions
+    for (unsigned int i = 0; i < inst.n; i++) {
+        if (graph_reach[i]) facts_reach.add(i);
     }
-    return std::vector<unsigned int>(landmark.begin(), landmark.end());
+
+    ASSERT(!facts_reach.contains(inst.goal));  // TODO: Remove after testing... if the reachable set doesn't contain the goal, then the set of actions
+                                               // TODO: crossing the reachable set IS a landmark
+
+    std::vector<unsigned int> landmark;
+    for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
+        if (facts_reach.contains(inst.actions[act_i].pre) && !facts_reach.contains(inst.actions[act_i].eff)) landmark.push_back(act_i);
+    }
+
+    return landmark;
 }
 
 [[nodiscard]]
@@ -182,17 +189,21 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
 
     // Otherwise, we rely on R3 to understand wether there's a violated landmark...
 
-    const auto& [r3, r3_graph, r3_edges]{compute_r3(inst, relax_point, r1_values, r2_values)};
-
-    // TODO: Remove after testing
-    if (r1 <= HPLUS_EPSILON) ASSERT(r3 <= HPLUS_EPSILON);  // Making sure that if R1 == 0, than also R3 == 0
+    const auto& [r3, r3_graph]{compute_r3(inst, relax_point, r1_values, r2_values)};
 
     // Note: if R3 < 1, then there's a violated landmark, BUT if R3 == 1 we can't assume that no landmark is violated... in this case we simply ignore
     // the possible landmark Statistically speaking, R3 == 1 but there exists a violated landmark happens in 3% of cases
     if (r3 >= 1 - HPLUS_EPSILON) return {false, {}};
 
-    // TODO: Test to ensure we are not creating wrong cutting planes
-    return {true, get_r3_violated_landmark(inst, r3_graph, r3_edges)};
+    const auto& landmark{get_r3_violated_landmark(inst, r3_graph)};
+
+    double cutval{0};
+    for (const auto& x : landmark) cutval += relax_point[x];
+
+    // TODO: Remove after testing
+    ASSERT(cutval <= r3 + HPLUS_EPSILON);
+
+    return {true, landmark};
 }
 
 [[nodiscard]]
