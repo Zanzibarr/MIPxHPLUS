@@ -49,6 +49,14 @@ void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::
     double _{CPX_INFBOUND};
     CPX_HANDLE_CALL(CPXcallbackgetrelaxationpoint(context, relax_point.data(), 0, inst.m + inst.nfadd - 1, &_));
 
+    // Fix numerical errors
+    for (auto& x : relax_point) {
+        if (x <= HPLUS_EPSILON)
+            x = 0;
+        else if (x >= 1 - HPLUS_EPSILON)
+            x = 1;
+    }
+
     const auto& fadd_weights = relax_cuts::relaxationpoint_info(inst, relax_point);
 
     // exec.fract_cuts is a string containing one letter per type of cut to be applied

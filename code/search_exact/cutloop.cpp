@@ -189,6 +189,14 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
         std::vector<double> relax_point(ncols);
         CPXgetx(env, lp, relax_point.data(), 0, ncols - 1);
 
+        // Fix numerical errors
+        for (auto& x : relax_point) {
+            if (x <= HPLUS_EPSILON)
+                x = 0;
+            else if (x >= 1 - HPLUS_EPSILON)
+                x = 1;
+        }
+
         // Pruning of slack constraints every 5 iterations
         if ((iteration + 1) % 5 == 0 && exec.cl_pruning) pruning(env, lp, base_constraints);
 
