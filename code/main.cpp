@@ -44,7 +44,7 @@ int main(const int argc, const char** argv) {
         hplus::print(exec);
 
         hplus::read_file(exec, inst, stats);
-        if (exec.type == hplus::exec_type::INFO || STATS_VERBOSE()) hplus::print(inst);
+        if (exec.type == hplus::exec_type::INFO || VERBOSE_STATS()) hplus::print(inst);
 
         switch (exec.type) {
             case hplus::exec_type::INFO:
@@ -65,7 +65,7 @@ int main(const int argc, const char** argv) {
         hplus::print_sol(inst);
         if (inst.sol_s == hplus::solution_status::INFEAS) stats.lower_bound = 1e20;
         if (inst.sol_s == hplus::solution_status::LOST) stats.status = HPLUS_STATUS_LOST;
-        if (STATS_VERBOSE()) hplus::print(stats);
+        if (VERBOSE_STATS()) hplus::print(stats);
         close();
 
     } catch (std::bad_alloc& e) {

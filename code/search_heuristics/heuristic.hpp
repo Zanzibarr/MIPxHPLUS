@@ -11,7 +11,7 @@
 #include <stack>
 
 #include "../domain/hplus_algs.hpp"
-#include "../external/pq.hpp"
+#include "../external/pq.hxx"
 
 namespace heur {
 
@@ -57,7 +57,7 @@ void init_htype_values(const hplus::instance& inst, const std::list<unsigned int
                        priority_queue<double>& pq, double (*h_eqtype)(double, double));
 
 inline void heuristic(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats) {
-    if (BASIC_VERBOSE()) LOG_INFO << "Running heuristic search algorithm";
+    if (VERBOSE_BASIC()) LOG_INFO << "Running heuristic search algorithm";
 
     double start_time = GET_TIME();
     stats.heur_time = static_cast<double>(exec.timelimit) - start_time;

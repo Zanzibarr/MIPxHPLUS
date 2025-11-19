@@ -50,7 +50,7 @@ static int CPXPUBLIC callback_hub(CPXCALLBACKCONTEXTptr context, CPXLONG context
 }
 
 inline void set_cplex_callbacks(hplus::execution& exec, callback_userhandle& userhandle, CPXENVptr& env, CPXLPptr& lp) {
-    if (BASIC_VERBOSE()) LOG_INFO << "Setting up CPLEX callbacks";
+    if (VERBOSE_BASIC()) LOG_INFO << "Setting up CPLEX callbacks";
 
     for (unsigned int t = 0; t < exec.threads; ++t) {
         thread_data td{

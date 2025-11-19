@@ -1,5 +1,13 @@
-#ifndef TIMER_HPP
-#define TIMER_HPP
+/**
+ * @file timer.hxx
+ * @brief Timer class to keep track of time passed
+ *
+ * @author Matteo Zanella <matteozanella2@gmail.com>
+ * Copyright 2025 Matteo Zanella
+ */
+
+#ifndef TIMER_HXX
+#define TIMER_HXX
 
 #include <chrono>  // std::chrono
 
@@ -34,4 +42,15 @@ class timer {
 
 #define GET_TIME() timer::get_instance().get()
 
-#endif  // TIMER_HPP
+class timelimit_exception final : public std::exception {
+    std::string msg;
+
+   public:
+    explicit timelimit_exception(const char* msg) : msg(msg) {}
+    [[nodiscard]]
+    const char* what() const noexcept override {
+        return msg.c_str();
+    }
+};
+
+#endif

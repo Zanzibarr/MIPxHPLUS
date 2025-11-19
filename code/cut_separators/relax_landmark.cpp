@@ -67,16 +67,8 @@ static inline std::tuple<double, std::vector<double>, std::vector<double>> compu
         }
     }
 
-    // TODO: R2 computation here is just to make sure this is never wrong... remove after testing
-    double r1{1}, r2{1};
-    for (const auto& p : inst.goal) {
-        r1 = std::min(r1, r1_values[p]);
-        r2 = std::min(r2, r2_values[p]);
-    }
-
-    // TODO: Remove after testing
-    ASSERT(r1 <= r2 + HPLUS_EPSILON);                      // Making sure that R1 <= R2
-    if (r1 <= HPLUS_EPSILON) ASSERT(r2 <= HPLUS_EPSILON);  // Making sure that if R1 == 0, than also R2 == 0
+    double r1{1};
+    for (const auto& p : inst.goal) r1 = std::min(r1, r1_values[p]);
 
     return {r1, r1_values, r2_values};
 }
@@ -169,8 +161,7 @@ static inline std::vector<unsigned int> get_r3_violated_landmark(const hplus::in
         if (graph_reach[i]) facts_reach.add(i);
     }
 
-    ASSERT(!facts_reach.contains(inst.goal));  // TODO: Remove after testing... if the reachable set doesn't contain the goal, then the set of actions
-                                               // TODO: crossing the reachable set IS a landmark
+    ASSERT(!facts_reach.contains(inst.goal));
 
     std::vector<unsigned int> landmark;
     for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
@@ -199,9 +190,6 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
 
     double cutval{0};
     for (const auto& x : landmark) cutval += relax_point[x];
-
-    // TODO: Remove after testing
-    ASSERT(cutval <= r3 + HPLUS_EPSILON);
 
     return {true, landmark};
 }

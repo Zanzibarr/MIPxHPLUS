@@ -1,11 +1,9 @@
-#include <new>
-
 #include "../preprocessing/preprocessing.hpp"
 #include "../search_exact/exact.hpp"
 #include "../search_heuristics/heuristic.hpp"
 
 void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
-    if (BASIC_VERBOSE()) LOG_INFO << "Parsing input file";
+    if (VERBOSE_BASIC()) LOG_INFO << "Parsing input file";
 
     std::ifstream file(exec.file.c_str(), std::ifstream::in);
     if (!file.good()) LOG_ERROR << "Unable to open file " << exec.file;
@@ -38,7 +36,7 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
         LOG_ERROR << "Corrupted file";
 
     // * variables section
-    if (BASIC_VERBOSE()) LOG_WARNING << "Ignoring axiom layers";
+    if (VERBOSE_BASIC()) LOG_WARNING << "Ignoring axiom layers";
     std::getline(file, line);  // number of variables
     if (!isint(line, 0)) [[unlikely]]
         LOG_ERROR << "Corrupted file";
@@ -65,7 +63,7 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
     }
 
     // * mutex section (ignored)
-    if (BASIC_VERBOSE()) LOG_WARNING << "Ignoring mutex section";
+    if (VERBOSE_BASIC()) LOG_WARNING << "Ignoring mutex section";
     std::getline(file, line);  // number of mutex groups
     if (!isint(line, 0)) [[unlikely]]
         LOG_ERROR << "Corrupted file";
@@ -129,7 +127,7 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
     // * operator (actions) section
     int checkcosts{-1};
     bool equalcosts_check{true};
-    if (BASIC_VERBOSE()) LOG_WARNING << "Ignoring effect conditions";
+    if (VERBOSE_BASIC()) LOG_WARNING << "Ignoring effect conditions";
     std::getline(file, line);  // n_act
     if (!isint(line, 0)) [[unlikely]]
         LOG_ERROR << "Corrupted file";
@@ -218,7 +216,7 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
     }
     inst.equal_costs = equalcosts_check;
 
-    if (BASIC_VERBOSE()) LOG_WARNING << "Ignoring axiom section";
+    if (VERBOSE_BASIC()) LOG_WARNING << "Ignoring axiom section";
 
     file.close();
 
@@ -236,7 +234,7 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
     // ================== BINARY EXPANSION ================== //
     // ====================================================== //
 
-    if (BASIC_VERBOSE()) LOG_INFO << "Performing binary expansion";
+    if (VERBOSE_BASIC()) LOG_INFO << "Performing binary expansion";
     size_t n_exp{0};
     std::vector<size_t> offsets(num_variables);
     for (size_t i = 0; i < num_variables; i++) {
@@ -264,7 +262,7 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
     // ================ INITIAL STATE REMOVAL =============== //
     // ====================================================== //
 
-    if (BASIC_VERBOSE()) LOG_INFO << "Removing initial state variables";
+    if (VERBOSE_BASIC()) LOG_INFO << "Removing initial state variables";
     std::vector<size_t> istate_offsets(inst.n);
     size_t n_opt{inst.n};
     for (size_t i = 0, c = 0; i < inst.n; i++) {
@@ -342,7 +340,7 @@ void hplus::update_sol(const execution& exec, instance& inst, const solution& so
         inst.sol.cost = sol_cost;
         stats.cost = sol_cost;
         inst.sol.updating = false;
-        if (BASIC_VERBOSE()) LOG_INFO << "Updated best solution - Cost: " << sol_cost;
+        if (VERBOSE_BASIC()) LOG_INFO << "Updated best solution - Cost: " << sol_cost;
     }
 }
 

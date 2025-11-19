@@ -1,6 +1,6 @@
 #include <algorithm>
 
-#include "../external/pq.hpp"
+#include "../external/pq.hxx"
 #include "../utils/algorithms.hpp"
 #include "cand_callback.hpp"
 

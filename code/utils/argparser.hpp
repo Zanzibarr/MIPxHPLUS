@@ -39,6 +39,10 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
     args::ValueFlag<bool> prep(parser, "0/1",
                                "Perform preprocessing on the instance (def: " + std::to_string(HPLUS_DEF_PREP) + "; options: 0 (false), 1 (true))",
                                {HPLUS_CLI_PREP_FLAG}, HPLUS_DEF_PREP);
+    args::ValueFlag<bool> prep_lmcut(
+        parser, "0/1",
+        "Find additional landmark constraints using LM-cut (def: " + std::to_string(HPLUS_DEF_PREP_LMCUT) + "; options: 0 (false), 1 (true))",
+        {HPLUS_CLI_PREP_LMCUT_FLAG}, HPLUS_DEF_PREP_LMCUT);
     args::ValueFlag<std::string> log(
         parser, "string",
         "Write on stdout / file (def: " + std::string(HPLUS_DEF_LOG) + "; options: 0 (stdout), <file_path> (absolute path to the file to write to))",
@@ -170,14 +174,14 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
     if (log) {
         exec.log_file = HPLUS_LOG_DIR "/" + args::get(log);
         if (exec.log_file == "0")
-            logger::get_instance().initialize(false, "", true, (exec.threads > 1 && DEBUG_VERBOSE()));
+            logger::get_instance().initialize(false, "", true, (exec.threads > 1 && VERBOSE_DEBUG()));
         else {
-            logger::get_instance().initialize(true, exec.log_file, true, (exec.threads > 1 && DEBUG_VERBOSE()));
+            logger::get_instance().initialize(true, exec.log_file, true, (exec.threads > 1 && VERBOSE_DEBUG()));
         }
     } else
-        logger::get_instance().initialize(false, "", true, (exec.threads > 1 && DEBUG_VERBOSE()));
+        logger::get_instance().initialize(false, "", true, (exec.threads > 1 && VERBOSE_DEBUG()));
 
-    if (BASIC_VERBOSE()) {
+    if (VERBOSE_BASIC()) {
         LOG_INFO << today();
         LOG_INFO << version();
     }
@@ -246,6 +250,7 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
             LOG_ERROR << "Warm start '" << ws << "' is not in the list of possible warm starts";
     }
     if (prep) exec.prep = args::get(prep);
+    if (prep_lmcut) exec.prep_lmcut = args::get(prep_lmcut);
     if (fract_cuts) {
         exec.fract_cuts = "";
         std::string s{args::get(fract_cuts)};
@@ -323,9 +328,13 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
     // Check that it's all as it's supposed to be
     if (exec.threads > static_cast<unsigned int>(std::thread::hardware_concurrency())) {
         exec.threads = static_cast<unsigned int>(std::thread::hardware_concurrency());
-        if (BASIC_VERBOSE()) LOG_WARNING << "This machine has " << exec.threads << " cores: using up to " << exec.threads << " threads";
+        if (VERBOSE_BASIC()) LOG_WARNING << "This machine has " << exec.threads << " cores: using up to " << exec.threads << " threads";
     }
     if (info && run) LOG_ERROR << "You need to specify only one functionality among " << HPLUS_CLI_INFO_FLAG << " and " << HPLUS_CLI_RUN_FLAG;
+    if (!exec.prep && exec.prep_lmcut) {
+        LOG_WARNING << "Preprocessing has been disabled bu LM-cut is selected: disabling LM-cut";
+        exec.prep_lmcut = false;
+    }
     if (exec.alg >= hplus::algorithm::GC && exec.ws != hplus::warmstart::NONE) {
         LOG_WARNING << "With the specified algororithm there's no need for a warm start: disabling warm start option";
         exec.ws = hplus::warmstart::NONE;
@@ -355,6 +364,10 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         exec.fract_cuts = "0";
     }
     if (exec.fract_cuts == "0" && exec.fract_cuts_at_nodes) exec.fract_cuts_at_nodes = false;
+    if (exec.fract_cuts == "0" && exec.custom_cutloop) {
+        LOG_WARNING << "If you want to use the custom cutloop, please specify a fractional solution separator: disabling custom cutloop";
+        exec.custom_cutloop = false;
+    }
     if (exec.alg != hplus::algorithm::CUTS && !exec.cand_cuts.empty()) {
         LOG_WARNING << "Cuts on the candidate solutions aren't needed with this algorithm: disabling candidate cuts";
         exec.cand_cuts = "";

@@ -2,12 +2,12 @@
  * @file pq.hxx
  * @brief Priority Queue for a set of integers
  *
- * @author Domenico Salvagnin <dominiqs at gmail dot com>
+ * @author Domenico Salvagnin <dominiqs@gmail.com>
  * Copyright 2014 Domenico Salvagnin
  */
 
-#ifndef PQ_H
-#define PQ_H
+#ifndef PQ_HXX
+#define PQ_HXX
 
 #include <algorithm>  // std::fill_n
 #include <stdexcept>  // std::domain_error, std::invalid_argument
@@ -195,4 +195,4 @@ class priority_queue {
     }
 };
 
-#endif /* PQ_H */
+#endif

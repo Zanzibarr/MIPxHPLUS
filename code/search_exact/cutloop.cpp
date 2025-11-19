@@ -176,7 +176,6 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
 
     solve_relaxation(env, lp, exec);
     while (repeat_cutloop() && !CHECK_STOP()) {
-        const int ncols{CPXgetnumcols(env, lp)};
         std::vector<double> relax_point(ncols);
         CPXgetx(env, lp, relax_point.data(), 0, ncols - 1);
 

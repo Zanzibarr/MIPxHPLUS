@@ -26,9 +26,9 @@ build_graph(const hplus::instance& inst, const binary_set& unreachable_actions, 
 
 [[nodiscard]]
 unsigned int cand_cuts::add_sec_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const binary_set& unreachable_actions,
-                            const std::vector<std::vector<unsigned int>>& used_first_achievers) {
+                                    const std::vector<std::vector<unsigned int>>& used_first_achievers) {
     const auto& [graph, edge_labels] = build_graph(inst, unreachable_actions, used_first_achievers);
-    // Find cycles in the giustification graph using a DFS approach
+    // Find cycles in the causal relation graph using a DFS approach
     auto cycles = find_cycles_unweighted(graph, edge_labels);
     reject_with_sec_cut(context, cycles);
     return static_cast<unsigned int>(cycles.size());

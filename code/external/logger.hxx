@@ -1,5 +1,13 @@
-#ifndef LOGGER_HPP
-#define LOGGER_HPP
+/**
+ * @file logger.hxx
+ * @brief Logger class for formatted logging to stdout and file
+ *
+ * @author Matteo Zanella <matteozanella2@gmail.com>
+ * Copyright 2025 Matteo Zanella
+ */
+
+#ifndef LOGGER_HXX
+#define LOGGER_HXX
 
 #include <fstream>   // std::ofstream
 #include <iomanip>   // std::setfill, std::setw
@@ -10,9 +18,8 @@
 #include <thread>    // std::this_thread
 #include <utility>   // std::move
 
-#include "timer.hpp"
+#include "timer.hxx"
 
-// ANSI color codes - create a static instance
 struct Colors {
     static constexpr const char* reset = "\033[0m";
     static constexpr const char* red = "\033[31m";
@@ -248,4 +255,4 @@ class logger {
 #define LOG_TODO LOG_ERROR << __func__ << "(): " << __FILE__ << ":" << __LINE__ << " : unimplemented "
 #define LOG_TODO_WARN LOG_WARNING << __func__ << "(): " << __FILE__ << ":" << __LINE__ << " : unimplemented "
 
-#endif  // LOGGER_HPP
+#endif
