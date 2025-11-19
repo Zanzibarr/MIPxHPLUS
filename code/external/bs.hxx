@@ -6,8 +6,8 @@
  * Copyright 2025 Matteo Zanella
  */
 
-#ifndef BS_HPP
-#define BS_HPP
+#ifndef BS_HXX
+#define BS_HXX
 
 #include <algorithm>  // std::all_of, std::fill
 #include <cstddef>    // std::ptrdiff_t
@@ -31,7 +31,6 @@ class binary_set {
     // Iterator class forward declaration for use with begin()/end()
     class iterator;
 
-    // Default constructor
     binary_set() noexcept = default;
 
     /**
@@ -182,7 +181,7 @@ class binary_set {
 
         result.push_back('[');
         for (unsigned int i = 0; i < capacity_; i++) {
-            result.push_back(contains(i) ? 'X' : ' ');
+            result.push_back(contains(i) ? 'X' : '-');
         }
         result.push_back(']');
 
@@ -375,8 +374,7 @@ class binary_set {
         validate_same_capacity(other);
 
         for (unsigned int i = 0; i < set_.size(); i++) {
-            // If there's any bit in other that's not in this set, other is not
-            // a subset
+            // If there's any bit in other that's not in this set, other is not a subset
             if ((~set_[i] & other.set_[i]) != 0) return false;
         }
 
@@ -642,4 +640,4 @@ class bs_searcher {
     }
 };
 
-#endif /* BS_HXX */
+#endif

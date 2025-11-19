@@ -54,7 +54,7 @@ inline void prepare_optimization_helpers(hplus::instance& inst) {
 }
 
 inline void preprocess(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats) {
-    if (BASIC_VERBOSE()) LOG_INFO << "Preprocessing instance";
+    if (VERBOSE_BASIC()) LOG_INFO << "Preprocessing instance";
 
     double start_time = GET_TIME();
     stats.preprocessing = static_cast<double>(exec.timelimit) - start_time;
@@ -72,7 +72,7 @@ inline void preprocess(const hplus::execution& exec, hplus::instance& inst, hplu
 
     prepare_optimization_helpers(inst);
 
-    lmcut_landmarks_extraction(exec, inst);
+    if (exec.prep_lmcut) lmcut_landmarks_extraction(exec, inst);
 
     stats.preprocessing = GET_TIME() - start_time;
 }

@@ -23,18 +23,31 @@ HOW I DO VERSIONING:
 <!-- ### :heavy_plus_sign: Added -->
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
+<!-- ### :rocket: Performance Improvements -->
 
 
-## [2.3.1] - 2025/10/30
+## [2.4.0] - 2025/11/19
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed
 - Little bug with cutloop pruning of non-tight constraints
 ### :heavy_exclamation_mark: Changed
 - Minor code aestetics changes
+- Fractional Landmark Separator is now an heuristic: choice of a PCF (thus, an heuristic) and max-flow algorithm to detect violated landmark
 ### :heavy_plus_sign: Added
 - Added random seed choice for reproducibility
+- Added LM-cut flag to toggle the use of LM-cut in preprocessing phase
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
+### :rocket: Performance Improvements
+- Fractional Landmarks Separator is now an heuristic with a 95+% accuracy (before it was an exact algorithm, looking for the maximal violated landmark)
+- Old vs new FLS:
+    - Solved: 2516 -> 2522
+    - Nodes: +26,+27,+69,+50%
+    - Time: -16,-7,-7,-20%
+- Best vs new FLS:
+    - Solved: 2518 -> 2522
+    - Nodes: -13,-12,-25,-51%
+    - Time: +9,+9,+1,+16%
 
 
 ## [2.3.0] - 2025/10/15

@@ -4,8 +4,8 @@
  * @author Zanella Matteo (matteozanella2@gmail.com)
  */
 
-#ifndef HPLUS_HPLUS_HPP
-#define HPLUS_HPLUS_HPP
+#ifndef HPLUS_ALGS_HPP
+#define HPLUS_ALGS_HPP
 
 #include "execution.hpp"
 #include "instance.hpp"
@@ -21,8 +21,8 @@ void update_sol(const execution& exec, instance& inst, const solution& sol, stat
 
 }  // namespace hplus
 
-#define STATS_VERBOSE() exec.verbosity >= hplus::verbose::STATISTICS
-#define BASIC_VERBOSE() exec.verbosity >= hplus::verbose::BASIC
-#define DEBUG_VERBOSE() exec.verbosity >= hplus::verbose::DEBUG
+#define VERBOSE_STATS() exec.verbosity >= hplus::verbose::STATISTICS
+#define VERBOSE_BASIC() exec.verbosity >= hplus::verbose::BASIC
+#define VERBOSE_DEBUG() exec.verbosity >= hplus::verbose::DEBUG
 
 #endif

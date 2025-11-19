@@ -7,7 +7,7 @@
 #ifndef HPLUS_INST_HPP
 #define HPLUS_INST_HPP
 
-#include "../external/bs.hpp"
+#include "../external/bs.hxx"
 
 #define INFBOUND_DBL 1e20
 #define INFBOUND_INT std::numeric_limits<unsigned int>::max()
@@ -35,7 +35,7 @@ struct instance {
     std::vector<action> actions;
     std::vector<std::string> actions_names;
     // Preprocessing
-    binary_set eliminated_facts, eliminated_actions;  // temporary, for preprocessing
+    binary_set eliminated_facts, eliminated_actions;  // used only for preprocessing
     binary_set fixed_facts, fixed_actions;
     std::vector<unsigned int> fadd_cpx_start;
     std::vector<std::vector<unsigned int>> act_with_pre, act_with_eff;

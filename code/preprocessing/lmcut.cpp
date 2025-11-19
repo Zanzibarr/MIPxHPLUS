@@ -1,7 +1,7 @@
 #include <deque>
 #include <functional>
 
-#include "../external/pq.hpp"
+#include "../external/pq.hxx"
 #include "../utils/algorithms.hpp"
 #include "preprocessing.hpp"
 

@@ -20,8 +20,6 @@ namespace callbacks {
 struct thread_data {
     unsigned int usercuts_lm, usercuts_sec, relax_calls, cand_calls;
     double cand_time, relax_time;
-    CPXENVptr flmdet_env;
-    CPXLPptr flmdet_lp;
 };
 
 void relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, const hplus::instance& inst, thread_data& data);
@@ -41,15 +39,13 @@ std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash> rel
  * Compute the violated landmark (if there's one) out of the relaxed solution
  */
 [[nodiscard]]
-std::pair<bool, std::vector<unsigned int>> get_violated_landmark(CPXENVptr& env, CPXLPptr& lp, const hplus::execution& exec,
-                                                                 const hplus::instance& inst, const std::vector<double>& relax_point);
+std::pair<bool, std::vector<unsigned int>> get_violated_landmark(const hplus::instance& inst, const std::vector<double>& relax_point);
 
 /**
  * Compute the violated landmark (if there's one) out of the relaxed solution and reject the relaxed solution
  */
 [[nodiscard]]
-unsigned int lm(CPXCALLBACKCONTEXTptr context, CPXENVptr& env, CPXLPptr& lp, const hplus::execution& exec, const hplus::instance& inst,
-                const std::vector<double>& relax_point);
+unsigned int add_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const std::vector<double>& relax_point);
 
 /**
  * Compute the violated S.E.C. (if there's one) out of the relaxed solution
@@ -62,8 +58,8 @@ std::pair<bool, std::vector<std::vector<unsigned int>>> get_violated_sec(
  * Compute the violated S.E.C. (if there's one) out of the relaxed solution and reject the relaxed solution
  */
 [[nodiscard]]
-unsigned int sec(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst,
-                 const std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash>& fadd_weights);
+unsigned int add_sec_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst,
+                         const std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash>& fadd_weights);
 
 }  // namespace relax_cuts
 
