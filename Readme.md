@@ -6,7 +6,13 @@ _Refer to the [Changelog](Changelog.md) for info about versions._
 
 
 ## Abstract
-We compare current state-of-the-art MIP formulations for solving the delete-free relaxation in cost-optimal planning, integrating various preprocessing techniques from different publications and developing primal heuristics to provide warm-start solutions to the MIP solver. We then explore a novel approach to model acyclicity by computing violated landmarks and S.E.C., adding them as constraints: computing all landmarks a priori is intractable, since the number of potential landmarks grows exponentially with the problem size, just like S.E.C., making any brute-force approach computationally infeasible; instead we employ a constraint generation approach where new constraints are identified dynamically: upon encountering an infeasible solution, we detect violated cuts within that solution and incorporate them as additional constraints, progressively constructing the minimal constraint set required for both feasibility and optimality. Our experimental evaluation demonstrates that this landmark-based formulation achieves competitive performance with existing methods in both space and time efficiency
+We investigate existing Mixed Integer Programming (MIP) formulations for cost-optimal delete-free STRIPS Planning:
+these models are built by enforcing acyclicity in the underlying causal relation graphs using time labeling and vertex elimination
+methods. We then propose two new approaches to modeling acyclicity, one based on dynamically identifying subtour elimination
+constraints, and the other based on disjunctive landmark constraints. In addition, we propose to warm start the models with the
+landmarks computed by the LM-cut heuristic, and describe a simple greedy primal heuristic to provide a starting feasible solution
+to the MIP solver. Our results demonstrate that the proposed techniques outperform the current state of the art, both in space and
+time efficiency.
 
 ## Publications associated to this code
 Master thesis in Computer Engineering: [\[pdf\]](results/MIP_formulations_for_deletefree_AI_planning.pdf)  
