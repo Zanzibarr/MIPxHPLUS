@@ -1,7 +1,7 @@
 #include "exact.hpp"
 
 void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp) {
-    if (BASIC_VERBOSE()) LOG_INFO << "Building base model for exact search";
+    if (VERBOSE_BASIC()) LOG_INFO << "Building base model for exact search";
 
     auto stopcheck = []() {
         if (CHECK_STOP()) [[unlikely]]
@@ -164,7 +164,7 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplu
 }
 
 void parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp, const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats) {
-    if (BASIC_VERBOSE()) LOG_INFO << "Parsing CPLEX status";
+    if (VERBOSE_BASIC()) LOG_INFO << "Parsing CPLEX status";
     std::vector<double> tmp(1);
     switch (CPXgetx(env, lp, tmp.data(), 0, 0)) {
         case CPXERR_NO_SOLN:  // No solution found
@@ -296,6 +296,6 @@ void exact::get_cplex_solution(hplus::execution& exec, hplus::instance& inst, hp
     CPX_HANDLE_CALL(CPXgetbestobjval(env, lp, &stats.lower_bound));
     if (stats.lower_bound < 0) stats.lower_bound = 0;
 
-    if (BASIC_VERBOSE()) LOG_INFO << "Reading CPLEX solution";
+    if (VERBOSE_BASIC()) LOG_INFO << "Reading CPLEX solution";
     store_cplex_solution(exec, inst, stats, env, lp);
 }

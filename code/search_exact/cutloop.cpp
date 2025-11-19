@@ -1,15 +1,9 @@
 #include "../cut_separators/relax_callback.hpp"
 #include "exact.hpp"
 
-inline void init_cutloop(const hplus::execution& exec, CPXENVptr& env, CPXLPptr& lp, CPXENVptr& flmdetenv, CPXLPptr& flmdetlp,
-                         const hplus::instance& inst) {
-    CPX_HANDLE_CALL(CPXchgprobtype(env, lp, CPXPROB_LP));
-    relax_cuts::create_flmdet_model(
-        exec, inst, flmdetenv, flmdetlp,
-        exec.threads);  // In our cutloop we can enable multithreading on the flmdet model, cause there's only one (thread running the) cutloop
-}
+inline void init_cutloop(CPXENVptr& env, CPXLPptr& lp) { CPX_HANDLE_CALL(CPXchgprobtype(env, lp, CPXPROB_LP)); }
 
-inline void exit_cutloop(CPXENVptr& env, CPXLPptr& lp, CPXENVptr& flmdetenv, CPXLPptr& flmdetlp) {
+inline void exit_cutloop(CPXENVptr& env, CPXLPptr& lp) {
     // Set back the problem to being a MIP
     CPX_HANDLE_CALL(CPXchgprobtype(env, lp, CPXPROB_MILP));
     int ncols{CPXgetnumcols(env, lp)};
@@ -17,7 +11,6 @@ inline void exit_cutloop(CPXENVptr& env, CPXLPptr& lp, CPXENVptr& flmdetenv, CPX
     std::vector<char> types(ncols, 'B');
     std::iota(ind.begin(), ind.end(), 0);
     CPX_HANDLE_CALL(CPXchgctype(env, lp, ncols, ind.data(), types.data()));
-    relax_cuts::close_flmdet_model(flmdetenv, flmdetlp);
 }
 
 inline void solve_relaxation(CPXENVptr& env, CPXLPptr& lp, const hplus::execution& exec) {
@@ -29,8 +22,8 @@ inline void solve_relaxation(CPXENVptr& env, CPXLPptr& lp, const hplus::executio
     CPX_HANDLE_CALL(CPXlpopt(env, lp));
 }
 
-inline unsigned int generate_cuts(CPXENVptr& env, CPXLPptr& lp, CPXENVptr& flmdetenv, CPXLPptr& flmdetlp, const std::vector<double>& relax_point,
-                                  const hplus::execution& exec, const hplus::instance& inst, const std::vector<double>& incumbent, double& inout_w) {
+inline unsigned int generate_cuts(CPXENVptr& env, CPXLPptr& lp, const std::vector<double>& relax_point, const hplus::execution& exec,
+                                  const hplus::instance& inst, const std::vector<double>& incumbent, double& inout_w) {
     unsigned int new_cuts{0};
 
     const auto& add_cuts = [&](std::vector<double> relax_point) {
@@ -44,7 +37,7 @@ inline unsigned int generate_cuts(CPXENVptr& env, CPXLPptr& lp, CPXENVptr& flmde
 
         // Adding landmark as new constraint
         if (exec.fract_cuts.find('l') != std::string::npos) {
-            const auto& [found_lm, landmark]{relax_cuts::get_violated_landmark(flmdetenv, flmdetlp, exec, inst, relax_point)};
+            const auto& [found_lm, landmark]{relax_cuts::get_violated_landmark(inst, relax_point)};
             if (found_lm) {
                 ind = std::vector<int>(landmark.begin(), landmark.end());
                 val = std::vector<double>(landmark.size(), 1.0);
@@ -156,9 +149,7 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
         return improvement >= exec.cl_improv;
     };
 
-    CPXENVptr flmdetenv = nullptr;
-    CPXLPptr flmdetlp = nullptr;
-    init_cutloop(exec, env, lp, flmdetenv, flmdetlp, inst);
+    init_cutloop(env, lp);
 
     binary_set state{inst.n};
     const auto& warm_start{inst.sol.sequence};
@@ -185,7 +176,6 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
 
     solve_relaxation(env, lp, exec);
     while (repeat_cutloop() && !CHECK_STOP()) {
-        const int ncols{CPXgetnumcols(env, lp)};
         std::vector<double> relax_point(ncols);
         CPXgetx(env, lp, relax_point.data(), 0, ncols - 1);
 
@@ -202,7 +192,7 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
 
         // Generate new cuts
         double cuts_time = GET_TIME();
-        new_cuts = generate_cuts(env, lp, flmdetenv, flmdetlp, relax_point, exec, inst, incumbent, inout_w);
+        new_cuts = generate_cuts(env, lp, relax_point, exec, inst, incumbent, inout_w);
         stats.relax_callback += GET_TIME() - cuts_time;
         stats.relax_calls++;
 
@@ -226,7 +216,7 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
     stats.const_acyc += CPXgetnumrows(env, lp) - base_constraints;
     stats.cutloop_it = iteration;
 
-    exit_cutloop(env, lp, flmdetenv, flmdetlp);
+    exit_cutloop(env, lp);
     stats.cutloop = GET_TIME() - start_time;
 
     if (CHECK_STOP()) throw timelimit_exception("");

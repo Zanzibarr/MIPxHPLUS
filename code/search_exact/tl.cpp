@@ -1,7 +1,7 @@
 #include "exact.hpp"
 
 void tl::add_acyclicity_constraints(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp) {
-    if (BASIC_VERBOSE()) LOG_INFO << "Adding acyclicity constraints for TL model";
+    if (VERBOSE_BASIC()) LOG_INFO << "Adding acyclicity constraints for TL model";
 
     // ====================================================== //
     // =================== CPLEX VARIABLES ================== //
@@ -55,7 +55,7 @@ void tl::add_acyclicity_constraints(const hplus::execution& exec, hplus::instanc
 }
 
 void tl::post_warm_start(const hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
-    if (BASIC_VERBOSE()) LOG_INFO << "Posting warm start to TL model";
+    if (VERBOSE_BASIC()) LOG_INFO << "Posting warm start to TL model";
 
     binary_set state{inst.n};
     const auto& warm_start{inst.sol.sequence};

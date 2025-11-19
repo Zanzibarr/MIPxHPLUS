@@ -33,7 +33,7 @@ enum class verbose { NONE = 0, STATISTICS = 1, BASIC = 2, DEBUG = 3 };
 struct execution {
     // Execution parameters
     exec_type type;
-    bool prep;
+    bool prep, prep_lmcut;
     warmstart ws;
     algorithm alg;
     std::string fract_cuts, cand_cuts;
@@ -58,6 +58,7 @@ struct execution {
 inline void init(execution& exec) {
     exec = hplus::execution{.type = exec_type::RUN,
                             .prep = HPLUS_DEF_PREP,
+                            .prep_lmcut = HPLUS_DEF_PREP_LMCUT,
                             .ws = static_cast<warmstart>(HPLUS_DEF_WS),
                             .alg = static_cast<algorithm>(HPLUS_DEF_ALG),
                             .fract_cuts = HPLUS_DEF_FRACTCUTS,
@@ -152,13 +153,14 @@ inline void print(const execution& exec) {
         return;
     }
     LOG << "Preprocessing:                                         " << exec.prep;
+    LOG << "Preprocessing (LM-cut):                                " << exec.prep_lmcut;
     LOG << "Algorithm:                                    " << std::setw(10) << to_string(exec.alg);
     if (exec.alg < hplus::algorithm::GC) LOG << "Warm start:                                   " << std::setw(10) << to_string(exec.ws);
     if (exec.alg == hplus::algorithm::CUTS) {
+        if (!exec.cand_cuts.empty()) LOG << "Candidate cuts:                                    " << std::setw(5) << exec.cand_cuts;
+
         LOG << "Fractional cuts:                                      " << std::setw(2) << exec.fract_cuts;
         if (exec.fract_cuts != "0") LOG << "Fractional cuts at nodes:                              " << exec.fract_cuts_at_nodes;
-
-        if (!exec.cand_cuts.empty()) LOG << "Candidate cuts:                                    " << std::setw(5) << exec.cand_cuts;
         LOG << "Custom cut-loop                                        " << exec.custom_cutloop;
     }
     if (exec.custom_cutloop) {

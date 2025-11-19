@@ -10,15 +10,19 @@
 #include <stdlib.h>  // size_t
 
 #include <algorithm>  // std::lower_bound
-#include <numeric>    //std::iota
+#include <numeric>    // std::iota
 #include <queue>
 #include <stack>
 #include <string>
 #include <unordered_map>
-#include <unordered_set>
 #include <vector>
 
+#include "../external/bs.hxx"
 #include "utils.hpp"
+
+// ##################################################################### //
+// ##################### VECTOR SORTING AND SEARCH ##################### //
+// ##################################################################### //
 
 template <typename T>
 static inline void insert_sorted(std::vector<T>& vec, T value) {
@@ -37,6 +41,10 @@ static inline size_t sorted_find(const std::vector<T>& vec, T value) {
     }
     return static_cast<size_t>(-1);  // Not found
 }
+
+// ##################################################################### //
+// #################### CYCLE DETECTION, UNWEIGHTED #################### //
+// ##################################################################### //
 
 struct pair_hash {
     std::size_t operator()(const std::pair<unsigned int, unsigned int>& p) const {
@@ -169,16 +177,23 @@ template <typename T>
     for (unsigned int v = 0; v < graph.size(); v++) {
         if (globally_visited[v]) continue;
 
+        bool has_free_edges{false};
         for (unsigned int i = 0; i < graph[v].size(); ++i) {
             if (!used_edges[v][i]) {
-                cycle_dfs(graph, edge_labels, v, used_edges, globally_visited, cycles);
+                has_free_edges = true;
                 break;
             }
         }
+
+        if (has_free_edges) cycle_dfs(graph, edge_labels, v, used_edges, globally_visited, cycles);
     }
 
     return std::move(cycles);
 }
+
+// ##################################################################### //
+// ##################### CYCLE DETECTION, WEIGHTED ##################### //
+// ##################################################################### //
 
 /**
  * @brief Find the shortest path in a weighted graph, returning both the path and edge indices
@@ -274,9 +289,7 @@ static inline std::vector<std::vector<T>> find_cycles_weighted_lessthan1(
 
     // Track edge usage per (from, to_index)
     std::vector<std::vector<bool>> used_edges(graph.size());
-    for (unsigned int from = 0; from < graph.size(); ++from) {
-        used_edges[from].resize(graph[from].size(), false);
-    }
+    for (unsigned int from = 0; from < graph.size(); ++from) used_edges[from].resize(graph[from].size(), false);
 
     for (unsigned int v = 0; v < graph.size(); v++) {
         // Skip if vertex has no unused outgoing edges
@@ -341,26 +354,98 @@ static inline std::vector<std::vector<T>> find_cycles_weighted_lessthan1(
     return cycles;
 }
 
-/**
- * @brief Convert to string the content of a vector
- *
- * @tparam T The type of the elements in the vector (note: the elements of the vector will be added to the string using the std::to_string function)
- * @param v The vector
- * @param size = 20 The number of elements to be shown in the string (first size/2 and last size/2 if v.size() > size)
- * @return st::string The string representation of the vector (using std::to_string for each T element of the vector)
- */
-template <typename T>
+// ##################################################################### //
+// ############################## MAX FLOW ############################# //
+// ##################################################################### //
+
+typedef struct {
+    unsigned int to;   // Destination node
+    unsigned int rev;  // Index of reverse edge in the destination's adjacency list
+    double c;          // Remaining capacity of the edge
+} network_edge;
+
 [[nodiscard]]
-static inline std::string vtos(std::vector<T> v, unsigned int size = 20) {
-    std::string s;
-    if (v.size() <= size)
-        for (const auto& x : v) s.append(std::to_string(x)).append(";");
-    else {
-        for (unsigned int i = 0; i < size / 2; i++) s.append(std::to_string(v[i])).append(";");
-        s.append("...[").append(std::to_string(v.size() - size)).append("];");
-        for (unsigned int i = size / 2; i > 0; i--) s.append(std::to_string(v[v.size() - i])).append(";");
+static inline bool max_flow_bfs(std::vector<std::vector<network_edge>>& graph, unsigned int s, unsigned int t, unsigned int n,
+                                std::vector<int>& level) {
+    level.assign(n, -1);  // Initialize all levels to -1 (unvisited)
+    std::queue<int> q;
+    level[s] = 0;
+    q.push(s);
+
+    while (!q.empty()) {
+        const auto v{q.front()};
+        q.pop();
+        for (const auto& e : graph[v]) {
+            // If this edge still has capacity and it hasn't been visited
+            if (e.c > HPLUS_EPSILON && level[e.to] < -HPLUS_EPSILON) {
+                level[e.to] = level[v] + 1;  // Set the level of this neighbor
+                q.push(e.to);
+            }
+        }
     }
-    return s;
+
+    return level[t] >= 0;  // If the sink is reachable, return true
+}
+
+[[nodiscard]]
+static inline double max_flow_dfs(std::vector<std::vector<network_edge>>& graph, unsigned int v, unsigned int t, double f, std::vector<int>& level,
+                                  std::vector<int>& iter) {
+    if (v == t) return f;  // Reached sink, return the flow
+
+    // iter[v] remembers which edge to start from (optimization to avoid revisiting dead ends)
+    for (int& i = iter[v]; i < static_cast<int>(graph[v].size()); i++) {
+        auto& e = graph[v][i];
+
+        // Only use edges with capacity that go to next level
+        if (e.c > HPLUS_EPSILON && level[v] < level[e.to]) {
+            double d{max_flow_dfs(graph, e.to, t, std::min(f, e.c), level, iter)};
+            if (d > HPLUS_EPSILON) {
+                // Update residual capacities
+                e.c -= d;
+                graph[e.to][e.rev].c += d;
+                return d;
+            }
+        }
+    }
+
+    return 0;
+}
+
+[[nodiscard]]
+static inline double compute_max_flow(std::vector<std::vector<network_edge>>& graph, unsigned int source, unsigned int sink) {
+    double flow{0};
+    const unsigned int n{static_cast<unsigned int>(graph.size())};
+    std::vector<int> level(n), iter(n);
+
+    // Repeat while there's an augmenting path from source to sink
+    while (max_flow_bfs(graph, source, sink, n, level)) {
+        iter.assign(n, 0);
+        double f;
+
+        // Keep finding blocking flows until no more paths exist in this level graph
+        while ((f = max_flow_dfs(graph, source, sink, std::numeric_limits<double>::infinity(), level, iter)) > HPLUS_EPSILON) flow += f;
+    }
+    return flow;
+}
+
+[[nodiscard]] static inline binary_set get_min_cut(const std::vector<std::vector<network_edge>>& graph, unsigned int source) {
+    binary_set reachable(graph.size());
+    std::queue<unsigned int> q;
+    q.push(source);
+
+    while (!q.empty()) {
+        const auto v = q.front();
+        q.pop();
+
+        for (const auto& e : graph[v]) {
+            if (e.c > HPLUS_EPSILON && !reachable[e.to]) {
+                reachable.add(e.to);
+                q.push(e.to);
+            }
+        }
+    }
+
+    return reachable;
 }
 
 #endif

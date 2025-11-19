@@ -11,7 +11,7 @@
 // ############################## VERSION ############################## //
 // ##################################################################### //
 
-#define VERSION "2.3.1"
+#define VERSION "2.4.0"
 
 // ##################################################################### //
 // ############################## IMPORTS ############################## //
@@ -20,7 +20,7 @@
 #include <random>
 #include <vector>
 
-#include "../external/limits.hpp"
+#include "../external/limits.hxx"
 
 // ##################################################################### //
 // ############################# CLI PARSER ############################ //
@@ -44,6 +44,7 @@
 #define HPLUS_CLI_WS_FLAG_GREEDYHMAX "ghm"
 #define HPLUS_CLI_WS_FLAG_GREEDYHADD "gha"
 #define HPLUS_CLI_PREP_FLAG "prep"
+#define HPLUS_CLI_PREP_LMCUT_FLAG "prep-lm"
 #define HPLUS_CLI_LOG_FLAG "log"
 #define HPLUS_CLI_TIMELIMIT_FLAG "t"
 #define HPLUS_CLI_THREADS_FLAG "threads"
@@ -85,6 +86,7 @@
 #define HPLUS_DEF_WS 4
 #define HPLUS_DEF_WS_STRING HPLUS_CLI_WS_FLAG_GREEDYHADD
 #define HPLUS_DEF_PREP true
+#define HPLUS_DEF_PREP_LMCUT true
 #define HPLUS_DEF_LOG "0"
 #define HPLUS_DEF_TIMELIMIT 60
 #define HPLUS_DEF_THREADS 32
@@ -99,7 +101,7 @@
 #define HPLUS_DEF_CL_IMPROV 0.005
 #define HPLUS_DEF_CL_PAST_ITER 10
 #define HPLUS_DEF_CL_GAP_STOP .1
-#define HPLUS_DEF_INOUT true
+#define HPLUS_DEF_INOUT false
 #define HPLUS_DEF_IO_MAX_IT 4
 #define HPLUS_DEF_IO_WEIGHT .4
 #define HPLUS_DEF_IO_WEIGHT_UPD .5
@@ -157,7 +159,8 @@ inline void init_rng(int seed) { g_rng.seed(seed); }
         }                                                                                                                           \
     }
 
-[[nodiscard]] inline std::string today() {
+[[nodiscard]]
+inline std::string today() {
     auto now = std::chrono::system_clock::now();
     std::time_t end_time = std::chrono::system_clock::to_time_t(now);
     std::string time_str = std::ctime(&end_time);
@@ -218,15 +221,26 @@ inline const std::vector<std::string> split_string(const std::string& str, const
     return tokens;
 }
 
-class timelimit_exception final : public std::exception {
-    std::string msg;
-
-   public:
-    explicit timelimit_exception(const char* msg) : msg(msg) {}
-    [[nodiscard]]
-    const char* what() const noexcept override {
-        return msg.c_str();
+/**
+ * @brief Convert to string the content of a vector
+ *
+ * @tparam T The type of the elements in the vector (note: the elements of the vector will be added to the string using the std::to_string function)
+ * @param v The vector
+ * @param size = 20 The number of elements to be shown in the string (first size/2 and last size/2 if v.size() > size)
+ * @return st::string The string representation of the vector (using std::to_string for each T element of the vector)
+ */
+template <typename T>
+[[nodiscard]]
+static inline std::string vtos(std::vector<T> v, unsigned int size = 20) {
+    std::string s;
+    if (v.size() <= size)
+        for (const auto& x : v) s.append(std::to_string(x)).append(";");
+    else {
+        for (unsigned int i = 0; i < size / 2; i++) s.append(std::to_string(v[i])).append(";");
+        s.append("...[").append(std::to_string(v.size() - size)).append("];");
+        for (unsigned int i = size / 2; i > 0; i--) s.append(std::to_string(v[v.size() - i])).append(";");
     }
-};
+    return s;
+}
 
 #endif

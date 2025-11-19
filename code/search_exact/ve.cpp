@@ -1,12 +1,12 @@
 #include <set>
 #include <tuple>
 
-#include "../external/pq.hpp"
+#include "../external/pq.hxx"
 #include "../utils/algorithms.hpp"
 #include "exact.hpp"
 
 void ve::add_acyclicity_constraints(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp) {
-    if (BASIC_VERBOSE()) LOG_INFO << "Adding acyclicity constraints for VE model";
+    if (VERBOSE_BASIC()) LOG_INFO << "Adding acyclicity constraints for VE model";
 
     const auto stopcheck = []() {
         if (CHECK_STOP()) [[unlikely]]
@@ -229,7 +229,7 @@ void ve::add_acyclicity_constraints(const hplus::execution& exec, hplus::instanc
 }
 
 void ve::post_warm_start(const hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
-    if (BASIC_VERBOSE()) LOG_INFO << "Posting warm start to VE model";
+    if (VERBOSE_BASIC()) LOG_INFO << "Posting warm start to VE model";
 
     binary_set state{inst.n};
     const auto& warm_start{inst.sol.sequence};
