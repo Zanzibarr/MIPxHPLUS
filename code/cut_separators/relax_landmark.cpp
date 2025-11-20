@@ -171,6 +171,9 @@ static inline std::vector<unsigned int> get_r3_violated_landmark(const hplus::in
     return landmark;
 }
 
+// TODO: Try to iteratively look for a minimal (violated) landmark out of the fractional solutions...
+// IDEA: Find a violated landmark, pick an action, round it up to 1, look for the newly violated landmark, repeat or change action to round up
+// PROBLEM: Find a way to iteratively compute the max flow, r1, and r2, instead of computing it again from the start...
 [[nodiscard]]
 std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(const hplus::instance& inst, const std::vector<double>& relax_point) {
     const auto& [r1, r1_values, r2_values]{compute_r1_r2(inst, relax_point)};
