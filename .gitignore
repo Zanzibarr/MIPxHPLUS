@@ -10,11 +10,6 @@ code/build/
 code/test/
 local/
 logs/
-results/old*
-results/2.2
-results/csv
-results/*.json
-results/tmp
 
 # files
 

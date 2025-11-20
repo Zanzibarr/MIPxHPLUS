@@ -26,6 +26,19 @@ HOW I DO VERSIONING:
 <!-- ### :rocket: Performance Improvements -->
 
 
+## [2.4.1] - 2025/11/20
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+### :heavy_exclamation_mark: Changed
+- LM-cut CLI parameter is now a string, so that it's possible to choose how many times to repeat LM-cut and with which pcf each time
+### :heavy_plus_sign: Added
+- Added missing warnings in CLI parsing
+### :x: Removed
+- Removed unused cutval calculation in landmark fract separation
+<!-- ### :curly_loop: Other -->
+<!-- ### :rocket: Performance Improvements -->
+
+
 ## [2.4.0] - 2025/11/19
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed

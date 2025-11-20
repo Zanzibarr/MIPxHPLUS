@@ -72,7 +72,7 @@ inline void preprocess(const hplus::execution& exec, hplus::instance& inst, hplu
 
     prepare_optimization_helpers(inst);
 
-    if (exec.prep_lmcut) lmcut_landmarks_extraction(exec, inst);
+    if (exec.prep_lmcut != "0") lmcut_landmarks_extraction(exec, inst);
 
     stats.preprocessing = GET_TIME() - start_time;
 }

@@ -1,5 +1,6 @@
 #include <deque>
 #include <functional>
+#include <map>
 
 #include "../external/pq.hxx"
 #include "../utils/algorithms.hpp"
@@ -245,8 +246,9 @@ void prep::lmcut_landmarks_extraction(const hplus::execution& exec, hplus::insta
 
     init_hmax(inst, hmax_values, pcf, pcf_hmax, reduced_costs, initial_actions);
 
-    std::vector<hmax_function_type> hmax_functions{hmax_arbitrary, hmax_inverse, hmax_value_decrease_minimization};
+    std::map<char, hmax_function_type> hmax_functions{
+        {'a', hmax_arbitrary}, {'i', hmax_inverse}, {'v', hmax_value_decrease_minimization}, {'r', hmax_random}};
 
-    for (const auto& hmax_function : hmax_functions)
-        compute_lmcut(inst, exec, hmax_values, pcf, pcf_hmax, reduced_costs, goal_sparse, initial_actions, hmax_function);
+    for (auto x : exec.prep_lmcut)
+        compute_lmcut(inst, exec, hmax_values, pcf, pcf_hmax, reduced_costs, goal_sparse, initial_actions, hmax_functions.at(x));
 }

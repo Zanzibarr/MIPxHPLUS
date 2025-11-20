@@ -33,7 +33,8 @@ enum class verbose { NONE = 0, STATISTICS = 1, BASIC = 2, DEBUG = 3 };
 struct execution {
     // Execution parameters
     exec_type type;
-    bool prep, prep_lmcut;
+    bool prep;
+    std::string prep_lmcut;
     warmstart ws;
     algorithm alg;
     std::string fract_cuts, cand_cuts;
@@ -153,7 +154,7 @@ inline void print(const execution& exec) {
         return;
     }
     LOG << "Preprocessing:                                         " << exec.prep;
-    LOG << "Preprocessing (LM-cut):                                " << exec.prep_lmcut;
+    LOG << "Preprocessing (LM-cut):                       " << std::setw(10) << exec.prep_lmcut;
     LOG << "Algorithm:                                    " << std::setw(10) << to_string(exec.alg);
     if (exec.alg < hplus::algorithm::GC) LOG << "Warm start:                                   " << std::setw(10) << to_string(exec.ws);
     if (exec.alg == hplus::algorithm::CUTS) {

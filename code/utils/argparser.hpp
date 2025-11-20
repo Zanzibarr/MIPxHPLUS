@@ -23,25 +23,28 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
     args::Positional<std::string> input_file(parser, "input file", "Specify the input file (a .sas file provided by the FastDownward translator)");
     args::Flag info(parser, "info flag", "Show info about an instance", {HPLUS_CLI_INFO_FLAG});
     args::Flag run(parser, "run flag", "Run the specified algorithm", {HPLUS_CLI_RUN_FLAG});
-    args::ValueFlag<std::string> algorithm(parser, "string",
-                                           "Specify the algorithm to run (default: " + std::string(HPLUS_DEF_ALG_STRING) + ", options: [" +
-                                               std::string(HPLUS_CLI_ALG_FLAG_TL) + "," + std::string(HPLUS_CLI_ALG_FLAG_VE) + "," +
-                                               std::string(HPLUS_CLI_ALG_FLAG_CUTS) + "," + std::string(HPLUS_CLI_ALG_FLAG_GREEDYCOST) + "," +
-                                               std::string(HPLUS_CLI_ALG_FLAG_GREEDYCXE) + "," + std::string(HPLUS_CLI_ALG_FLAG_GREEDYHMAX) + "," +
-                                               std::string(HPLUS_CLI_ALG_FLAG_GREEDYHADD) + "])",
-                                           {HPLUS_CLI_ALG_FLAG}, HPLUS_DEF_ALG_STRING);
+    args::ValueFlag<std::string> algorithm(
+        parser, "string",
+        "Specify the algorithm to run (default: " + std::string(HPLUS_DEF_ALG_STRING) + ", options: [" + std::string(HPLUS_CLI_ALG_FLAG_TL) +
+            " (timestamps)," + std::string(HPLUS_CLI_ALG_FLAG_VE) + " (vertex elimination graphs)," + std::string(HPLUS_CLI_ALG_FLAG_CUTS) +
+            " (dynamic)," + std::string(HPLUS_CLI_ALG_FLAG_GREEDYCOST) + " (greedy cost)," + std::string(HPLUS_CLI_ALG_FLAG_GREEDYCXE) +
+            " (greedy cost x effect)," + std::string(HPLUS_CLI_ALG_FLAG_GREEDYHMAX) + " (lookahead hmax)," +
+            std::string(HPLUS_CLI_ALG_FLAG_GREEDYHADD) + " (lookahead hadd)])",
+        {HPLUS_CLI_ALG_FLAG}, HPLUS_DEF_ALG_STRING);
     args::ValueFlag<std::string> warm_start(parser, "string",
                                             "Select an option for warm start (default: " + std::string(HPLUS_DEF_WS_STRING) + ", options: [" +
-                                                std::string(HPLUS_CLI_WS_FLAG_NONE) + "," + std::string(HPLUS_CLI_WS_FLAG_GREEDYCOST) + "," +
-                                                std::string(HPLUS_CLI_WS_FLAG_GREEDYCXE) + "," + std::string(HPLUS_CLI_WS_FLAG_GREEDYHMAX) + "," +
-                                                std::string(HPLUS_CLI_WS_FLAG_GREEDYHADD) + "])",
+                                                std::string(HPLUS_CLI_WS_FLAG_NONE) + " (none)," + std::string(HPLUS_CLI_WS_FLAG_GREEDYCOST) +
+                                                " (greedy cost)," + std::string(HPLUS_CLI_WS_FLAG_GREEDYCXE) + " (greedy cost x effect)," +
+                                                std::string(HPLUS_CLI_WS_FLAG_GREEDYHMAX) + " (lookahead hmax)," +
+                                                std::string(HPLUS_CLI_WS_FLAG_GREEDYHADD) + " (lookahead hadd)])",
                                             {HPLUS_CLI_WS_FLAG}, HPLUS_DEF_WS_STRING);
     args::ValueFlag<bool> prep(parser, "0/1",
                                "Perform preprocessing on the instance (def: " + std::to_string(HPLUS_DEF_PREP) + "; options: 0 (false), 1 (true))",
                                {HPLUS_CLI_PREP_FLAG}, HPLUS_DEF_PREP);
-    args::ValueFlag<bool> prep_lmcut(
-        parser, "0/1",
-        "Find additional landmark constraints using LM-cut (def: " + std::to_string(HPLUS_DEF_PREP_LMCUT) + "; options: 0 (false), 1 (true))",
+    args::ValueFlag<std::string> prep_lmcut(
+        parser, "string",
+        "Specify the pcf to find additional landmark constraints using LM-cut (def: " + std::string(HPLUS_DEF_PREP_LMCUT) +
+            "; options: 0 (none: no LM-cut), a (ARB), i (INV), v (VDM), r (RND))",
         {HPLUS_CLI_PREP_LMCUT_FLAG}, HPLUS_DEF_PREP_LMCUT);
     args::ValueFlag<std::string> log(
         parser, "string",
@@ -250,14 +253,32 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
             LOG_ERROR << "Warm start '" << ws << "' is not in the list of possible warm starts";
     }
     if (prep) exec.prep = args::get(prep);
-    if (prep_lmcut) exec.prep_lmcut = args::get(prep_lmcut);
+    if (prep_lmcut) {
+        exec.prep_lmcut = "";
+        std::string s{args::get(prep_lmcut)};
+        if (s != "0") {
+            LOG_DEBUG << s;
+            LOG_DEBUG << HPLUS_ALL_LMCUT_PCF;
+            s.erase(std::remove_if(s.begin(), s.end(), [&](const char a) { return std::string(HPLUS_ALL_LMCUT_PCF).find(a) == std::string::npos; }),
+                    s.end());
+            exec.prep_lmcut = s;
+            if (exec.prep_lmcut.empty()) {
+                LOG_WARNING << "Wrong parameter for " << HPLUS_CLI_PREP_LMCUT_FLAG << "; using default value: " << HPLUS_DEF_PREP_LMCUT;
+                exec.fract_cuts = HPLUS_DEF_PREP_LMCUT;
+            }
+        } else
+            exec.prep_lmcut = s;
+    }
     if (fract_cuts) {
         exec.fract_cuts = "";
         std::string s{args::get(fract_cuts)};
         if (s != "0") {
             if (s.find('l') != std::string::npos) exec.fract_cuts += "l";
             if (s.find('s') != std::string::npos) exec.fract_cuts += "s";
-            if (exec.fract_cuts.empty()) exec.fract_cuts = HPLUS_DEF_FRACTCUTS;
+            if (exec.fract_cuts.empty()) {
+                LOG_WARNING << "Wrong parameter for " << HPLUS_CLI_FRACTCUTS_FLAG << "; using default value: " << HPLUS_DEF_FRACTCUTS;
+                exec.fract_cuts = HPLUS_DEF_FRACTCUTS;
+            }
         } else
             exec.fract_cuts = s;
     }
@@ -322,7 +343,7 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
     }
     if (testing) {
         exec.testing = args::get(testing);
-        if (exec.testing) LOG_DEBUG << "Testing flag set to true";
+        if (exec.testing) LOG_WARNING << "Testing flag set to true";
     }
 
     // Check that it's all as it's supposed to be
@@ -331,9 +352,9 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         if (VERBOSE_BASIC()) LOG_WARNING << "This machine has " << exec.threads << " cores: using up to " << exec.threads << " threads";
     }
     if (info && run) LOG_ERROR << "You need to specify only one functionality among " << HPLUS_CLI_INFO_FLAG << " and " << HPLUS_CLI_RUN_FLAG;
-    if (!exec.prep && exec.prep_lmcut) {
+    if (!exec.prep && exec.prep_lmcut != "0") {
         LOG_WARNING << "Preprocessing has been disabled bu LM-cut is selected: disabling LM-cut";
-        exec.prep_lmcut = false;
+        exec.prep_lmcut = "0";
     }
     if (exec.alg >= hplus::algorithm::GC && exec.ws != hplus::warmstart::NONE) {
         LOG_WARNING << "With the specified algororithm there's no need for a warm start: disabling warm start option";

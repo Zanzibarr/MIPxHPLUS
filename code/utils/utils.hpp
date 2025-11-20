@@ -11,7 +11,7 @@
 // ############################## VERSION ############################## //
 // ##################################################################### //
 
-#define VERSION "2.4.0"
+#define VERSION "2.4.1"
 
 // ##################################################################### //
 // ############################## IMPORTS ############################## //
@@ -86,13 +86,14 @@
 #define HPLUS_DEF_WS 4
 #define HPLUS_DEF_WS_STRING HPLUS_CLI_WS_FLAG_GREEDYHADD
 #define HPLUS_DEF_PREP true
-#define HPLUS_DEF_PREP_LMCUT true
+#define HPLUS_DEF_PREP_LMCUT "aiv"
+#define HPLUS_ALL_LMCUT_PCF "aivr"
 #define HPLUS_DEF_LOG "0"
 #define HPLUS_DEF_TIMELIMIT 60
 #define HPLUS_DEF_THREADS 32
 #define HPLUS_DEF_MEMORYLIMIT 4050
 #define HPLUS_DEF_VERBOSE 3
-#define HPLUS_DEF_CANDCUTS "cs"
+#define HPLUS_DEF_CANDCUTS "c"
 #define HPLUS_DEF_FRACTCUTS "0"
 #define HPLUS_DEF_FRACTCUTS_AT_NODES true
 #define HPLUS_DEF_CUSTOM_CUTLOOP false

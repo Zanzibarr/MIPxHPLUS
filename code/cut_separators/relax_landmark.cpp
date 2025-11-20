@@ -188,9 +188,6 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
 
     const auto& landmark{get_r3_violated_landmark(inst, r3_graph)};
 
-    double cutval{0};
-    for (const auto& x : landmark) cutval += relax_point[x];
-
     return {true, landmark};
 }
 
