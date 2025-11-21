@@ -157,6 +157,7 @@ void callbacks::candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::e
         usercuts_lm += cand_cuts::add_comp_lm_cut(context, inst, unreachable_actions, unused_actions, reachable_state);
     if (exec.cand_cuts.find('s') != std::string::npos)
         usercuts_sec += cand_cuts::add_sec_cut(context, inst, unreachable_actions, used_first_achievers);
+    // TODO: Use LM-cut to separate multiple (violated) landmarks
 
     cand_time += GET_TIME() - start_time;
 }
