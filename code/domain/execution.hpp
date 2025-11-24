@@ -161,8 +161,10 @@ inline void print(const execution& exec) {
         if (!exec.cand_cuts.empty()) LOG << "Candidate cuts:                                    " << std::setw(5) << exec.cand_cuts;
 
         LOG << "Fractional cuts:                                      " << std::setw(2) << exec.fract_cuts;
-        if (exec.fract_cuts != "0") LOG << "Fractional cuts at nodes:                              " << exec.fract_cuts_at_nodes;
-        LOG << "Custom cut-loop                                        " << exec.custom_cutloop;
+        if (exec.fract_cuts != "0") {
+            LOG << "Fractional cuts at nodes:                              " << exec.fract_cuts_at_nodes;
+            LOG << "Custom cut-loop                                        " << exec.custom_cutloop;
+        }
     }
     if (exec.custom_cutloop) {
         LOG << "Custom cutloop pruning                                 " << exec.cl_pruning;
