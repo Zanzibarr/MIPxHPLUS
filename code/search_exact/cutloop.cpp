@@ -23,7 +23,7 @@ inline void solve_relaxation(CPXENVptr& env, CPXLPptr& lp, const hplus::executio
 }
 
 inline unsigned int generate_cuts(CPXENVptr& env, CPXLPptr& lp, const std::vector<double>& relax_point, const hplus::execution& exec,
-                                  const hplus::instance& inst, const std::vector<double>& incumbent, double& inout_w) {
+                                  const hplus::instance& inst, hplus::statistics& stats, const std::vector<double>& incumbent, double& inout_w) {
     unsigned int new_cuts{0};
 
     const auto& add_cuts = [&](std::vector<double> relax_point) {
@@ -37,7 +37,7 @@ inline unsigned int generate_cuts(CPXENVptr& env, CPXLPptr& lp, const std::vecto
 
         // Adding landmark as new constraint
         if (exec.fract_cuts.find('l') != std::string::npos) {
-            const auto& [found_lm, landmark]{relax_cuts::get_violated_landmark(inst, relax_point)};
+            const auto& [found_lm, landmark]{relax_cuts::get_violated_landmark(exec, inst, relax_point)};
             if (found_lm) {
                 ind = std::vector<int>(landmark.begin(), landmark.end());
                 val = std::vector<double>(landmark.size(), 1.0);
@@ -46,6 +46,7 @@ inline unsigned int generate_cuts(CPXENVptr& env, CPXLPptr& lp, const std::vecto
                 begin = std::vector<int>(1, 0);
                 CPX_HANDLE_CALL(
                     CPXaddrows(env, lp, 0, 1, landmark.size(), rhs.data(), sense.data(), begin.data(), ind.data(), val.data(), nullptr, nullptr));
+                stats.cuts_lm++;
                 new_cuts++;
             }
         }
@@ -69,6 +70,7 @@ inline unsigned int generate_cuts(CPXENVptr& env, CPXLPptr& lp, const std::vecto
                 }
                 CPX_HANDLE_CALL(
                     CPXaddrows(env, lp, 0, cycles.size(), nnz, rhs.data(), sense.data(), begin.data(), ind.data(), val.data(), nullptr, nullptr));
+                stats.cuts_sec += cycles.size();
                 new_cuts += cycles.size();
             }
         }
@@ -192,7 +194,7 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
 
         // Generate new cuts
         double cuts_time = GET_TIME();
-        new_cuts = generate_cuts(env, lp, relax_point, exec, inst, incumbent, inout_w);
+        new_cuts = generate_cuts(env, lp, relax_point, exec, inst, stats, incumbent, inout_w);
         stats.relax_callback += GET_TIME() - cuts_time;
         stats.relax_calls++;
 

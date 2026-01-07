@@ -171,32 +171,82 @@ static inline std::vector<unsigned int> get_r3_violated_landmark(const hplus::in
     return landmark;
 }
 
-// TODO: Try to iteratively look for a minimal (violated) landmark out of the fractional solutions...
 // IDEA: Find a violated landmark, pick an action, round it up to 1, look for the newly violated landmark, repeat or change action to round up
 // PROBLEM: Find a way to iteratively compute the max flow, r1, and r2, instead of computing it again from the start...
 [[nodiscard]]
-std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(const hplus::instance& inst, const std::vector<double>& relax_point) {
-    const auto& [r1, r1_values, r2_values]{compute_r1_r2(inst, relax_point)};
+std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(const hplus::execution& exec, const hplus::instance& inst,
+                                                                             const std::vector<double>& relax_point) {
+    std::vector<unsigned int> landmark(1);
 
-    // If R1 >= 1 there's no violated landmark
-    if (r1 >= 1 - HPLUS_EPSILON) return {false, {}};
+    std::vector<double> relax_point_copy(relax_point.begin(), relax_point.end());
+    unsigned int rounded_act_lmidx{0};
+    double prev_act_val{relax_point_copy[rounded_act_lmidx]};
+    bool found{false};
 
-    // Otherwise, we rely on R3 to understand wether there's a violated landmark...
+    // TODO: Make the r1, r2, r3 computation iterative instead of computing it each time from scratch
+    while (rounded_act_lmidx < landmark.size()) {
+        const auto& [r1, r1_values, r2_values]{compute_r1_r2(inst, relax_point_copy)};
 
-    const auto& [r3, r3_graph]{compute_r3(inst, relax_point, r1_values, r2_values)};
+        // If R1 >= 1 there's no violated landmark
+        if (r1 >= 1 - HPLUS_EPSILON) {
+            if (found) {
+                relax_point_copy[landmark[rounded_act_lmidx]] = prev_act_val;
+                rounded_act_lmidx++;
+                if (rounded_act_lmidx >= landmark.size()) break;
+                prev_act_val = relax_point_copy[landmark[rounded_act_lmidx]];
+                relax_point_copy[landmark[rounded_act_lmidx]] = 1;
 
-    // Note: if R3 < 1, then there's a violated landmark, BUT if R3 == 1 we can't assume that no landmark is violated... in this case we simply ignore
-    // the possible landmark Statistically speaking, R3 == 1 but there exists a violated landmark happens in 3% of cases
-    if (r3 >= 1 - HPLUS_EPSILON) return {false, {}};
+                continue;
+            } else
+                return {false, {}};
+        }
 
-    const auto& landmark{get_r3_violated_landmark(inst, r3_graph)};
+        // Otherwise, we rely on R3 to understand wether there's a violated landmark...
+
+        const auto& [r3, r3_graph]{compute_r3(inst, relax_point_copy, r1_values, r2_values)};
+
+        // Note: if R3 < 1, then there's a violated landmark, BUT if R3 == 1 we can't assume that no landmark is violated... in this case we simply
+        // ignore the possible landmark Statistically speaking, R3 == 1 but there exists a violated landmark happens in 3% of cases
+        if (r3 >= 1 - HPLUS_EPSILON) {
+            if (found) {
+                relax_point_copy[landmark[rounded_act_lmidx]] = prev_act_val;
+                rounded_act_lmidx++;
+                if (rounded_act_lmidx >= landmark.size()) break;
+                prev_act_val = relax_point_copy[landmark[rounded_act_lmidx]];
+                relax_point_copy[landmark[rounded_act_lmidx]] = 1;
+
+                continue;
+            } else
+                return {false, {}};
+        }
+
+        // if (exec.min_fract_lm && found)
+        //     LOG_DEBUG << "Minimizing landmark: landmark size (" << std::setw(4) << landmark.size() << ") - action removed (" << std::setw(4)
+        //               << landmark[rounded_act_lmidx] << ") - cut value (" << std::fixed << std::setprecision(4) << r3 << ")";
+
+        landmark = get_r3_violated_landmark(inst, r3_graph);
+
+        // if (exec.min_fract_lm && !found)
+        //     LOG_DEBUG << "Initial landmark:    landmark size (" << std::setw(4) << landmark.size() << ") ------------------------- cut value ("
+        //               << std::fixed << std::setprecision(4) << r3 << ")";
+
+        found = true;
+        rounded_act_lmidx = 0;
+        prev_act_val = relax_point_copy[landmark[rounded_act_lmidx]];
+        relax_point_copy[landmark[rounded_act_lmidx]] = 1;
+
+        if (!exec.min_fract_lm) break;
+    }
+
+    // exit(0);
 
     return {true, landmark};
 }
 
 [[nodiscard]]
-unsigned int relax_cuts::add_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const std::vector<double>& relax_point) {
-    const auto& [found, landmark]{get_violated_landmark(inst, relax_point)};
+unsigned int relax_cuts::add_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, const hplus::instance& inst,
+                                    const std::vector<double>& relax_point) {
+    const auto& [found, landmark]{get_violated_landmark(exec, inst, relax_point)};
     if (!found) return 0;
     std::vector<int> ind(landmark.size());
     int nnz{0};

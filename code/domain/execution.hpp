@@ -38,7 +38,7 @@ struct execution {
     warmstart ws;
     algorithm alg;
     std::string fract_cuts, cand_cuts;
-    bool fract_cuts_at_nodes, custom_cutloop, cl_pruning, inout;
+    bool fract_cuts_at_nodes, custom_cutloop, cl_pruning, inout, min_fract_lm;
     unsigned int cl_min_iter, cl_past_iter, io_max_iter;
     double cl_improv, cl_gap_stop, io_weight, io_weight_update;
     std::string log_file;
@@ -68,6 +68,7 @@ inline void init(execution& exec) {
                             .custom_cutloop = HPLUS_DEF_CUSTOM_CUTLOOP,
                             .cl_pruning = HPLUS_DEF_CL_PRUNING,
                             .inout = HPLUS_DEF_INOUT,
+                            .min_fract_lm = HPLUS_DEF_MIN_FRACT_LM,
                             .cl_min_iter = HPLUS_DEF_CL_MIN_ITER,
                             .cl_past_iter = HPLUS_DEF_CL_PAST_ITER,
                             .io_max_iter = HPLUS_DEF_IO_MAX_IT,
@@ -161,6 +162,7 @@ inline void print(const execution& exec) {
         if (!exec.cand_cuts.empty()) LOG << "Candidate cuts:                                    " << std::setw(5) << exec.cand_cuts;
 
         LOG << "Fractional cuts:                                      " << std::setw(2) << exec.fract_cuts;
+        if (exec.fract_cuts.find('l') != std::string::npos) LOG << "Minimization of fractional landmarks:                  " << exec.min_fract_lm;
         if (exec.fract_cuts != "0") LOG << "Fractional cuts at nodes:                              " << exec.fract_cuts_at_nodes;
         LOG << "Custom cut-loop                                        " << exec.custom_cutloop;
     }

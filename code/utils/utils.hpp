@@ -52,6 +52,7 @@
 #define HPLUS_CLI_SEED_FLAG "s"
 #define HPLUS_CLI_VERBOSE_FLAG "v"
 #define HPLUS_CLI_FRACTCUTS_FLAG "fract"
+#define HPLUS_CLI_FRACTCUTS_MIN_LM_FLAG "fract-minlm"
 #define HPLUS_CLI_FRACTCUTS_AT_NODES_FLAG "fract-nodes"
 #define HPLUS_CLI_CANDCUTS_FLAG "cand"
 #define HPLUS_CLI_CUTLOOP_FLAG "cloop"
@@ -95,6 +96,7 @@
 #define HPLUS_DEF_VERBOSE 3
 #define HPLUS_DEF_CANDCUTS "c"
 #define HPLUS_DEF_FRACTCUTS "0"
+#define HPLUS_DEF_MIN_FRACT_LM false
 #define HPLUS_DEF_FRACTCUTS_AT_NODES true
 #define HPLUS_DEF_CUSTOM_CUTLOOP false
 #define HPLUS_DEF_CL_PRUNING true

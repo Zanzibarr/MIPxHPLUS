@@ -81,6 +81,11 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
             "] ALGORITHM) Specify what cuts to separate from the candidate (integer) solutions (def: " + std::string(HPLUS_DEF_CANDCUTS) +
             "; options: 0 (don't separate cuts), a combination of ['f','c','s'] (respectively for frontier / complementary landmarks and SEC))",
         {HPLUS_CLI_CANDCUTS_FLAG}, HPLUS_DEF_CANDCUTS);
+    args::ValueFlag<bool> fract_cuts_min_lm(parser, "0/1",
+                                            "(ONLY FOR [" + std::string(HPLUS_CLI_ALG_FLAG_CUTS) +
+                                                "] Specify wether to minimize fractional landmarks (def: " + std::to_string(HPLUS_DEF_MIN_FRACT_LM) +
+                                                "; options: 0 (don't use minimization strategy, 1 (use minimization strategy))",
+                                            {HPLUS_CLI_FRACTCUTS_MIN_LM_FLAG}, HPLUS_DEF_MIN_FRACT_LM);
     args::ValueFlag<bool> fract_cuts_at_nodes(
         parser, "0/1",
         "(ONLY FOR [" + std::string(HPLUS_CLI_ALG_FLAG_CUTS) +
@@ -282,6 +287,7 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         } else
             exec.fract_cuts = s;
     }
+    if (fract_cuts_min_lm) exec.min_fract_lm = args::get(fract_cuts_min_lm);
     if (fract_cuts_at_nodes) exec.fract_cuts_at_nodes = args::get(fract_cuts_at_nodes);
 
     if (cand_cuts) {
@@ -401,6 +407,7 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         LOG_WARNING << "Warmstart disabled: disabling In-Out strategy";
         exec.inout = false;
     }
+    if (exec.fract_cuts.find('l') == std::string::npos && exec.min_fract_lm) exec.min_fract_lm = false;
 }
 
 #endif
