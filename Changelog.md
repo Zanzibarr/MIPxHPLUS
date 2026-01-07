@@ -26,6 +26,18 @@ HOW I DO VERSIONING:
 <!-- ### :rocket: Performance Improvements -->
 
 
+## [2.4.2] - 2025/11/24
+<!-- ### :warning: Known issues -->
+### :ballot_box_with_check: Fixed
+- Bug in fractional SEC where we didn't select the smallest-weight edge in the graph construction
+### :heavy_exclamation_mark: Changed
+- Minor aestetic changes in output
+<!-- ### :heavy_plus_sign: Added -->
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+<!-- ### :rocket: Performance Improvements -->
+
+
 ## [2.4.1] - 2025/11/20
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->
