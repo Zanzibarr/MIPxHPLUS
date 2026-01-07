@@ -143,18 +143,8 @@ static inline std::vector<std::vector<network_edge>> build_max_flow_graph(const 
 }
 
 [[nodiscard]]
-static inline std::pair<double, std::vector<std::vector<network_edge>>> compute_r3(const hplus::instance& inst,
-                                                                                   const std::vector<double>& relax_point,
-                                                                                   const std::vector<double>& r1_values,
-                                                                                   const std::vector<double>& r2_values) {
-    auto graph = build_max_flow_graph(inst, relax_point, r1_values, r2_values);
-    double r3{compute_max_flow(graph, inst.n, inst.n + 1)};
-    return {r3, graph};
-}
-
-[[nodiscard]]
 static inline std::vector<unsigned int> get_r3_violated_landmark(const hplus::instance& inst, const std::vector<std::vector<network_edge>>& graph) {
-    binary_set graph_reach{get_min_cut(graph, inst.n)}, facts_reach(inst.n);
+    binary_set graph_reach{get_min_cut_lpartition(graph, inst.n)}, facts_reach(inst.n);
     // This needs to be done since binary_set check for the capacity of the sets... I need to make sure this has the same capacity of the
     // preconditions and effects of actions
     for (unsigned int i = 0; i < inst.n; i++) {
@@ -172,7 +162,7 @@ static inline std::vector<unsigned int> get_r3_violated_landmark(const hplus::in
 }
 
 // IDEA: Find a violated landmark, pick an action, round it up to 1, look for the newly violated landmark, repeat or change action to round up
-// PROBLEM: Find a way to iteratively compute the max flow, r1, and r2, instead of computing it again from the start...
+// PROBLEM: Find a way to incrementally compute the max flow, r1, and r2, instead of computing it again from the start...
 [[nodiscard]]
 std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(const hplus::execution& exec, const hplus::instance& inst,
                                                                              const std::vector<double>& relax_point) {
@@ -182,14 +172,31 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
     unsigned int rounded_act_lmidx{0};
     double prev_act_val{relax_point_copy[rounded_act_lmidx]};
     bool found{false};
+    std::vector<std::vector<network_edge>> max_flow_graph;
+    double r3;
 
-    // TODO: Make the r1, r2, r3 computation iterative instead of computing it each time from scratch
+    // TODO: Remove... just for debugging
+    size_t initial_lm_size, final_lm_size;
+    double initial_violation, final_violation;
+
+    auto revert_r1r2_changes = []() {};
+    auto revert_r3_changes = []() {};
+
+    // TODO: Remove... just for debugging
+    double start_time = GET_TIME(), normal_time, minimization_time;
+    unsigned int repetitions{0};
+
+    // TODO: Make the r1, r2, r3 computation incremental instead of computing it each time from scratch
     while (rounded_act_lmidx < landmark.size()) {
+        repetitions++;
+        // TODO: Make incremental
+        // TODO: Add a trail so that I can revert changes easily
         const auto& [r1, r1_values, r2_values]{compute_r1_r2(inst, relax_point_copy)};
 
         // If R1 >= 1 there's no violated landmark
         if (r1 >= 1 - HPLUS_EPSILON) {
             if (found) {
+                revert_r1r2_changes();
                 relax_point_copy[landmark[rounded_act_lmidx]] = prev_act_val;
                 rounded_act_lmidx++;
                 if (rounded_act_lmidx >= landmark.size()) break;
@@ -203,12 +210,28 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
 
         // Otherwise, we rely on R3 to understand wether there's a violated landmark...
 
-        const auto& [r3, r3_graph]{compute_r3(inst, relax_point_copy, r1_values, r2_values)};
+        // if (!found) {
+        max_flow_graph = build_max_flow_graph(inst, relax_point_copy, r1_values, r2_values);
+        r3 = compute_max_flow(max_flow_graph, inst.n, inst.n + 1);
+
+        // } else {
+        //     TODO: Find a way to track the single (dummy or not) effect of an action -> that's the eff[act] I'm referring to here
+        //     TODO: Add a trail so that I can revert changes easily
+        //     TODO: Increment chosen action's weight
+        //     incremental_edge_insertion(max_flow_graph, inst.n, inst.n + 1, pcf[act_to_round], eff[act_to_round], 1 - prev_act_val);
+        //     TODO: Change pcf
+        //     for (act s.t. pcf[act] changed) {
+        //         incremental_edge_deletion(max_flow_graph, inst.n, inst.n + 1, old_pcf[act], eff[act], relax_point_copy[act])
+        //         incremental_edge_insertion(max_flow_graph, inst.n, inst.n + 1, new_pcf[act], eff[act], relax_point_copy[act])
+        //     }
+        // }
 
         // Note: if R3 < 1, then there's a violated landmark, BUT if R3 == 1 we can't assume that no landmark is violated... in this case we simply
         // ignore the possible landmark Statistically speaking, R3 == 1 but there exists a violated landmark happens in 3% of cases
         if (r3 >= 1 - HPLUS_EPSILON) {
             if (found) {
+                revert_r1r2_changes();
+                revert_r3_changes();
                 relax_point_copy[landmark[rounded_act_lmidx]] = prev_act_val;
                 rounded_act_lmidx++;
                 if (rounded_act_lmidx >= landmark.size()) break;
@@ -220,15 +243,20 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
                 return {false, {}};
         }
 
-        // if (exec.min_fract_lm && found)
-        //     LOG_DEBUG << "Minimizing landmark: landmark size (" << std::setw(4) << landmark.size() << ") - action removed (" << std::setw(4)
-        //               << landmark[rounded_act_lmidx] << ") - cut value (" << std::fixed << std::setprecision(4) << r3 << ")";
+        landmark = get_r3_violated_landmark(inst, max_flow_graph);
 
-        landmark = get_r3_violated_landmark(inst, r3_graph);
+        // TODO: Remove... just for debugging
+        double post_cutval{0};
+        for (const auto& x : landmark) post_cutval += relax_point[x];
 
-        // if (exec.min_fract_lm && !found)
-        //     LOG_DEBUG << "Initial landmark:    landmark size (" << std::setw(4) << landmark.size() << ") ------------------------- cut value ("
-        //               << std::fixed << std::setprecision(4) << r3 << ")";
+        if (!found) {
+            initial_lm_size = landmark.size();
+            initial_violation = 1 - post_cutval;
+            normal_time = (GET_TIME() - start_time) * 1000;
+        } else {
+            final_lm_size = landmark.size();
+            final_violation = 1 - post_cutval;
+        }
 
         found = true;
         rounded_act_lmidx = 0;
@@ -238,7 +266,15 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
         if (!exec.min_fract_lm) break;
     }
 
-    // exit(0);
+    minimization_time = (GET_TIME() - start_time) * 1000;
+
+    // TODO: Remove... just for debugging
+    if (exec.min_fract_lm)
+        LOG_DEBUG << "Minimization results: LM size: " << std::setw(5) << initial_lm_size << " -> " << std::setw(5) << final_lm_size
+                  << " -- Violation: " << std::fixed << std::setprecision(4) << initial_violation << " -> " << std::fixed << std::setprecision(4)
+                  << final_violation << " -- Repetitions: " << std::setw(4) << repetitions << " -- Time: normal: " << std::fixed << std::setw(6)
+                  << std::setprecision(2) << normal_time << "ms total: " << std::fixed << std::setw(6) << std::setprecision(2) << minimization_time
+                  << "ms";
 
     return {true, landmark};
 }
