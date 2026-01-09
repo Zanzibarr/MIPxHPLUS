@@ -54,7 +54,10 @@ static inline std::tuple<double, std::vector<double>, std::vector<double>> compu
             // Update R1 values
             if (r1_values[p] < act_r1_values[choice]) r1_values[p] = std::max(r1_values[p], act_r1_values[choice]);
             // Update R2 values
-            if (r2_values[p] < 1 - HPLUS_EPSILON) r2_values[p] += (act_r2_values[choice] - prev_r2_act_value);
+            if (r2_values[p] < 1 - HPLUS_EPSILON) {
+                r2_values[p] += (act_r2_values[choice] - prev_r2_act_value);
+                r2_values[p] = std::min(r2_values[p], 1.0);
+            }
 
             // Since either R1 or R2 value for p has been updated, we need to add to the queue all actions that have it as precondition
             for (const auto& act_i : inst.act_with_pre[p]) {
@@ -73,6 +76,96 @@ static inline std::tuple<double, std::vector<double>, std::vector<double>> compu
     return {r1, r1_values, r2_values};
 }
 
+static inline void compute_r1_r2_incremental(const hplus::instance& inst, const std::vector<double>& relax_point, std::vector<double>& r1_values,
+                                             std::vector<double>& r1_act_values, std::vector<double>& r2_values, std::vector<double>& r2_act_values,
+                                             binary_set& state, std::queue<unsigned int>& actions_queue, binary_set& acts_in_queue,
+                                             std::stack<std::pair<unsigned int, double>>& trail) {
+    // Trail keys:
+    // - [0, inst.n): r1_values
+    // - [inst.n, inst.n + inst.m): r1_act_values
+    // - [inst.n + inst.m, 2*inst.n + inst.m): r2_values
+    // - [2*inst.n + inst.m, 2*inst.n + 2*inst.m): r2_act_values
+    binary_set trail_flags(2 * inst.n + 2 * inst.m);
+
+    while (!actions_queue.empty()) {
+        const auto choice{actions_queue.front()};
+        actions_queue.pop();
+        acts_in_queue.remove(choice);
+
+        // Store the R1 and R2 values for this action... if we see that there's no update on these values we can skip
+        double prev_r1_act_value{r1_act_values[choice]}, prev_r2_act_value{r2_act_values[choice]};
+
+        // Values for actions are the minimum value of its precondition, with a cap at it's relaxed value
+        r1_act_values[choice] = relax_point[choice];
+        r2_act_values[choice] = relax_point[choice];
+        for (const auto& p : inst.actions[choice].pre_sparse) {
+            r1_act_values[choice] = std::min(r1_act_values[choice], r1_values[p]);
+            r2_act_values[choice] = std::min(r2_act_values[choice], r2_values[p]);
+        }
+
+        // If neither the R1 or R2 value for this action has changed, we can skip
+        if (r1_act_values[choice] - prev_r1_act_value <= HPLUS_EPSILON && r2_act_values[choice] - prev_r2_act_value <= HPLUS_EPSILON) continue;
+
+        // Write to the trail the previous value
+        if (r1_act_values[choice] - prev_r1_act_value > HPLUS_EPSILON) {
+            unsigned int trail_key = inst.n + choice;
+            if (!trail_flags[trail_key]) {
+                trail.emplace(trail_key, prev_r1_act_value);
+                trail_flags.add(trail_key);
+            }
+        }
+        if (r2_act_values[choice] - prev_r2_act_value > HPLUS_EPSILON) {
+            unsigned int trail_key = 2 * inst.n + inst.m + choice;
+            if (!trail_flags[trail_key]) {
+                trail.emplace(trail_key, prev_r2_act_value);
+                trail_flags.add(trail_key);
+            }
+        }
+
+        state |= inst.actions[choice].eff;
+
+        // Values for facts are:
+        // R1: the maximum among the values of the actions that achieve it
+        // R2: the sum of the values of the actions that achieve it
+        for (const auto& p : inst.actions[choice].eff_sparse) {
+            // If the R1 value of p is higher than this action's value we won't need to update R1 values
+            // If the R2 value of p is already 1 we won't need to update R2 values
+            if (r1_values[p] >= r1_act_values[choice] && r2_values[p] >= 1 - HPLUS_EPSILON) continue;
+
+            // Now we know that either R1 or R2 values will be updated...
+
+            // Update R1 values
+            if (r1_values[p] < r1_act_values[choice]) {
+                unsigned int trail_key = p;
+                if (!trail_flags[trail_key]) {
+                    trail.emplace(trail_key, r1_values[p]);
+                    trail_flags.add(trail_key);
+                }
+                r1_values[p] = std::max(r1_values[p], r1_act_values[choice]);
+            }
+            // Update R2 values
+            if (r2_values[p] < 1 - HPLUS_EPSILON) {
+                unsigned int trail_key = inst.n + inst.m + p;
+                if (!trail_flags[trail_key]) {
+                    trail.emplace(trail_key, r2_values[p]);
+                    trail_flags.add(trail_key);
+                }
+                r2_values[p] += (r2_act_values[choice] - prev_r2_act_value);
+                r2_values[p] = std::min(r2_values[p], 1.0);
+            }
+
+            // Since either R1 or R2 value for p has been updated, we need to add to the queue all actions that have it as precondition
+            for (const auto& act_i : inst.act_with_pre[p]) {
+                if (!state.contains(inst.actions[act_i].pre)) continue;  // Skip actions that can't be applied yet
+                if (acts_in_queue[act_i]) continue;                      // Skip actions that are already in the queue
+                if (relax_point[act_i] <= HPLUS_EPSILON) continue;       // Skip actions whose weight is 0
+                actions_queue.push(act_i);
+                acts_in_queue.add(act_i);
+            }
+        }
+    }
+}
+
 [[nodiscard]]
 static inline std::vector<std::vector<network_edge>> build_max_flow_graph(const hplus::instance& inst, const std::vector<double>& actions_weights,
                                                                           const std::vector<double>& r1_values,
@@ -82,11 +175,11 @@ static inline std::vector<std::vector<network_edge>> build_max_flow_graph(const 
     for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
         double min_r1{2}, min_r2{2};  // 1 is the max value each R1 or R2 value can have... using 2 as initial min guarantees a lower R1 value
         for (const auto& p : inst.actions[act_i].pre_sparse) {
-            if (r1_values[p] < min_r1) {
+            if (r1_values[p] < min_r1 - HPLUS_EPSILON) {
                 min_r1 = r1_values[p];
                 min_r2 = r2_values[p];
                 pcf[act_i] = p;
-            } else if (r1_values[p] == min_r1 && r2_values[p] < min_r2) {  // Use R2 as tie-breaking
+            } else if (std::abs(r1_values[p] - min_r1) < HPLUS_EPSILON && r2_values[p] < min_r2 - HPLUS_EPSILON) {  // Use R2 as tie-breaking
                 min_r2 = r2_values[p];
                 pcf[act_i] = p;
             }
@@ -128,11 +221,11 @@ static inline std::vector<std::vector<network_edge>> build_max_flow_graph(const 
     double min_r1{2}, min_r2{2};
     unsigned int g_pcf{0};
     for (const auto& g : inst.goal) {
-        if (r1_values[g] < min_r1) {
+        if (r1_values[g] < min_r1 - HPLUS_EPSILON) {
             min_r1 = r1_values[g];
             min_r2 = r2_values[g];
             g_pcf = g;
-        } else if (r1_values[g] == min_r1 && r2_values[g] < min_r2) {  // Use R2 as tie-breaking
+        } else if (std::abs(r1_values[g] - min_r1) < HPLUS_EPSILON && r2_values[g] < min_r2 - HPLUS_EPSILON) {  // Use R2 as tie-breaking
             min_r2 = r2_values[g];
             g_pcf = g;
         }
@@ -161,37 +254,87 @@ static inline std::vector<unsigned int> get_r3_violated_landmark(const hplus::in
     return landmark;
 }
 
-// IDEA: Find a violated landmark, pick an action, round it up to 1, look for the newly violated landmark, repeat or change action to round up
-// PROBLEM: Find a way to incrementally compute the max flow, r1, and r2, instead of computing it again from the start...
 [[nodiscard]]
 std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(const hplus::execution& exec, const hplus::instance& inst,
                                                                              const std::vector<double>& relax_point) {
     std::vector<unsigned int> landmark(1);
 
+    // ====================================================== //
+    // ============ Minimization data structures ============ //
+    // ====================================================== //
     std::vector<double> relax_point_copy(relax_point.begin(), relax_point.end());
     unsigned int rounded_act_lmidx{0};
     double prev_act_val{relax_point_copy[rounded_act_lmidx]};
     bool found{false};
+
+    // ====================================================== //
+    // ============ R1 R2 incremental computation =========== //
+    // ====================================================== //
+    std::vector<double> r1_values(inst.n, 0), r1_act_values(inst.m, 0), r2_values(inst.n, 0), r2_act_values(inst.m, 0);
+    std::queue<unsigned int> r1r2_actions_queue;
+    binary_set r1r2_state(inst.n), r1r2_reversing_state(inst.n), r1r2_acts_in_queue(inst.m);
+    // Trail keys:
+    // - [0, inst.n): r1_values
+    // - [inst.n, inst.n + inst.m): r1_act_values
+    // - [inst.n + inst.m, 2*inst.n + inst.m): r2_values
+    // - [2*inst.n + inst.m, 2*inst.n + 2*inst.m): r2_act_values
+    std::stack<std::pair<unsigned int, double>> r1r2_trail;
+    auto revert_r1r2_changes = [&]() {
+        while (!r1r2_trail.empty()) {
+            const auto& [key, value] = r1r2_trail.top();
+            r1r2_trail.pop();
+            if (key < inst.n)  // R1 values
+                r1_values[key] = value;
+            else if (key < inst.n + inst.m)  // R1 act values
+                r1_act_values[key - inst.n] = value;
+            else if (key < 2 * inst.n + inst.m)  // R2 values
+                r2_values[key - inst.n - inst.m] = value;
+            else  // R2 act values
+                r2_act_values[key - 2 * inst.n - inst.m] = value;
+        }
+        r1r2_state = r1r2_reversing_state;
+    };
+    // Initialization for incremental R1 R2 computation
+    for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
+        if (relax_point_copy[act_i] < HPLUS_EPSILON) continue;
+        if (inst.actions[act_i].pre_sparse.empty()) {
+            r1r2_actions_queue.push(act_i);
+            r1r2_acts_in_queue.add(act_i);
+        }
+    }
+
+    // ====================================================== //
+    // ============= R3 incremental computation ============= //
+    // ====================================================== //
     std::vector<std::vector<network_edge>> max_flow_graph;
     double r3;
-
-    // TODO: Remove... just for debugging
-    size_t initial_lm_size, final_lm_size;
-    double initial_violation, final_violation;
-
-    auto revert_r1r2_changes = []() {};
     auto revert_r3_changes = []() {};
 
     // TODO: Remove... just for debugging
-    double start_time = GET_TIME(), normal_time, minimization_time;
+    size_t initial_lm_size, final_lm_size;
+    double initial_violation, final_violation, start_time = GET_TIME(), normal_time, minimization_time;
     unsigned int repetitions{0};
 
-    // TODO: Make the r1, r2, r3 computation incremental instead of computing it each time from scratch
+    // ====================================================== //
+    // =============== Minimization procedure =============== //
+    // ====================================================== //
     while (rounded_act_lmidx < landmark.size()) {
         repetitions++;
-        // TODO: Make incremental
-        // TODO: Add a trail so that I can revert changes easily
-        const auto& [r1, r1_values, r2_values]{compute_r1_r2(inst, relax_point_copy)};
+
+        // ~~~~~~~~~~ R1/R2 COMPUTATION ~~~~~~~~~~ //
+        // TODO: Remove computation from scratch... just for debugging
+        const auto& [manual_r1, manual_r1_values, manual_r2_values]{compute_r1_r2(inst, relax_point_copy)};
+        r1r2_trail = std::stack<std::pair<unsigned int, double>>();
+        r1r2_reversing_state = r1r2_state;
+        compute_r1_r2_incremental(inst, relax_point_copy, r1_values, r1_act_values, r2_values, r2_act_values, r1r2_state, r1r2_actions_queue,
+                                  r1r2_acts_in_queue, r1r2_trail);
+        double r1{1};
+        for (const auto& p : inst.goal) r1 = std::min(r1, r1_values[p]);
+
+        for (unsigned int i = 0; i < inst.n; i++) {
+            ASSERT(std::abs(manual_r1_values[i] - r1_values[i]) < HPLUS_EPSILON);
+            ASSERT(std::abs(manual_r2_values[i] - r2_values[i]) < HPLUS_EPSILON);
+        }
 
         // If R1 >= 1 there's no violated landmark
         if (r1 >= 1 - HPLUS_EPSILON) {
@@ -202,7 +345,8 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
                 if (rounded_act_lmidx >= landmark.size()) break;
                 prev_act_val = relax_point_copy[landmark[rounded_act_lmidx]];
                 relax_point_copy[landmark[rounded_act_lmidx]] = 1;
-
+                r1r2_actions_queue.push(landmark[rounded_act_lmidx]);
+                r1r2_acts_in_queue.add(landmark[rounded_act_lmidx]);
                 continue;
             } else
                 return {false, {}};
@@ -210,10 +354,16 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
 
         // Otherwise, we rely on R3 to understand wether there's a violated landmark...
 
+        // ~~~~~~~~~~~~ R3 COMPUTATION ~~~~~~~~~~~ //
         // if (!found) {
+        std::vector<std::vector<network_edge>> manual_max_flow_graph =
+            build_max_flow_graph(inst, relax_point_copy, manual_r1_values, manual_r2_values);
+        double manual_r3 = compute_max_flow(manual_max_flow_graph, inst.n, inst.n + 1);
+
         max_flow_graph = build_max_flow_graph(inst, relax_point_copy, r1_values, r2_values);
         r3 = compute_max_flow(max_flow_graph, inst.n, inst.n + 1);
 
+        ASSERT(std::abs(manual_r3 - r3) < HPLUS_EPSILON);
         // } else {
         //     TODO: Find a way to track the single (dummy or not) effect of an action -> that's the eff[act] I'm referring to here
         //     TODO: Add a trail so that I can revert changes easily
@@ -237,18 +387,25 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
                 if (rounded_act_lmidx >= landmark.size()) break;
                 prev_act_val = relax_point_copy[landmark[rounded_act_lmidx]];
                 relax_point_copy[landmark[rounded_act_lmidx]] = 1;
-
+                r1r2_actions_queue.push(landmark[rounded_act_lmidx]);
+                r1r2_acts_in_queue.add(landmark[rounded_act_lmidx]);
                 continue;
             } else
                 return {false, {}};
         }
 
+        // ~~~~~~~ GET LANDMARK AS MIN-CUT ~~~~~~~ //
+        std::vector<unsigned int> manual_landmark = get_r3_violated_landmark(inst, manual_max_flow_graph);
         landmark = get_r3_violated_landmark(inst, max_flow_graph);
+
+        ASSERT(manual_landmark.size() == landmark.size());
+        for (unsigned int i = 0; i < manual_landmark.size(); i++) {
+            ASSERT(manual_landmark[i] == landmark[i]);
+        }
 
         // TODO: Remove... just for debugging
         double post_cutval{0};
         for (const auto& x : landmark) post_cutval += relax_point[x];
-
         if (!found) {
             initial_lm_size = landmark.size();
             initial_violation = 1 - post_cutval;
@@ -258,17 +415,20 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
             final_violation = 1 - post_cutval;
         }
 
+        // ~~~~~ MINIMIZATION PROCEDURE SETUP ~~~~ //
+        // TODO: Maybe an heuristic to tell which actios to use first?? (If done, update it also in the revert sections)
         found = true;
         rounded_act_lmidx = 0;
         prev_act_val = relax_point_copy[landmark[rounded_act_lmidx]];
         relax_point_copy[landmark[rounded_act_lmidx]] = 1;
+        r1r2_actions_queue.push(landmark[rounded_act_lmidx]);
+        r1r2_acts_in_queue.add(landmark[rounded_act_lmidx]);
 
         if (!exec.min_fract_lm) break;
     }
 
-    minimization_time = (GET_TIME() - start_time) * 1000;
-
     // TODO: Remove... just for debugging
+    minimization_time = (GET_TIME() - start_time) * 1000;
     if (exec.min_fract_lm)
         LOG_DEBUG << "Minimization results: LM size: " << std::setw(5) << initial_lm_size << " -> " << std::setw(5) << final_lm_size
                   << " -- Violation: " << std::fixed << std::setprecision(4) << initial_violation << " -> " << std::fixed << std::setprecision(4)
