@@ -13,13 +13,26 @@ inline void exit_cutloop(CPXENVptr& env, CPXLPptr& lp) {
     CPX_HANDLE_CALL(CPXchgctype(env, lp, ncols, ind.data(), types.data()));
 }
 
-inline void solve_relaxation(CPXENVptr& env, CPXLPptr& lp, const hplus::execution& exec) {
+inline void solve_relaxation(CPXENVptr& env, CPXLPptr& lp, const hplus::execution& exec, hplus::statistics& stats) {
     if (exec.timelimit > 0 && static_cast<double>(exec.timelimit) > GET_TIME()) {
         CPX_HANDLE_CALL(CPXsetdblparam(env, CPXPARAM_TimeLimit, static_cast<double>(exec.timelimit) - GET_TIME()));
     } else
         throw timelimit_exception("Reached time limit.");
 
     CPX_HANDLE_CALL(CPXlpopt(env, lp));
+
+    // Get lowerbound
+    switch (const int status{CPXgetstat(env, lp)}) {
+        case CPX_STAT_OPTIMAL:
+            double cl_lb;
+            CPX_HANDLE_CALL(CPXgetobjval(env, lp, &cl_lb));
+            if (stats.lower_bound < cl_lb) stats.lower_bound = cl_lb;
+            break;
+        case CPX_STAT_ABORT_TIME_LIM:
+            break;
+        default:
+            LOG_ERROR << "Error in solve_relaxation: unhandled cplex status (" << status << ")";
+    }
 }
 
 inline unsigned int generate_cuts(CPXENVptr& env, CPXLPptr& lp, const std::vector<double>& relax_point, const hplus::execution& exec,
@@ -176,7 +189,7 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
 
     double inout_w = exec.io_weight;
 
-    solve_relaxation(env, lp, exec);
+    solve_relaxation(env, lp, exec, stats);
     while (repeat_cutloop() && !CHECK_STOP()) {
         std::vector<double> relax_point(ncols);
         CPXgetx(env, lp, relax_point.data(), 0, ncols - 1);
@@ -198,18 +211,12 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
         stats.relax_callback += GET_TIME() - cuts_time;
         stats.relax_calls++;
 
-        solve_relaxation(env, lp, exec);
+        solve_relaxation(env, lp, exec, stats);
         iteration++;
-
-        // Obtain and store the current lower bound
-        double cl_lb;
-        CPX_HANDLE_CALL(CPXgetobjval(env, lp, &cl_lb));
-        if (stats.lower_bound < cl_lb) stats.lower_bound = cl_lb;
+        stats.cutloop_it = iteration;
     }
 
-    double cl_lb;
-    CPX_HANDLE_CALL(CPXgetobjval(env, lp, &cl_lb));
-    if (exec.verbosity >= hplus::verbose::BASIC) LOG_INFO << "Lower bound after cutloop : " << cl_lb;
+    if (exec.verbosity >= hplus::verbose::BASIC) LOG_INFO << "Lower bound after cutloop : " << stats.lower_bound;
 
     // Purging of slack constraints (if we exited due to time limit, we might not have a full solution, so pruning constraints might remove more than
     // necessary)
