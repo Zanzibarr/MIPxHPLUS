@@ -432,6 +432,7 @@ static inline double compute_max_flow(std::vector<std::vector<network_edge>>& gr
     binary_set reachable(graph.size());
     std::queue<unsigned int> q;
     q.push(source);
+    reachable.add(source);
 
     while (!q.empty()) {
         const auto v = q.front();
@@ -492,23 +493,23 @@ static inline double incremental_asp(const std::vector<std::vector<network_edge>
         unsigned int u = q.front();
         q.pop();
 
-        for (int edge_idx = 0; edge_idx < static_cast<int>(graph[u].size()); edge_idx++) {
-            const auto& e = graph[u][edge_idx];
+        for (unsigned int edge_idx = 0; edge_idx < graph[u].size(); edge_idx++) {
+            const auto& [v, rev, res_flow] = graph[u][edge_idx];
 
             // Skip if already visited or no residual capacity
-            if (flow_capacity[e.to] >= 0 || e.c <= HPLUS_EPSILON) continue;
+            if (flow_capacity[v] >= 0 || res_flow <= HPLUS_EPSILON) continue;
 
             // Update flow capacity and predecessor
-            flow_capacity[e.to] = std::min(flow_capacity[u], e.c);
-            prev_vertex[e.to] = u;
-            prev_edge_idx[e.to] = edge_idx;
+            flow_capacity[v] = std::min(flow_capacity[u], res_flow);
+            prev_vertex[v] = u;
+            prev_edge_idx[v] = edge_idx;
 
             // If we reached destination, return immediately
-            if (e.to == y) {
+            if (v == y) {
                 return flow_capacity[y];
             }
 
-            q.push(e.to);
+            q.push(v);
         }
     }
 
@@ -583,26 +584,26 @@ static inline void incremental_reset_exceeding_flow(std::vector<std::vector<netw
             q.pop();
 
             for (int edge_idx = 0; edge_idx < static_cast<int>(graph[u].size()); edge_idx++) {
-                const auto& e = graph[u][edge_idx];
+                const auto& [v, rev, res_flow] = graph[u][edge_idx];
 
-                if (flow_capacity[e.to] >= 0) continue;
+                if (flow_capacity[v] >= 0) continue;
 
-                // Look at the reverse edge to see if there's flow to reduce
-                unsigned int rev_idx = e.rev;
-                double reverse_flow = graph[e.to][rev_idx].c;
+                // Look at the reverse edge v see if there's flow v reduce
+                unsigned int rev_idx = rev;
+                double reverse_flow = graph[v][rev_idx].c;
 
                 if (reverse_flow <= HPLUS_EPSILON) continue;
 
-                flow_capacity[e.to] = std::min(flow_capacity[u], reverse_flow);
-                prev_vertex[e.to] = u;
-                prev_edge_idx[e.to] = edge_idx;
+                flow_capacity[v] = std::min(flow_capacity[u], reverse_flow);
+                prev_vertex[v] = u;
+                prev_edge_idx[v] = edge_idx;
 
-                if (e.to == t) {
+                if (v == t) {
                     found_path = true;
                     break;
                 }
 
-                q.push(e.to);
+                q.push(v);
             }
         }
 
@@ -699,9 +700,10 @@ static inline void incremental_edge_insertion(std::vector<std::vector<network_ed
     while (graph[a][edge_ab_idx].c > HPLUS_EPSILON && deltaF_sa > HPLUS_EPSILON && deltaF_bt > HPLUS_EPSILON) {
         double deltaF = std::min({graph[a][edge_ab_idx].c, deltaF_sa, deltaF_bt});
 
+        unsigned int rev_ba_idx = graph[a][edge_ab_idx].rev;
         // Update flow on edge (a,b)
         graph[a][edge_ab_idx].c -= deltaF;
-        graph[b][graph[a][edge_ab_idx].rev].c += deltaF;
+        graph[b][rev_ba_idx].c += deltaF;
 
         // Update flow on paths
         incremental_update_flow(graph, deltaF, s, a, prev_sa_v, prev_sa_e);
@@ -762,7 +764,8 @@ static inline void incremental_edge_deletion(std::vector<std::vector<network_edg
 
     // Calculate new capacity
     double old_capacity = graph[a][edge_ab_idx].c + current_flow;
-    double new_capacity = std::max(0.0, old_capacity - w);
+    double new_capacity =
+        std::max(0.0, old_capacity - w);  // here is - : on the paper uses + but because w is negative... I use a positive w, so I need to use the -
 
     // Calculate excess that needs to be rerouted
     double excess = current_flow - new_capacity;

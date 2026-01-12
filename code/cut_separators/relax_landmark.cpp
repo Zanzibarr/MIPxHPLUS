@@ -167,9 +167,7 @@ static inline void compute_r1_r2_incremental(const hplus::instance& inst, const 
 }
 
 [[nodiscard]]
-static inline std::vector<std::vector<network_edge>> build_max_flow_graph(const hplus::instance& inst, const std::vector<double>& actions_weights,
-                                                                          const std::vector<double>& r1_values,
-                                                                          const std::vector<double>& r2_values) {
+static inline std::vector<int> compute_pcf(const hplus::instance& inst, const std::vector<double>& r1_values, const std::vector<double>& r2_values) {
     // Choose pcf as the precondition with the lowest R1 value
     std::vector<int> pcf(inst.m, -1);
     for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
@@ -185,7 +183,13 @@ static inline std::vector<std::vector<network_edge>> build_max_flow_graph(const 
             }
         }
     }
+    return pcf;
+}
 
+[[nodiscard]]
+static inline std::vector<std::vector<network_edge>> build_max_flow_graph(const hplus::instance& inst, const std::vector<double>& actions_weights,
+                                                                          const std::vector<double>& r1_values, const std::vector<double>& r2_values,
+                                                                          const std::vector<int>& pcf, std::vector<int>& actions_effect) {
     std::vector<std::vector<network_edge>> graph(inst.n + 2);
     // nodes [0 -> n - 1] => facts
     // node [n] => source
@@ -194,6 +198,8 @@ static inline std::vector<std::vector<network_edge>> build_max_flow_graph(const 
     static const unsigned int sink{inst.n + 1};
     // nodes [n + 2 -> ...] => dummy nodes for actions effects (at most m)
     // estimated number of nodes: O(n + m)
+
+    actions_effect = std::vector<int>(inst.m, -1);
 
     auto add_edge = [&](unsigned int from, unsigned int to, double capacity) {
         graph[from].emplace_back(to, graph[to].size(), capacity);
@@ -204,12 +210,15 @@ static inline std::vector<std::vector<network_edge>> build_max_flow_graph(const 
         const unsigned int from = pcf[act_i] < 0 ? source : static_cast<unsigned int>(pcf[act_i]);
         switch (inst.actions[act_i].eff_sparse.size()) {
             case 0:  // No effect -> No edge
+                LOG_ERROR << "Found action with no effects...";
                 break;
             case 1:  // One effect -> Simple edge
                 add_edge(from, inst.actions[act_i].eff_sparse[0], actions_weights[act_i]);
+                actions_effect[act_i] = inst.actions[act_i].eff_sparse[0];
                 break;
             default:  // Multiple effects -> Create one edge a -> dummy and multiple edges dummy -> effect
                 const unsigned int dummy{static_cast<unsigned int>(graph.size())};
+                actions_effect[act_i] = dummy;
                 graph.push_back(std::vector<network_edge>());  // Create new dummy node
                 add_edge(from, dummy, actions_weights[act_i]);
                 for (const auto& to : inst.actions[act_i].eff_sparse) add_edge(dummy, to, 1);
@@ -263,9 +272,10 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
     // ============ Minimization data structures ============ //
     // ====================================================== //
     std::vector<double> relax_point_copy(relax_point.begin(), relax_point.end());
-    unsigned int rounded_act_lmidx{0};
+    unsigned int rounded_act_lmidx{0}, rounded_act{0};
     double prev_act_val{relax_point_copy[rounded_act_lmidx]};
     bool found{false};
+    const unsigned int source = inst.n, sink = inst.n + 1;
 
     // ====================================================== //
     // ============ R1 R2 incremental computation =========== //
@@ -306,9 +316,36 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
     // ====================================================== //
     // ============= R3 incremental computation ============= //
     // ====================================================== //
-    std::vector<std::vector<network_edge>> max_flow_graph;
+    std::vector<std::vector<network_edge>> old_max_flow_graph, new_max_flow_graph;
     double r3;
-    auto revert_r3_changes = []() {};
+    std::vector<int> old_pcf, new_pcf, actions_eff(inst.m, -1);
+    auto revert_r3_changes = [&]() { new_max_flow_graph = old_max_flow_graph; };
+
+    // ====================================================== //
+    // =========== Minimization procedure helpers =========== //
+    // ====================================================== //
+    auto round_action = [&](int act_idx) {
+        rounded_act = landmark[act_idx];
+        prev_act_val = relax_point_copy[rounded_act];
+        relax_point_copy[rounded_act] = 1;
+        r1r2_actions_queue.push(rounded_act);
+        r1r2_acts_in_queue.add(rounded_act);
+    };
+
+    auto round_next_action = [&]() {
+        relax_point_copy[rounded_act] = prev_act_val;
+        rounded_act_lmidx++;
+        if (rounded_act_lmidx >= landmark.size()) return false;
+        round_action(rounded_act_lmidx);
+        return true;
+    };
+
+    auto round_new_action = [&]() {
+        // TODO: Maybe an heuristic to tell which actions to use first? (If done, update it also in the revert sections)
+        found = true;
+        rounded_act_lmidx = 0;
+        round_action(rounded_act_lmidx);
+    };
 
     // TODO: Remove... just for debugging
     size_t initial_lm_size, final_lm_size;
@@ -322,31 +359,21 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
         repetitions++;
 
         // ~~~~~~~~~~ R1/R2 COMPUTATION ~~~~~~~~~~ //
-        // TODO: Remove computation from scratch... just for debugging
-        const auto& [manual_r1, manual_r1_values, manual_r2_values]{compute_r1_r2(inst, relax_point_copy)};
-        r1r2_trail = std::stack<std::pair<unsigned int, double>>();
-        r1r2_reversing_state = r1r2_state;
+        // const auto& [r1, r1_values, r2_values] = compute_r1_r2(inst, relax_point_copy);
+        r1r2_trail = std::stack<std::pair<unsigned int, double>>();  // Reset the trail
+        r1r2_reversing_state = r1r2_state;                           // Store current state
         compute_r1_r2_incremental(inst, relax_point_copy, r1_values, r1_act_values, r2_values, r2_act_values, r1r2_state, r1r2_actions_queue,
                                   r1r2_acts_in_queue, r1r2_trail);
         double r1{1};
         for (const auto& p : inst.goal) r1 = std::min(r1, r1_values[p]);
 
-        for (unsigned int i = 0; i < inst.n; i++) {
-            ASSERT(std::abs(manual_r1_values[i] - r1_values[i]) < HPLUS_EPSILON);
-            ASSERT(std::abs(manual_r2_values[i] - r2_values[i]) < HPLUS_EPSILON);
-        }
-
         // If R1 >= 1 there's no violated landmark
         if (r1 >= 1 - HPLUS_EPSILON) {
             if (found) {
                 revert_r1r2_changes();
-                relax_point_copy[landmark[rounded_act_lmidx]] = prev_act_val;
-                rounded_act_lmidx++;
-                if (rounded_act_lmidx >= landmark.size()) break;
-                prev_act_val = relax_point_copy[landmark[rounded_act_lmidx]];
-                relax_point_copy[landmark[rounded_act_lmidx]] = 1;
-                r1r2_actions_queue.push(landmark[rounded_act_lmidx]);
-                r1r2_acts_in_queue.add(landmark[rounded_act_lmidx]);
+                bool has_next = round_next_action();
+                if (!has_next) break;
+                // LOG_DEBUG << "R1 == 1, next action";
                 continue;
             } else
                 return {false, {}};
@@ -355,25 +382,53 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
         // Otherwise, we rely on R3 to understand wether there's a violated landmark...
 
         // ~~~~~~~~~~~~ R3 COMPUTATION ~~~~~~~~~~~ //
-        // if (!found) {
-        std::vector<std::vector<network_edge>> manual_max_flow_graph =
-            build_max_flow_graph(inst, relax_point_copy, manual_r1_values, manual_r2_values);
-        double manual_r3 = compute_max_flow(manual_max_flow_graph, inst.n, inst.n + 1);
+        new_pcf = compute_pcf(inst, r1_values, r2_values);
 
-        max_flow_graph = build_max_flow_graph(inst, relax_point_copy, r1_values, r2_values);
-        r3 = compute_max_flow(max_flow_graph, inst.n, inst.n + 1);
+        // TODO: Remember to update the old_max_flow_graph when un-commenting this part
+        // if (!found) {  // First iteration
+        new_max_flow_graph = build_max_flow_graph(inst, relax_point_copy, r1_values, r2_values, new_pcf, actions_eff);
+        r3 = compute_max_flow(new_max_flow_graph, source, sink);
+        // } else {  // This is a minimization iteration
+        //     // TODO: Remove, only for debugging...
+        //     auto manual_max_flow_graph = build_max_flow_graph(inst, relax_point_copy, r1_values, r2_values, new_pcf, actions_eff);
+        //     double manual_r3 = compute_max_flow(manual_max_flow_graph, source, sink);
 
-        ASSERT(std::abs(manual_r3 - r3) < HPLUS_EPSILON);
-        // } else {
-        //     TODO: Find a way to track the single (dummy or not) effect of an action -> that's the eff[act] I'm referring to here
-        //     TODO: Add a trail so that I can revert changes easily
-        //     TODO: Increment chosen action's weight
-        //     incremental_edge_insertion(max_flow_graph, inst.n, inst.n + 1, pcf[act_to_round], eff[act_to_round], 1 - prev_act_val);
-        //     TODO: Change pcf
-        //     for (act s.t. pcf[act] changed) {
-        //         incremental_edge_deletion(max_flow_graph, inst.n, inst.n + 1, old_pcf[act], eff[act], relax_point_copy[act])
-        //         incremental_edge_insertion(max_flow_graph, inst.n, inst.n + 1, new_pcf[act], eff[act], relax_point_copy[act])
+        //     // ~~~~~~ R3 INCREMENTAL COMPUTATION ~~~~~ //
+        //     unsigned int previous_pcf = old_pcf[rounded_act] < 0 ? source : static_cast<unsigned int>(old_pcf[rounded_act]);
+        //     unsigned int current_pcf = new_pcf[rounded_act] < 0 ? source : static_cast<unsigned int>(new_pcf[rounded_act]);
+        //     unsigned int action_eff = actions_eff[rounded_act];
+
+        //     // Update the rounded action's edge
+        //     if (previous_pcf != current_pcf) {
+        //         incremental_edge_deletion(new_max_flow_graph, source, sink, previous_pcf, action_eff, prev_act_val);
+        //         incremental_edge_insertion(new_max_flow_graph, source, sink, current_pcf, action_eff, 1);
+        //     } else {
+        //         incremental_edge_insertion(new_max_flow_graph, source, sink, current_pcf, action_eff, 1 - prev_act_val);
         //     }
+
+        //     // Update the action's whose pcf changed
+        //     for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
+        //         previous_pcf = old_pcf[act_i] < 0 ? source : static_cast<unsigned int>(old_pcf[act_i]);
+        //         current_pcf = new_pcf[act_i] < 0 ? source : static_cast<unsigned int>(new_pcf[act_i]);
+        //         if (previous_pcf == current_pcf || act_i == rounded_act) continue;
+
+        //         const double weight = relax_point_copy[act_i];
+        //         action_eff = actions_eff[act_i];
+
+        //         incremental_edge_deletion(new_max_flow_graph, source, sink, previous_pcf, action_eff, weight);
+        //         incremental_edge_insertion(new_max_flow_graph, source, sink, current_pcf, action_eff, weight);
+        //     }
+
+        //     // Compute the new R3
+        //     r3 = 0;
+        //     for (unsigned int i = 0; i < new_max_flow_graph[source].size(); i++) {
+        //         const auto& [to, rev, c] = new_max_flow_graph[source][i];
+        //         r3 += new_max_flow_graph[to][rev].c;
+        //     }
+
+        //     if (std::abs(manual_r3 - r3) >= HPLUS_EPSILON) LOG_DEBUG << manual_r3 << " / " << r3;
+
+        //     ASSERT(std::abs(manual_r3 - r3) < HPLUS_EPSILON);
         // }
 
         // Note: if R3 < 1, then there's a violated landmark, BUT if R3 == 1 we can't assume that no landmark is violated... in this case we simply
@@ -382,26 +437,20 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
             if (found) {
                 revert_r1r2_changes();
                 revert_r3_changes();
-                relax_point_copy[landmark[rounded_act_lmidx]] = prev_act_val;
-                rounded_act_lmidx++;
-                if (rounded_act_lmidx >= landmark.size()) break;
-                prev_act_val = relax_point_copy[landmark[rounded_act_lmidx]];
-                relax_point_copy[landmark[rounded_act_lmidx]] = 1;
-                r1r2_actions_queue.push(landmark[rounded_act_lmidx]);
-                r1r2_acts_in_queue.add(landmark[rounded_act_lmidx]);
+                bool has_next = round_next_action();
+                if (!has_next) break;
+                // LOG_DEBUG << "R3 == 1, next action";
                 continue;
             } else
                 return {false, {}};
         }
 
-        // ~~~~~~~ GET LANDMARK AS MIN-CUT ~~~~~~~ //
-        std::vector<unsigned int> manual_landmark = get_r3_violated_landmark(inst, manual_max_flow_graph);
-        landmark = get_r3_violated_landmark(inst, max_flow_graph);
+        // Now we know that there's a new landmark to extract...
+        old_pcf = new_pcf;
+        // old_max_flow_graph = new_max_flow_graph;
 
-        ASSERT(manual_landmark.size() == landmark.size());
-        for (unsigned int i = 0; i < manual_landmark.size(); i++) {
-            ASSERT(manual_landmark[i] == landmark[i]);
-        }
+        // ~~~~~~~ GET LANDMARK AS MIN-CUT ~~~~~~~ //
+        landmark = get_r3_violated_landmark(inst, new_max_flow_graph);
 
         // TODO: Remove... just for debugging
         double post_cutval{0};
@@ -416,13 +465,9 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
         }
 
         // ~~~~~ MINIMIZATION PROCEDURE SETUP ~~~~ //
-        // TODO: Maybe an heuristic to tell which actios to use first?? (If done, update it also in the revert sections)
-        found = true;
-        rounded_act_lmidx = 0;
-        prev_act_val = relax_point_copy[landmark[rounded_act_lmidx]];
-        relax_point_copy[landmark[rounded_act_lmidx]] = 1;
-        r1r2_actions_queue.push(landmark[rounded_act_lmidx]);
-        r1r2_acts_in_queue.add(landmark[rounded_act_lmidx]);
+        round_new_action();
+
+        // LOG_DEBUG << "Found landmark, rounding new action";
 
         if (!exec.min_fract_lm) break;
     }
