@@ -245,6 +245,7 @@ static inline std::pair<std::vector<std::vector<network_edge>>, std::vector<unsi
     return {graph, actions_effect};
 }
 
+// TODO: Reimplement using the paper's method
 static inline double update_graph(const hplus::instance& inst, std::vector<std::vector<network_edge>>& graph, const std::vector<double>& relax_point,
                                   const std::vector<unsigned int> pcf, const std::vector<unsigned int>& actions_eff) {
     static const unsigned int source = inst.n, sink = inst.n + 1, sink_action = inst.m;
@@ -524,6 +525,7 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
     double prev_r3 = 0, r3 = 0;
     auto [new_max_flow_graph, actions_effect] = max_flow_graph_construction(inst);
     auto revert_r3_changes = [&]() {
+        // TODO: Better reverse operation... find a way to work with a trail
         new_max_flow_graph = old_max_flow_graph;
         r3 = prev_r3;
     };
@@ -593,6 +595,7 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
         double additional_flow = compute_max_flow(new_max_flow_graph, source, sink);
         r3 = r3 - removed_flow + additional_flow;
 
+        // TODO: Remove, just for debugging..
         std::vector<int> _;
         auto manual_max_flow_graph = build_max_flow_graph(inst, relax_point_copy, pcf, _);
         auto manual_r3 = compute_max_flow(manual_max_flow_graph, source, sink);
@@ -647,6 +650,9 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
 
         if (!exec.min_fract_lm) break;
     }
+
+    // TODO: Print statistics about number of pcf changes: how often do I need destructive changes to the graph? how many pcf changes are there? how
+    // TODO: | many effective re-computation of r1, r2 and r3 are there?
 
     // TODO: Remove... just for debugging
     minimization_time = (GET_TIME() - start_time) * 1000;

@@ -453,6 +453,7 @@ static inline double compute_max_flow(std::vector<std::vector<network_edge>>& gr
 // ##################################################################### //
 // ############### INCREMENTAL MAX FLOW ON CHANGING GRAPH ############## //
 // ##################################################################### //
+// TODO: Optimize
 static double dfs_remove_flow(std::vector<std::vector<network_edge>>& graph, unsigned int u, const unsigned int target, double flow_to_remove,
                               binary_set& visited) {
     if (u == target) return flow_to_remove;
@@ -481,6 +482,7 @@ static double dfs_remove_flow(std::vector<std::vector<network_edge>>& graph, uns
     return 0;  // No path found
 }
 
+// TODO: Optimize
 static inline void flow_removal(std::vector<std::vector<network_edge>>& graph, unsigned int from, unsigned int to, const double flow_to_remove) {
     double remaining = flow_to_remove;
 
@@ -499,8 +501,8 @@ static inline void flow_removal(std::vector<std::vector<network_edge>>& graph, u
     }
 }
 
-// // Refer to "Incremental Maximum Flow Computation on Evolving Networks" by Greco, Molinaro, Pulice and Quintana
-
+// TODO: Implement incremental computation with these methods
+// Refer to "Incremental Maximum Flow Computation on Evolving Networks" by Greco, Molinaro, Pulice and Quintana
 // /**
 //  * Augmenting Shortest Path (ASP) for Incremental Max Flow
 //  *
