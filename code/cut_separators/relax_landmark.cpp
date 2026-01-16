@@ -2,80 +2,6 @@
 
 #include "relax_callback.hpp"
 
-[[nodiscard]]
-static inline std::tuple<double, std::vector<double>, std::vector<double>> compute_r1_r2(const hplus::instance& inst,
-                                                                                         const std::vector<double>& relax_point) {
-    std::vector<double> r1_values(inst.n, 0), r2_values(inst.n, 0), act_r1_values(inst.m, 0), act_r2_values(inst.m, 0);
-    std::list<unsigned int> actions_queue;
-    binary_set state(inst.n), act_in_queue(inst.m);
-
-    for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
-        // Skip actions whose weight is 0
-        if (relax_point[act_i] <= HPLUS_EPSILON) continue;
-
-        // Actions with no preconditions are the first to be added to the queue... we are performing a forward reachability analysis
-        if (inst.actions[act_i].pre_sparse.empty()) {
-            actions_queue.push_back(act_i);
-            act_in_queue.add(act_i);
-        }
-    }
-
-    while (!actions_queue.empty()) {
-        const auto choice{actions_queue.front()};
-        actions_queue.pop_front();
-        act_in_queue.remove(choice);
-
-        // Store the R1 and R2 values for this action... if we see that there's no update on these values we can skip
-        double prev_r1_act_value{act_r1_values[choice]}, prev_r2_act_value{act_r2_values[choice]};
-
-        // Values for actions are the minimum value of its precondition, with a cap at it's relaxed value
-        act_r1_values[choice] = relax_point[choice];
-        act_r2_values[choice] = relax_point[choice];
-        for (const auto& p : inst.actions[choice].pre_sparse) {
-            act_r1_values[choice] = std::min(act_r1_values[choice], r1_values[p]);
-            act_r2_values[choice] = std::min(act_r2_values[choice], r2_values[p]);
-        }
-
-        // If neither the R1 or R2 value for this action has changed, we can skip
-        if (act_r1_values[choice] - prev_r1_act_value <= HPLUS_EPSILON && act_r2_values[choice] - prev_r2_act_value <= HPLUS_EPSILON) continue;
-
-        state |= inst.actions[choice].eff;
-
-        // Values for facts are:
-        // R1: the maximum among the values of the actions that achieve it
-        // R2: the sum of the values of the actions that achieve it
-        for (const auto& p : inst.actions[choice].eff_sparse) {
-            // If the R1 value of p is higher than this action's value we won't need to update R1 values
-            // If the R2 value of p is already 1 we won't need to update R2 values
-            if (r1_values[p] >= act_r1_values[choice] && r2_values[p] >= 1 - HPLUS_EPSILON) continue;
-
-            // Now we know that either R1 or R2 values will be updated...
-
-            // Update R1 values
-            if (r1_values[p] < act_r1_values[choice]) r1_values[p] = std::max(r1_values[p], act_r1_values[choice]);
-            // Update R2 values
-            if (r2_values[p] < 1 - HPLUS_EPSILON) {
-                r2_values[p] += (act_r2_values[choice] - prev_r2_act_value);
-                r2_values[p] = std::min(r2_values[p], 1.0);
-            }
-
-            // Since either R1 or R2 value for p has been updated, we need to add to the queue all actions that have it as precondition
-            for (const auto& act_i : inst.act_with_pre[p]) {
-                if (!state.contains(inst.actions[act_i].pre)) continue;  // Skip actions that can't be applied yet
-                if (act_in_queue[act_i]) continue;                       // Skip actions that are already in the queue
-                if (relax_point[act_i] <= HPLUS_EPSILON) continue;       // Skip actions whose weight is 0
-                actions_queue.push_back(act_i);
-                act_in_queue.add(act_i);
-            }
-        }
-    }
-
-    double r1{1};
-    for (const auto& p : inst.goal) r1 = std::min(r1, r1_values[p]);
-
-    return {r1, r1_values, r2_values};
-}
-
 static inline void compute_r1_r2_incremental(const hplus::instance& inst, const std::vector<double>& relax_point, std::vector<double>& r1_values,
                                              std::vector<double>& r1_act_values, std::vector<double>& r2_values, std::vector<double>& r2_act_values,
                                              binary_set& state, std::queue<unsigned int>& actions_queue, binary_set& acts_in_queue,
@@ -167,35 +93,312 @@ static inline void compute_r1_r2_incremental(const hplus::instance& inst, const 
 }
 
 [[nodiscard]]
-static inline std::vector<int> compute_pcf(const hplus::instance& inst, const std::vector<double>& r1_values, const std::vector<double>& r2_values) {
+static inline std::vector<unsigned int> compute_pcf(const hplus::instance& inst, const std::vector<double>& r1_values,
+                                                    const std::vector<double>& r2_values) {
     // Choose pcf as the precondition with the lowest R1 value
-    std::vector<int> pcf(inst.m, -1);
-    for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
-        double min_r1{2}, min_r2{2};  // 1 is the max value each R1 or R2 value can have... using 2 as initial min guarantees a lower R1 value
-        for (const auto& p : inst.actions[act_i].pre_sparse) {
-            if (r1_values[p] < min_r1 - HPLUS_EPSILON) {
-                min_r1 = r1_values[p];
-                min_r2 = r2_values[p];
-                pcf[act_i] = p;
-            } else if (std::abs(r1_values[p] - min_r1) < HPLUS_EPSILON && r2_values[p] < min_r2 - HPLUS_EPSILON) {  // Use R2 as tie-breaking
-                min_r2 = r2_values[p];
-                pcf[act_i] = p;
-            }
+    std::vector<unsigned int> pcf(inst.m + 1, 0);  // Last spot is reserved for the dummy goal action's pcf
+    static const unsigned int source = inst.n, sink_action = inst.m;
+
+    auto check_and_update_pcf = [&](unsigned int act_i, unsigned int p, double& min_r1, double& min_r2) {
+        if (r1_values[p] < min_r1 - HPLUS_EPSILON) {
+            min_r1 = r1_values[p];
+            min_r2 = r2_values[p];
+            pcf[act_i] = p;
+        } else if (std::abs(r1_values[p] - min_r1) < HPLUS_EPSILON && r2_values[p] < min_r2 - HPLUS_EPSILON) {  // Use R2 as tie-breaking
+            min_r2 = r2_values[p];
+            pcf[act_i] = p;
         }
+    };
+
+    for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
+        if (inst.actions[act_i].pre_sparse.empty()) {
+            pcf[act_i] = source;
+            continue;
+        }
+        double min_r1{2}, min_r2{2};  // 1 is the max value each R1 or R2 value can have... using 2 as initial min guarantees a lower R1 value
+        for (const auto& p : inst.actions[act_i].pre_sparse) check_and_update_pcf(act_i, p, min_r1, min_r2);
     }
+
+    // Compute the pcf for the dummy goal action
+    double min_r1{2}, min_r2{2};
+    for (const auto& p : inst.goal) check_and_update_pcf(sink_action, p, min_r1, min_r2);
+
     return pcf;
 }
 
-[[nodiscard]]
-static inline std::vector<std::vector<network_edge>> build_max_flow_graph(const hplus::instance& inst, const std::vector<double>& actions_weights,
-                                                                          const std::vector<double>& r1_values, const std::vector<double>& r2_values,
-                                                                          const std::vector<int>& pcf, std::vector<int>& actions_effect) {
+static inline std::pair<std::vector<std::vector<network_edge>>, std::vector<unsigned int>> max_flow_graph_construction(const hplus::instance& inst) {
     std::vector<std::vector<network_edge>> graph(inst.n + 2);
     // nodes [0 -> n - 1] => facts
     // node [n] => source
     static const unsigned int source{inst.n};
     // node [n + 1] => sink
     static const unsigned int sink{inst.n + 1};
+    // nodes [n + 2 -> ...] => dummy nodes for actions effects (at most m)
+    // estimated number of nodes: O(n + m)
+
+    std::vector<unsigned int> actions_effect(inst.m + 1, 0);
+    // 0 -> m - 1 => actions
+    // m => dummy goal action
+    static const unsigned int sink_action{inst.m};
+
+    auto add_edge = [&](unsigned int a, unsigned int b, double capacity) {
+        const unsigned int edge_ba_idx = graph[b].size(), edge_ab_idx = graph[a].size();
+        graph[a].emplace_back(b, edge_ba_idx, capacity);  // Forward (residual) edge
+        graph[b].emplace_back(a, edge_ab_idx, 0);         // Reverse (used flow) edge
+    };
+
+    for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
+        // Find this action's effect
+        ASSERT(!inst.actions[act_i].eff_sparse.empty());
+        // If this action has only one effect, that's it... if it has more effects use a dummy node
+        unsigned int to = inst.actions[act_i].eff_sparse.size() == 1 ? inst.actions[act_i].eff_sparse[0] : graph.size();
+        if (inst.actions[act_i].eff_sparse.size() > 1) graph.push_back(std::vector<network_edge>());
+
+        actions_effect[act_i] = to;
+
+        // Get all preconditions (linking the source node if needed)
+        std::vector<unsigned int> preconditions;
+        if (inst.actions[act_i].pre_sparse.empty())
+            preconditions.push_back(source);
+        else
+            preconditions = inst.actions[act_i].pre_sparse;
+
+        for (const auto& from : preconditions) {
+            // Whether "to" is a dummy node or the only effect, create an edge from each precondition to "to"
+            // This must be adjusted according to the selected pcf and the action's weight in the relax point:
+            // w(from, act_eff[act_i]) = (from == pcf[act_i]) ? relax_point[act_i] : 0
+            add_edge(from, to, 0);
+
+            switch (inst.actions[act_i].eff_sparse.size()) {
+                case 0:
+                    LOG_ERROR << "Found action with no effects...";
+                    break;
+                case 1:  // If only one effect, then "to" is it: no more edges to add
+                    break;
+                default:  // If there are multiple effects we need to add the "to" -> eff edges
+                    for (const auto& eff : inst.actions[act_i].eff_sparse)
+                        add_edge(to, eff,
+                                 1);  // dummy edges have capacity of 1 since they are sourced only by the from -> to edge, which will have
+                                      // the action's weight... in this way we guarantee the min-cut to only be associated to real actions
+                                      // and not dummy ones (if capacity is 1, then this won't ever be saturated, unless the minimum cut is >= 1)
+            }
+        }
+    }
+
+    // Adding the edges linking the sink with the rest of the graph
+    for (const auto& g : inst.goal) add_edge(g, sink, 0);  // This must be adjusted according the selected pcf
+    actions_effect[sink_action] = sink;
+
+    return {graph, actions_effect};
+}
+
+// static inline bool is_flow_conservative(const hplus::instance& inst, const std::vector<std::vector<network_edge>>& graph, const unsigned int
+// source,
+//                                         const unsigned int sink) {
+//     const unsigned int n = graph.size();
+//     std::vector<double> net_flow(n, 0.0);
+//     binary_set visited(n);
+
+//     std::queue<unsigned int> queue;
+//     queue.push(source);
+
+//     while (!queue.empty()) {
+//         const auto u = queue.front();
+//         queue.pop();
+//         visited.add(u);
+
+//         for (const auto& [to, rev, c] : graph[u]) {
+//             double flow = c - graph[to][rev].c;
+//             net_flow[u] += flow;
+//             if (!visited[to]) queue.push(to);
+//         }
+//     }
+
+//     // // Calculate net flow for each node
+//     // // Strategy: only process each edge pair once (when u < edge.to)
+//     // for (unsigned int u = 0; u < n; ++u) {
+//     //     for (const auto& edge : graph[u]) {
+//     //         // Only process each edge pair once to avoid double counting
+//     //         if (u < edge.to) {
+//     //             // Flow through edge u -> edge.to is the reverse edge capacity
+//     //             double flow = graph[edge.to][edge.rev].c;
+
+//     //             // This flow goes OUT of u and INTO edge.to
+//     //             net_flow[u] -= flow;
+//     //             net_flow[edge.to] += flow;
+//     //         }
+//     //     }
+//     // }
+
+//     // Check conservation for all nodes except source and sink
+//     for (unsigned int i = 0; i < n; ++i) {
+//         if (i == source || i == sink) {
+//             if (std::abs(net_flow[source] + net_flow[sink]) > HPLUS_EPSILON) {
+//                 LOG_WARNING << "Flow out of source doesn't match flow into sink";
+//                 return false;
+//             }
+//         }
+
+//         // For conservation, net_flow should be approximately 0
+//         if (std::abs(net_flow[i]) > HPLUS_EPSILON) {
+//             LOG_DEBUG << "A net flow is not zero";
+//             return false;
+//         }
+//     }
+
+//     return true;
+// }
+
+static inline double update_graph(const hplus::instance& inst, std::vector<std::vector<network_edge>>& graph, const std::vector<double>& relax_point,
+                                  const std::vector<unsigned int> pcf, const std::vector<unsigned int>& actions_eff) {
+    static const unsigned int source = inst.n, sink = inst.n + 1, sink_action = inst.m + 1;
+
+    double removed_flow = 0;
+
+    // TODO: Remove, just for debugging
+    double previous_flow = 0, current_flow = 0;
+    for (const auto& [to, rev, c] : graph[source]) previous_flow += graph[to][rev].c;
+
+    // ASSERT(is_flow_conservative(graph, source, sink));
+
+    LOG_DEBUG << "Previous flow: " << previous_flow;
+
+    LOG_DEBUG << "Source: " << source << " - Sink: " << sink << " - Sink action: " << sink_action;
+
+    // Remove old pcf edges
+    for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
+        std::vector<unsigned int> pre;
+        if (inst.actions[act_i].pre_sparse.empty())
+            pre.push_back(source);
+        else
+            pre = inst.actions[act_i].pre_sparse;
+
+        for (const auto& p : pre) {
+            LOG_DEBUG << "| Precondition: " << p;
+            if (p == pcf[act_i]) continue;
+
+            const unsigned int to = actions_eff[act_i], rev_index = graph[p][to].rev;
+
+            LOG_DEBUG << "Action's effect: " << to;
+
+            // Reset the residual capacity... no additional steps required
+            graph[p][to].c = 0;
+            // If there's flow, remove it and fix the graph accordingly
+            if (graph[to][rev_index].c > HPLUS_EPSILON) {
+                const double flow_to_remove = graph[to][rev_index].c;
+                graph[to][rev_index].c = 0;
+                flow_removal(graph, to, sink, flow_to_remove);
+                LOG_DEBUG << "Finished the first one";
+                flow_removal(graph, source, p, flow_to_remove);
+                LOG_DEBUG << "Finished the second one";
+                exit(1);
+            }
+        }
+    }
+
+    LOG_DEBUG << "HERE";
+    exit(1);
+
+    // Fix the goal's pcf
+    for (const auto& p : inst.goal) {
+        unsigned int edge_idx = 0;
+        for (unsigned int i = 0; i < graph[p].size(); i++) {
+            if (graph[p][i].to == sink) {
+                edge_idx = i;
+                break;
+            }
+        }
+        const unsigned int rev_idx = graph[p][edge_idx].rev;
+        const double capacity = graph[p][edge_idx].c + graph[sink][rev_idx].c;
+
+        // If this goal fact is the pcf...
+        if (p == pcf[sink_action]) {
+            // If the capacity of this edge is already 1, then the pcf didn't change from the previous iteration... we can directly skip this update
+            if (capacity >= 1 - HPLUS_EPSILON) break;
+
+            // ... otherwise, we need to set it's capacity to 1 (just increase the residual capacity)
+
+            graph[p][edge_idx].c += 1 - capacity;
+        }
+
+        // If this goal fact isn't the pcf (anymore)...
+        else {
+            // Reset the residual capacity... no additional steps required
+            graph[p][sink].c = 0;
+            // If there's flow, remove it and fix the graph accordingly
+            if (graph[sink][rev_idx].c > HPLUS_EPSILON) {
+                const double flow_to_remove = graph[sink][rev_idx].c;
+                graph[sink][rev_idx].c = 0;
+                flow_removal(graph, source, p, flow_to_remove);
+            }
+        }
+    }
+
+    // Update graph according to action's new weights
+    for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
+        const unsigned int from = pcf[act_i], to = actions_eff[act_i];
+        unsigned int to_idx = 0;
+        for (unsigned int i = 0; i < graph[from].size(); i++) {
+            const auto& [t, _1, _2] = graph[from][i];
+            if (to == t) {
+                to_idx = i;
+                break;
+            }
+        }
+
+        const unsigned int rev_idx = graph[from][to_idx].rev;
+        const double edge_flow = graph[to][rev_idx].c, edge_residual = graph[from][to_idx].c, edge_capacity = edge_flow + edge_residual,
+                     diff = relax_point[act_i] - edge_capacity;
+
+        // No change, go to next action
+        if (std::abs(diff) <= HPLUS_EPSILON) {
+            continue;
+        }
+        // Increase the capacity: simply increase the residual capacity
+        else if (diff > HPLUS_EPSILON) {
+            graph[from][to_idx].c += diff;
+        }
+        // Reduce residual capacity and (if needed) the flow
+        else {
+            const double new_residual_capacity = graph[from][to_idx].c + diff;
+
+            // Reducing residual capacity is enough... no flow has changed, so the flow conservation is preserved
+            if (new_residual_capacity >= -HPLUS_EPSILON) {
+                graph[from][to_idx].c = (new_residual_capacity > HPLUS_EPSILON) ? new_residual_capacity : 0;
+                continue;
+            }
+            // The residual flow is not enough.. we have to reduce the flow aswell
+            else {
+                graph[from][to_idx].c = 0;                             // Remove all residual capacity
+                const double flow_to_remove = -new_residual_capacity;  // Compute the flow needed to be removed
+                graph[to][rev_idx].c -= flow_to_remove;                // Remove it from this edge
+                flow_removal(graph, to, sink, flow_to_remove);         // Reduce the flow reaching the sink
+                flow_removal(graph, source, from, flow_to_remove);     // Reduce the flow leaving the source
+
+                removed_flow += flow_to_remove;
+            }
+        }
+
+        // Invariant: at the end of each iteration, the graph is still in a situation of flow conservation and the
+        // current flow (computable as the amount of flow leaving the source) is previous_max_flow - removed_flow
+        current_flow = 0;
+        for (const auto& [to, rev, c] : graph[source]) current_flow += graph[to][rev].c;
+        ASSERT(std::abs(previous_flow - removed_flow - current_flow) < HPLUS_EPSILON);
+        // ASSERT(is_flow_conservative(graph, source, sink));
+    }
+
+    return removed_flow;
+}
+
+[[nodiscard]]
+static inline std::vector<std::vector<network_edge>> build_max_flow_graph(const hplus::instance& inst, const std::vector<double>& actions_weights,
+                                                                          const std::vector<unsigned int>& pcf, std::vector<int>& actions_effect) {
+    std::vector<std::vector<network_edge>> graph(inst.n + 2);
+    // nodes [0 -> n - 1] => facts
+    // node [n] => source
+    // static const unsigned int source{inst.n};
+    // node [n + 1] => sink
+    static const unsigned int sink{inst.n + 1}, sink_action = inst.m;
     // nodes [n + 2 -> ...] => dummy nodes for actions effects (at most m)
     // estimated number of nodes: O(n + m)
 
@@ -207,7 +410,7 @@ static inline std::vector<std::vector<network_edge>> build_max_flow_graph(const 
     };
 
     for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
-        const unsigned int from = pcf[act_i] < 0 ? source : static_cast<unsigned int>(pcf[act_i]);
+        const unsigned int from = pcf[act_i];
         switch (inst.actions[act_i].eff_sparse.size()) {
             case 0:  // No effect -> No edge
                 LOG_ERROR << "Found action with no effects...";
@@ -226,20 +429,8 @@ static inline std::vector<std::vector<network_edge>> build_max_flow_graph(const 
         }
     }
 
-    // Compute the pcf for the dummy goal action
-    double min_r1{2}, min_r2{2};
-    unsigned int g_pcf{0};
-    for (const auto& g : inst.goal) {
-        if (r1_values[g] < min_r1 - HPLUS_EPSILON) {
-            min_r1 = r1_values[g];
-            min_r2 = r2_values[g];
-            g_pcf = g;
-        } else if (std::abs(r1_values[g] - min_r1) < HPLUS_EPSILON && r2_values[g] < min_r2 - HPLUS_EPSILON) {  // Use R2 as tie-breaking
-            min_r2 = r2_values[g];
-            g_pcf = g;
-        }
-    }
-    add_edge(g_pcf, sink, 1);
+    // Add edge for goal's pcf
+    add_edge(pcf[sink_action], sink, 1);
 
     return graph;
 }
@@ -316,9 +507,9 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
     // ====================================================== //
     // ============= R3 incremental computation ============= //
     // ====================================================== //
-    std::vector<std::vector<network_edge>> old_max_flow_graph, new_max_flow_graph;
-    double r3;
-    std::vector<int> old_pcf, new_pcf, actions_eff(inst.m, -1);
+    std::vector<std::vector<network_edge>> old_max_flow_graph;
+    double r3 = 0;
+    auto [new_max_flow_graph, actions_effect] = max_flow_graph_construction(inst);
     auto revert_r3_changes = [&]() { new_max_flow_graph = old_max_flow_graph; };
 
     // ====================================================== //
@@ -348,8 +539,8 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
     };
 
     // TODO: Remove... just for debugging
-    size_t initial_lm_size, final_lm_size;
-    double initial_violation, final_violation, start_time = GET_TIME(), normal_time, minimization_time;
+    size_t initial_lm_size = 0, final_lm_size = 0;
+    double initial_violation = 0, final_violation = 0, start_time = GET_TIME(), normal_time = 0, minimization_time = 0;
     unsigned int repetitions{0};
 
     // ====================================================== //
@@ -382,16 +573,24 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
         // Otherwise, we rely on R3 to understand wether there's a violated landmark...
 
         // ~~~~~~~~~~~~ R3 COMPUTATION ~~~~~~~~~~~ //
-        new_pcf = compute_pcf(inst, r1_values, r2_values);
+        LOG_DEBUG << "We get here";
+        double removed_flow = update_graph(inst, new_max_flow_graph, relax_point_copy, compute_pcf(inst, r1_values, r2_values), actions_effect);
+        exit(1);
+        r3 = r3 - removed_flow + compute_max_flow(new_max_flow_graph, source, sink);
 
-        // TODO: Remember to update the old_max_flow_graph when un-commenting this part
+        // LOG_DEBUG << r3;
+        // exit(1);
+
         // if (!found) {  // First iteration
-        new_max_flow_graph = build_max_flow_graph(inst, relax_point_copy, r1_values, r2_values, new_pcf, actions_eff);
-        r3 = compute_max_flow(new_max_flow_graph, source, sink);
+        // new_max_flow_graph = build_max_flow_graph(inst, relax_point_copy, r1_values, r2_values, new_pcf, actions_eff);
+        // r3 = compute_max_flow(new_max_flow_graph, source, sink);
         // } else {  // This is a minimization iteration
         //     // TODO: Remove, only for debugging...
-        //     auto manual_max_flow_graph = build_max_flow_graph(inst, relax_point_copy, r1_values, r2_values, new_pcf, actions_eff);
-        //     double manual_r3 = compute_max_flow(manual_max_flow_graph, source, sink);
+        // std::vector<int> tmp;
+        // new_max_flow_graph = build_max_flow_graph(inst, relax_point_copy, compute_pcf(inst, r1_values, r2_values), tmp);
+        // r3 = compute_max_flow(new_max_flow_graph, source, sink);
+
+        // ASSERT(is_flow_conservative(inst, new_max_flow_graph, source, sink));
 
         //     // ~~~~~~ R3 INCREMENTAL COMPUTATION ~~~~~ //
         //     unsigned int previous_pcf = old_pcf[rounded_act] < 0 ? source : static_cast<unsigned int>(old_pcf[rounded_act]);
@@ -426,9 +625,9 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
         //         r3 += new_max_flow_graph[to][rev].c;
         //     }
 
-        //     if (std::abs(manual_r3 - r3) >= HPLUS_EPSILON) LOG_DEBUG << manual_r3 << " / " << r3;
+        // if (std::abs(manual_r3 - r3) >= HPLUS_EPSILON) LOG_DEBUG << manual_r3 << " / " << r3;
 
-        //     ASSERT(std::abs(manual_r3 - r3) < HPLUS_EPSILON);
+        // ASSERT(std::abs(manual_r3 - r3) < HPLUS_EPSILON);
         // }
 
         // Note: if R3 < 1, then there's a violated landmark, BUT if R3 == 1 we can't assume that no landmark is violated... in this case we simply
@@ -446,8 +645,7 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
         }
 
         // Now we know that there's a new landmark to extract...
-        old_pcf = new_pcf;
-        // old_max_flow_graph = new_max_flow_graph;
+        old_max_flow_graph = new_max_flow_graph;
 
         // ~~~~~~~ GET LANDMARK AS MIN-CUT ~~~~~~~ //
         landmark = get_r3_violated_landmark(inst, new_max_flow_graph);
@@ -474,12 +672,12 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
 
     // TODO: Remove... just for debugging
     minimization_time = (GET_TIME() - start_time) * 1000;
-    if (exec.min_fract_lm)
-        LOG_DEBUG << "Minimization results: LM size: " << std::setw(5) << initial_lm_size << " -> " << std::setw(5) << final_lm_size
-                  << " -- Violation: " << std::fixed << std::setprecision(4) << initial_violation << " -> " << std::fixed << std::setprecision(4)
-                  << final_violation << " -- Repetitions: " << std::setw(4) << repetitions << " -- Time: normal: " << std::fixed << std::setw(6)
-                  << std::setprecision(2) << normal_time << "ms total: " << std::fixed << std::setw(6) << std::setprecision(2) << minimization_time
-                  << "ms";
+    // if (exec.min_fract_lm)
+    LOG_DEBUG << "Minimization results: LM size: " << std::setw(5) << initial_lm_size << " -> " << std::setw(5) << final_lm_size
+              << " -- Violation: " << std::fixed << std::setprecision(4) << initial_violation << " -> " << std::fixed << std::setprecision(4)
+              << final_violation << " -- Repetitions: " << std::setw(4) << repetitions << " -- Time: normal: " << std::fixed << std::setw(6)
+              << std::setprecision(2) << normal_time << "ms total: " << std::fixed << std::setw(6) << std::setprecision(2) << minimization_time
+              << "ms";
 
     return {true, landmark};
 }
