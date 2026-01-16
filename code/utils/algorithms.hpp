@@ -362,6 +362,7 @@ typedef struct {
     unsigned int to;   // Destination node
     unsigned int rev;  // Index of reverse edge in the destination's adjacency list
     double c;          // Remaining capacity of the edge
+    bool is_reverse;
 } network_edge;
 
 [[nodiscard]]
@@ -454,21 +455,15 @@ static inline double compute_max_flow(std::vector<std::vector<network_edge>>& gr
 // ##################################################################### //
 static double dfs_remove_flow(std::vector<std::vector<network_edge>>& graph, unsigned int u, const unsigned int target, double flow_to_remove,
                               binary_set& visited) {
-    LOG_DEBUG << std::string(visited);
     if (u == target) return flow_to_remove;
 
     visited.add(u);
 
     for (auto& edge : graph[u]) {
-        if (visited[edge.to]) continue;
+        if (visited[edge.to] || edge.is_reverse) continue;
 
         // Check available flow on this edge (stored in reverse edge capacity)
         double available_flow = graph[edge.to][edge.rev].c;
-
-        // LOG_DEBUG << "------------------------------------------------------------";
-        // LOG_DEBUG << edge.to;
-        // LOG_DEBUG << edge.rev;
-        // LOG_DEBUG << graph[edge.to].size();
 
         if (available_flow > HPLUS_EPSILON) {  // Has flow
             // Recursively try to push through to target
