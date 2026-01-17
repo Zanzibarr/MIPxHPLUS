@@ -126,68 +126,6 @@ static inline std::vector<unsigned int> compute_pcf(const hplus::instance& inst,
     return pcf;
 }
 
-#include <fstream>
-#include <iostream>
-
-static inline void write_graph(const std::string& file_name, const hplus::instance& inst, const std::vector<std::vector<network_edge>>& graph,
-                               const std::vector<unsigned int>& pcf, const std::vector<unsigned int>& act_eff) {
-    std::ofstream file(file_name);
-
-    file << "digraph MyGraph {\n";
-    file << "   rankdir=LR;\n";
-    file << "   node [shape=circle];\n\n";
-
-    for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
-        unsigned int label = act_i;
-        unsigned int from = pcf[act_i];
-        unsigned int to = act_eff[act_i];
-        unsigned int edge_idx = 0;
-        for (unsigned int i = 0; i < graph[from].size(); i++) {
-            if (graph[from][i].to == to) {
-                edge_idx = i;
-                break;
-            }
-        }
-        unsigned int rev_idx = graph[from][edge_idx].rev;
-        double flow = graph[to][rev_idx].c, res_cap = graph[from][edge_idx].c;
-        double capacity = flow + res_cap;
-
-        if (capacity > HPLUS_EPSILON) {
-            file << "   " << from << " -> " << to << " [label=\"(" << label << ")" << res_cap << "/" << flow << "\"];\n";
-            if (inst.actions[act_i].eff_sparse.size() > 1) {
-                for (const auto& eff : inst.actions[act_i].eff_sparse) {
-                    for (unsigned int i = 0; i < graph[to].size(); i++) {
-                        if (graph[to][i].to == eff) {
-                            edge_idx = i;
-                            break;
-                        }
-                    }
-                    rev_idx = graph[to][edge_idx].rev;
-                    flow = graph[eff][rev_idx].c;
-                    res_cap = graph[to][edge_idx].c;
-                    file << "   " << to << " -> " << eff << " [label=\"(" << label << ")" << res_cap << "/" << flow << "\"];\n";
-                }
-            }
-        }
-    }
-
-    unsigned int sink = inst.n + 1, sink_action = inst.m;
-    unsigned int label = sink_action;
-    unsigned int edge_idx = 0;
-    for (unsigned int i = 0; i < graph[pcf[sink_action]].size(); i++) {
-        if (graph[pcf[sink_action]][i].to == sink) {
-            edge_idx = i;
-            break;
-        }
-    }
-    unsigned int rev_idx = graph[pcf[sink_action]][edge_idx].rev;
-    double res_cap = graph[pcf[sink_action]][edge_idx].c, flow = graph[sink][rev_idx].c;
-    file << "   " << pcf[inst.m] << " -> " << inst.n + 1 << " [label=\"(" << label << ")" << res_cap << "/" << flow << "\"];\n";
-
-    file << "}\n";
-    file.close();
-}
-
 static inline std::pair<std::vector<std::vector<network_edge>>, std::vector<unsigned int>> max_flow_graph_construction(const hplus::instance& inst) {
     std::vector<std::vector<network_edge>> graph(inst.n + 2);
     // nodes [0 -> n - 1] => facts
@@ -283,9 +221,10 @@ static inline double update_graph(const hplus::instance& inst, std::vector<std::
             if (flow > HPLUS_EPSILON) {
                 const double flow_to_remove = flow;
                 graph[to][rev_index].c = 0;
-                flow_removal(graph, to, sink, flow_to_remove);
-                flow_removal(graph, source, p, flow_to_remove);
-                removed_flow += flow_to_remove;
+                double removed_ahead = flow_removal(graph, to, sink, flow_to_remove);
+                double removed_before = flow_removal(graph, source, p, flow_to_remove);
+                ASSERT(abs(removed_ahead - removed_before) <= HPLUS_EPSILON);
+                removed_flow += removed_ahead;
             }
         }
 
@@ -330,8 +269,9 @@ static inline double update_graph(const hplus::instance& inst, std::vector<std::
             if (graph[sink][rev_idx].c > HPLUS_EPSILON) {
                 const double flow_to_remove = graph[sink][rev_idx].c;
                 graph[sink][rev_idx].c = 0;
-                flow_removal(graph, source, p, flow_to_remove);
-                removed_flow += flow_to_remove;
+                double removed = flow_removal(graph, source, p, flow_to_remove);
+                ASSERT(abs(flow_to_remove - removed) <= HPLUS_EPSILON);
+                removed_flow += removed;
             }
         }
 
@@ -372,23 +312,23 @@ static inline double update_graph(const hplus::instance& inst, std::vector<std::
         // Reduce residual capacity and (if needed) the flow
         else {
             LOG_ERROR << "Distructive (negative diffs) modifications to the graph should be already by handled by pcf changes..";
-            const double new_residual_capacity = graph[from][to_idx].c + diff;
+            // const double new_residual_capacity = graph[from][to_idx].c + diff;
 
-            // Reducing residual capacity is enough... no flow has changed, so the flow conservation is preserved
-            if (new_residual_capacity >= -HPLUS_EPSILON) {
-                graph[from][to_idx].c = (new_residual_capacity > HPLUS_EPSILON) ? new_residual_capacity : 0;
-                continue;
-            }
-            // The residual flow is not enough.. we have to reduce the flow aswell
-            else {
-                graph[from][to_idx].c = 0;                             // Remove all residual capacity
-                const double flow_to_remove = -new_residual_capacity;  // Compute the flow needed to be removed
-                graph[to][rev_idx].c -= flow_to_remove;                // Remove it from this edge
-                flow_removal(graph, to, sink, flow_to_remove);         // Reduce the flow reaching the sink
-                flow_removal(graph, source, from, flow_to_remove);     // Reduce the flow leaving the source
+            // // Reducing residual capacity is enough... no flow has changed, so the flow conservation is preserved
+            // if (new_residual_capacity >= -HPLUS_EPSILON) {
+            //     graph[from][to_idx].c = (new_residual_capacity > HPLUS_EPSILON) ? new_residual_capacity : 0;
+            //     continue;
+            // }
+            // // The residual flow is not enough.. we have to reduce the flow aswell
+            // else {
+            //     graph[from][to_idx].c = 0;                             // Remove all residual capacity
+            //     const double flow_to_remove = -new_residual_capacity;  // Compute the flow needed to be removed
+            //     graph[to][rev_idx].c -= flow_to_remove;                // Remove it from this edge
+            //     flow_removal(graph, to, sink, flow_to_remove);         // Reduce the flow reaching the sink
+            //     flow_removal(graph, source, from, flow_to_remove);     // Reduce the flow leaving the source
 
-                removed_flow += flow_to_remove;
-            }
+            //     removed_flow += flow_to_remove;
+            // }
         }
 
         // TODO: Remove, just for debugging
@@ -603,8 +543,6 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
         if (std::abs(manual_r3 - r3) >= HPLUS_EPSILON) {
             LOG_DEBUG << "Source: " << source;
             LOG_DEBUG << "Sink: " << sink;
-            write_graph("incremental.dot", inst, new_max_flow_graph, pcf, actions_effect);
-            write_graph("manual.dot", inst, manual_max_flow_graph, pcf, actions_effect);
             LOG_DEBUG << manual_r3 << " / " << r3;
         }
 

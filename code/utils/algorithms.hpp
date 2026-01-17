@@ -10,7 +10,9 @@
 #include <stdlib.h>  // size_t
 
 #include <algorithm>  // std::lower_bound
-#include <numeric>    // std::iota
+#include <fstream>
+#include <iostream>
+#include <numeric>  // std::iota
 #include <queue>
 #include <stack>
 #include <string>
@@ -483,22 +485,47 @@ static double dfs_remove_flow(std::vector<std::vector<network_edge>>& graph, uns
 }
 
 // TODO: Optimize
-static inline void flow_removal(std::vector<std::vector<network_edge>>& graph, unsigned int from, unsigned int to, const double flow_to_remove) {
+[[nodiscard]]
+static inline double flow_removal(std::vector<std::vector<network_edge>>& graph, unsigned int from, unsigned int to, const double flow_to_remove) {
     double remaining = flow_to_remove;
 
     // Keep finding paths and removing flow until we've removed enough
     while (remaining > HPLUS_EPSILON) {
         binary_set visited(graph.size());
         double removed = dfs_remove_flow(graph, from, to, remaining, visited);
-
-        if (removed < HPLUS_EPSILON) {
-            // No more paths with flow available
-            // This shouldn't happen in a valid flow network
-            break;
-        }
-
         remaining -= removed;
+
+        if (removed <= HPLUS_EPSILON) {
+            // Loop detected, no flow removed: this happens when we try to remove flow from an edge a->b inside a loop that has no connections with
+            // the rest of the graph... since we usually call flow_remove(b, sink) AND flow_remove(source, a), if a->b is in a isolated loop the first
+            // call will find a loop while the other will find no path...
+            return flow_to_remove - remaining;
+        }
     }
+
+    return flow_to_remove;
+}
+
+static inline void write_graph(const std::string& file_name, const std::vector<std::vector<network_edge>>& graph) {
+    std::ofstream file(file_name);
+
+    file << "digraph MyGraph {\n";
+    file << "   rankdir=LR;\n";
+    file << "   node [shape=circle];\n\n";
+
+    for (unsigned int from = 0; from < graph.size(); from++) {
+        for (const auto& [to, rev, c, is_rev] : graph[from]) {
+            if (is_rev) continue;
+            double flow = graph[to][rev].c, res_cap = c;
+
+            if (flow > HPLUS_EPSILON) {
+                file << "   " << from << " -> " << to << " [label=\"" << res_cap << "/" << flow << "\"];\n";
+            }
+        }
+    }
+
+    file << "}\n";
+    file.close();
 }
 
 // TODO: Implement incremental computation with these methods
