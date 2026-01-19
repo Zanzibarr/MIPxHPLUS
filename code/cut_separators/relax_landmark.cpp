@@ -271,7 +271,6 @@ static inline double update_graph(const hplus::instance& inst, std::vector<std::
                 const double flow_to_remove = graph[sink][rev_idx].c;
                 graph[sink][rev_idx].c = 0;
                 double removed = flow_removal(graph, source, p, flow_to_remove);
-                // ! This fails on transport-sat14-strips-p06
                 ASSERT(abs(flow_to_remove - removed) <= HPLUS_EPSILON);
                 removed_flow += removed;
             }
@@ -534,19 +533,23 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
     // TODO: Remove... just for debugging
     size_t initial_lm_size = 0, final_lm_size = 0;
     double initial_violation = 0, final_violation = 0, start_time = GET_TIME(), normal_time = 0, minimization_time = 0;
-    unsigned int repetitions{0};
+    unsigned int total_repetitions{0}, r1r2_repetitions{0}, r3_repetitions{0}, pcf_diff{0};
+    std::vector<unsigned int> old_pcf;
 
     // ====================================================== //
     // =============== Minimization procedure =============== //
     // ====================================================== //
     while (rounded_act_lmidx < landmark.size()) {
-        repetitions++;
+        total_repetitions++;
+
+        // TODO: Upper bound on number of repetitions... (to be set through a CLI parameter)
 
         // ~~~~~~~~~~ R1/R2 COMPUTATION ~~~~~~~~~~ //
         r1r2_trail = std::stack<std::pair<unsigned int, double>>();  // Reset the trail
         r1r2_reversing_state = r1r2_state;                           // Store current state
         compute_r1_r2_incremental(inst, relax_point_copy, r1_values, r1_act_values, r2_values, r2_act_values, r1r2_state, r1r2_actions_queue,
                                   r1r2_acts_in_queue, r1r2_trail);
+        r1r2_repetitions++;
         double r1{1};
         for (const auto& p : inst.goal) r1 = std::min(r1, r1_values[p]);
 
@@ -568,8 +571,15 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
         const auto& pcf = compute_pcf(inst, r1_values, r2_values);
         double removed_flow = update_graph(inst, new_max_flow_graph, relax_point_copy, pcf, actions_effect);
         double additional_flow = compute_max_flow(new_max_flow_graph, source, sink);
+        r3_repetitions++;
         // LOG_DEBUG << "R3 = " << r3 << " - " << removed_flow << " + " << additional_flow;
         r3 = r3 - removed_flow + additional_flow;
+
+        if (found) {
+            for (unsigned int i = 0; i < pcf.size(); i++) {
+                if (old_pcf[i] != pcf[i]) pcf_diff++;
+            }
+        }
 
         // TODO: Remove, just for debugging..
         auto manual_max_flow_graph = build_max_flow_graph(inst, relax_point_copy, pcf);
@@ -584,7 +594,6 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
             LOG_DEBUG << manual_r3 << " / " << r3;
         }
 
-        // ! This fails on driverlog-p16
         ASSERT(std::abs(manual_r3 - r3) < HPLUS_EPSILON);
 
         // Note: if R3 < 1, then there's a violated landmark, BUT if R3 == 1 we can't assume that no landmark is violated... in this case we simply
@@ -604,6 +613,7 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
         // Now we know that there's a new landmark to extract...
         old_max_flow_graph = new_max_flow_graph;
         prev_r3 = r3;
+        old_pcf = pcf;
 
         // ~~~~~~~ GET LANDMARK AS MIN-CUT ~~~~~~~ //
         landmark = get_r3_violated_landmark(inst, new_max_flow_graph);
@@ -628,17 +638,14 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
         if (!exec.min_fract_lm) break;
     }
 
-    // TODO: Print statistics about number of pcf changes: how often do I need destructive changes to the graph? how many pcf changes are there? how
-    // TODO: | many effective re-computation of r1, r2 and r3 are there?
-
     // TODO: Remove... just for debugging
     minimization_time = (GET_TIME() - start_time) * 1000;
-    // if (exec.min_fract_lm)
     LOG_DEBUG << "Minimization results: LM size: " << std::setw(5) << initial_lm_size << " -> " << std::setw(5) << final_lm_size
               << " -- Violation: " << std::fixed << std::setprecision(4) << initial_violation << " -> " << std::fixed << std::setprecision(4)
-              << final_violation << " -- Repetitions: " << std::setw(4) << repetitions << " -- Time: normal: " << std::fixed << std::setw(6)
-              << std::setprecision(2) << normal_time << "ms total: " << std::fixed << std::setw(6) << std::setprecision(2) << minimization_time
-              << "ms";
+              << final_violation << " -- Repetitions: " << std::setw(4) << total_repetitions << " (R1/R2: " << std::setw(4) << r1r2_repetitions
+              << " - R3: " << std::setw(4) << r3_repetitions << " - Pcf changes: " << std::fixed << std::setw(6) << std::setprecision(2)
+              << static_cast<double>(pcf_diff) / r3_repetitions << ")" << " -- Time: normal: " << std::fixed << std::setw(6) << std::setprecision(2)
+              << normal_time << "ms total: " << std::fixed << std::setw(6) << std::setprecision(2) << minimization_time << "ms";
 
     return {true, landmark};
 }
