@@ -1,3 +1,4 @@
+#include <iostream>
 #include <list>
 
 #include "relax_callback.hpp"
@@ -270,6 +271,7 @@ static inline double update_graph(const hplus::instance& inst, std::vector<std::
                 const double flow_to_remove = graph[sink][rev_idx].c;
                 graph[sink][rev_idx].c = 0;
                 double removed = flow_removal(graph, source, p, flow_to_remove);
+                // ! This fails on transport-sat14-strips-p06
                 ASSERT(abs(flow_to_remove - removed) <= HPLUS_EPSILON);
                 removed_flow += removed;
             }
@@ -341,22 +343,52 @@ static inline double update_graph(const hplus::instance& inst, std::vector<std::
         ASSERT(abs(previous_flow - removed_flow - current_flow) < HPLUS_EPSILON);
     }
 
+    // Remove disconnected parts of the graph
+    binary_set reachable(graph.size());
+    std::queue<unsigned int> to_visit;
+    to_visit.push(source);
+    reachable.add(source);
+
+    // Parts connected to the graph
+    while (!to_visit.empty()) {
+        unsigned int node = to_visit.front();
+        to_visit.pop();
+
+        for (const auto& [to, rev, c, is_rev] : graph[node]) {
+            // A node is connected with the rest if there's an edge connnected to it, which has flow
+            if (!is_rev && graph[to][rev].c > HPLUS_EPSILON && !reachable[to]) {
+                reachable.add(to);
+                to_visit.push(to);
+            }
+        }
+    }
+
+    // Remove parts that have no flow reaching them from the source
+    for (const auto& node : !reachable) {
+        for (auto& edge : graph[node]) {
+            // If this is a reverse edge (contains flow)
+            if (edge.is_reverse && edge.c > HPLUS_EPSILON) {
+                const double flow_to_remove = edge.c;
+                edge.c = 0;
+                graph[edge.to][edge.rev].c += flow_to_remove;
+            }
+        }
+    }
+
     return removed_flow;
 }
 
 [[nodiscard]]
 static inline std::vector<std::vector<network_edge>> build_max_flow_graph(const hplus::instance& inst, const std::vector<double>& actions_weights,
-                                                                          const std::vector<unsigned int>& pcf, std::vector<int>& actions_effect) {
+                                                                          const std::vector<unsigned int>& pcf) {
     std::vector<std::vector<network_edge>> graph(inst.n + 2);
     // nodes [0 -> n - 1] => facts
     // node [n] => source
-    // static const unsigned int source{inst.n};
+    static const unsigned int source{inst.n};
     // node [n + 1] => sink
     static const unsigned int sink{inst.n + 1}, sink_action = inst.m;
     // nodes [n + 2 -> ...] => dummy nodes for actions effects (at most m)
     // estimated number of nodes: O(n + m)
-
-    actions_effect = std::vector<int>(inst.m, -1);
 
     auto add_edge = [&](unsigned int from, unsigned int to, double capacity) {
         graph[from].emplace_back(to, graph[to].size(), capacity, false);
@@ -364,23 +396,26 @@ static inline std::vector<std::vector<network_edge>> build_max_flow_graph(const 
     };
 
     for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
+        // Find this action's effect
+        ASSERT(!inst.actions[act_i].eff_sparse.empty());
+        // To prevent duplicates in the adjacency lists always create a dummy node so that we have: pcf -> dummy -> effect(s)
+        const unsigned int to = graph.size();
+        graph.push_back(std::vector<network_edge>());
+
+        // Get all preconditions (linking the source node if needed)
+        std::vector<unsigned int> preconditions;
+        if (inst.actions[act_i].pre_sparse.empty())
+            preconditions.push_back(source);
+        else
+            preconditions = inst.actions[act_i].pre_sparse;
+
         const unsigned int from = pcf[act_i];
-        switch (inst.actions[act_i].eff_sparse.size()) {
-            case 0:  // No effect -> No edge
-                LOG_ERROR << "Found action with no effects...";
-                break;
-            case 1:  // One effect -> Simple edge
-                add_edge(from, inst.actions[act_i].eff_sparse[0], actions_weights[act_i]);
-                actions_effect[act_i] = inst.actions[act_i].eff_sparse[0];
-                break;
-            default:  // Multiple effects -> Create one edge a -> dummy and multiple edges dummy -> effect
-                const unsigned int dummy{static_cast<unsigned int>(graph.size())};
-                actions_effect[act_i] = dummy;
-                graph.push_back(std::vector<network_edge>());  // Create new dummy node
-                add_edge(from, dummy, actions_weights[act_i]);
-                for (const auto& to : inst.actions[act_i].eff_sparse) add_edge(dummy, to, 1);
-                break;
-        }
+        add_edge(from, to, actions_weights[act_i]);
+
+        for (const auto& eff : inst.actions[act_i].eff_sparse)
+            add_edge(to, eff, 1);  // dummy edges have capacity of 1 since they are sourced only by the from -> to edge, which will have
+                                   // the action's weight... in this way we guarantee the min-cut to only be associated to real actions
+                                   // and not dummy ones (if capacity is 1, then this won't ever be saturated, unless the minimum cut is >= 1)
     }
 
     // Add edge for goal's pcf
@@ -533,19 +568,23 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
         const auto& pcf = compute_pcf(inst, r1_values, r2_values);
         double removed_flow = update_graph(inst, new_max_flow_graph, relax_point_copy, pcf, actions_effect);
         double additional_flow = compute_max_flow(new_max_flow_graph, source, sink);
+        // LOG_DEBUG << "R3 = " << r3 << " - " << removed_flow << " + " << additional_flow;
         r3 = r3 - removed_flow + additional_flow;
 
         // TODO: Remove, just for debugging..
-        std::vector<int> _;
-        auto manual_max_flow_graph = build_max_flow_graph(inst, relax_point_copy, pcf, _);
+        auto manual_max_flow_graph = build_max_flow_graph(inst, relax_point_copy, pcf);
         auto manual_r3 = compute_max_flow(manual_max_flow_graph, source, sink);
 
         if (std::abs(manual_r3 - r3) >= HPLUS_EPSILON) {
             LOG_DEBUG << "Source: " << source;
             LOG_DEBUG << "Sink: " << sink;
+            // write_graph("previous.dot", old_max_flow_graph);
+            // write_graph("manual.dot", manual_max_flow_graph);
+            // write_graph("incremental.dot", new_max_flow_graph);
             LOG_DEBUG << manual_r3 << " / " << r3;
         }
 
+        // ! This fails on driverlog-p16
         ASSERT(std::abs(manual_r3 - r3) < HPLUS_EPSILON);
 
         // Note: if R3 < 1, then there's a violated landmark, BUT if R3 == 1 we can't assume that no landmark is violated... in this case we simply
