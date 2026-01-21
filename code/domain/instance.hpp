@@ -9,9 +9,6 @@
 
 #include "../external/bs.hxx"
 
-#define INFBOUND_DBL 1e20
-#define INFBOUND_INT std::numeric_limits<unsigned int>::max()
-
 namespace hplus {
 
 enum class solution_status { OPT = 0, FEAS = 1, INFEAS = 2, NOTFOUND = 404, LOST = 500 };

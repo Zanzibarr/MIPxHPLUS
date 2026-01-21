@@ -230,12 +230,10 @@ static inline double update_graph(const hplus::instance& inst, std::vector<std::
         }
 
         // TODO: Remove, just for debugging
-        // Invariant: at the end of each iteration, the graph is still in a situation of flow conservation and the
+        // Invariant: at the end of each iteration, the (reachable part of the) graph is still in a situation of flow conservation and the
         // current flow (computable as the amount of flow leaving the source) is previous_max_flow - removed_flow
         current_flow = 0;
         for (const auto& [to, rev, c, is_rev] : graph[source]) current_flow += graph[to][rev].c;
-        // TODO: Implement flow conservation check
-        // ASSERT(is_flow_conservative(graph));
         ASSERT(abs(previous_flow - removed_flow - current_flow) < HPLUS_EPSILON);
     }
 
@@ -277,12 +275,10 @@ static inline double update_graph(const hplus::instance& inst, std::vector<std::
         }
 
         // TODO: Remove, just for debugging
-        // Invariant: at the end of each iteration, the graph is still in a situation of flow conservation and the
+        // Invariant: at the end of each iteration, the (reachable part of the) graph is still in a situation of flow conservation and the
         // current flow (computable as the amount of flow leaving the source) is previous_max_flow - removed_flow
         current_flow = 0;
         for (const auto& [to, rev, c, is_rev] : graph[source]) current_flow += graph[to][rev].c;
-        // TODO: Implement flow conservation check
-        // ASSERT(is_flow_conservative(graph));
         ASSERT(abs(previous_flow - removed_flow - current_flow) < HPLUS_EPSILON);
     }
 
@@ -312,7 +308,7 @@ static inline double update_graph(const hplus::instance& inst, std::vector<std::
         }
         // Reduce residual capacity and (if needed) the flow
         else {
-            LOG_ERROR << "Distructive (negative diffs) modifications to the graph should be already by handled by pcf changes..";
+            LOG_ERROR << "Distructive (negative diffs) modifications to the graph should be already handled by pcf changes..";
             // const double new_residual_capacity = graph[from][to_idx].c + diff;
 
             // // Reducing residual capacity is enough... no flow has changed, so the flow conservation is preserved
@@ -333,12 +329,10 @@ static inline double update_graph(const hplus::instance& inst, std::vector<std::
         }
 
         // TODO: Remove, just for debugging
-        // Invariant: at the end of each iteration, the graph is still in a situation of flow conservation and the
+        // Invariant: at the end of each iteration, the (reachable part of the) graph is still in a situation of flow conservation and the
         // current flow (computable as the amount of flow leaving the source) is previous_max_flow - removed_flow
         current_flow = 0;
         for (const auto& [to, rev, c, is_rev] : graph[source]) current_flow += graph[to][rev].c;
-        // TODO: Implement flow conservation check
-        // ASSERT(is_flow_conservative(graph));
         ASSERT(abs(previous_flow - removed_flow - current_flow) < HPLUS_EPSILON);
     }
 
@@ -445,7 +439,7 @@ static inline std::vector<unsigned int> get_r3_violated_landmark(const hplus::in
 [[nodiscard]]
 std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(const hplus::execution& exec, const hplus::instance& inst,
                                                                              const std::vector<double>& relax_point) {
-    std::vector<unsigned int> landmark(1);
+    std::vector<unsigned int> landmark;
 
     // ====================================================== //
     // ============ Minimization data structures ============ //
@@ -496,7 +490,7 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
     // ============= R3 incremental computation ============= //
     // ====================================================== //
     std::vector<std::vector<network_edge>> old_max_flow_graph;
-    double prev_r3 = 0, r3 = 0;
+    double prev_r3 = 1, r3 = 0;
     auto [new_max_flow_graph, actions_effect] = max_flow_graph_construction(inst);
     auto revert_r3_changes = [&]() {
         // TODO: Better reverse operation... find a way to work with a trail
@@ -524,7 +518,6 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
     };
 
     auto round_new_action = [&]() {
-        // TODO: Maybe an heuristic to tell which actions to use first? (If done, update it also in the revert sections)
         found = true;
         rounded_act_lmidx = 0;
         round_action(rounded_act_lmidx);
@@ -533,16 +526,25 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
     // TODO: Remove... just for debugging
     size_t initial_lm_size = 0, final_lm_size = 0;
     double initial_violation = 0, final_violation = 0, start_time = GET_TIME(), normal_time = 0, minimization_time = 0;
-    unsigned int total_repetitions{0}, r1r2_repetitions{0}, r3_repetitions{0}, pcf_diff{0};
+    unsigned int pcf_diff{0};
+    int total_repetitions{-1}, r1r2_repetitions{-1}, r3_repetitions{-1};
     std::vector<unsigned int> old_pcf;
+
+    auto terminate_condition = [&]() {
+        if (total_repetitions < 0) return false;
+
+        if (rounded_act_lmidx >= landmark.size()) return true;
+        // TODO: Decide if this is the total number of repetitions, or the number of max-flow computations (the most expensive computation here)
+        if (static_cast<unsigned int>(r3_repetitions) >= exec.lm_min_it) return true;
+
+        return false;
+    };
 
     // ====================================================== //
     // =============== Minimization procedure =============== //
     // ====================================================== //
-    while (rounded_act_lmidx < landmark.size()) {
+    while (!terminate_condition()) {
         total_repetitions++;
-
-        // TODO: Upper bound on number of repetitions... (to be set through a CLI parameter)
 
         // ~~~~~~~~~~ R1/R2 COMPUTATION ~~~~~~~~~~ //
         r1r2_trail = std::stack<std::pair<unsigned int, double>>();  // Reset the trail
@@ -559,7 +561,6 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
                 revert_r1r2_changes();
                 bool has_next = round_next_action();
                 if (!has_next) break;
-                // LOG_DEBUG << "R1 == 1, next action";
                 continue;
             } else
                 return {false, {}};
@@ -572,7 +573,6 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
         double removed_flow = update_graph(inst, new_max_flow_graph, relax_point_copy, pcf, actions_effect);
         double additional_flow = compute_max_flow(new_max_flow_graph, source, sink);
         r3_repetitions++;
-        // LOG_DEBUG << "R3 = " << r3 << " - " << removed_flow << " + " << additional_flow;
         r3 = r3 - removed_flow + additional_flow;
 
         if (found) {
@@ -582,29 +582,20 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
         }
 
         // TODO: Remove, just for debugging..
-        auto manual_max_flow_graph = build_max_flow_graph(inst, relax_point_copy, pcf);
-        auto manual_r3 = compute_max_flow(manual_max_flow_graph, source, sink);
+        // auto manual_max_flow_graph = build_max_flow_graph(inst, relax_point_copy, pcf);
+        // auto manual_r3 = compute_max_flow(manual_max_flow_graph, source, sink);
 
-        if (std::abs(manual_r3 - r3) >= HPLUS_EPSILON) {
-            LOG_DEBUG << "Source: " << source;
-            LOG_DEBUG << "Sink: " << sink;
-            // write_graph("previous.dot", old_max_flow_graph);
-            // write_graph("manual.dot", manual_max_flow_graph);
-            // write_graph("incremental.dot", new_max_flow_graph);
-            LOG_DEBUG << manual_r3 << " / " << r3;
-        }
-
-        ASSERT(std::abs(manual_r3 - r3) < HPLUS_EPSILON);
+        // ASSERT(std::abs(manual_r3 - r3) < HPLUS_EPSILON);
 
         // Note: if R3 < 1, then there's a violated landmark, BUT if R3 == 1 we can't assume that no landmark is violated... in this case we simply
-        // ignore the possible landmark Statistically speaking, R3 == 1 but there exists a violated landmark happens in 3% of cases
-        if (r3 >= 1 - HPLUS_EPSILON) {
+        // ignore the possible landmark
+        // Statistically speaking, R3 == 1 but there exists a violated landmark happens in ~3% of cases
+        if (r3 >= 1 - exec.lm_min_viol * (1 - prev_r3) - HPLUS_EPSILON) {
             if (found) {
                 revert_r1r2_changes();
                 revert_r3_changes();
                 bool has_next = round_next_action();
                 if (!has_next) break;
-                // LOG_DEBUG << "R3 == 1, next action";
                 continue;
             } else
                 return {false, {}};
@@ -633,19 +624,19 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
         // ~~~~~ MINIMIZATION PROCEDURE SETUP ~~~~ //
         round_new_action();
 
-        // LOG_DEBUG << "Found landmark, rounding new action";
-
         if (!exec.min_fract_lm) break;
     }
 
     // TODO: Remove... just for debugging
     minimization_time = (GET_TIME() - start_time) * 1000;
-    LOG_DEBUG << "Minimization results: LM size: " << std::setw(5) << initial_lm_size << " -> " << std::setw(5) << final_lm_size
-              << " -- Violation: " << std::fixed << std::setprecision(4) << initial_violation << " -> " << std::fixed << std::setprecision(4)
-              << final_violation << " -- Repetitions: " << std::setw(4) << total_repetitions << " (R1/R2: " << std::setw(4) << r1r2_repetitions
-              << " - R3: " << std::setw(4) << r3_repetitions << " - Pcf changes: " << std::fixed << std::setw(6) << std::setprecision(2)
-              << static_cast<double>(pcf_diff) / r3_repetitions << ")" << " -- Time: normal: " << std::fixed << std::setw(6) << std::setprecision(2)
-              << normal_time << "ms total: " << std::fixed << std::setw(6) << std::setprecision(2) << minimization_time << "ms";
+    if (exec.min_fract_lm)
+        LOG_DEBUG << "Minimization results: LM size: " << std::setw(5) << initial_lm_size << " -> " << std::setw(5) << final_lm_size
+                  << " -- Violation: " << std::fixed << std::setprecision(4) << initial_violation << " -> " << std::fixed << std::setprecision(4)
+                  << final_violation << " -- Repetitions: " << std::setw(4) << total_repetitions << " (R1/R2: " << std::setw(4) << r1r2_repetitions
+                  << " - R3: " << std::setw(4) << r3_repetitions << " - Pcf changes: " << std::fixed << std::setw(6) << std::setprecision(2)
+                  << static_cast<double>(pcf_diff) / r3_repetitions << ")" << " -- Time: normal: " << std::fixed << std::setw(6)
+                  << std::setprecision(2) << normal_time << "ms total: " << std::fixed << std::setw(6) << std::setprecision(2) << minimization_time
+                  << "ms";
 
     return {true, landmark};
 }

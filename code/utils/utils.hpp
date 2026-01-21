@@ -53,6 +53,8 @@
 #define HPLUS_CLI_VERBOSE_FLAG "v"
 #define HPLUS_CLI_FRACTCUTS_FLAG "fract"
 #define HPLUS_CLI_FRACTCUTS_MIN_LM_FLAG "fract-minlm"
+#define HPLUS_CLI_MINIMIZATION_BOUND_IT "minlm-it"
+#define HPLUS_CLI_MINIMIZATION_BOUND_VIOL "minlm-viol"
 #define HPLUS_CLI_FRACTCUTS_AT_NODES_FLAG "fract-nodes"
 #define HPLUS_CLI_CANDCUTS_FLAG "cand"
 #define HPLUS_CLI_CUTLOOP_FLAG "cloop"
@@ -81,6 +83,9 @@
 // ############################ CLI DEFAULTS ########################### //
 // ##################################################################### //
 
+#define INFBOUND_DBL 1e20
+#define INFBOUND_INT std::numeric_limits<unsigned int>::max()
+
 #define HPLUS_DEF_RANDOM_SEED 2122187
 #define HPLUS_DEF_ALG 2
 #define HPLUS_DEF_ALG_STRING HPLUS_CLI_ALG_FLAG_CUTS
@@ -97,6 +102,8 @@
 #define HPLUS_DEF_CANDCUTS "c"
 #define HPLUS_DEF_FRACTCUTS "0"
 #define HPLUS_DEF_MIN_FRACT_LM false
+#define HPLUS_DEF_MINIMIZATION_IT INFBOUND_INT
+#define HPLUS_DEF_MINIMIZATION_VIOL 0
 #define HPLUS_DEF_FRACTCUTS_AT_NODES true
 #define HPLUS_DEF_CUSTOM_CUTLOOP false
 #define HPLUS_DEF_CL_PRUNING true
