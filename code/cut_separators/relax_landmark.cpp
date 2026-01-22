@@ -184,17 +184,44 @@ static inline std::pair<std::vector<std::vector<network_edge>>, std::vector<unsi
     return {graph, actions_effect};
 }
 
-// TODO: Reimplement using the paper's method
-static inline double update_graph(const hplus::instance& inst, std::vector<std::vector<network_edge>>& graph, const std::vector<double>& relax_point,
-                                  const std::vector<unsigned int> pcf, const std::vector<unsigned int>& actions_eff) {
+static inline void update_graph(const hplus::instance& inst, std::vector<std::vector<network_edge>>& graph, const std::vector<double>& relax_point,
+                                const std::vector<unsigned int> pcf, const std::vector<unsigned int>& actions_eff) {
     static const unsigned int source = inst.n, sink = inst.n + 1, sink_action = inst.m;
-    double removed_flow = 0;
 
-    // TODO: Remove, just for debugging
-    double previous_flow = 0, current_flow = 0;
-    for (const auto& [to, rev, c, is_rev] : graph[source]) previous_flow += graph[to][rev].c;
+    // write_graph("initial.dot", graph);
 
-    // Remove old pcf edges
+    // unsigned int i = 0;
+
+    // Fix goal's pcf
+    for (const auto& p : inst.goal) {
+        unsigned int to_idx = 0;
+        for (unsigned int i = 0; i < graph[p].size(); i++) {
+            if (graph[p][i].to == sink) {
+                to_idx = i;
+                break;
+            }
+        }
+        const unsigned int rev_idx = graph[p][to_idx].rev;
+        const double capacity = graph[p][to_idx].c + graph[sink][rev_idx].c;
+
+        if (p == pcf[sink_action]) {
+            double delta = 1 - capacity;
+            if (delta <= HPLUS_EPSILON) continue;
+
+            incremental_edge_insertion(graph, source, sink, p, sink, delta);
+            // LOG_DEBUG << i << " - Incrementing edge " << p << " -> " << sink << " of " << delta;
+            // write_graph(std::to_string(i++) + ".dot", graph);
+        } else {
+            if (capacity < HPLUS_EPSILON) continue;
+            incremental_edge_deletion(graph, source, sink, p, sink, capacity);
+            // if (graph[sink][rev_idx].c > HPLUS_EPSILON) {
+            //     LOG_DEBUG << i << " - Reducing edge " << p << " -> " << sink << " of " << capacity;
+            //     write_graph(std::to_string(i++) + ".dot", graph);
+            // }
+        }
+    }
+
+    // Update flow in pcf changes and in fractional point increases
     for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
         std::vector<unsigned int> pre;
         if (inst.actions[act_i].pre_sparse.empty())
@@ -202,139 +229,47 @@ static inline double update_graph(const hplus::instance& inst, std::vector<std::
         else
             pre = inst.actions[act_i].pre_sparse;
 
-        for (const auto& p : pre) {
-            if (p == pcf[act_i]) continue;
+        const unsigned int to = actions_eff[act_i];
 
-            const unsigned int to = actions_eff[act_i];
-            unsigned int edge_idx = 0;
+        for (const auto& p : pre) {
+            // Get info on the current edge
+            unsigned int to_idx = 0;
             for (unsigned int i = 0; i < graph[p].size(); i++) {
                 if (graph[p][i].to == to) {
-                    edge_idx = i;
+                    to_idx = i;
                     break;
                 }
             }
-            const unsigned int rev_index = graph[p][edge_idx].rev;
-            double flow = graph[to][rev_index].c;
+            const unsigned int rev_index = graph[p][to_idx].rev;
+            double flow = graph[to][rev_index].c, res_cap = graph[p][to_idx].c, capacity = flow + res_cap;
 
-            // Reset the residual capacity... no additional steps required
-            graph[p][edge_idx].c = 0;
-            // If there's flow, remove it and fix the graph accordingly
-            if (flow > HPLUS_EPSILON) {
-                const double flow_to_remove = flow;
-                graph[to][rev_index].c = 0;
-                double removed_ahead = flow_removal(graph, to, sink, flow_to_remove);
-                double removed_before = flow_removal(graph, source, p, flow_to_remove);
-                ASSERT(abs(removed_ahead - removed_before) <= HPLUS_EPSILON);
-                removed_flow += removed_ahead;
+            if (p == pcf[act_i]) {
+                double delta = relax_point[act_i] - capacity;
+                ASSERT(delta > -HPLUS_EPSILON);
+                if (delta > HPLUS_EPSILON) {
+                    incremental_edge_insertion(graph, source, sink, p, to, delta);
+                    // LOG_DEBUG << i << " - Increasing edge " << p << " -> " << to << " of " << delta;
+                    // write_graph(std::to_string(i++) + ".dot", graph);
+                } else if (delta < -HPLUS_EPSILON) {
+                    incremental_edge_deletion(graph, source, sink, p, to, delta);
+                    // if (flow > HPLUS_EPSILON) {
+                    //     LOG_DEBUG << i << " - Reducing edge " << p << " -> " << to << " of " << delta;
+                    //     write_graph(std::to_string(i++) + ".dot", graph);
+                    // }
+                }
+            } else {
+                if (capacity < HPLUS_EPSILON) continue;
+
+                incremental_edge_deletion(graph, source, sink, p, to, capacity);
+                // if (flow > HPLUS_EPSILON) {
+                //     LOG_DEBUG << i << " - Reducing edge " << p << " -> " << to << " of " << capacity;
+                //     write_graph(std::to_string(i++) + ".dot", graph);
+                // }
             }
         }
-
-        // TODO: Remove, just for debugging
-        // Invariant: at the end of each iteration, the (reachable part of the) graph is still in a situation of flow conservation and the
-        // current flow (computable as the amount of flow leaving the source) is previous_max_flow - removed_flow
-        current_flow = 0;
-        for (const auto& [to, rev, c, is_rev] : graph[source]) current_flow += graph[to][rev].c;
-        ASSERT(abs(previous_flow - removed_flow - current_flow) < HPLUS_EPSILON);
     }
 
-    // Fix the goal's pcf
-    for (const auto& p : inst.goal) {
-        unsigned int edge_idx = 0;
-        for (unsigned int i = 0; i < graph[p].size(); i++) {
-            if (graph[p][i].to == sink) {
-                edge_idx = i;
-                break;
-            }
-        }
-        const unsigned int rev_idx = graph[p][edge_idx].rev;
-        const double capacity = graph[p][edge_idx].c + graph[sink][rev_idx].c;
-
-        // If this goal fact is the pcf...
-        if (p == pcf[sink_action]) {
-            // If the capacity of this edge is already 1, then the pcf didn't change from the previous iteration... we can directly skip this update
-            if (capacity >= 1 - HPLUS_EPSILON) break;
-            if (capacity > HPLUS_EPSILON)
-                LOG_ERROR << "The capacity of a dummy goal action should always be either 0 or 1 (used or not, accordingly to the pcf)..";
-
-            // ... otherwise, we need to set it's capacity to 1 (just increase the residual capacity)
-            graph[p][edge_idx].c += 1 - capacity;
-        }
-
-        // If this goal fact isn't the pcf (anymore)...
-        else {
-            // Reset the residual capacity... no additional steps required
-            graph[p][edge_idx].c = 0;
-            // If there's flow, remove it and fix the graph accordingly
-            if (graph[sink][rev_idx].c > HPLUS_EPSILON) {
-                const double flow_to_remove = graph[sink][rev_idx].c;
-                graph[sink][rev_idx].c = 0;
-                double removed = flow_removal(graph, source, p, flow_to_remove);
-                ASSERT(abs(flow_to_remove - removed) <= HPLUS_EPSILON);
-                removed_flow += removed;
-            }
-        }
-
-        // TODO: Remove, just for debugging
-        // Invariant: at the end of each iteration, the (reachable part of the) graph is still in a situation of flow conservation and the
-        // current flow (computable as the amount of flow leaving the source) is previous_max_flow - removed_flow
-        current_flow = 0;
-        for (const auto& [to, rev, c, is_rev] : graph[source]) current_flow += graph[to][rev].c;
-        ASSERT(abs(previous_flow - removed_flow - current_flow) < HPLUS_EPSILON);
-    }
-
-    // Update graph according to action's new weights
-    for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
-        const unsigned int from = pcf[act_i], to = actions_eff[act_i];
-        unsigned int to_idx = 0;
-        for (unsigned int i = 0; i < graph[from].size(); i++) {
-            const auto& [t, _1, _2, _3] = graph[from][i];
-            if (to == t) {
-                to_idx = i;
-                break;
-            }
-        }
-
-        const unsigned int rev_idx = graph[from][to_idx].rev;
-        const double edge_flow = graph[to][rev_idx].c, edge_residual = graph[from][to_idx].c, edge_capacity = edge_flow + edge_residual,
-                     diff = relax_point[act_i] - edge_capacity;
-
-        // No change, go to next action
-        if (std::abs(diff) <= HPLUS_EPSILON) {
-            continue;
-        }
-        // Increase the capacity: simply increase the residual capacity
-        else if (diff > HPLUS_EPSILON) {
-            graph[from][to_idx].c += diff;
-        }
-        // Reduce residual capacity and (if needed) the flow
-        else {
-            LOG_ERROR << "Distructive (negative diffs) modifications to the graph should be already handled by pcf changes..";
-            // const double new_residual_capacity = graph[from][to_idx].c + diff;
-
-            // // Reducing residual capacity is enough... no flow has changed, so the flow conservation is preserved
-            // if (new_residual_capacity >= -HPLUS_EPSILON) {
-            //     graph[from][to_idx].c = (new_residual_capacity > HPLUS_EPSILON) ? new_residual_capacity : 0;
-            //     continue;
-            // }
-            // // The residual flow is not enough.. we have to reduce the flow aswell
-            // else {
-            //     graph[from][to_idx].c = 0;                             // Remove all residual capacity
-            //     const double flow_to_remove = -new_residual_capacity;  // Compute the flow needed to be removed
-            //     graph[to][rev_idx].c -= flow_to_remove;                // Remove it from this edge
-            //     flow_removal(graph, to, sink, flow_to_remove);         // Reduce the flow reaching the sink
-            //     flow_removal(graph, source, from, flow_to_remove);     // Reduce the flow leaving the source
-
-            //     removed_flow += flow_to_remove;
-            // }
-        }
-
-        // TODO: Remove, just for debugging
-        // Invariant: at the end of each iteration, the (reachable part of the) graph is still in a situation of flow conservation and the
-        // current flow (computable as the amount of flow leaving the source) is previous_max_flow - removed_flow
-        current_flow = 0;
-        for (const auto& [to, rev, c, is_rev] : graph[source]) current_flow += graph[to][rev].c;
-        ASSERT(abs(previous_flow - removed_flow - current_flow) < HPLUS_EPSILON);
-    }
+    // LOG_DEBUG << "Final counter: " << i;
 
     // Remove disconnected parts of the graph
     binary_set reachable(graph.size());
@@ -367,8 +302,6 @@ static inline double update_graph(const hplus::instance& inst, std::vector<std::
             }
         }
     }
-
-    return removed_flow;
 }
 
 [[nodiscard]]
@@ -534,7 +467,6 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
         if (total_repetitions < 0) return false;
 
         if (rounded_act_lmidx >= landmark.size()) return true;
-        // TODO: Decide if this is the total number of repetitions, or the number of max-flow computations (the most expensive computation here)
         if (static_cast<unsigned int>(r3_repetitions) >= exec.lm_min_it) return true;
 
         return false;
@@ -570,11 +502,16 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
 
         // ~~~~~~~~~~~~ R3 COMPUTATION ~~~~~~~~~~~ //
         const auto& pcf = compute_pcf(inst, r1_values, r2_values);
-        double removed_flow = update_graph(inst, new_max_flow_graph, relax_point_copy, pcf, actions_effect);
-        double additional_flow = compute_max_flow(new_max_flow_graph, source, sink);
+        update_graph(inst, new_max_flow_graph, relax_point_copy, pcf, actions_effect);
         r3_repetitions++;
-        r3 = r3 - removed_flow + additional_flow;
 
+        r3 = 0;
+        for (const auto& [to, rev, c, is_rev] : new_max_flow_graph[source]) r3 += new_max_flow_graph[to][rev].c;
+
+        // double check_r3 = 0;
+        // for (const auto& [to, rev, c, is_rev] : new_max_flow_graph[sink]) check_r3 += c;
+
+        // TODO: Remove, just for debugging..
         if (found) {
             for (unsigned int i = 0; i < pcf.size(); i++) {
                 if (old_pcf[i] != pcf[i]) pcf_diff++;
@@ -585,11 +522,17 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
         // auto manual_max_flow_graph = build_max_flow_graph(inst, relax_point_copy, pcf);
         // auto manual_r3 = compute_max_flow(manual_max_flow_graph, source, sink);
 
-        // ASSERT(std::abs(manual_r3 - r3) < HPLUS_EPSILON);
+        // if (!(std::abs(manual_r3 - r3) < HPLUS_EPSILON) || !(std::abs(r3 - check_r3) <= HPLUS_EPSILON)) {
+        //     write_graph("previous.dot", old_max_flow_graph);
+        //     write_graph("adjusted.dot", new_max_flow_graph);
+        //     write_graph("manual.dot", manual_max_flow_graph);
+        // }
 
-        // Note: if R3 < 1, then there's a violated landmark, BUT if R3 == 1 we can't assume that no landmark is violated... in this case we simply
-        // ignore the possible landmark
-        // Statistically speaking, R3 == 1 but there exists a violated landmark happens in ~3% of cases
+        // ASSERT(std::abs(r3 - check_r3) <= HPLUS_EPSILON);
+        // ASSERT(std::abs(manual_r3 - r3) <= HPLUS_EPSILON);
+
+        // Note: if R3 < 1, then there's a violated landmark, BUT if R3 == 1 we can't assume that no landmark is violated... in this case we
+        // simply ignore the possible landmark Statistically speaking, R3 == 1 but there exists a violated landmark happens in ~3% of cases
         if (r3 >= 1 - exec.lm_min_viol * (1 - prev_r3) - HPLUS_EPSILON) {
             if (found) {
                 revert_r1r2_changes();
