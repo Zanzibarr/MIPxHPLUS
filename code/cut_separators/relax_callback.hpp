@@ -10,7 +10,7 @@
 #include <cplex.h>
 
 #include "../domain/hplus_algs.hpp"
-#include "../utils/algorithms.hpp"
+#include "../utils/cycle_det.hpp"
 
 namespace callbacks {
 
@@ -39,13 +39,15 @@ std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash> rel
  * Compute the violated landmark (if there's one) out of the relaxed solution
  */
 [[nodiscard]]
-std::pair<bool, std::vector<unsigned int>> get_violated_landmark(const hplus::execution& exec, const hplus::instance& inst, const std::vector<double>& relax_point);
+std::pair<bool, std::vector<unsigned int>> get_violated_landmark(const hplus::execution& exec, const hplus::instance& inst,
+                                                                 const std::vector<double>& relax_point);
 
 /**
  * Compute the violated landmark (if there's one) out of the relaxed solution and reject the relaxed solution
  */
 [[nodiscard]]
-unsigned int add_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, const hplus::instance& inst, const std::vector<double>& relax_point);
+unsigned int add_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, const hplus::instance& inst,
+                        const std::vector<double>& relax_point);
 
 /**
  * Compute the violated S.E.C. (if there's one) out of the relaxed solution
