@@ -5,8 +5,8 @@
 #include "../utils/max_flow.hpp"
 #include "relax_callback.hpp"
 
-// TODO: Test which is better... 1 (our) or 0 (paper)
-#define INC_MAX_FLOW_IMPL 1
+#define NO_WORSE_MOVES 1
+#define TRACK_BEST 0
 
 [[nodiscard]]
 static inline double compute_r1_r2_incremental(const hplus::instance& inst, const std::vector<double>& relax_point, std::vector<double>& r1_values,
@@ -201,8 +201,6 @@ static inline double compute_r3_incremental(const hplus::instance& inst, std::ve
                                             const std::vector<unsigned int>& actions_eff, double prev_r3) {
     static const unsigned int source = inst.n, sink = inst.n + 1, sink_action = inst.m;
 
-#if INC_MAX_FLOW_IMPL
-
     double removed_flow = 0;
 
     // Fix goal's pcf
@@ -336,78 +334,15 @@ static inline double compute_r3_incremental(const hplus::instance& inst, std::ve
 
     double r3 = prev_r3 - removed_flow + compute_max_flow(graph, source, sink);
 
-#else
-
-    // Fix goal's pcf
-    for (const auto& p : inst.goal) {
-        unsigned int to_idx = 0;
-        for (unsigned int i = 0; i < graph[p].size(); i++) {
-            if (graph[p][i].to == sink) {
-                to_idx = i;
-                break;
-            }
-        }
-        const unsigned int rev_idx = graph[p][to_idx].rev;
-        const double capacity = graph[p][to_idx].c + graph[sink][rev_idx].c;
-
-        if (p == pcf[sink_action]) {
-            double delta = 1 - capacity;
-            if (delta <= HPLUS_EPSILON) continue;
-
-            incremental_edge_insertion(graph, source, sink, p, sink, delta);
-        } else {
-            if (capacity < HPLUS_EPSILON) continue;
-            incremental_edge_deletion(graph, source, sink, p, sink, capacity);
-        }
-    }
-
-    // Update flow in pcf changes and in fractional point increases
-    for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
-        std::vector<unsigned int> pre;
-        if (inst.actions[act_i].pre_sparse.empty())
-            pre.push_back(source);
-        else
-            pre = inst.actions[act_i].pre_sparse;
-
-        const unsigned int to = actions_eff[act_i];
-
-        for (const auto& p : pre) {
-            // Get info on the current edge
-            unsigned int to_idx = 0;
-            for (unsigned int i = 0; i < graph[p].size(); i++) {
-                if (graph[p][i].to == to) {
-                    to_idx = i;
-                    break;
-                }
-            }
-            const unsigned int rev_index = graph[p][to_idx].rev;
-            double flow = graph[to][rev_index].c, res_cap = graph[p][to_idx].c, capacity = flow + res_cap;
-
-            if (p == pcf[act_i]) {
-                double delta = relax_point[act_i] - capacity;
-
-                if (delta > HPLUS_EPSILON)
-                    incremental_edge_insertion(graph, source, sink, p, to, delta);
-                else if (delta < -HPLUS_EPSILON)
-                    incremental_edge_deletion(graph, source, sink, p, to, -delta);
-
-            } else {
-                if (capacity < HPLUS_EPSILON) continue;
-
-                incremental_edge_deletion(graph, source, sink, p, to, capacity);
-            }
-        }
-    }
-
-    double r3{0};
-    for (const auto& [to, rev_idx, c, is_rev] : graph[sink]) r3 += c;
-
-#endif
-
     // TODO: Remove... just for debugging
     double r3_check_front{0}, r3_check_back{0};
     for (const auto& [to, rev_idx, c, is_rev] : graph[source]) r3_check_front += graph[to][rev_idx].c;
     for (const auto& [to, rev_idx, c, is_rev] : graph[sink]) r3_check_back += c;
+    if (!(std::abs(r3_check_back - r3_check_front) <= HPLUS_EPSILON)) {
+        LOG_DEBUG << "r3_check_back: " << r3_check_back;
+        LOG_DEBUG << "r3_check_front: " << r3_check_front;
+        write_graph("error.dot", graph);
+    }
     ASSERT(std::abs(r3_check_back - r3_check_front) <= HPLUS_EPSILON);
     ASSERT(std::abs(r3 - r3_check_front) <= HPLUS_EPSILON);
 
@@ -482,7 +417,8 @@ static inline std::vector<unsigned int> get_r3_violated_landmark(const hplus::in
 [[nodiscard]]
 std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(const hplus::execution& exec, const hplus::instance& inst,
                                                                              const std::vector<double>& relax_point) {
-    std::vector<unsigned int> landmark;
+    std::vector<unsigned int> landmark, best_landmark;
+    double violation{0}, best_violation{0};
 
     // ====================================================== //
     // ============ Minimization data structures ============ //
@@ -648,27 +584,45 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
                 return {false, {}};
         }
 
-        // Now we know that there's a new landmark to extract...
+        std::vector<unsigned int> proposed_landmark = get_r3_violated_landmark(inst, new_max_flow_graph);
+        double proposed_violation{1};
+        for (const auto& a : proposed_landmark) proposed_violation -= relax_point[a];
+
+        ASSERT(proposed_violation >= -HPLUS_EPSILON && proposed_violation <= 1 + HPLUS_EPSILON);
+
+#if NO_WORSE_MOVES
+        // The proposed landmark is a "worse" one... ignore it
+        if (found &&
+            (proposed_landmark.size() > landmark.size() || (proposed_landmark.size() == landmark.size() && proposed_violation <= violation))) {
+            revert_r1r2_changes();
+            revert_r3_changes();
+            bool has_next = round_next_action();
+            if (!has_next) break;
+            continue;
+        }
+#endif
+
+#if TRACK_BEST
+        if (!found || proposed_landmark.size() < best_landmark.size() ||
+            (proposed_landmark.size() == best_landmark.size() && proposed_violation > best_violation)) {
+            best_landmark = proposed_landmark;
+            best_violation = proposed_violation;
+        }
+#endif
+
+        // Now we know that there's a new landmark worth extracting...
+        landmark = proposed_landmark;
+        violation = proposed_violation;
+
         old_max_flow_graph = new_max_flow_graph;
         old_pcf = pcf;
         previous_r3 = r3;
 
-        // Keep track of initial r3 value
-        if (!found) initial_r3 = r3;
-
-        // ~~~~~~~ GET LANDMARK AS MIN-CUT ~~~~~~~ //
-        landmark = get_r3_violated_landmark(inst, new_max_flow_graph);
-
-        double cutval{0};
-        for (const auto& a : landmark) cutval += relax_point[a];
-
         if (!found) {
+            initial_r3 = r3;
             initial_lm_size = landmark.size();
-            initial_violation = 1 - cutval;
+            initial_violation = violation;
             normal_time = (GET_TIME() - start_time) * 1000;
-        } else {
-            final_lm_size = landmark.size();
-            final_violation = 1 - cutval;
         }
 
         // ~~~~~ MINIMIZATION PROCEDURE SETUP ~~~~ //
@@ -676,6 +630,14 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
 
         if (!exec.min_fract_lm) break;
     }
+
+#if TRACK_BEST
+    landmark = best_landmark;
+    final_violation = best_violation;
+#endif
+
+    final_lm_size = landmark.size();
+    final_violation = violation;
 
     minimization_time = (GET_TIME() - start_time) * 1000;
     if (exec.min_fract_lm)
