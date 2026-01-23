@@ -7,6 +7,10 @@
 #ifndef HPLUS_CYCLE_DET_HPP
 #define HPLUS_CYCLE_DET_HPP
 
+#include <queue>
+#include <stack>
+#include <unordered_map>
+
 #include "utils.hpp"
 
 // ##################################################################### //

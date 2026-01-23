@@ -7,6 +7,8 @@
 #ifndef HPLUS_MAX_FLOW_HPP
 #define HPLUS_MAX_FLOW_HPP
 
+#include <queue>
+
 #include "../external/bs.hxx"
 #include "utils.hpp"
 

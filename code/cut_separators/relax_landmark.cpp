@@ -1,5 +1,6 @@
 #include <iostream>
 #include <list>
+#include <stack>
 
 #include "../utils/max_flow.hpp"
 #include "relax_callback.hpp"
