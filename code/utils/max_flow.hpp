@@ -202,6 +202,7 @@ static inline binary_set get_min_cut_lpartition(const std::vector<std::vector<ne
 // ############## INCREMENTAL MAX FLOW ON CHANGING GRAPHS ############## //
 // ##################################################################### //
 
+// TODO: Make iterative
 /** @brief DFS algorithm to remove flow from a u -> target path (if any) */
 [[nodiscard]]
 static double dfs_remove_flow(std::vector<std::vector<network_edge>>& graph, unsigned int u, const unsigned int target, double flow_to_remove,
