@@ -1,5 +1,6 @@
 #include <iostream>
 #include <list>
+#include <set>
 #include <stack>
 
 #include "../utils/max_flow.hpp"
@@ -405,6 +406,7 @@ static inline std::vector<unsigned int> get_r3_violated_landmark(const hplus::in
 std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(const hplus::execution& exec, const hplus::instance& inst,
                                                                              std::vector<double> relax_point) {
     std::vector<unsigned int> landmark;
+    std::multiset<unsigned int> previous_landmark;
     double violation{0};
 
     // ====================================================== //
@@ -481,8 +483,20 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
         return true;
     };
 
+    auto sort_landmark = [&]() {
+        std::sort(landmark.begin(), landmark.end(), [&](unsigned int a, unsigned int b) {
+            if (std::abs(relax_point[a] - relax_point[b]) <= HPLUS_EPSILON)
+                return previous_landmark.count(a) <
+                       previous_landmark.count(b);   // Prefer actions that were in fewer landmarks (idea: actions appearing
+                                                     // in more landmarks are more likely to be "important" actions, hence are more likely that by
+                                                     // rounding up those actions then there's no more a violated landmark)
+            return relax_point[a] > relax_point[b];  // Prefer actions with smaller violation (violation = 1 - fract_value)
+        });
+    };
+
     auto round_new_action = [&]() {
         rounded_act_lmidx = 0;
+        sort_landmark();
         round_action(rounded_act_lmidx);
     };
 
@@ -491,9 +505,12 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
     // std::vector<unsigned int> old_pcf;
     // unsigned int pcf_diff{0};
 
+    // TODO: Use CLI parameters to set this
+    unsigned int exit_after_x_fails = 50;
+
     auto terminate_condition = [&]() {
         // If we reached the end of this landmark we have no more actions to round... return the "best" landmark we found
-        if (rounded_act_lmidx >= landmark.size()) return true;
+        if (rounded_act_lmidx >= std::min(exit_after_x_fails, static_cast<unsigned int>(landmark.size()))) return true;
 
         // If we reached our iteration limit, stop
         if (max_flow_computations >= exec.lm_min_it) return true;
@@ -581,6 +598,7 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
         // Now we know that there's a new landmark worth extracting...
         landmark = proposed_landmark;
         violation = proposed_violation;
+        for (const auto& x : landmark) previous_landmark.insert(x);
 
         old_max_flow_graph = new_max_flow_graph;
         previous_r3 = r3;
