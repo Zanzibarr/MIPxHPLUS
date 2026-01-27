@@ -202,31 +202,72 @@ static inline binary_set get_min_cut_lpartition(const std::vector<std::vector<ne
 // ############## INCREMENTAL MAX FLOW ON CHANGING GRAPHS ############## //
 // ##################################################################### //
 
-// TODO: Make iterative
-/** @brief DFS algorithm to remove flow from a u -> target path (if any) */
+/** @brief Iterative DFS algorithm to remove flow from a u -> target path (if any) */
 [[nodiscard]]
 static double dfs_remove_flow(std::vector<std::vector<network_edge>>& graph, unsigned int u, const unsigned int target, double flow_to_remove,
                               binary_set& visited) {
-    if (u == target) return flow_to_remove;
+    struct stack_frame {
+        unsigned int node;
+        double flow;
+        size_t edge_index;
+    };
 
+    std::vector<stack_frame> stack;
+    std::vector<size_t> parent_edge(graph.size(), SIZE_MAX);
+    std::vector<unsigned int> parent_node(graph.size(), UINT_MAX);
+
+    stack.push_back({u, flow_to_remove, 0});
     visited.add(u);
 
-    for (auto& edge : graph[u]) {
-        if (visited[edge.to] || edge.is_reverse) continue;
+    while (!stack.empty()) {
+        auto& frame = stack.back();
 
-        // Check available flow on this edge (stored in reverse edge capacity)
-        double available_flow = graph[edge.to][edge.rev].c;
+        // Found target - backtrack and update edges
+        if (frame.node == target) {
+            double pushed = frame.flow;
+            unsigned int curr = target;
 
-        if (available_flow > HPLUS_EPSILON) {  // Has flow
-            // Recursively try to push through to target
-            double pushed = dfs_remove_flow(graph, edge.to, target, std::min(flow_to_remove, available_flow), visited);
+            // Backtrack from target to source, updating edges
+            while (curr != u) {
+                unsigned int prev = parent_node[curr];
+                size_t edge_idx = parent_edge[curr];
 
-            if (pushed > 0) {
-                // Successfully found path - update edges
+                auto& edge = graph[prev][edge_idx];
                 graph[edge.to][edge.rev].c -= pushed;  // Reduce flow
                 edge.c += pushed;                      // Increase residual capacity
-                return pushed;
+
+                curr = prev;
             }
+
+            return pushed;
+        }
+
+        // Try to find an unexplored edge
+        bool found_edge = false;
+        while (frame.edge_index < graph[frame.node].size()) {
+            auto& edge = graph[frame.node][frame.edge_index];
+
+            if (!visited[edge.to] && !edge.is_reverse) {
+                double available_flow = graph[edge.to][edge.rev].c;
+
+                if (available_flow > HPLUS_EPSILON) {
+                    // Found a valid edge - explore it
+                    visited.add(edge.to);
+                    parent_node[edge.to] = frame.node;
+                    parent_edge[edge.to] = frame.edge_index;
+
+                    stack.push_back({edge.to, std::min(frame.flow, available_flow), 0});
+                    found_edge = true;
+                    break;
+                }
+            }
+
+            frame.edge_index++;
+        }
+
+        // No more edges to explore from this node - backtrack
+        if (!found_edge) {
+            stack.pop_back();
         }
     }
 

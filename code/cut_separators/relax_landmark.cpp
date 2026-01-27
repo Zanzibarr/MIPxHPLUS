@@ -336,51 +336,51 @@ static inline double compute_r3_incremental(const hplus::instance& inst, std::ve
     return r3;
 }
 
-[[nodiscard]]
-static inline std::vector<std::vector<network_edge>> build_max_flow_graph(const hplus::instance& inst, const std::vector<double>& actions_weights,
-                                                                          const std::vector<unsigned int>& pcf) {
-    std::vector<std::vector<network_edge>> graph(inst.n + 2);
-    // nodes [0 -> n - 1] => facts
-    // node [n] => source
-    static const unsigned int source{inst.n};
-    // node [n + 1] => sink
-    static const unsigned int sink{inst.n + 1}, sink_action = inst.m;
-    // nodes [n + 2 -> ...] => dummy nodes for actions effects (at most m)
-    // estimated number of nodes: O(n + m)
+// [[nodiscard]]
+// static inline std::vector<std::vector<network_edge>> build_max_flow_graph(const hplus::instance& inst, const std::vector<double>& actions_weights,
+//                                                                           const std::vector<unsigned int>& pcf) {
+//     std::vector<std::vector<network_edge>> graph(inst.n + 2);
+//     // nodes [0 -> n - 1] => facts
+//     // node [n] => source
+//     static const unsigned int source{inst.n};
+//     // node [n + 1] => sink
+//     static const unsigned int sink{inst.n + 1}, sink_action = inst.m;
+//     // nodes [n + 2 -> ...] => dummy nodes for actions effects (at most m)
+//     // estimated number of nodes: O(n + m)
 
-    auto add_edge = [&](unsigned int from, unsigned int to, double capacity) {
-        graph[from].emplace_back(to, graph[to].size(), capacity, false);
-        graph[to].emplace_back(from, graph[from].size() - 1, 0, true);  // Reverse edge
-    };
+//     auto add_edge = [&](unsigned int from, unsigned int to, double capacity) {
+//         graph[from].emplace_back(to, graph[to].size(), capacity, false);
+//         graph[to].emplace_back(from, graph[from].size() - 1, 0, true);  // Reverse edge
+//     };
 
-    for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
-        // Find this action's effect
-        ASSERT(!inst.actions[act_i].eff_sparse.empty());
-        // To prevent duplicates in the adjacency lists always create a dummy node so that we have: pcf -> dummy -> effect(s)
-        const unsigned int to = graph.size();
-        graph.push_back(std::vector<network_edge>());
+//     for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
+//         // Find this action's effect
+//         ASSERT(!inst.actions[act_i].eff_sparse.empty());
+//         // To prevent duplicates in the adjacency lists always create a dummy node so that we have: pcf -> dummy -> effect(s)
+//         const unsigned int to = graph.size();
+//         graph.push_back(std::vector<network_edge>());
 
-        // Get all preconditions (linking the source node if needed)
-        std::vector<unsigned int> preconditions;
-        if (inst.actions[act_i].pre_sparse.empty())
-            preconditions.push_back(source);
-        else
-            preconditions = inst.actions[act_i].pre_sparse;
+//         // Get all preconditions (linking the source node if needed)
+//         std::vector<unsigned int> preconditions;
+//         if (inst.actions[act_i].pre_sparse.empty())
+//             preconditions.push_back(source);
+//         else
+//             preconditions = inst.actions[act_i].pre_sparse;
 
-        const unsigned int from = pcf[act_i];
-        add_edge(from, to, actions_weights[act_i]);
+//         const unsigned int from = pcf[act_i];
+//         add_edge(from, to, actions_weights[act_i]);
 
-        for (const auto& eff : inst.actions[act_i].eff_sparse)
-            add_edge(to, eff, 1);  // dummy edges have capacity of 1 since they are sourced only by the from -> to edge, which will have
-                                   // the action's weight... in this way we guarantee the min-cut to only be associated to real actions
-                                   // and not dummy ones (if capacity is 1, then this won't ever be saturated, unless the minimum cut is >= 1)
-    }
+//         for (const auto& eff : inst.actions[act_i].eff_sparse)
+//             add_edge(to, eff, 1);  // dummy edges have capacity of 1 since they are sourced only by the from -> to edge, which will have
+//                                    // the action's weight... in this way we guarantee the min-cut to only be associated to real actions
+//                                    // and not dummy ones (if capacity is 1, then this won't ever be saturated, unless the minimum cut is >= 1)
+//     }
 
-    // Add edge for goal's pcf
-    add_edge(pcf[sink_action], sink, 1);
+//     // Add edge for goal's pcf
+//     add_edge(pcf[sink_action], sink, 1);
 
-    return graph;
-}
+//     return graph;
+// }
 
 [[nodiscard]]
 static inline std::vector<unsigned int> get_r3_violated_landmark(const hplus::instance& inst, const std::vector<std::vector<network_edge>>& graph) {
@@ -419,7 +419,7 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
     std::vector<double> r1_values(inst.n, 0), r1_act_values(inst.m, 0), r2_values(inst.n, 0), r2_act_values(inst.m, 0);
     std::queue<unsigned int> r1r2_actions_queue;
     binary_set r1r2_state(inst.n), r1r2_reversing_state(inst.n), r1r2_acts_in_queue(inst.m);
-    unsigned int r1r2_computations{0};
+    // unsigned int r1r2_computations{0};
     // Trail keys:
     // - [0, inst.n): r1_values
     // - [inst.n, inst.n + inst.m): r1_act_values
@@ -453,7 +453,6 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
     // ====================================================== //
     // ============= R3 incremental computation ============= //
     // ====================================================== //
-    // TODO: Better reverse operation... find a way to work with a trail
     std::vector<std::vector<network_edge>> old_max_flow_graph;
     double initial_r3 = 1, previous_r3 = 0, r3 = 0;
     unsigned int max_flow_computations{0};
@@ -487,8 +486,8 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
         round_action(rounded_act_lmidx);
     };
 
-    size_t initial_lm_size = 0, final_lm_size = 0;
-    double initial_violation = 0, final_violation = 0, start_time = GET_TIME(), normal_time = 0, minimization_time = 0;
+    // size_t initial_lm_size = 0, final_lm_size = 0;
+    // double initial_violation = 0, final_violation = 0, start_time = GET_TIME(), normal_time = 0, minimization_time = 0;
     // std::vector<unsigned int> old_pcf;
     // unsigned int pcf_diff{0};
 
@@ -509,7 +508,7 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
     // ====================================================== //
     do {
         // ~~~~~~~~~~ R1/R2 COMPUTATION ~~~~~~~~~~ //
-        r1r2_computations++;
+        // r1r2_computations++;
         r1r2_trail = std::stack<std::pair<unsigned int, double>>();  // Reset the trail
         r1r2_reversing_state = r1r2_state;                           // Store current state
         double r1 = compute_r1_r2_incremental(inst, relax_point, r1_values, r1_act_values, r2_values, r2_act_values, r1r2_state, r1r2_actions_queue,
@@ -588,9 +587,9 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
 
         if (minimization_repetitions == 0) {
             initial_r3 = r3;
-            initial_lm_size = landmark.size();
-            initial_violation = violation;
-            normal_time = (GET_TIME() - start_time) * 1000;
+            // initial_lm_size = landmark.size();
+            // initial_violation = violation;
+            // normal_time = (GET_TIME() - start_time) * 1000;
         }
 
         // ~~~~~ MINIMIZATION PROCEDURE SETUP ~~~~ //
@@ -599,17 +598,17 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
         if (!exec.min_fract_lm) break;
     } while (!terminate_condition());
 
-    final_lm_size = landmark.size();
-    final_violation = violation;
+    // final_lm_size = landmark.size();
+    // final_violation = violation;
 
-    minimization_time = (GET_TIME() - start_time) * 1000;
-    if (exec.min_fract_lm)
-        LOG_DEBUG << "Minimization results: LM size: " << std::setw(5) << initial_lm_size << " -> " << std::setw(5) << final_lm_size
-                  << " -- Violation: " << std::fixed << std::setprecision(4) << initial_violation << " -> " << std::fixed << std::setprecision(4)
-                  << final_violation << " -- Repetitions: " << std::setw(4) << minimization_repetitions << " (R1/R2: " << std::setw(4)
-                  << r1r2_computations << " - R3: " << std::setw(4) << max_flow_computations << " -- Time: normal: " << std::fixed << std::setw(6)
-                  << std::setprecision(2) << normal_time << "ms total: " << std::fixed << std::setw(6) << std::setprecision(2) << minimization_time
-                  << "ms";
+    // minimization_time = (GET_TIME() - start_time) * 1000;
+    // if (exec.min_fract_lm)
+    //     LOG_DEBUG << "Minimization results: LM size: " << std::setw(5) << initial_lm_size << " -> " << std::setw(5) << final_lm_size
+    //               << " -- Violation: " << std::fixed << std::setprecision(4) << initial_violation << " -> " << std::fixed << std::setprecision(4)
+    //               << final_violation << " -- Repetitions: " << std::setw(4) << minimization_repetitions << " (R1/R2: " << std::setw(4)
+    //               << r1r2_computations << " - R3: " << std::setw(4) << max_flow_computations << " -- Time: normal: " << std::fixed << std::setw(6)
+    //               << std::setprecision(2) << normal_time << "ms total: " << std::fixed << std::setw(6) << std::setprecision(2) << minimization_time
+    //               << "ms";
 
     return {true, landmark};
 }
