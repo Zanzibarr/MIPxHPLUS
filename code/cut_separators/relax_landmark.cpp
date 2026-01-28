@@ -406,7 +406,7 @@ static inline std::vector<unsigned int> get_r3_violated_landmark(const hplus::in
 std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(const hplus::execution& exec, const hplus::instance& inst,
                                                                              std::vector<double> relax_point) {
     std::vector<unsigned int> landmark;
-    std::multiset<unsigned int> previous_landmark;
+    std::multiset<unsigned int> act_in_lm_count, act_rejected_count;
     double violation{0};
 
     // ====================================================== //
@@ -477,6 +477,7 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
 
     auto round_next_action = [&]() {
         relax_point[rounded_act] = prev_act_val;
+        act_rejected_count.insert(rounded_act);
         rounded_act_lmidx++;
         if (rounded_act_lmidx >= landmark.size()) return false;
         round_action(rounded_act_lmidx);
@@ -485,11 +486,14 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
 
     auto sort_landmark = [&]() {
         std::sort(landmark.begin(), landmark.end(), [&](unsigned int a, unsigned int b) {
-            if (std::abs(relax_point[a] - relax_point[b]) <= HPLUS_EPSILON)
-                return previous_landmark.count(a) <
-                       previous_landmark.count(b);   // Prefer actions that were in fewer landmarks (idea: actions appearing
-                                                     // in more landmarks are more likely to be "important" actions, hence are more likely that by
-                                                     // rounding up those actions then there's no more a violated landmark)
+            if (std::abs(relax_point[a] - relax_point[b]) <= HPLUS_EPSILON) {
+                // Prefer actions that were in fewer landmarks (idea: actions appearing in more landmarks are more likely to be "important" actions,
+                // hence are more likely that by rounding up those actions then there's no more a violated landmark)
+                // return act_in_lm_count.count(a) < act_in_lm_count.count(b);
+
+                // Prefer actions that were rejected less (an action is "rejected" when rounding it causes r3 to be >= 1)
+                return act_rejected_count.count(a) < act_rejected_count.count(b);
+            }
             return relax_point[a] > relax_point[b];  // Prefer actions with smaller violation (violation = 1 - fract_value)
         });
     };
@@ -598,7 +602,7 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
         // Now we know that there's a new landmark worth extracting...
         landmark = proposed_landmark;
         violation = proposed_violation;
-        for (const auto& x : landmark) previous_landmark.insert(x);
+        for (const auto& x : landmark) act_in_lm_count.insert(x);
 
         old_max_flow_graph = new_max_flow_graph;
         previous_r3 = r3;
