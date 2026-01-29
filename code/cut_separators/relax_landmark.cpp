@@ -509,12 +509,9 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
     // std::vector<unsigned int> old_pcf;
     // unsigned int pcf_diff{0};
 
-    // TODO: Use CLI parameters to set this
-    unsigned int exit_after_x_fails = 50;
-
     auto terminate_condition = [&]() {
         // If we reached the end of this landmark we have no more actions to round... return the "best" landmark we found
-        if (rounded_act_lmidx >= std::min(exit_after_x_fails, static_cast<unsigned int>(landmark.size()))) return true;
+        if (rounded_act_lmidx >= std::min(exec.lm_min_lookahead, static_cast<unsigned int>(landmark.size()))) return true;
 
         // If we reached our iteration limit, stop
         if (max_flow_computations >= exec.lm_min_it) return true;

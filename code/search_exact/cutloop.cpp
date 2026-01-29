@@ -190,6 +190,7 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
     double inout_w = exec.io_weight;
 
     solve_relaxation(env, lp, exec, stats);
+    if (VERBOSE_BASIC()) LOG_INFO << "Lower bound at start of cutloop: " << stats.lower_bound;
     while (repeat_cutloop() && !CHECK_STOP()) {
         std::vector<double> relax_point(ncols);
         CPXgetx(env, lp, relax_point.data(), 0, ncols - 1);
@@ -216,7 +217,7 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
         stats.cutloop_it = iteration;
     }
 
-    if (exec.verbosity >= hplus::verbose::BASIC) LOG_INFO << "Lower bound after cutloop : " << stats.lower_bound;
+    if (exec.verbosity >= hplus::verbose::BASIC) LOG_INFO << "Lower bound at end of cutloop: " << stats.lower_bound;
 
     // Purging of slack constraints (if we exited due to time limit, we might not have a full solution, so pruning constraints might remove more than
     // necessary)

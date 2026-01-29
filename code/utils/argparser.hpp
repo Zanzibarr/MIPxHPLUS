@@ -158,6 +158,12 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
                                             "below which we choose to ignore the cut (def: " +
                                             std::to_string(HPLUS_DEF_MINIMIZATION_VIOL) + "; options: <double in range [0,1]>",
                                         {HPLUS_CLI_MINIMIZATION_BOUND_VIOL}, HPLUS_DEF_MINIMIZATION_VIOL);
+    args::ValueFlag<int> lm_min_lh(
+        parser, "non negative integer",
+        "(ONLY FOR [" + std::string(HPLUS_CLI_ALG_FLAG_CUTS) +
+            "] ALGORITHM) Specify the maximum number of minimization iterations in the fractional landmark separation procedure (def: " +
+            std::to_string(HPLUS_DEF_MINIMIZATION_LH) + "; options: -1 (no limit), 0 (no minimization procedure), <positive int>)",
+        {HPLUS_CLI_MINIMIZATION_BOUND_LH}, HPLUS_DEF_MINIMIZATION_LH);
 
     // ~~~~~~~~~~~~~~~~ INOUT ~~~~~~~~~~~~~~~~ //
     args::ValueFlag<bool> inout(parser, "0/1",
@@ -342,6 +348,16 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
                         << "; using default value: " << std::to_string(HPLUS_DEF_MINIMIZATION_VIOL);
         else
             exec.lm_min_viol = v;
+    }
+    if (lm_min_lh) {
+        int i = args::get(lm_min_lh);
+        if (i == 0) {
+            LOG_WARNING << "Setting 0 lookahead iterations means to not use the minimization procedure; removing landmark minimization procedure";
+            exec.min_fract_lm = false;
+        } else if (i < 0)
+            exec.min_fract_lm = INFBOUND_INT;
+        else
+            exec.lm_min_lookahead = static_cast<unsigned int>(i);
     }
     if (fract_cuts_at_nodes) exec.fract_cuts_at_nodes = args::get(fract_cuts_at_nodes);
 

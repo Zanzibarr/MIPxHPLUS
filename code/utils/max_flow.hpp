@@ -202,72 +202,49 @@ static inline binary_set get_min_cut_lpartition(const std::vector<std::vector<ne
 // ############## INCREMENTAL MAX FLOW ON CHANGING GRAPHS ############## //
 // ##################################################################### //
 
-/** @brief Iterative DFS algorithm to remove flow from a u -> target path (if any) */
+/** @brief BFS algorithm to remove flow from source -> target path (if any) */
 [[nodiscard]]
-static double dfs_remove_flow(std::vector<std::vector<network_edge>>& graph, unsigned int u, const unsigned int target, double flow_to_remove,
-                              binary_set& visited) {
-    struct stack_frame {
-        unsigned int node;
-        double flow;
-        size_t edge_index;
-    };
+static double bfs_remove_flow(std::vector<std::vector<network_edge>>& graph, unsigned int source, unsigned int target, double max_flow,
+                              std::vector<size_t>& parent_edge, std::vector<unsigned int>& parent_node, binary_set& visited) {
+    // Reset visited set
+    visited.clear();
 
-    std::vector<stack_frame> stack;
-    std::vector<size_t> parent_edge(graph.size(), SIZE_MAX);
-    std::vector<unsigned int> parent_node(graph.size(), UINT_MAX);
+    std::queue<std::pair<unsigned int, double>> queue;
+    queue.push({source, max_flow});
+    visited.add(source);
+    parent_node[source] = UINT_MAX;
 
-    stack.push_back({u, flow_to_remove, 0});
-    visited.add(u);
+    while (!queue.empty()) {
+        auto [node, flow] = queue.front();
+        queue.pop();
 
-    while (!stack.empty()) {
-        auto& frame = stack.back();
-
-        // Found target - backtrack and update edges
-        if (frame.node == target) {
-            double pushed = frame.flow;
+        if (node == target) {
+            // Found path - backtrack and update edges
+            double pushed = flow;
             unsigned int curr = target;
 
-            // Backtrack from target to source, updating edges
-            while (curr != u) {
+            while (curr != source) {
                 unsigned int prev = parent_node[curr];
                 size_t edge_idx = parent_edge[curr];
-
                 auto& edge = graph[prev][edge_idx];
                 graph[edge.to][edge.rev].c -= pushed;  // Reduce flow
                 edge.c += pushed;                      // Increase residual capacity
-
                 curr = prev;
             }
-
             return pushed;
         }
 
-        // Try to find an unexplored edge
-        bool found_edge = false;
-        while (frame.edge_index < graph[frame.node].size()) {
-            auto& edge = graph[frame.node][frame.edge_index];
-
+        for (size_t i = 0; i < graph[node].size(); i++) {
+            auto& edge = graph[node][i];
             if (!visited[edge.to] && !edge.is_reverse) {
                 double available_flow = graph[edge.to][edge.rev].c;
-
                 if (available_flow > HPLUS_EPSILON) {
-                    // Found a valid edge - explore it
                     visited.add(edge.to);
-                    parent_node[edge.to] = frame.node;
-                    parent_edge[edge.to] = frame.edge_index;
-
-                    stack.push_back({edge.to, std::min(frame.flow, available_flow), 0});
-                    found_edge = true;
-                    break;
+                    parent_node[edge.to] = node;
+                    parent_edge[edge.to] = i;
+                    queue.push({edge.to, std::min(flow, available_flow)});
                 }
             }
-
-            frame.edge_index++;
-        }
-
-        // No more edges to explore from this node - backtrack
-        if (!found_edge) {
-            stack.pop_back();
         }
     }
 
@@ -282,22 +259,24 @@ static double dfs_remove_flow(std::vector<std::vector<network_edge>>& graph, uns
  * @param to End node
  * @param flow_to_remove Flow to remove
  *
- * @return Amount of flow succesfully removed
+ * @return Amount of flow successfully removed
  */
 [[nodiscard]]
 static inline double flow_removal(std::vector<std::vector<network_edge>>& graph, unsigned int from, unsigned int to, const double flow_to_remove) {
+    // Pre-allocate structures to avoid repeated allocations
+    std::vector<size_t> parent_edge(graph.size());
+    std::vector<unsigned int> parent_node(graph.size());
+    binary_set visited(graph.size());
+
     double remaining = flow_to_remove;
 
     // Keep finding paths and removing flow until we've removed enough
     while (remaining > HPLUS_EPSILON) {
-        binary_set visited(graph.size());
-        double removed = dfs_remove_flow(graph, from, to, remaining, visited);
+        double removed = bfs_remove_flow(graph, from, to, remaining, parent_edge, parent_node, visited);
         remaining -= removed;
 
         if (removed <= HPLUS_EPSILON) {
-            // Loop detected, no flow removed: this happens when we try to remove flow from an edge a->b inside a loop that has no connections with
-            // the rest of the graph... since we usually call flow_remove(b, sink) AND flow_remove(source, a), if a->b is in a isolated loop the first
-            // call will find a loop while the other will find no path...
+            // No more flow can be removed (isolated loop or no path)
             return flow_to_remove - remaining;
         }
     }

@@ -1644,7 +1644,7 @@ pipesworld-tankage-p27-net3-b18-g6-t70,2,19.0
 pipesworld-tankage-p28-net3-b18-g7-t70,0,26.0
 pipesworld-tankage-p29-net3-b20-g6-t70,2,21.0
 pipesworld-tankage-p30-net3-b20-g8-t70,2,31.0
-pipesworld-tankage-p31-net4-b14-g3-t20,2,19.0
+pipesworld-tankage-p31-net4-b14-g3-t20,0,19.0
 pipesworld-tankage-p32-net4-b14-g5-t30,2,20.0
 pipesworld-tankage-p33-net4-b16-g5-t60,2,19.0
 pipesworld-tankage-p34-net4-b16-g6-t60,2,25.0
@@ -2519,7 +2519,7 @@ transport-sat08-strips-p19,2,754.0
 transport-sat08-strips-p20,2,724.0
 transport-sat08-strips-p21,0,386.0
 transport-sat08-strips-p22,0,421.0
-transport-sat08-strips-p23,2,512.0
+transport-sat08-strips-p23,0,512.0
 transport-sat08-strips-p24,0,638.0
 transport-sat08-strips-p25,2,680.0
 transport-sat08-strips-p26,2,631.0
