@@ -144,7 +144,7 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
     args::ValueFlag<bool> fract_cuts_min_lm(
         parser, "0/1",
         "(ONLY FOR [" + std::string(HPLUS_CLI_ALG_FLAG_CUTS) + "] ALGORITHM) Specify wether to minimize fractional landmarks (def: " +
-            std::to_string(HPLUS_DEF_MIN_FRACT_LM) + "; options: 0 (don't use minimization strategy, 1 (use minimization strategy))",
+            std::to_string(HPLUS_DEF_MIN_FRACT_LM) + "; options: 0 (don't use minimization strategy), 1 (use minimization strategy))",
         {HPLUS_CLI_FRACTCUTS_MIN_LM_FLAG}, HPLUS_DEF_MIN_FRACT_LM);
     args::ValueFlag<int> lm_min_iter(
         parser, "int >= -1",
@@ -164,6 +164,17 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
             "] ALGORITHM) Specify the maximum number of minimization iterations in the fractional landmark separation procedure (def: " +
             std::to_string(HPLUS_DEF_MINIMIZATION_LH) + "; options: -1 (no limit), 0 (no minimization procedure), <positive int>)",
         {HPLUS_CLI_MINIMIZATION_BOUND_LH}, HPLUS_DEF_MINIMIZATION_LH);
+    args::ValueFlag<bool> lm_min_sort(parser, "0/1",
+                                      "(ONLY FOR [" + std::string(HPLUS_CLI_ALG_FLAG_CUTS) +
+                                          "] ALGORITHM) Specify wether to sort landmarks in minimization procedure (def: " +
+                                          std::to_string(HPLUS_DEF_MINIMIZATION_SORT) + "; options: 0 (don't sort landmarks), 1 (sort landmarks))",
+                                      {HPLUS_CLI_MINIMIZATION_SORT}, HPLUS_DEF_MINIMIZATION_SORT);
+    args::ValueFlag<bool> lm_min_improv(parser, "0/1",
+                                        "(ONLY FOR [" + std::string(HPLUS_CLI_ALG_FLAG_CUTS) +
+                                            "] ALGORITHM) Specify wether to only pick better landmarks in minimization procedure (def: " +
+                                            std::to_string(HPLUS_DEF_MINIMIZATION_IMPROV) +
+                                            "; options: 0 (don't sort landmarks), 1 (sort landmarks))",
+                                        {HPLUS_CLI_MINIMIZATION_IMPROV}, HPLUS_DEF_MINIMIZATION_IMPROV);
 
     // ~~~~~~~~~~~~~~~~ INOUT ~~~~~~~~~~~~~~~~ //
     args::ValueFlag<bool> inout(parser, "0/1",
@@ -359,6 +370,8 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         else
             exec.lm_min_lookahead = static_cast<unsigned int>(i);
     }
+    if (lm_min_sort) exec.lm_min_sort = args::get(lm_min_sort);
+    if (lm_min_improv) exec.lm_min_improv = args::get(lm_min_improv);
     if (fract_cuts_at_nodes) exec.fract_cuts_at_nodes = args::get(fract_cuts_at_nodes);
 
     if (cand_cuts) {

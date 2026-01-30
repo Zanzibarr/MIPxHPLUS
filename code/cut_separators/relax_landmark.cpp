@@ -406,44 +406,18 @@ static inline std::vector<unsigned int> get_r3_violated_landmark(const hplus::in
 std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(const hplus::execution& exec, const hplus::instance& inst,
                                                                              std::vector<double> relax_point) {
     std::vector<unsigned int> landmark;
-    std::multiset<unsigned int> act_in_lm_count, act_rejected_count;
-    double violation{0};
 
-    // ====================================================== //
-    // ============ Minimization data structures ============ //
-    // ====================================================== //
-    unsigned int rounded_act_lmidx{0}, rounded_act{0}, minimization_repetitions{0};
-    double prev_act_val{relax_point[rounded_act_lmidx]};
-
-    // ====================================================== //
-    // ============ R1 R2 incremental computation =========== //
-    // ====================================================== //
+    // R1 and R2 data
     std::vector<double> r1_values(inst.n, 0), r1_act_values(inst.m, 0), r2_values(inst.n, 0), r2_act_values(inst.m, 0);
     std::queue<unsigned int> r1r2_actions_queue;
-    binary_set r1r2_state(inst.n), r1r2_reversing_state(inst.n), r1r2_acts_in_queue(inst.m);
-    // unsigned int r1r2_computations{0};
-    // Trail keys:
-    // - [0, inst.n): r1_values
-    // - [inst.n, inst.n + inst.m): r1_act_values
-    // - [inst.n + inst.m, 2*inst.n + inst.m): r2_values
-    // - [2*inst.n + inst.m, 2*inst.n + 2*inst.m): r2_act_values
+    binary_set r1r2_state(inst.n), r1r2_acts_in_queue(inst.m);
     std::stack<std::pair<unsigned int, double>> r1r2_trail;
-    auto revert_r1r2_changes = [&]() {
-        while (!r1r2_trail.empty()) {
-            const auto [key, value] = r1r2_trail.top();
-            r1r2_trail.pop();
-            if (key < inst.n)  // R1 values
-                r1_values[key] = value;
-            else if (key < inst.n + inst.m)  // R1 act values
-                r1_act_values[key - inst.n] = value;
-            else if (key < 2 * inst.n + inst.m)  // R2 values
-                r2_values[key - inst.n - inst.m] = value;
-            else  // R2 act values
-                r2_act_values[key - 2 * inst.n - inst.m] = value;
-        }
-        r1r2_state = r1r2_reversing_state;
-    };
-    // Initialization for incremental R1 R2 computation
+
+    // R3 data
+    auto [max_flow_graph, actions_effect] = max_flow_graph_construction(inst);
+    std::vector<unsigned int> pcf;
+    double r3{0};
+
     for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
         if (relax_point[act_i] < HPLUS_EPSILON) continue;
         if (inst.actions[act_i].pre_sparse.empty()) {
@@ -452,182 +426,173 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
         }
     }
 
-    // ====================================================== //
-    // ============= R3 incremental computation ============= //
-    // ====================================================== //
-    std::vector<std::vector<network_edge>> old_max_flow_graph;
-    double initial_r3 = 1, previous_r3 = 0, r3 = 0;
-    unsigned int max_flow_computations{0};
-    auto [new_max_flow_graph, actions_effect] = max_flow_graph_construction(inst);
-    auto revert_r3_changes = [&]() {
-        new_max_flow_graph = old_max_flow_graph;
-        r3 = previous_r3;
-    };
+    double r1 = compute_r1_r2_incremental(inst, relax_point, r1_values, r1_act_values, r2_values, r2_act_values, r1r2_state, r1r2_actions_queue,
+                                          r1r2_acts_in_queue, r1r2_trail);
+    if (r1 >= 1 - HPLUS_EPSILON) return {false, {}};
 
-    // ====================================================== //
-    // =========== Minimization procedure helpers =========== //
-    // ====================================================== //
-    auto round_action = [&](int act_idx) {
-        rounded_act = landmark[act_idx];
-        prev_act_val = relax_point[rounded_act];
-        relax_point[rounded_act] = 1;
-        r1r2_actions_queue.push(rounded_act);
-        r1r2_acts_in_queue.add(rounded_act);
-    };
+    pcf = compute_pcf(inst, r1_values, r2_values);
+    r3 = compute_r3_incremental(inst, max_flow_graph, relax_point, pcf, actions_effect, r3);
 
-    auto round_next_action = [&]() {
-        relax_point[rounded_act] = prev_act_val;
-        act_rejected_count.insert(rounded_act);
-        rounded_act_lmidx++;
-        if (rounded_act_lmidx >= landmark.size()) return false;
-        round_action(rounded_act_lmidx);
-        return true;
-    };
+    if (r3 >= 1 - HPLUS_EPSILON) return {false, {}};
 
-    auto sort_landmark = [&]() {
-        std::sort(landmark.begin(), landmark.end(), [&](unsigned int a, unsigned int b) {
-            if (std::abs(relax_point[a] - relax_point[b]) <= HPLUS_EPSILON) {
-                // Prefer actions that were in fewer landmarks (idea: actions appearing in more landmarks are more likely to be "important" actions,
-                // hence are more likely that by rounding up those actions then there's no more a violated landmark)
-                // return act_in_lm_count.count(a) < act_in_lm_count.count(b);
+    landmark = get_r3_violated_landmark(inst, max_flow_graph);
 
-                // Prefer actions that were rejected less (an action is "rejected" when rounding it causes r3 to be >= 1)
-                return act_rejected_count.count(a) < act_rejected_count.count(b);
+    if (exec.min_fract_lm) {
+        // Minimization procedure
+        unsigned int rounded_act_lmidx{0}, rounded_act{0}, minimization_repetitions{0};
+        double prev_act_val{0};
+        std::multiset<unsigned int> act_rejected_count;
+
+        // ====================================================== //
+        // ======== R1 R2 incremental computation helpers ======= //
+        // ====================================================== //
+        binary_set r1r2_prev_state(r1r2_state);
+        // Trail keys:
+        // - [0, inst.n): r1_values
+        // - [inst.n, inst.n + inst.m): r1_act_values
+        // - [inst.n + inst.m, 2*inst.n + inst.m): r2_values
+        // - [2*inst.n + inst.m, 2*inst.n + 2*inst.m): r2_act_values
+        auto revert_r1r2_changes = [&]() {
+            while (!r1r2_trail.empty()) {
+                const auto [key, value] = r1r2_trail.top();
+                r1r2_trail.pop();
+                if (key < inst.n)  // R1 values
+                    r1_values[key] = value;
+                else if (key < inst.n + inst.m)  // R1 act values
+                    r1_act_values[key - inst.n] = value;
+                else if (key < 2 * inst.n + inst.m)  // R2 values
+                    r2_values[key - inst.n - inst.m] = value;
+                else  // R2 act values
+                    r2_act_values[key - 2 * inst.n - inst.m] = value;
             }
-            return relax_point[a] > relax_point[b];  // Prefer actions with smaller violation (violation = 1 - fract_value)
-        });
-    };
+            r1r2_state = r1r2_prev_state;
+        };
 
-    auto round_new_action = [&]() {
-        rounded_act_lmidx = 0;
-        sort_landmark();
-        round_action(rounded_act_lmidx);
-    };
+        // ====================================================== //
+        // ========= R3 incremental computation helpers ========= //
+        // ====================================================== //
+        std::vector<std::vector<network_edge>> prev_max_flow_graph = max_flow_graph;
+        double prev_r3{r3}, initial_r3{r3}, violation{1 - r3};
+        unsigned int max_flow_computations{0};
+        auto revert_r3_changes = [&]() {
+            max_flow_graph = prev_max_flow_graph;
+            r3 = prev_r3;
+        };
 
-    // size_t initial_lm_size = 0, final_lm_size = 0;
-    // double initial_violation = 0, final_violation = 0, start_time = GET_TIME(), normal_time = 0, minimization_time = 0;
-    // std::vector<unsigned int> old_pcf;
-    // unsigned int pcf_diff{0};
+        // ====================================================== //
+        // =========== Minimization procedure helpers =========== //
+        // ====================================================== //
+        auto round_action = [&](int act_idx) {
+            rounded_act = landmark[act_idx];
+            prev_act_val = relax_point[rounded_act];
+            relax_point[rounded_act] = 1;
+            // R1 R2 preparations
+            r1r2_actions_queue.push(rounded_act);
+            r1r2_acts_in_queue.add(rounded_act);
+        };
 
-    auto terminate_condition = [&]() {
-        // If we reached the end of this landmark we have no more actions to round... return the "best" landmark we found
-        if (rounded_act_lmidx >= std::min(exec.lm_min_lookahead, static_cast<unsigned int>(landmark.size()))) return true;
+        auto round_next_action = [&]() {
+            relax_point[rounded_act] = prev_act_val;
+            act_rejected_count.insert(rounded_act);
+            rounded_act_lmidx++;
+            if (rounded_act_lmidx >= landmark.size()) return false;
+            round_action(rounded_act_lmidx);
+            return true;
+        };
 
-        // If we reached our iteration limit, stop
-        if (max_flow_computations >= exec.lm_min_it) return true;
+        auto sort_landmark = [&]() {
+            std::sort(landmark.begin(), landmark.end(), [&](unsigned int a, unsigned int b) {
+                if (std::abs(relax_point[a] - relax_point[b]) <= HPLUS_EPSILON) {
+                    // Prefer actions that were rejected less (an action is "rejected" when rounding it causes r3 to be >= 1)
+                    return act_rejected_count.count(a) < act_rejected_count.count(b);
+                }
+                return relax_point[a] > relax_point[b];  // Prefer actions with smaller violation (violation = 1 - fract_value)
+            });
+        };
 
-        minimization_repetitions++;
+        auto round_new_action = [&]() {
+            r1r2_prev_state = r1r2_state;
+            r1r2_trail = std::stack<std::pair<unsigned int, double>>();
+            prev_max_flow_graph = max_flow_graph;
+            prev_r3 = r3;
 
-        return false;
-    };
+            rounded_act_lmidx = 0;
+            if (exec.lm_min_sort) sort_landmark();
+            round_action(rounded_act_lmidx);
+        };
 
-    // ====================================================== //
-    // =============== Minimization procedure =============== //
-    // ====================================================== //
-    do {
-        // ~~~~~~~~~~ R1/R2 COMPUTATION ~~~~~~~~~~ //
-        // r1r2_computations++;
-        r1r2_trail = std::stack<std::pair<unsigned int, double>>();  // Reset the trail
-        r1r2_reversing_state = r1r2_state;                           // Store current state
-        double r1 = compute_r1_r2_incremental(inst, relax_point, r1_values, r1_act_values, r2_values, r2_act_values, r1r2_state, r1r2_actions_queue,
-                                              r1r2_acts_in_queue, r1r2_trail);
+        auto terminate_condition = [&]() {
+            // If we reached the end of this landmark we have no more actions to round... return the "best" landmark we found
+            if (rounded_act_lmidx >= std::min(exec.lm_min_lookahead, static_cast<unsigned int>(landmark.size()))) return true;
 
-        // If R1 >= 1 there's no violated landmark
-        if (r1 >= 1 - HPLUS_EPSILON) {
-            if (minimization_repetitions > 0) {
+            // If we reached our iteration limit, stop
+            if (max_flow_computations >= exec.lm_min_it) return true;
+
+            minimization_repetitions++;
+
+            return false;
+        };
+
+        // ====================================================== //
+        // ============ Start minimization procedure ============ //
+        // ====================================================== //
+        round_new_action();
+
+        while (!terminate_condition()) {
+            r1 = compute_r1_r2_incremental(inst, relax_point, r1_values, r1_act_values, r2_values, r2_act_values, r1r2_state, r1r2_actions_queue,
+                                           r1r2_acts_in_queue, r1r2_trail);
+            if (r1 >= 1 - HPLUS_EPSILON) {
                 revert_r1r2_changes();
                 bool has_next = round_next_action();
                 if (!has_next) break;
                 continue;
-            } else
-                return {false, {}};
-        }
+            }
 
-        // Otherwise, we rely on R3 to understand wether there's a violated landmark...
+            max_flow_computations++;
+            pcf = compute_pcf(inst, r1_values, r2_values);
+            r3 = compute_r3_incremental(inst, max_flow_graph, relax_point, pcf, actions_effect, r3);
 
-        // ~~~~~~~~~~~~ R3 COMPUTATION ~~~~~~~~~~~ //
-        max_flow_computations++;
-        const auto& pcf = compute_pcf(inst, r1_values, r2_values);
-        r3 = compute_r3_incremental(inst, new_max_flow_graph, relax_point, pcf, actions_effect, r3);
+            // auto manual_max_flow_graph = build_max_flow_graph(inst, relax_point, pcf);
+            // auto manual_r3 = compute_max_flow(manual_max_flow_graph, source, sink);
 
-        // if (found) {
-        //     for (unsigned int i = 0; i < pcf.size(); i++) {
-        //         if (old_pcf[i] != pcf[i]) pcf_diff++;
-        //     }
-        // }
+            // if (!(std::abs(manual_r3 - r3) < HPLUS_EPSILON)) {
+            //     write_graph("previous.dot", old_max_flow_graph);
+            //     write_graph("adjusted.dot", new_max_flow_graph);
+            //     write_graph("manual.dot", manual_max_flow_graph);
+            // }
 
-        // auto manual_max_flow_graph = build_max_flow_graph(inst, relax_point, pcf);
-        // auto manual_r3 = compute_max_flow(manual_max_flow_graph, source, sink);
+            // ASSERT(std::abs(manual_r3 - r3) <= HPLUS_EPSILON);
 
-        // if (!(std::abs(manual_r3 - r3) < HPLUS_EPSILON)) {
-        //     write_graph("previous.dot", old_max_flow_graph);
-        //     write_graph("adjusted.dot", new_max_flow_graph);
-        //     write_graph("manual.dot", manual_max_flow_graph);
-        // }
-
-        // ASSERT(std::abs(manual_r3 - r3) <= HPLUS_EPSILON);
-
-        // Note: if R3 < 1, then there's a violated landmark, BUT if R3 == 1 we can't assume that no landmark is violated... in this case we
-        // simply ignore the possible landmark Statistically speaking, R3 == 1 but there exists a violated landmark happens in ~3% of cases
-        if (r3 >= 1 - exec.lm_min_viol * (1 - initial_r3) - HPLUS_EPSILON) {
-            if (minimization_repetitions > 0) {
+            if (r3 >= 1 - exec.lm_min_viol * (1 - initial_r3) - HPLUS_EPSILON) {
                 revert_r1r2_changes();
                 revert_r3_changes();
                 bool has_next = round_next_action();
                 if (!has_next) break;
                 continue;
-            } else
-                return {false, {}};
+            }
+
+            const std::vector<unsigned int>& proposed_landmark = get_r3_violated_landmark(inst, max_flow_graph);
+            double proposed_violation{1};
+            for (const auto& a : proposed_landmark)
+                proposed_violation -= relax_point[a];  // We can use this vector (with rounded actions) and don't need the original one, because
+                                                       // rounded actions will never be in a landmark (since their weight is 1)
+
+            if (exec.lm_min_improv) {
+                if (proposed_landmark.size() > landmark.size() || (proposed_landmark.size() == landmark.size() && proposed_violation <= violation)) {
+                    revert_r1r2_changes();
+                    revert_r3_changes();
+                    bool has_next = round_next_action();
+                    if (!has_next) break;
+                    continue;
+                }
+            }
+
+            landmark = proposed_landmark;
+            violation = proposed_violation;
+
+            round_new_action();
         }
-
-        const std::vector<unsigned int>& proposed_landmark = get_r3_violated_landmark(inst, new_max_flow_graph);
-        double proposed_violation{1};
-        for (const auto& a : proposed_landmark)
-            proposed_violation -= relax_point[a];  // We can use this vector (with rounded actions) and don't need the original one, because rounded
-                                                   // actions will never be in a landmark (since their weight is 1)
-
-        // The proposed landmark is a "worse" one... ignore it
-        if (minimization_repetitions > 0 &&
-            (proposed_landmark.size() > landmark.size() || (proposed_landmark.size() == landmark.size() && proposed_violation <= violation))) {
-            revert_r1r2_changes();
-            revert_r3_changes();
-            bool has_next = round_next_action();
-            if (!has_next) break;
-            continue;
-        }
-
-        // Now we know that there's a new landmark worth extracting...
-        landmark = proposed_landmark;
-        violation = proposed_violation;
-        for (const auto& x : landmark) act_in_lm_count.insert(x);
-
-        old_max_flow_graph = new_max_flow_graph;
-        previous_r3 = r3;
-
-        if (minimization_repetitions == 0) {
-            initial_r3 = r3;
-            // initial_lm_size = landmark.size();
-            // initial_violation = violation;
-            // normal_time = (GET_TIME() - start_time) * 1000;
-        }
-
-        // ~~~~~ MINIMIZATION PROCEDURE SETUP ~~~~ //
-        round_new_action();
-
-        if (!exec.min_fract_lm) break;
-    } while (!terminate_condition());
-
-    // final_lm_size = landmark.size();
-    // final_violation = violation;
-
-    // minimization_time = (GET_TIME() - start_time) * 1000;
-    // if (exec.min_fract_lm)
-    //     LOG_DEBUG << "Minimization results: LM size: " << std::setw(5) << initial_lm_size << " -> " << std::setw(5) << final_lm_size
-    //               << " -- Violation: " << std::fixed << std::setprecision(4) << initial_violation << " -> " << std::fixed << std::setprecision(4)
-    //               << final_violation << " -- Repetitions: " << std::setw(4) << minimization_repetitions << " (R1/R2: " << std::setw(4)
-    //               << r1r2_computations << " - R3: " << std::setw(4) << max_flow_computations << " -- Time: normal: " << std::fixed << std::setw(6)
-    //               << std::setprecision(2) << normal_time << "ms total: " << std::fixed << std::setw(6) << std::setprecision(2) << minimization_time
-    //               << "ms";
+    }
 
     return {true, landmark};
 }
