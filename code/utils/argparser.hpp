@@ -244,6 +244,7 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         logger::get_instance().initialize(false, "", true, (exec.threads > 1 && VERBOSE_DEBUG()));
 
     if (VERBOSE_BASIC()) {
+        LOG_INFO << compile_date();
         LOG_INFO << today();
         LOG_INFO << version();
     }

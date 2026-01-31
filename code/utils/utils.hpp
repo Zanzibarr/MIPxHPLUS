@@ -12,6 +12,9 @@
 // ##################################################################### //
 
 #define VERSION "2.4.3"
+#ifndef COMPILE_DATETIME
+#define COMPILE_DATETIME "NULL"
+#endif
 
 // ##################################################################### //
 // ############################## IMPORTS ############################## //
@@ -174,6 +177,11 @@ inline void init_rng(int seed) { g_rng.seed(seed); }
                 break;                                                                                                              \
         }                                                                                                                           \
     }
+
+[[nodiscard]]
+inline std::string compile_date() {
+    return std::string("Compiled on ") + COMPILE_DATETIME;
+}
 
 [[nodiscard]]
 inline std::string today() {

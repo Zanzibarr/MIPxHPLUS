@@ -17,6 +17,9 @@ if(NOT CMAKE_BUILD_TYPE)
     set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
 endif()
 
+string(TIMESTAMP COMPILE_TIME "%Y-%m-%d %H:%M:%S")
+add_compile_definitions(COMPILE_DATETIME="${COMPILE_TIME}")
+
 # Build flags - with sanitizer support for debug builds
 set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -fsanitize=address -fno-omit-frame-pointer")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
