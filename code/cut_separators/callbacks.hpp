@@ -60,6 +60,8 @@ inline void set_cplex_callbacks(hplus::execution& exec, callback_userhandle& use
             .cand_calls = 0,
             .cand_time = 0.0,
             .relax_time = 0.0,
+            .acts_in_lm = 0,
+            .n_lm = 0,
         };
 
         userhandle.thread_specific_data.push_back(std::move(td));
