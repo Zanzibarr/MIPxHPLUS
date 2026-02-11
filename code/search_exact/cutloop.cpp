@@ -50,7 +50,7 @@ inline unsigned int generate_cuts(CPXENVptr& env, CPXLPptr& lp, const std::vecto
 
         // Adding landmark as new constraint
         if (exec.fract_cuts.find('l') != std::string::npos) {
-            const auto& [found_lm, landmark]{relax_cuts::get_violated_landmark(exec, inst, relax_point)};
+            const auto& [found_lm, landmark]{relax_cuts::get_violated_landmark(exec, inst, relax_point, stats.total_act_in_lm, stats.total_n_lm)};
             if (found_lm) {
                 ind = std::vector<int>(landmark.begin(), landmark.end());
                 val = std::vector<double>(landmark.size(), 1.0);

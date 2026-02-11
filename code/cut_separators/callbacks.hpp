@@ -86,6 +86,8 @@ inline void gather_stats_from_threads(hplus::statistics& stats, callback_userhan
         stats.cuts_sec += data.usercuts_sec;
         stats.cand_calls += data.cand_calls;
         stats.relax_calls += data.relax_calls;
+        stats.total_act_in_lm += data.acts_in_lm;
+        stats.total_n_lm += data.n_lm;
     }
 }
 }  // namespace callbacks

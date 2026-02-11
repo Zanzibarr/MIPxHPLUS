@@ -18,6 +18,8 @@ struct statistics {
     unsigned int heur_cost, cost;
     // Preprocessing
     unsigned int n_prep, m_prep, nfadd_prep;
+    // Fract lm info
+    unsigned int total_act_in_lm, total_n_lm;
     // Cplex informations
     int status;
     unsigned int nodes, var_base, var_acyc, const_base, const_acyc, cuts_lm, cuts_sec, cutloop_it, cand_calls, relax_calls;
@@ -40,6 +42,8 @@ inline void init(statistics& stats) {
                        .m_prep = 0,
                        .nfadd_prep = 0,
                        .status = 3,
+                       .total_act_in_lm = 0,
+                       .total_n_lm = 0,
                        .nodes = 0,
                        .var_base = 0,
                        .var_acyc = 0,
@@ -66,6 +70,8 @@ inline void print(const statistics& stats) {
     LOG << " >> User cuts (lm)      " << std::setw(28) << stats.cuts_lm << " <<";
     LOG << " >> User cuts (sec)     " << std::setw(28) << stats.cuts_sec << " <<";
     LOG << " >> Nodes expanded      " << std::setw(28) << stats.nodes << " <<";
+    LOG << " >> Average lm size in fract lm minim.     " << std::setw(9) << std::fixed << std::setprecision(4)
+        << (stats.total_n_lm == 0 ? 0 : static_cast<double>(stats.total_act_in_lm) / stats.total_n_lm) << " <<";
     LOG << " >> Cutloop iterations  " << std::setw(28) << stats.cutloop_it << " <<";
     LOG << " >> Candidate callback calls " << std::setw(23) << stats.cand_calls << " <<";
     LOG << " >> Relax callback calls     " << std::setw(23) << stats.relax_calls << " <<";

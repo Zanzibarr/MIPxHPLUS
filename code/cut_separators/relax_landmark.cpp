@@ -404,7 +404,8 @@ static inline std::vector<unsigned int> get_r3_violated_landmark(const hplus::in
 
 [[nodiscard]]
 std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(const hplus::execution& exec, const hplus::instance& inst,
-                                                                             std::vector<double> relax_point) {
+                                                                             std::vector<double> relax_point, unsigned int& act_in_lm,
+                                                                             unsigned int& n_lm) {
     std::vector<unsigned int> landmark;
 
     // R1 and R2 data
@@ -438,6 +439,9 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
     landmark = get_r3_violated_landmark(inst, max_flow_graph);
 
     if (exec.min_fract_lm) {
+        act_in_lm += landmark.size();
+        n_lm++;
+
         // Minimization procedure
         unsigned int rounded_act_lmidx{0}, rounded_act{0}, minimization_repetitions{0};
         double prev_act_val{0};
@@ -599,8 +603,8 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
 
 [[nodiscard]]
 unsigned int relax_cuts::add_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, const hplus::instance& inst,
-                                    const std::vector<double>& relax_point) {
-    const auto& [found, landmark]{get_violated_landmark(exec, inst, relax_point)};
+                                    const std::vector<double>& relax_point, unsigned int& n_act_in_lm, unsigned int& n_lm) {
+    const auto& [found, landmark]{get_violated_landmark(exec, inst, relax_point, n_act_in_lm, n_lm)};
     if (!found) return 0;
     std::vector<int> ind(landmark.size());
     int nnz{0};
