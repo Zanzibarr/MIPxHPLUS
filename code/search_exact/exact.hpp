@@ -77,6 +77,11 @@ inline void add_acyclicity_constraints(const hplus::execution& exec, hplus::inst
 }
 
 inline void post_warm_start(const hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
+    if (exec.cutoff >= 0) {
+        LOG_INFO << "Setting cutoff value of " << exec.cutoff;
+        CPX_HANDLE_CALL(CPXsetdblparam(env, CPXPARAM_MIP_Tolerances_UpperCutoff, exec.cutoff));
+    }
+
     switch (exec.alg) {
         case hplus::algorithm::TL:
             tl::post_warm_start(exec, inst, env, lp);

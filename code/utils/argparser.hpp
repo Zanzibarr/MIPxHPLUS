@@ -55,6 +55,11 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
             "; options: 0 (none: no LM-cut), a (ARB), i (INV), v (VDM), r (RND))",
         {HPLUS_CLI_PREP_LMCUT_FLAG}, HPLUS_DEF_PREP_LMCUT);
 
+    args::ValueFlag<int> cutoff(parser, "int >= -1",
+                                "Specify the (upper) cutoff value to give to CPLEX (def: " + std::to_string(HPLUS_DEF_CUTOFF) +
+                                    "; options: -1 (none), >= 0 (the cutoff vlaue)",
+                                {HPLUS_CLI_CUTOFF_FLAG}, HPLUS_DEF_CUTOFF);
+
     // ~~~~~~~~~~~~~~~ LOGGING ~~~~~~~~~~~~~~~ //
     args::ValueFlag<std::string> log(
         parser, "string",
@@ -328,6 +333,10 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
             }
         } else
             exec.prep_lmcut = s;
+    }
+    if (cutoff) {
+        exec.cutoff = args::get(cutoff);
+        if (exec.cutoff < HPLUS_DEF_CUTOFF) exec.cutoff = HPLUS_DEF_CUTOFF;
     }
     if (fract_cuts) {
         exec.fract_cuts = "";

@@ -44,6 +44,8 @@ struct execution {
     bool prep;
     std::string prep_lmcut;
     warmstart ws;
+    // Cutoff
+    int cutoff;
     // Integer cuts
     std::string cand_cuts;
     // Fractional cuts
@@ -81,6 +83,7 @@ inline void init(execution& exec) {
                             .prep = HPLUS_DEF_PREP,
                             .prep_lmcut = HPLUS_DEF_PREP_LMCUT,
                             .ws = static_cast<warmstart>(HPLUS_DEF_WS),
+                            .cutoff = HPLUS_DEF_CUTOFF,
                             .cand_cuts = HPLUS_DEF_CANDCUTS,
                             .fract_cuts = HPLUS_DEF_FRACTCUTS,
                             .fract_cuts_at_nodes = HPLUS_DEF_FRACTCUTS_AT_NODES,
@@ -174,6 +177,7 @@ inline void print(const execution& exec) {
     LOG << "Preprocessing (LM-cut):                       " << std::setw(10) << exec.prep_lmcut;
     LOG << "Algorithm:                                    " << std::setw(10) << to_string(exec.alg);
     if (exec.alg < hplus::algorithm::GC) LOG << "Warm start:                                   " << std::setw(10) << to_string(exec.ws);
+    if (exec.cutoff >= 0) LOG << "Cutoff value:                                 " << std::setw(10) << exec.cutoff;
     if (exec.alg == hplus::algorithm::CUTS) {
         if (!exec.cand_cuts.empty()) LOG << "Candidate cuts:                                    " << std::setw(5) << exec.cand_cuts;
 
