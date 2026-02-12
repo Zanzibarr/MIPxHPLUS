@@ -526,6 +526,8 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
         };
 
         auto terminate_condition = [&]() {
+            if (CHECK_STOP()) return true;
+
             // If we reached the end of this landmark we have no more actions to round... return the "best" landmark we found
             if (rounded_act_lmidx >= std::min(exec.lm_min_lookahead, static_cast<unsigned int>(landmark.size()))) return true;
 

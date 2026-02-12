@@ -191,7 +191,7 @@ inline void print(const execution& exec) {
             LOG << "Expand only better landmarks:                          " << exec.lm_min_improv;
         }
         if (exec.fract_cuts != "0") LOG << "Fractional cuts at nodes:                              " << exec.fract_cuts_at_nodes;
-        LOG << "Custom cut-loop                                        " << exec.custom_cutloop;
+        if (exec.fract_cuts != "0") LOG << "Custom cut-loop                                        " << exec.custom_cutloop;
     }
     if (exec.custom_cutloop) {
         LOG << "Custom cutloop pruning                                 " << exec.cl_pruning;
