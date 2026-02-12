@@ -2299,7 +2299,7 @@ tetris-sat14-strips-p039,True,41.0
 tetris-sat14-strips-p040,True,39.0
 thoughtful-mco14-strips-p11_6_65-typed,False,70.0
 thoughtful-mco14-strips-p11_6_74-typed,False,74.0
-thoughtful-mco14-strips-p11_6_75-typed,False,78.0
+thoughtful-mco14-strips-p11_6_75-typed,False,77.0
 thoughtful-mco14-strips-p11_6_78-typed,False,69.0
 thoughtful-mco14-strips-p11_6_88-typed,False,83.0
 thoughtful-mco14-strips-p11_6_89-typed,False,76.0
@@ -2362,7 +2362,7 @@ tidybot-opt14-strips-p02,True,27.0
 tidybot-opt14-strips-p03,True,21.0
 tidybot-opt14-strips-p04,True,20.0
 tidybot-opt14-strips-p05,True,22.0
-tidybot-opt14-strips-p06,False,27.0
+tidybot-opt14-strips-p06,True,27.0
 tidybot-opt14-strips-p07,True,25.0
 tidybot-opt14-strips-p08,True,18.0
 tidybot-opt14-strips-p09,False,24.0
@@ -2382,7 +2382,7 @@ tidybot-sat11-strips-p02,True,27.0
 tidybot-sat11-strips-p03,True,21.0
 tidybot-sat11-strips-p04,True,20.0
 tidybot-sat11-strips-p05,True,22.0
-tidybot-sat11-strips-p06,False,27.0
+tidybot-sat11-strips-p06,True,27.0
 tidybot-sat11-strips-p07,True,25.0
 tidybot-sat11-strips-p08,True,18.0
 tidybot-sat11-strips-p09,False,24.0
