@@ -123,7 +123,7 @@ std::pair<bool, unsigned int> heur::greedy_choice_hadd(const hplus::instance& in
         double hadd_value = current_hadd;
 
         while (!userhandle.trail.empty()) {
-            const auto& [p, old_value] = userhandle.trail.top();
+            const auto [p, old_value] = userhandle.trail.top();
             userhandle.trail.pop();
             if (inst.goal[p]) hadd_value -= (old_value - userhandle.values[p]);
             userhandle.values[p] = old_value;

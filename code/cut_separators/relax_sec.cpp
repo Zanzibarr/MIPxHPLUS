@@ -1,4 +1,4 @@
-#include "../utils/algorithms.hpp"
+#include "../utils/cycle_det.hpp"
 #include "relax_callback.hpp"
 
 [[nodiscard]]

@@ -58,6 +58,8 @@ inline void set_cplex_callbacks(hplus::execution& exec, callback_userhandle& use
             .usercuts_sec = 0,
             .relax_calls = 0,
             .cand_calls = 0,
+            .acts_in_lm = 0,
+            .n_lm = 0,
             .cand_time = 0.0,
             .relax_time = 0.0,
         };
@@ -86,6 +88,8 @@ inline void gather_stats_from_threads(hplus::statistics& stats, callback_userhan
         stats.cuts_sec += data.usercuts_sec;
         stats.cand_calls += data.cand_calls;
         stats.relax_calls += data.relax_calls;
+        stats.total_act_in_lm += data.acts_in_lm;
+        stats.total_n_lm += data.n_lm;
     }
 }
 }  // namespace callbacks

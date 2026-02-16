@@ -11,7 +11,10 @@
 // ############################## VERSION ############################## //
 // ##################################################################### //
 
-#define VERSION "2.4.2"
+#define VERSION "2.5"
+#ifndef COMPILE_DATETIME
+#define COMPILE_DATETIME "NULL"
+#endif
 
 // ##################################################################### //
 // ############################## IMPORTS ############################## //
@@ -44,6 +47,7 @@
 #define HPLUS_CLI_WS_FLAG_GREEDYCXE "gcxe"
 #define HPLUS_CLI_WS_FLAG_GREEDYHMAX "ghm"
 #define HPLUS_CLI_WS_FLAG_GREEDYHADD "gha"
+#define HPLUS_CLI_CUTOFF_FLAG "cutoff"
 #define HPLUS_CLI_PREP_FLAG "prep"
 #define HPLUS_CLI_PREP_LMCUT_FLAG "prep-lm"
 #define HPLUS_CLI_LOG_FLAG "log"
@@ -53,6 +57,12 @@
 #define HPLUS_CLI_SEED_FLAG "s"
 #define HPLUS_CLI_VERBOSE_FLAG "v"
 #define HPLUS_CLI_FRACTCUTS_FLAG "fract"
+#define HPLUS_CLI_FRACTCUTS_MIN_LM_FLAG "fract-minlm"
+#define HPLUS_CLI_MINIMIZATION_BOUND_IT "minlm-it"
+#define HPLUS_CLI_MINIMIZATION_BOUND_LH "minlm-lh"
+#define HPLUS_CLI_MINIMIZATION_SORT "minlm-sort"
+#define HPLUS_CLI_MINIMIZATION_IMPROV "minlm-improv"
+#define HPLUS_CLI_MINIMIZATION_BOUND_VIOL "minlm-viol"
 #define HPLUS_CLI_FRACTCUTS_AT_NODES_FLAG "fract-nodes"
 #define HPLUS_CLI_CANDCUTS_FLAG "cand"
 #define HPLUS_CLI_CUTLOOP_FLAG "cloop"
@@ -81,11 +91,15 @@
 // ############################ CLI DEFAULTS ########################### //
 // ##################################################################### //
 
+#define INFBOUND_DBL 1e20
+#define INFBOUND_INT std::numeric_limits<unsigned int>::max()
+
 #define HPLUS_DEF_RANDOM_SEED 2122187
 #define HPLUS_DEF_ALG 2
 #define HPLUS_DEF_ALG_STRING HPLUS_CLI_ALG_FLAG_CUTS
 #define HPLUS_DEF_WS 4
 #define HPLUS_DEF_WS_STRING HPLUS_CLI_WS_FLAG_GREEDYHADD
+#define HPLUS_DEF_CUTOFF -1
 #define HPLUS_DEF_PREP true
 #define HPLUS_DEF_PREP_LMCUT "aiv"
 #define HPLUS_ALL_LMCUT_PCF "aivr"
@@ -95,9 +109,15 @@
 #define HPLUS_DEF_MEMORYLIMIT 4050
 #define HPLUS_DEF_VERBOSE 3
 #define HPLUS_DEF_CANDCUTS "c"
-#define HPLUS_DEF_FRACTCUTS "0"
+#define HPLUS_DEF_FRACTCUTS "l"
+#define HPLUS_DEF_MIN_FRACT_LM true
+#define HPLUS_DEF_MINIMIZATION_IT 1000
+#define HPLUS_DEF_MINIMIZATION_LH 10
+#define HPLUS_DEF_MINIMIZATION_SORT true
+#define HPLUS_DEF_MINIMIZATION_IMPROV true
+#define HPLUS_DEF_MINIMIZATION_VIOL 0
 #define HPLUS_DEF_FRACTCUTS_AT_NODES true
-#define HPLUS_DEF_CUSTOM_CUTLOOP false
+#define HPLUS_DEF_CUSTOM_CUTLOOP true
 #define HPLUS_DEF_CL_PRUNING true
 #define HPLUS_DEF_CL_MIN_ITER 20
 #define HPLUS_DEF_CL_IMPROV 0.005
@@ -160,6 +180,11 @@ inline void init_rng(int seed) { g_rng.seed(seed); }
                 break;                                                                                                              \
         }                                                                                                                           \
     }
+
+[[nodiscard]]
+inline std::string compile_date() {
+    return std::string("Compiled on ") + COMPILE_DATETIME;
+}
 
 [[nodiscard]]
 inline std::string today() {
