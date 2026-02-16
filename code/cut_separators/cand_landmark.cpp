@@ -5,6 +5,13 @@
 #include "cand_callback.hpp"
 
 [[nodiscard]]
+unsigned int cand_cuts::add_lmcut_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const binary_set& unreachable_actions,
+                                         const std::vector<unsigned int>& unused_actions, const binary_set& reachable_state) {
+    LOG_TODO << "Separating violated landmarks from integer solution with LMcut";
+    return 0;
+}
+
+[[nodiscard]]
 unsigned int cand_cuts::add_comp_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const binary_set& unreachable_actions,
                                         const std::vector<unsigned int>& unused_actions, const binary_set& reachable_state) {
     binary_set unapplicable{unreachable_actions}, extension(inst.m), state{reachable_state};
