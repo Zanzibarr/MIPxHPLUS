@@ -1,4 +1,4 @@
-#include "../utils/algorithms.hpp"
+#include "../utils/cycle_det.hpp"
 #include "relax_callback.hpp"
 
 [[nodiscard]]
@@ -16,8 +16,11 @@ build_graph(const hplus::instance& inst, const std::unordered_map<std::pair<unsi
                 unsigned int q = inst.actions[act_i].eff_sparse[i];
                 if (fadd_weights.at({act_i, q}) == 0) continue;
                 graph[p].push_back(q);
-                edge_labels[{p, q}] = inst.m + inst.fadd_cpx_start[act_i] + i;
-                edge_weights[{p, q}] = 1 - fadd_weights.at({act_i, q});
+                double weight = 1 - fadd_weights.at({act_i, q});
+                if (edge_weights.count({p, q}) == 0 || weight < edge_weights.at({p, q})) {
+                    edge_labels[{p, q}] = inst.m + inst.fadd_cpx_start[act_i] + i;
+                    edge_weights[{p, q}] = weight;
+                }
             }
         }
     }
@@ -28,7 +31,7 @@ build_graph(const hplus::instance& inst, const std::unordered_map<std::pair<unsi
 std::pair<bool, std::vector<std::vector<unsigned int>>> relax_cuts::get_violated_sec(
     const hplus::instance& inst, const std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash>& fadd_weights) {
     const auto& [graph, edge_labels, edge_weights] = build_graph(inst, fadd_weights);
-    // Find cycles in the (weighted) causal relation (multi) graph using a DFS approach
+    // Find cycles in the (weighted) causal relation graph using a DFS approach
     const auto& cycles{find_cycles_weighted_lessthan1(graph, edge_labels, edge_weights)};
     return {!cycles.empty(), cycles};
 }

@@ -31,59 +31,79 @@ enum class warmstart { NONE = 0, GC = 1, GCXE = 2, GHM = 3, GHA = 4 };
 enum class verbose { NONE = 0, STATISTICS = 1, BASIC = 2, DEBUG = 3 };
 
 struct execution {
+    // Instance file
+    std::string file, file_name;
     // Execution parameters
     exec_type type;
+    algorithm alg;
+    std::string log_file;
+    unsigned int threads, timelimit, memorylimit;
+    verbose verbosity;
+    int seed;
+    // Preprocessing
     bool prep;
     std::string prep_lmcut;
     warmstart ws;
-    algorithm alg;
-    std::string fract_cuts, cand_cuts;
-    bool fract_cuts_at_nodes, custom_cutloop, cl_pruning, inout;
-    unsigned int cl_min_iter, cl_past_iter, io_max_iter;
-    double cl_improv, cl_gap_stop, io_weight, io_weight_update;
-    std::string log_file;
-    unsigned int threads;
-    unsigned int timelimit;
-    unsigned int memorylimit;
-    verbose verbosity;
-    // Instance file
-    std::string file, file_name;
+    // Cutoff
+    int cutoff;
+    // Integer cuts
+    std::string cand_cuts;
+    // Fractional cuts
+    std::string fract_cuts;
+    bool fract_cuts_at_nodes;
+    // Cutloop
+    bool custom_cutloop, cl_pruning;
+    unsigned int cl_min_iter, cl_past_iter;
+    double cl_improv, cl_gap_stop;
+    // Inout
+    bool inout;
+    unsigned int io_max_iter;
+    double io_weight, io_weight_update;
+    // Fract LM Minimization
+    bool min_fract_lm, lm_min_sort, lm_min_improv;
+    unsigned int lm_min_it, lm_min_lookahead;
+    double lm_min_viol;
     // Execution/Solution status
     exec_status exec_s;
-    // Seed
-    int seed;
     // Testing
     bool testing;
 };
 
 inline void init(execution& exec) {
-    exec = hplus::execution{.type = exec_type::RUN,
-                            .prep = HPLUS_DEF_PREP,
-                            .prep_lmcut = HPLUS_DEF_PREP_LMCUT,
-                            .ws = static_cast<warmstart>(HPLUS_DEF_WS),
+    exec = hplus::execution{.file = "",
+                            .file_name = "",
+                            .type = exec_type::RUN,
                             .alg = static_cast<algorithm>(HPLUS_DEF_ALG),
-                            .fract_cuts = HPLUS_DEF_FRACTCUTS,
-                            .cand_cuts = HPLUS_DEF_CANDCUTS,
-                            .fract_cuts_at_nodes = HPLUS_DEF_FRACTCUTS_AT_NODES,
-                            .custom_cutloop = HPLUS_DEF_CUSTOM_CUTLOOP,
-                            .cl_pruning = HPLUS_DEF_CL_PRUNING,
-                            .inout = HPLUS_DEF_INOUT,
-                            .cl_min_iter = HPLUS_DEF_CL_MIN_ITER,
-                            .cl_past_iter = HPLUS_DEF_CL_PAST_ITER,
-                            .io_max_iter = HPLUS_DEF_IO_MAX_IT,
-                            .cl_improv = HPLUS_DEF_CL_IMPROV,
-                            .cl_gap_stop = HPLUS_DEF_CL_GAP_STOP,
-                            .io_weight = HPLUS_DEF_IO_WEIGHT,
-                            .io_weight_update = HPLUS_DEF_IO_WEIGHT_UPD,
                             .log_file = HPLUS_DEF_LOG,
                             .threads = HPLUS_DEF_THREADS,
                             .timelimit = HPLUS_DEF_TIMELIMIT,
                             .memorylimit = HPLUS_DEF_MEMORYLIMIT,
                             .verbosity = static_cast<verbose>(HPLUS_DEF_VERBOSE),
-                            .file = "",
-                            .file_name = "",
-                            .exec_s = exec_status::START,
                             .seed = HPLUS_DEF_RANDOM_SEED,
+                            .prep = HPLUS_DEF_PREP,
+                            .prep_lmcut = HPLUS_DEF_PREP_LMCUT,
+                            .ws = static_cast<warmstart>(HPLUS_DEF_WS),
+                            .cutoff = HPLUS_DEF_CUTOFF,
+                            .cand_cuts = HPLUS_DEF_CANDCUTS,
+                            .fract_cuts = HPLUS_DEF_FRACTCUTS,
+                            .fract_cuts_at_nodes = HPLUS_DEF_FRACTCUTS_AT_NODES,
+                            .custom_cutloop = HPLUS_DEF_CUSTOM_CUTLOOP,
+                            .cl_pruning = HPLUS_DEF_CL_PRUNING,
+                            .cl_min_iter = HPLUS_DEF_CL_MIN_ITER,
+                            .cl_past_iter = HPLUS_DEF_CL_PAST_ITER,
+                            .cl_improv = HPLUS_DEF_CL_IMPROV,
+                            .cl_gap_stop = HPLUS_DEF_CL_GAP_STOP,
+                            .inout = HPLUS_DEF_INOUT,
+                            .io_max_iter = HPLUS_DEF_IO_MAX_IT,
+                            .io_weight = HPLUS_DEF_IO_WEIGHT,
+                            .io_weight_update = HPLUS_DEF_IO_WEIGHT_UPD,
+                            .min_fract_lm = HPLUS_DEF_MIN_FRACT_LM,
+                            .lm_min_sort = HPLUS_DEF_MINIMIZATION_SORT,
+                            .lm_min_improv = HPLUS_DEF_MINIMIZATION_IMPROV,
+                            .lm_min_it = HPLUS_DEF_MINIMIZATION_IT,
+                            .lm_min_lookahead = HPLUS_DEF_MINIMIZATION_LH,
+                            .lm_min_viol = HPLUS_DEF_MINIMIZATION_VIOL,
+                            .exec_s = exec_status::START,
                             .testing = false};
 }
 
@@ -157,24 +177,33 @@ inline void print(const execution& exec) {
     LOG << "Preprocessing (LM-cut):                       " << std::setw(10) << exec.prep_lmcut;
     LOG << "Algorithm:                                    " << std::setw(10) << to_string(exec.alg);
     if (exec.alg < hplus::algorithm::GC) LOG << "Warm start:                                   " << std::setw(10) << to_string(exec.ws);
+    if (exec.cutoff >= 0) LOG << "Cutoff value:                                 " << std::setw(10) << exec.cutoff;
     if (exec.alg == hplus::algorithm::CUTS) {
         if (!exec.cand_cuts.empty()) LOG << "Candidate cuts:                                    " << std::setw(5) << exec.cand_cuts;
 
         LOG << "Fractional cuts:                                      " << std::setw(2) << exec.fract_cuts;
+        if (exec.fract_cuts.find('l') != std::string::npos) LOG << "Minimization of fractional landmarks:                  " << exec.min_fract_lm;
+        if (exec.min_fract_lm) {
+            LOG << "- Upper bound on number of iterations:        " << std::setw(10) << exec.lm_min_it;
+            LOG << "- Violation ratio threshold:                       " << std::fixed << std::setprecision(3) << exec.lm_min_viol;
+            LOG << "- Lookahead success rate threshold:           " << std::setw(10) << exec.lm_min_lookahead;
+            LOG << "- Sorting of landmark:                                 " << exec.lm_min_sort;
+            LOG << "- Expand only better landmarks:                        " << exec.lm_min_improv;
+        }
         if (exec.fract_cuts != "0") LOG << "Fractional cuts at nodes:                              " << exec.fract_cuts_at_nodes;
-        LOG << "Custom cut-loop                                        " << exec.custom_cutloop;
+        if (exec.fract_cuts != "0") LOG << "Custom cut-loop                                        " << exec.custom_cutloop;
     }
     if (exec.custom_cutloop) {
-        LOG << "Custom cutloop pruning                                 " << exec.cl_pruning;
-        LOG << "Custom cutloop gap exit condition:                " << std::fixed << std::setprecision(4) << exec.cl_gap_stop;
-        LOG << "Custom cutloop minimum iterations:                 " << std::setw(5) << exec.cl_min_iter;
-        LOG << "Custom cutloop improvement threshold:             " << std::fixed << std::setprecision(4) << exec.cl_improv;
-        LOG << "Custom cutloop past iterations comparison:         " << std::setw(5) << exec.cl_past_iter;
+        LOG << "- Pruning                                              " << exec.cl_pruning;
+        LOG << "- Gap exit condition:                             " << std::fixed << std::setprecision(4) << exec.cl_gap_stop;
+        LOG << "- Minimum iterations:                              " << std::setw(5) << exec.cl_min_iter;
+        LOG << "- Improvement threshold:                          " << std::fixed << std::setprecision(4) << exec.cl_improv;
+        LOG << "- Past iterations comparison:                      " << std::setw(5) << exec.cl_past_iter;
         LOG << "In-Out strategy:                                       " << exec.inout;
         if (exec.inout) {
-            LOG << "In-Out maximum iterations:                         " << std::setw(5) << exec.io_max_iter;
-            LOG << "In-Out initial incumbent weight:                    " << std::fixed << std::setprecision(2) << exec.io_weight;
-            LOG << "In-Out weight update:                               " << std::fixed << std::setprecision(2) << exec.io_weight_update;
+            LOG << "- Maximum iterations:                              " << std::setw(5) << exec.io_max_iter;
+            LOG << "- Initial incumbent weight:                         " << std::fixed << std::setprecision(2) << exec.io_weight;
+            LOG << "- Weight update:                                    " << std::fixed << std::setprecision(2) << exec.io_weight_update;
         }
     }
     if (exec.testing) LOG << "Testing mode:                                          1";

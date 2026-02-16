@@ -26,6 +26,48 @@ HOW I DO VERSIONING:
 <!-- ### :rocket: Performance Improvements -->
 
 
+
+## [2.5.0] - 2026/02/16
+<!-- ### :warning: Known issues -->
+### :ballot_box_with_check: Fixed
+- Couldn't properly set the build type
+- Lower Bound after cutloop didn't get updated correctly when reaching time limit
+- Wrong vector sizes in basic model construction
+### :heavy_exclamation_mark: Changed
+- Updated list of best known solutions (both structure and added new values)
+### :heavy_plus_sign: Added
+- Minimalization of (violated) landmark found in relax callback
+- Cutoff CLI parameter to be passed to CPLEX as upper cutoff
+- Statistic about lower bound before starting the cutloop
+- Statistics about LM size in fractional
+- Compile time in executable output
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+### :rocket: Performance Improvements
+- Violated landmarks from fractional solutions are now improved through a local search strategy (minimalization of the landmark)
+- Old vs new FLM (Fractional LandMark):
+    - Solved: 2524 -> 2559
+    - Nodes: -36,-27,-36,-14%
+    - Time: -6,-11,-13,-23%
+- Best vs new FLM:
+    - Solved: 2520 -> 2559
+    - Nodes: -45,-35,-49,-65%
+    - Time: -2,+2,-16,-10%
+- Our Best method now uses FLM with minimalization
+
+
+## [2.4.2] - 2025/11/24
+<!-- ### :warning: Known issues -->
+### :ballot_box_with_check: Fixed
+- Bug in fractional SEC where we didn't select the smallest-weight edge in the graph construction
+### :heavy_exclamation_mark: Changed
+- Minor aestetic changes in output
+<!-- ### :heavy_plus_sign: Added -->
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+<!-- ### :rocket: Performance Improvements -->
+
+
 ## [2.4.1] - 2025/11/20
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->
