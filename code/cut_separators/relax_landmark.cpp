@@ -492,9 +492,9 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
         // ====================================================== //
         // ============ Start minimization procedure ============ //
         // ====================================================== //
-        while (!terminate_condition()) {
-            round_new_action();
+        round_new_action();
 
+        while (!terminate_condition()) {
             r1 = compute_r1_r2_incremental(inst, relax_point, r1_values, r1_act_values, r2_values, r2_act_values, r1r2_state, r1r2_actions_queue,
                                            r1r2_acts_in_queue, r1r2_trail);
             if (r1 >= 1 - HPLUS_EPSILON) {
@@ -534,6 +534,8 @@ std::pair<bool, std::vector<unsigned int>> relax_cuts::get_violated_landmark(con
 
             landmark = proposed_landmark;
             violation = proposed_violation;
+
+            round_new_action();
         }
     }
 
