@@ -17,9 +17,6 @@ if(NOT CMAKE_BUILD_TYPE)
     set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
 endif()
 
-string(TIMESTAMP COMPILE_TIME "%Y-%m-%d %H:%M:%S")
-add_compile_definitions(COMPILE_DATETIME="${COMPILE_TIME}")
-
 # Build flags - with sanitizer support for debug builds
 set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -fsanitize=address -fno-omit-frame-pointer")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
@@ -122,8 +119,22 @@ if(NOT CPLEX_LIBRARY)
     message(FATAL_ERROR "CPLEX library not found in ${CPLEX_DIR}")
 endif()
 
+# Create a dummy file to force recompilation
+add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/timestamp.h.tmp
+    COMMAND ${CMAKE_COMMAND} -E echo "// Forcing recompilation" >> ${CMAKE_BINARY_DIR}/timestamp.h.tmp
+    VERBATIM
+)
+
+add_custom_target(force_timestamp ALL
+    DEPENDS ${CMAKE_BINARY_DIR}/timestamp.h.tmp
+    COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_SOURCE_DIR}/main.cpp
+)
+
 # Executables
 add_executable(hplus main.cpp)
+add_dependencies(hplus force_timestamp)
+
 target_link_libraries(hplus
     domain_lib
     preprocessing_lib
@@ -147,8 +158,3 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
 elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
     message(STATUS "Release flags: ${CMAKE_CXX_FLAGS_RELEASE}")
 endif()
-
-# Custom target to clean build directory
-add_custom_target(clear
-    COMMAND rm -rf ${CMAKE_HOME_DIRECTORY}/build/*
-)
