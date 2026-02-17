@@ -41,9 +41,9 @@ int main(const int argc, const char** argv) {
         double start_time = GET_TIME();
 
         parse_cli(argc, argv, exec);
-        hplus::print(exec);
-
         hplus::read_file(exec, inst, stats);
+
+        if (VERBOSE_STATS()) hplus::print(exec);
         if (exec.type == hplus::exec_type::INFO || VERBOSE_STATS()) hplus::print(inst);
 
         switch (exec.type) {

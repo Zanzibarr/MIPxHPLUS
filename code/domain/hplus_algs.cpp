@@ -126,7 +126,7 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
 
     // * operator (actions) section
     int checkcosts{-1};
-    bool equalcosts_check{true};
+    bool equalcosts_check{true}, zerocost_actions{false};
     if (VERBOSE_BASIC()) LOG_WARNING << "Ignoring effect conditions";
     std::getline(file, line);  // n_act
     if (!isint(line, 0)) [[unlikely]]
@@ -202,6 +202,7 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
         std::getline(file, line);  // end_operator
         if (line != "end_operator") [[unlikely]]
             LOG_ERROR << "Corrupted file";
+        if (cost == 0) zerocost_actions = true;
         inst.actions[act_i] = action{.pre = binary_set(),
                                      .eff = binary_set(),
                                      .pre_sparse = std::vector<unsigned int>(),
@@ -307,6 +308,14 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
     if (is_infeasible) {
         inst.sol_s = solution_status::INFEAS;
         stats.status = HPLUS_STATUS_INFEAS;
+    }
+
+    // If there are 0-cost actions, the LMcut separation procedure is not complete... we need to complement it with another separation procedure
+    if (zerocost_actions && exec.cand_cuts == "l") {
+        LOG_WARNING
+            << "The LMcut separation procedure isn't complete when 0-cost actions are in the task and it needs to be complemented by a complete "
+               "separation procedure: turning on the complementary landmarks separation procedure.";
+        exec.cand_cuts += "c";
     }
 
     return;

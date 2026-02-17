@@ -450,7 +450,7 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
     // Check that it's all as it's supposed to be
     if (exec.threads > static_cast<unsigned int>(std::thread::hardware_concurrency())) {
         exec.threads = static_cast<unsigned int>(std::thread::hardware_concurrency());
-        if (VERBOSE_BASIC()) LOG_WARNING << "This machine has " << exec.threads << " cores: using up to " << exec.threads << " threads";
+        LOG_WARNING << "This machine has " << exec.threads << " cores: using up to " << exec.threads << " threads";
     }
     if (info && run) LOG_ERROR << "You need to specify only one functionality among " << HPLUS_CLI_INFO_FLAG << " and " << HPLUS_CLI_RUN_FLAG;
     if (!exec.prep && exec.prep_lmcut != "0") {
