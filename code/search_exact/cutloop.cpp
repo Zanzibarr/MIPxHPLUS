@@ -29,6 +29,8 @@ inline void solve_relaxation(CPXENVptr& env, CPXLPptr& lp, const hplus::executio
             if (stats.lower_bound < cl_lb) stats.lower_bound = cl_lb;
             break;
         case CPX_STAT_ABORT_TIME_LIM:
+            [[fallthrough]];
+        case CPX_STAT_ABORT_USER:
             break;
         default:
             LOG_ERROR << "Error in solve_relaxation: unhandled cplex status (" << status << ")";

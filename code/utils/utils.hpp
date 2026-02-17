@@ -171,6 +171,10 @@ inline void init_rng(int seed) { g_rng.seed(seed); }
             case 1234: /*CPXERR_THREAD_FAILED*/                                                                                     \
                 throw std::bad_alloc();                                                                                             \
                 break;                                                                                                              \
+            case 11: /*CPX_STAT_ABORT_TIME_LIM*/                                                                                    \
+                [[fallthrough]];                                                                                                    \
+            case 13: /*CPX_STAT_ABORT_USER*/                                                                                        \
+                [[fallthrough]];                                                                                                    \
             case 0:                                                                                                                 \
                 break;                                                                                                              \
             default:                                                                                                                \
@@ -249,7 +253,8 @@ inline const std::vector<std::string> split_string(const std::string& str, const
 /**
  * @brief Convert to string the content of a vector
  *
- * @tparam T The type of the elements in the vector (note: the elements of the vector will be added to the string using the std::to_string function)
+ * @tparam T The type of the elements in the vector (note: the elements of the vector will be added to the string using the std::to_string
+ * function)
  * @param v The vector
  * @param size = 20 The number of elements to be shown in the string (first size/2 and last size/2 if v.size() > size)
  * @return st::string The string representation of the vector (using std::to_string for each T element of the vector)
