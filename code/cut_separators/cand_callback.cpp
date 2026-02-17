@@ -155,8 +155,7 @@ void callbacks::candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::e
     if (exec.cand_cuts.find('f') != std::string::npos) usercuts_lm += cand_cuts::add_front_lm_cut(context, inst, unused_actions, reachable_state);
     if (exec.cand_cuts.find('c') != std::string::npos)
         usercuts_lm += cand_cuts::add_comp_lm_cut(context, inst, unreachable_actions, unused_actions, reachable_state);
-    if (exec.cand_cuts.find('l') != std::string::npos)
-        usercuts_lm += cand_cuts::add_lmcut_lm_cut(context, inst, unreachable_actions, unused_actions, reachable_state);
+    if (exec.cand_cuts.find('l') != std::string::npos) usercuts_lm += cand_cuts::add_lmcut_lm_cut(context, inst, unused_actions);
     if (exec.cand_cuts.find('s') != std::string::npos)
         usercuts_sec += cand_cuts::add_sec_cut(context, inst, unreachable_actions, used_first_achievers);
 
