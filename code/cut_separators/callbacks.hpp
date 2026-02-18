@@ -77,6 +77,8 @@ inline void set_cplex_callbacks(hplus::execution& exec, callback_userhandle& use
     // If we have cuts and we have cuts at nodes -> yes callback
     if (exec.fract_cuts != "0" && (exec.fract_cuts_at_nodes || !exec.custom_cutloop)) callback_contex |= CPX_CALLBACKCONTEXT_RELAXATION;
 
+    // TODO: Set callback for custom branching rules
+
     CPX_HANDLE_CALL(CPXcallbacksetfunc(env, lp, callback_contex, callback_hub, &userhandle));
 }
 
