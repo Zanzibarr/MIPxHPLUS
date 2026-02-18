@@ -73,6 +73,7 @@
 #define HPLUS_CLI_INOUT_MAX_ITER_FLAG "io-max-it"
 #define HPLUS_CLI_INOUT_WEIGHT_FLAG "io-w"
 #define HPLUS_CLI_INOUT_WEIGHT_UPD_FLAG "io-wupd"
+#define HPLUS_CLI_BRANCH_FLAG "branch"
 #define HPLUS_CLI_TESTING_FLAG "test"
 
 // ##################################################################### //
@@ -125,6 +126,7 @@
 #define HPLUS_DEF_IO_MAX_IT 4
 #define HPLUS_DEF_IO_WEIGHT .4
 #define HPLUS_DEF_IO_WEIGHT_UPD .5
+#define HPLUS_DEF_BRANCH false
 
 // ##################################################################### //
 // ######################### EXECUTION DEFAULTS ######################## //

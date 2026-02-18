@@ -11,6 +11,7 @@
 
 #include <cplex.h>
 
+#include "../branching_rules/branching.hpp"
 #include "cand_callback.hpp"
 #include "relax_callback.hpp"
 
@@ -42,6 +43,9 @@ static int CPXPUBLIC callback_hub(CPXCALLBACKCONTEXTptr context, CPXLONG context
             candidate_callback(context, exec, inst, stats, thread_data[thread_id].usercuts_lm, thread_data[thread_id].usercuts_sec,
                                thread_data[thread_id].cand_time, thread_data[thread_id].cand_calls);
             break;
+        case CPX_CALLBACKCONTEXT_BRANCHING:
+            branching_callback(context, exec, inst, stats);
+            break;
         default:
             LOG_ERROR << "Unhandled CPLEX callback context: " << contextid;
     }
@@ -68,18 +72,18 @@ inline void set_cplex_callbacks(hplus::execution& exec, callback_userhandle& use
     }
 
     // Setting up callbacks
-    CPXLONG callback_contex = CPX_CALLBACKCONTEXT_CANDIDATE;  // The candidate callback is ALWAYS needed (otherwise the model might be incomplete due
-                                                              // to missing causal acyclicity)
+    CPXLONG callback_context = CPX_CALLBACKCONTEXT_CANDIDATE;  // The candidate callback is ALWAYS needed (otherwise the model might be incomplete due
+                                                               // to missing causal acyclicity)
 
     // If we have no cust to add -> no callback
     // If we have cuts and we have no cutloop, we need to add the callback, since cuts at root must be done somewhere (wether cuts must be done at
     // nodes or not) -> yes callback
     // If we have cuts and we have cuts at nodes -> yes callback
-    if (exec.fract_cuts != "0" && (exec.fract_cuts_at_nodes || !exec.custom_cutloop)) callback_contex |= CPX_CALLBACKCONTEXT_RELAXATION;
+    if (exec.fract_cuts != "0" && (exec.fract_cuts_at_nodes || !exec.custom_cutloop)) callback_context |= CPX_CALLBACKCONTEXT_RELAXATION;
 
-    // TODO: Set callback for custom branching rules
+    if (exec.branching) callback_context |= CPX_CALLBACKCONTEXT_BRANCHING;
 
-    CPX_HANDLE_CALL(CPXcallbacksetfunc(env, lp, callback_contex, callback_hub, &userhandle));
+    CPX_HANDLE_CALL(CPXcallbacksetfunc(env, lp, callback_context, callback_hub, &userhandle));
 }
 
 inline void gather_stats_from_threads(hplus::statistics& stats, callback_userhandle& thread_data) {

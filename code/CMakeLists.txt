@@ -96,12 +96,13 @@ include_directories(
     preprocessing
     search_heuristics
     cut_separators
+    branching_rules
     search_exact
     ${CPLEX_INCLUDE}
 )
 
 # Generate libraries
-set(SOURCE_DIRS "domain" "search_heuristics" "cut_separators" "preprocessing" "search_exact")
+set(SOURCE_DIRS "domain" "search_heuristics" "cut_separators" "preprocessing" "search_exact" "branching_rules")
 foreach(SOURCE_DIR ${SOURCE_DIRS})
     file(GLOB SOURCES "${SOURCE_DIR}/*.cpp")
     if(SOURCES)
@@ -140,6 +141,7 @@ target_link_libraries(hplus
     preprocessing_lib
     search_heuristics_lib
     cut_separators_lib
+    branching_rules_lib
     search_exact_lib
     ${CPLEX_LIBRARY}
     Threads::Threads

@@ -63,6 +63,8 @@ struct execution {
     bool min_fract_lm, lm_min_sort, lm_min_improv;
     unsigned int lm_min_it, lm_min_lookahead;
     double lm_min_viol;
+    // Branching rules
+    bool branching;
     // Execution/Solution status
     exec_status exec_s;
     // Testing
@@ -103,6 +105,7 @@ inline void init(execution& exec) {
                             .lm_min_it = HPLUS_DEF_MINIMIZATION_IT,
                             .lm_min_lookahead = HPLUS_DEF_MINIMIZATION_LH,
                             .lm_min_viol = HPLUS_DEF_MINIMIZATION_VIOL,
+                            .branching = HPLUS_DEF_BRANCH,
                             .exec_s = exec_status::START,
                             .testing = false};
 }
@@ -206,6 +209,7 @@ inline void print(const execution& exec) {
             LOG << "- Weight update:                                    " << std::fixed << std::setprecision(2) << exec.io_weight_update;
         }
     }
+    LOG << "Custom branching rules                                 " << exec.branching;
     if (exec.testing) LOG << "Testing mode:                                          1";
     LOG << "--------------------------------------------------------";
 }

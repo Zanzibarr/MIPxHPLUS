@@ -201,6 +201,13 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
                                               std::to_string(HPLUS_DEF_IO_WEIGHT_UPD) + "; options: <double in range [0,1)>)",
                                           {HPLUS_CLI_INOUT_WEIGHT_UPD_FLAG}, HPLUS_DEF_IO_WEIGHT_UPD);
 
+    // ~~~~~~~~~~~~~~ BRANCHING ~~~~~~~~~~~~~~ //
+    args::ValueFlag<bool> branching(
+        parser, "0/1",
+        "(ONLY FOR [" + std::string(HPLUS_CLI_ALG_FLAG_CUTS) + "] ALGORITHM) Specify whether to use or not custom branching rules in the B&C (def: " +
+            std::to_string(HPLUS_DEF_BRANCH) + "; options: 0 (don't use custom branching rules), 1 (use custom branching rules))",
+        {HPLUS_CLI_BRANCH_FLAG}, HPLUS_DEF_BRANCH);
+
     // ~~~~~~~~~~~~~~~~ OTHER ~~~~~~~~~~~~~~~~ //
     args::ValueFlag<bool> testing(parser, "0/1",
                                   "Flag for testing or debugging (def: 0; options: 0 (testing flag set to false), 1 (testing flag set to true))",
@@ -442,6 +449,7 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         else
             exec.io_weight_update = weight;
     }
+    if (branching) exec.branching = args::get(branching);
     if (testing) {
         exec.testing = args::get(testing);
         if (exec.testing) LOG_WARNING << "Testing flag set to true";
@@ -503,6 +511,10 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         exec.inout = false;
     }
     if (exec.fract_cuts.find('l') == std::string::npos && exec.min_fract_lm) exec.min_fract_lm = false;
+    if (exec.branching && exec.alg != hplus::algorithm::CUTS) {
+        LOG_WARNING << "Custom branching rules currently work only on " << HPLUS_CLI_ALG_FLAG_CUTS << " algorithm: disabling custom branching";
+        exec.branching = false;
+    }
 }
 
 #endif
