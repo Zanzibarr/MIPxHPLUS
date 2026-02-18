@@ -1,8 +1,37 @@
 #include <algorithm>
 
 #include "../external/pq.hxx"
+#include "../preprocessing/lmcut.hpp"
 #include "../utils/algorithms.hpp"
 #include "cand_callback.hpp"
+
+[[nodiscard]]
+unsigned int cand_cuts::add_lmcut_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst,
+                                         const std::vector<unsigned int>& unused_actions) {
+    std::vector<int> hmax_values(inst.n), pcf(inst.m), pcf_hmax(inst.m), reduced_costs(inst.m);
+    const std::vector<unsigned int> goal_sparse{inst.goal.sparse()};
+    std::vector<unsigned int> initial_actions;
+
+    lmcut::init_hmax(inst, hmax_values, pcf, pcf_hmax, reduced_costs, initial_actions);
+
+    // Set to 0 the reduced costs of used actions
+    auto unused_it = unused_actions.begin();
+    for (unsigned int i = 0; i < inst.m; i++) {
+        if (unused_it != unused_actions.end() && i == *unused_it) {
+            unused_it++;  // skip unused action
+        } else {
+            reduced_costs[i] = 0;  // zero out used action
+        }
+    }
+
+    std::vector<std::vector<unsigned int>> landmarks;
+
+    lmcut::compute_lmcut(inst, hmax_values, pcf, pcf_hmax, reduced_costs, goal_sparse, initial_actions, lmcut::hmax_arbitrary, landmarks);
+
+    for (const auto& landmark : landmarks) reject_with_lm_cut(context, landmark);
+
+    return landmarks.size();
+}
 
 [[nodiscard]]
 unsigned int cand_cuts::add_comp_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const binary_set& unreachable_actions,

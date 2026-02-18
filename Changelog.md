@@ -26,6 +26,26 @@ HOW I DO VERSIONING:
 <!-- ### :rocket: Performance Improvements -->
 
 
+## [2.5.1] - 2026/02/18
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+<!-- ### :heavy_exclamation_mark: Changed -->
+### :heavy_plus_sign: Added
+- Option to use LMcut to separate violated landmark constraints from integer solutions
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+### :rocket: Performance Improvements
+- Violated landmark constraints can now be separated using the LMcut algorithm, by setting the reduced costs of used actions to 0 (note that this separation procedure is not complete when there are 0-cost actions, so it will be complemented by the complementary landmark separation procedure)
+- Old LMC (just comp) vs new LMC (comp + lmc, no separation on fractional solutions):
+    - Solved: 2520 -> 2582
+    - Nodes: -58,-3,-56,-17%
+    - Time: -36,+15,-41,-28%
+- Best (FLM with minimalization) vs new LMC (comp + lmc, no separation on fractional solutions):
+    - Solved: 2559 -> 2582
+    - Nodes: -32,+45,+5,+75%
+    - Time: -20,-7,-26,-32%
+- Our Best method now uses both "comp" and "lmc" separation procedures on integer solutions, and doesn't separate landmarks on fractional solutions
+
 
 ## [2.5.0] - 2026/02/16
 <!-- ### :warning: Known issues -->

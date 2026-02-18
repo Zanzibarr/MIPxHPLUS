@@ -94,7 +94,8 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         parser, "string",
         "(ONLY FOR [" + std::string(HPLUS_CLI_ALG_FLAG_CUTS) +
             "] ALGORITHM) Specify what cuts to separate from the candidate (integer) solutions (def: " + std::string(HPLUS_DEF_CANDCUTS) +
-            "; options: 0 (don't separate cuts), a combination of ['f','c','s'] (respectively for frontier / complementary landmarks and SEC))",
+            "; options: 0 (don't separate cuts), a combination of ['f','c','l','s'] (respectively for frontier / complementary / LMcut landmarks and "
+            "SEC))",
         {HPLUS_CLI_CANDCUTS_FLAG}, HPLUS_DEF_CANDCUTS);
 
     // ~~~~~~~~~~~ FRACT CALLBACKS ~~~~~~~~~~~ //
@@ -388,6 +389,7 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         std::string s{args::get(cand_cuts)};
         if (s.find('f') != std::string::npos) exec.cand_cuts += "f";
         if (s.find('c') != std::string::npos) exec.cand_cuts += "c";
+        if (s.find('l') != std::string::npos) exec.cand_cuts += "l";
         if (s.find('s') != std::string::npos) exec.cand_cuts += "s";
     }
     if (custom_cutloop) exec.custom_cutloop = args::get(custom_cutloop);
@@ -448,7 +450,7 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
     // Check that it's all as it's supposed to be
     if (exec.threads > static_cast<unsigned int>(std::thread::hardware_concurrency())) {
         exec.threads = static_cast<unsigned int>(std::thread::hardware_concurrency());
-        if (VERBOSE_BASIC()) LOG_WARNING << "This machine has " << exec.threads << " cores: using up to " << exec.threads << " threads";
+        LOG_WARNING << "This machine has " << exec.threads << " cores: using up to " << exec.threads << " threads";
     }
     if (info && run) LOG_ERROR << "You need to specify only one functionality among " << HPLUS_CLI_INFO_FLAG << " and " << HPLUS_CLI_RUN_FLAG;
     if (!exec.prep && exec.prep_lmcut != "0") {
