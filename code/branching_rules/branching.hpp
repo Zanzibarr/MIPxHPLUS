@@ -13,7 +13,7 @@
 
 namespace callbacks {
 
-void branching_callback(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats);
+void branching_callback(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, const hplus::instance& inst, hplus::statistics& stats);
 
 }
 
