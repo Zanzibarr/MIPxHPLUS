@@ -8,9 +8,11 @@
 [[nodiscard]]
 unsigned int cand_cuts::add_lmcut_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst,
                                          const std::vector<unsigned int>& unused_actions) {
-    std::vector<int> hmax_values(inst.n), pcf(inst.m), pcf_hmax(inst.m), reduced_costs(inst.m);
+    std::vector<int> pcf(inst.m);
+    std::vector<double> hmax_values(inst.n), reduced_costs(inst.m), pcf_hmax(inst.m);
     const std::vector<unsigned int> goal_sparse{inst.goal.sparse()};
     std::vector<unsigned int> initial_actions;
+    double epsylon = 1e-2;
 
     lmcut::init_hmax(inst, hmax_values, pcf, pcf_hmax, reduced_costs, initial_actions);
 
@@ -19,6 +21,9 @@ unsigned int cand_cuts::add_lmcut_lm_cut(CPXCALLBACKCONTEXTptr context, const hp
     for (unsigned int i = 0; i < inst.m; i++) {
         if (unused_it != unused_actions.end() && i == *unused_it) {
             unused_it++;  // skip unused action
+            if (inst.actions[i].cost == 0) {
+                reduced_costs[i] = epsylon;
+            }
         } else {
             reduced_costs[i] = 0;  // zero out used action
         }
