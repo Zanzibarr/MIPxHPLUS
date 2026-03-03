@@ -4,6 +4,7 @@
 #include <map>
 
 #include "../external/pq.hxx"
+#include "utils.hpp"
 
 std::pair<int, double> lmcut::hmax_arbitrary(const std::vector<unsigned int>& preconditions, const std::vector<double>& hmax_values,
                                              [[maybe_unused]] const std::vector<double>& _) {
@@ -102,7 +103,7 @@ void update_hmax_values(const hplus::instance& inst, std::vector<double>& hmax_v
     for (const auto& act_i : modified_actions) {
         const double new_cost{pcf_hmax[act_i] + reduced_costs[act_i]};
         for (const auto& p : inst.actions[act_i].eff_sparse) {
-            if (new_cost >= hmax_values[p] + HPLUS_EPSILON) continue;
+            if (new_cost >= hmax_values[p] - HPLUS_EPSILON) continue;
 
             hmax_values[p] = new_cost;
             if (pq.has(p))
@@ -119,7 +120,7 @@ void update_hmax_values(const hplus::instance& inst, std::vector<double>& hmax_v
         for (const auto& act_i : inst.act_with_pre[p]) {
             // If this action's pcf is not p, than since we are lowering the hmax values, the hmax won't change for this action... skip
             // ... or if p is act_i's pcf but it's hmax is that same value, nothing would change... skip
-            if (pcf[act_i] != -1 && (pcf[act_i] != p || hmax_values[p] == pcf_hmax[act_i])) continue;
+            if (pcf[act_i] != -1 && (pcf[act_i] != p || std::abs(hmax_values[p] - pcf_hmax[act_i])) < HPLUS_EPSILON) continue;
 
             const double old_hmax{pcf_hmax[act_i]};
 
@@ -137,7 +138,7 @@ void update_hmax_values(const hplus::instance& inst, std::vector<double>& hmax_v
             if (std::abs(pcf_hmax[act_i] - old_hmax) < HPLUS_EPSILON) continue;
 
             // Update all the action's effects and add them to the queue
-            const auto& new_cost{act_hmax + reduced_costs[act_i]};
+            const double new_cost{act_hmax + reduced_costs[act_i]};
             for (const auto& eff : inst.actions[act_i].eff_sparse) {
                 if (new_cost >= hmax_values[eff] + HPLUS_EPSILON) continue;
 
@@ -172,9 +173,11 @@ double compute_and_store_cut(const hplus::instance& inst, const std::vector<doub
         for (const auto& act_i : inst.act_with_eff[p]) {
             // If I already explored this action or if it has no pcf, skip...
             if (explored[act_i] || pcf[act_i] == -1) continue;
+
             explored.add(act_i);
 
             // If it is a 0 reduced-cost (non-initial) action, than its pcf is also in the goal zone
+            // non-initial check: I cannot add to the queue the source node, since no action could ever achieve it
             if (reduced_costs[act_i] <= HPLUS_EPSILON && pcf[act_i] != static_cast<int>(inst.n)) {
                 if (!goal_section[pcf[act_i]]) {
                     goal_section.add(pcf[act_i]);
