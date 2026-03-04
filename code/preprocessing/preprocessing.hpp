@@ -7,7 +7,10 @@
 #ifndef HPLUS_PREP_HPP
 #define HPLUS_PREP_HPP
 
+#include <map>
+
 #include "../domain/hplus_algs.hpp"
+#include "lmcut.hpp"
 
 namespace prep {
 
@@ -25,7 +28,22 @@ void eliminated_facts_removal(hplus::instance& inst, hplus::statistics& stats, s
 
 void eliminated_actions_removal(hplus::instance& inst, hplus::statistics& stats);
 
-void lmcut_landmarks_extraction(const hplus::execution& exec, hplus::instance& inst);
+inline void lmcut_landmarks_extraction(const hplus::execution& exec, hplus::instance& inst) {
+    LMcut lmcut(inst);
+
+    std::map<char, hmax_function> hmax_functions{
+        {'a', hmax::hmax_arbitrary}, {'i', hmax::hmax_inverse}, {'v', hmax::hmax_value_decrease_minimization}, {'r', hmax::hmax_random}};
+
+    for (auto x : exec.prep_lmcut) {
+        const auto& [landmarks, lmcut_value] = lmcut.compute_lmcut(hmax_functions[x]);
+        for (const auto& landmark : landmarks) {
+            inst.landmarks.push_back(std::move(landmark));
+        }
+        if (VERBOSE_BASIC()) {
+            LOG_INFO << "Computed a lm-cut value of: " << lmcut_value;
+        }
+    }
+}
 
 inline void prepare_preprocessing(hplus::instance& inst) {
     inst.fixed_facts = binary_set{inst.n};
@@ -72,7 +90,9 @@ inline void preprocess(const hplus::execution& exec, hplus::instance& inst, hplu
 
     prepare_optimization_helpers(inst);
 
-    if (exec.prep_lmcut != "0") lmcut_landmarks_extraction(exec, inst);
+    if (exec.prep_lmcut != "0") {
+        lmcut_landmarks_extraction(exec, inst);
+    }
 
     stats.preprocessing = GET_TIME() - start_time;
 }

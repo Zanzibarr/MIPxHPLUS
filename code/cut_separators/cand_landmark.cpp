@@ -1,47 +1,33 @@
 #include <algorithm>
+#include <random>
 
-#include "../external/pq.hxx"
 #include "../preprocessing/lmcut.hpp"
-#include "../utils/algorithms.hpp"
 #include "cand_callback.hpp"
+#include "instance.hpp"
 
 [[nodiscard]]
-unsigned int cand_cuts::add_lmcut_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst,
-                                         const std::vector<unsigned int>& unused_actions) {
-    std::vector<int> pcf(inst.m);
-    std::vector<double> hmax_values(inst.n), reduced_costs(inst.m), pcf_hmax(inst.m);
-    const std::vector<unsigned int> goal_sparse{inst.goal.sparse()};
-    std::vector<unsigned int> initial_actions;
-    double epsylon = 1e-2;
+auto cand_cuts::add_lmcut_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const std::vector<double>& xstar) -> unsigned int {
+    LMcut lmcut(inst);
 
-    lmcut::init_hmax(inst, hmax_values, pcf, pcf_hmax, reduced_costs, initial_actions);
-
-    // Set to 0 the reduced costs of used actions
-    auto unused_it = unused_actions.begin();
+    std::vector<int> xstar_int(inst.m);
     for (unsigned int i = 0; i < inst.m; i++) {
-        if (unused_it != unused_actions.end() && i == *unused_it) {
-            unused_it++;  // skip unused action
-            if (inst.actions[i].cost == 0) {
-                reduced_costs[i] = epsylon;
-            }
-        } else {
-            reduced_costs[i] = 0;  // zero out used action
-        }
+        xstar_int[i] = static_cast<int>(xstar[i]);
     }
+    const auto& [landmarks, lmcut_val] = lmcut.int_separation(xstar_int, hmax::hmax_arbitrary);
 
-    std::vector<std::vector<unsigned int>> landmarks;
-
-    lmcut::compute_lmcut(inst, hmax_values, pcf, pcf_hmax, reduced_costs, goal_sparse, initial_actions, lmcut::hmax_arbitrary, landmarks);
-
-    for (const auto& landmark : landmarks) reject_with_lm_cut(context, landmark);
+    for (const auto& landmark : landmarks) {
+        reject_with_lm_cut(context, landmark);
+    }
 
     return landmarks.size();
 }
 
 [[nodiscard]]
-unsigned int cand_cuts::add_comp_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const binary_set& unreachable_actions,
-                                        const std::vector<unsigned int>& unused_actions, const binary_set& reachable_state) {
-    binary_set unapplicable{unreachable_actions}, extension(inst.m), state{reachable_state};
+auto cand_cuts::add_comp_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const binary_set& unreachable_actions,
+                                const std::vector<unsigned int>& unused_actions, const binary_set& reachable_state) -> unsigned int {
+    binary_set unapplicable{unreachable_actions};
+    binary_set extension(inst.m);
+    binary_set state{reachable_state};
     const auto& goal{inst.goal};
     for (const auto& act_i : unused_actions) {
         const auto& action = inst.actions[act_i];
@@ -63,14 +49,18 @@ unsigned int cand_cuts::add_comp_lm_cut(CPXCALLBACKCONTEXTptr context, const hpl
 
         // If the effect of this action reaches the goal, we don't add it to the extension
         binary_set state_sim{state | action.eff};
-        if (state_sim.contains(goal)) continue;
+        if (state_sim.contains(goal)) {
+            continue;
+        }
 
         // Simulate the effects of using this action
         binary_set new_reachable(inst.m);
         while (true) {
             bool skip{true};
             for (const auto& act_j : unapplicable) {
-                if (new_reachable[act_j]) continue;
+                if (new_reachable[act_j]) {
+                    continue;
+                }
                 // If now a (previously) unapplicable action is applicable, add its effects to the simulated state
                 if (state_sim.contains(inst.actions[act_j].pre)) {
                     new_reachable.add(act_j);
@@ -78,11 +68,13 @@ unsigned int cand_cuts::add_comp_lm_cut(CPXCALLBACKCONTEXTptr context, const hpl
                     if (state_sim.contains(goal)) {
                         skip = true;
                         break;
-                    } else
-                        skip = false;
+                    }
+                    skip = false;
                 }
             }
-            if (skip) break;
+            if (skip) {
+                break;
+            }
         }
 
         // If the new state doesn't contain the goal, then we can update the reachable state and remove the applicable actions from the previously
@@ -102,11 +94,13 @@ unsigned int cand_cuts::add_comp_lm_cut(CPXCALLBACKCONTEXTptr context, const hpl
 }
 
 [[nodiscard]]
-unsigned int cand_cuts::add_front_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const std::vector<unsigned int>& unused_actions,
-                                         const binary_set& reachable_state) {
+auto cand_cuts::add_front_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const std::vector<unsigned int>& unused_actions,
+                                 const binary_set& reachable_state) -> unsigned int {
     std::vector<unsigned int> landmark;
     for (unsigned int act_i : unused_actions) {
-        if (reachable_state.contains(inst.actions[act_i].pre) && !reachable_state.contains(inst.actions[act_i].eff)) landmark.push_back(act_i);
+        if (reachable_state.contains(inst.actions[act_i].pre) && !reachable_state.contains(inst.actions[act_i].eff)) {
+            landmark.push_back(act_i);
+        }
     }
     reject_with_lm_cut(context, landmark);
     return 1;

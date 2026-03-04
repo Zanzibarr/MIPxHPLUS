@@ -8,6 +8,7 @@
 #define HPLUS_INST_HPP
 
 #include "../external/bs.hxx"
+#include "../external/logger.hxx"
 
 namespace hplus {
 

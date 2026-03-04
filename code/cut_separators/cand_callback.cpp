@@ -158,7 +158,7 @@ void callbacks::candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::e
     }
     unsigned int lmc_violated{0};
     if (exec.cand_cuts.find('l') != std::string::npos) {
-        lmc_violated = cand_cuts::add_lmcut_lm_cut(context, inst, unused_actions);
+        lmc_violated = cand_cuts::add_lmcut_lm_cut(context, inst, xstar);
     }
     usercuts_lm += lmc_violated;
     if (exec.cand_cuts.find('c') != std::string::npos || lmc_violated == 0) {
