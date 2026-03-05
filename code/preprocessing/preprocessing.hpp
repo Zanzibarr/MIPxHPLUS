@@ -35,12 +35,14 @@ inline void lmcut_landmarks_extraction(const hplus::execution& exec, hplus::inst
         {'a', hmax::hmax_arbitrary}, {'i', hmax::hmax_inverse}, {'v', hmax::hmax_value_decrease_minimization}, {'r', hmax::hmax_random}};
 
     for (auto x : exec.prep_lmcut) {
+        double start = GET_TIME();
         const auto& [landmarks, lmcut_value] = lmcut.compute_lmcut(hmax_functions[x]);
+        double diff = GET_TIME() - start;
         for (const auto& landmark : landmarks) {
             inst.landmarks.push_back(std::move(landmark));
         }
         if (VERBOSE_BASIC()) {
-            LOG_INFO << "Computed a lm-cut value of: " << lmcut_value;
+            LOG_INFO << "Computed a lm-cut value of: " << lmcut_value << " in " << diff << "s";
         }
     }
 }

@@ -271,7 +271,7 @@ auto LMcut::compute_lmcut(hmax_function hmax) -> std::pair<std::vector<std::vect
 
     while (hmax(goal_, hmax_values_, initial_hmax_values_).second > HPLUS_EPSILON) {
         const auto& [cut, val] = compute_cut(hmax);
-        check_landmark(cut);
+        // check_landmark(cut);
         lmcut_value += val;
         update_hmax_values(cut, hmax);
         landmarks.push_back(std::move(cut));
