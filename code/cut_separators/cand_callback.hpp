@@ -48,7 +48,7 @@ inline void reject_with_sec_cut(CPXCALLBACKCONTEXTptr context, const std::vector
  * Method to compute multiple violated landmarks by using the LMcut algorithm out of the candidate solutions and reject the candidate solution
  */
 [[nodiscard]]
-unsigned int add_lmcut_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const std::vector<unsigned int>& unused_actions);
+unsigned int add_lmcut_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const std::vector<double>& xstar);
 
 /**
  * Method to compute a violated landmark by using the complementary landmarks technique out of the candidate solutions and reject the candidate

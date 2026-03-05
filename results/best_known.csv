@@ -2446,7 +2446,7 @@ transport-opt08-strips-p16,True,482.0
 transport-opt08-strips-p17,True,552.0
 transport-opt08-strips-p18,True,482.0
 transport-opt08-strips-p19,False,530.0
-transport-opt08-strips-p20,False,717.0
+transport-opt08-strips-p20,True,715.0
 transport-opt08-strips-p21,True,320.0
 transport-opt08-strips-p22,True,433.0
 transport-opt08-strips-p23,True,505.0
@@ -2487,7 +2487,7 @@ transport-opt14-strips-p07,True,360.0
 transport-opt14-strips-p08,True,370.0
 transport-opt14-strips-p09,True,394.0
 transport-opt14-strips-p10,True,517.0
-transport-opt14-strips-p11,False,542.0
+transport-opt14-strips-p11,True,541.0
 transport-opt14-strips-p12,True,570.0
 transport-opt14-strips-p13,True,473.0
 transport-opt14-strips-p14,True,336.0
@@ -2521,7 +2521,7 @@ transport-sat08-strips-p21,True,386.0
 transport-sat08-strips-p22,True,421.0
 transport-sat08-strips-p23,True,512.0
 transport-sat08-strips-p24,True,638.0
-transport-sat08-strips-p25,False,680.0
+transport-sat08-strips-p25,True,680.0
 transport-sat08-strips-p26,False,631.0
 transport-sat08-strips-p27,False,824.0
 transport-sat08-strips-p28,False,846.0

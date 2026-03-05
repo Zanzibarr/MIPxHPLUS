@@ -9,51 +9,75 @@
 
 #include <functional>
 
-#include "preprocessing.hpp"
+#include "bs.hxx"
+#include "instance.hpp"
+#include "pq.hxx"
 
-namespace lmcut {
-using hmax_function_type = std::function<std::pair<int, int>(const std::vector<unsigned int>&, const std::vector<int>&, const std::vector<int>&)>;
+using hmax_function = std::function<std::pair<int, double>(const std::vector<unsigned int>&, const std::vector<double>&, const std::vector<double>&)>;
+
+namespace hmax {
 
 /**
  * Hmax policy with arbitrary tie-breaking (FCFS)
  */
 [[nodiscard]]
-std::pair<int, int> hmax_arbitrary(const std::vector<unsigned int>& preconditions, const std::vector<int>& hmax_values,
-                                   [[maybe_unused]] const std::vector<int>& _);
+auto hmax_arbitrary(const std::vector<unsigned int>& preconditions, const std::vector<double>& hmax_values,
+                    const std::vector<double>& /*initial_hmax_values*/) -> std::pair<int, double>;
 
 /**
  * Hmax policy with inverse tie-breaking (LCFS)
  */
 [[nodiscard]]
-std::pair<int, int> hmax_inverse(const std::vector<unsigned int>& preconditions, const std::vector<int>& hmax_values,
-                                 [[maybe_unused]] const std::vector<int>& _);
+auto hmax_inverse(const std::vector<unsigned int>& preconditions, const std::vector<double>& hmax_values,
+                  const std::vector<double>& /*initial_hmax_values*/) -> std::pair<int, double>;
 
 /**
  * Hmax policy with VDM tie-breaking
  */
 [[nodiscard]]
-std::pair<int, int> hmax_value_decrease_minimization(const std::vector<unsigned int>& preconditions, const std::vector<int>& hmax_values,
-                                                     const std::vector<int>& initial_hmax_values);
+auto hmax_value_decrease_minimization(const std::vector<unsigned int>& preconditions, const std::vector<double>& hmax_values,
+                                      const std::vector<double>& initial_hmax_values) -> std::pair<int, double>;
 
 /**
  * Hmax policy with random tie-breaking
  */
 [[nodiscard]]
-std::pair<int, int> hmax_random(const std::vector<unsigned int>& preconditions, const std::vector<int>& hmax_values,
-                                [[maybe_unused]] const std::vector<int>& _);
+auto hmax_random(const std::vector<unsigned int>& preconditions, const std::vector<double>& hmax_values,
+                 const std::vector<double>& /*initial_hmax_values*/) -> std::pair<int, double>;
 
-/**
- * Initialization function for lmcut
- */
-void init_hmax(const hplus::instance& inst, std::vector<int>& hmax_values, std::vector<int>& pcf, std::vector<int>& pcf_hmax,
-               std::vector<int>& reduced_costs, std::vector<unsigned int>& initial_actions);
+}  // namespace hmax
 
-/**
- * Computes LMcut with the specified tie-breaking policy
- */
-void compute_lmcut(const hplus::instance& inst, std::vector<int> hmax_values, std::vector<int> pcf, std::vector<int> pcf_hmax,
-                   std::vector<int> reduced_costs, const std::vector<unsigned int>& goal_sparse, const std::vector<unsigned int>& initial_actions,
-                   const hmax_function_type& hmax_function, std::vector<std::vector<unsigned int>>& landmarks, bool print = false);
-}  // namespace lmcut
+class LMcut {
+   public:
+    LMcut(const hplus::instance& inst);
+
+    // Compute LMcut on the instance passed at construction using the specified hmax function
+    auto compute_lmcut(hmax_function hmax) -> std::pair<std::vector<std::vector<unsigned int>>, double>;
+    // Compute violated landmarks given an integer solution using the specified hmax function
+    auto int_separation(std::vector<int> actions_weights, hmax_function hmax) -> std::pair<std::vector<std::vector<unsigned int>>, double>;
+    // Compute violated landmarks given a fracitonal solution using the specified hmax function
+    auto fract_separation(std::vector<double> actions_weights, hmax_function hmax) -> std::pair<std::vector<std::vector<unsigned int>>, double>;
+
+    // Check that a landmark is valid for the instance passed at construction
+    void check_landmark(const std::vector<unsigned int>& landmark);
+
+   private:
+    void init();
+
+    void update_and_enqueue_effects_values(priority_queue<double>& queue, unsigned int act_i);
+    auto compute_goal_section(hmax_function hmax) -> binary_set;
+
+    void update_hmax_values(const std::vector<unsigned int>& changed_actions, hmax_function hmax);
+    auto compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned int>, double>;
+
+    const hplus::instance* inst_;
+    std::vector<int> pcf_;
+    std::vector<double> hmax_values_;
+    std::vector<double> initial_hmax_values_;  // Mainly for VDM
+    std::vector<double> pcf_hmax_;             // hmax_values[pcf[act]]
+    std::vector<double> reduced_costs_;
+    std::vector<unsigned int> goal_;
+    std::vector<unsigned int> initial_actions_;
+};
 
 #endif
