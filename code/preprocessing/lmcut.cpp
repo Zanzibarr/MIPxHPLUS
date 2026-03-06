@@ -89,7 +89,6 @@ auto hmax::hmax_random(const std::vector<unsigned int>& preconditions, const std
 void LMcut::init() {
     pcf_ = std::vector<int>(inst_->m);
     hmax_values_ = std::vector<double>(inst_->n, std::numeric_limits<double>::infinity());
-    initial_hmax_values_ = std::vector<double>(inst_->n, std::numeric_limits<double>::infinity());
     pcf_hmax_ = std::vector<double>(inst_->m);
     reduced_costs_ = std::vector<double>(inst_->m);
     goal_ = inst_->goal.sparse();
@@ -259,9 +258,7 @@ auto LMcut::compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned in
 
 LMcut::LMcut(const hplus::instance& inst) : inst_(&inst) {}
 
-auto LMcut::compute_lmcut(hmax_function hmax) -> std::pair<std::vector<std::vector<unsigned int>>, double> {
-    init();
-
+auto LMcut::compute_lmcut_private(hmax_function hmax) -> std::pair<std::vector<std::vector<unsigned int>>, double> {
     double lmcut_value{0};
     std::vector<std::vector<unsigned int>> landmarks;
 
@@ -284,6 +281,12 @@ auto LMcut::compute_lmcut(hmax_function hmax) -> std::pair<std::vector<std::vect
     return {landmarks, lmcut_value};
 }
 
+auto LMcut::compute_lmcut(hmax_function hmax) -> std::pair<std::vector<std::vector<unsigned int>>, double> {
+    init();
+
+    return compute_lmcut_private(hmax);
+}
+
 auto LMcut::int_separation(const std::vector<unsigned int>& used_actions, hmax_function hmax)
     -> std::pair<std::vector<std::vector<unsigned int>>, double> {
     init();
@@ -293,7 +296,7 @@ auto LMcut::int_separation(const std::vector<unsigned int>& used_actions, hmax_f
         reduced_costs_[i] = 0;
     }
 
-    return compute_lmcut(hmax);
+    return compute_lmcut_private(hmax);
 }
 
 auto LMcut::fract_separation(const std::vector<double>& actions_weights, hmax_function hmax)
@@ -304,7 +307,7 @@ auto LMcut::fract_separation(const std::vector<double>& actions_weights, hmax_fu
         reduced_costs_[i] = reduced_costs_[i] * (1 - actions_weights[i]);
     }
 
-    return compute_lmcut(hmax);
+    return compute_lmcut_private(hmax);
 }
 
 void LMcut::check_landmark(const std::vector<unsigned int>& landmark) {

@@ -66,6 +66,8 @@ class LMcut {
    private:
     void init();
 
+    auto compute_lmcut_private(hmax_function hmax) -> std::pair<std::vector<std::vector<unsigned int>>, double>;
+
     void update_and_enqueue_effects_values(priority_queue<double>& queue, unsigned int act_i);
     auto compute_goal_section(hmax_function hmax) -> binary_set;
 
