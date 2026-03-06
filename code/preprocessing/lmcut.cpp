@@ -8,7 +8,7 @@
 #include "utils.hpp"
 
 auto hmax::hmax_arbitrary(const std::vector<unsigned int>& preconditions, const std::vector<double>& hmax_values,
-                          [[maybe_unused]] const std::vector<double>& /*initial_hmax_values*/) -> std::pair<int, double> {
+                          const std::vector<double>& /*initial_hmax_values*/) -> std::pair<int, double> {
     int pcf{-1};
     double hmax{-1};
     for (const auto& pre : preconditions) {
@@ -21,7 +21,7 @@ auto hmax::hmax_arbitrary(const std::vector<unsigned int>& preconditions, const 
 }
 
 auto hmax::hmax_inverse(const std::vector<unsigned int>& preconditions, const std::vector<double>& hmax_values,
-                        [[maybe_unused]] const std::vector<double>& /*initial_hmax_values*/) -> std::pair<int, double> {
+                        const std::vector<double>& /*initial_hmax_values*/) -> std::pair<int, double> {
     int pcf{-1};
     double hmax{-1};
     for (const auto& pre : preconditions) {
@@ -65,7 +65,7 @@ auto hmax::hmax_value_decrease_minimization(const std::vector<unsigned int>& pre
 }
 
 auto hmax::hmax_random(const std::vector<unsigned int>& preconditions, const std::vector<double>& hmax_values,
-                       [[maybe_unused]] const std::vector<double>& /*initial_hmax_values*/) -> std::pair<int, double> {
+                       const std::vector<double>& /*initial_hmax_values*/) -> std::pair<int, double> {
     int pcf{-1};
     int count{0};
     double hmax{-1};
@@ -284,20 +284,20 @@ auto LMcut::compute_lmcut(hmax_function hmax) -> std::pair<std::vector<std::vect
     return {landmarks, lmcut_value};
 }
 
-auto LMcut::int_separation(std::vector<int> actions_weights, hmax_function hmax) -> std::pair<std::vector<std::vector<unsigned int>>, double> {
+auto LMcut::int_separation(const std::vector<unsigned int>& used_actions, hmax_function hmax)
+    -> std::pair<std::vector<std::vector<unsigned int>>, double> {
     init();
 
     // Set reduced costs of used actions to 0
-    for (unsigned int i = 0; i < actions_weights.size(); i++) {
-        if (actions_weights[i] == 1) {
-            reduced_costs_[i] = 0;
-        }
+    for (const auto& i : used_actions) {
+        reduced_costs_[i] = 0;
     }
 
     return compute_lmcut(hmax);
 }
 
-auto LMcut::fract_separation(std::vector<double> actions_weights, hmax_function hmax) -> std::pair<std::vector<std::vector<unsigned int>>, double> {
+auto LMcut::fract_separation(const std::vector<double>& actions_weights, hmax_function hmax)
+    -> std::pair<std::vector<std::vector<unsigned int>>, double> {
     init();
 
     for (unsigned int i = 0; i < actions_weights.size(); i++) {

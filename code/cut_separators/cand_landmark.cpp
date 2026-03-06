@@ -1,19 +1,24 @@
 #include <algorithm>
-#include <random>
 
 #include "../preprocessing/lmcut.hpp"
 #include "cand_callback.hpp"
 #include "instance.hpp"
 
 [[nodiscard]]
-auto cand_cuts::add_lmcut_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const std::vector<double>& xstar) -> unsigned int {
+auto cand_cuts::add_lmcut_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const std::vector<unsigned int>& unused_actions)
+    -> unsigned int {
     LMcut lmcut(inst);
 
-    std::vector<int> xstar_int(inst.m);
-    for (unsigned int i = 0; i < inst.m; i++) {
-        xstar_int[i] = static_cast<int>(xstar[i]);
+    std::vector<unsigned int> used_actions;
+    for (unsigned int i = 0, j = 0; i < inst.m; ++i) {
+        if (j < unused_actions.size() && unused_actions[j] == i) {
+            ++j;
+        } else {
+            used_actions.push_back(i);
+        }
     }
-    const auto& [landmarks, lmcut_val] = lmcut.int_separation(xstar_int, hmax::hmax_arbitrary);
+
+    const auto& [landmarks, lmcut_val] = lmcut.int_separation(used_actions, hmax::hmax_arbitrary);
 
     for (const auto& landmark : landmarks) {
         reject_with_lm_cut(context, landmark);
