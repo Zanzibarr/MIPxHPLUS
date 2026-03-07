@@ -26,6 +26,20 @@ HOW I DO VERSIONING:
 <!-- ### :rocket: Performance Improvements -->
 
 
+## [2.6.0] - 2026/03/05
+<!-- ### :warning: Known issues -->
+### :ballot_box_with_check: Fixed
+- Additional init() removed 0ing of used actions in lmcut int separator
+### :heavy_exclamation_mark: Changed
+- Updated LMcut implementation
+### :heavy_plus_sign: Added
+- Precise time measuring for LMcut in preprocessing
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+### :rocket: Performance Improvements
+- Unchanged performances
+
+
 ## [2.5.1] - 2026/02/18
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->

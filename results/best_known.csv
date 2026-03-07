@@ -293,7 +293,7 @@ data-network-sat18-strips-p12,True,257.0
 data-network-sat18-strips-p13,True,320.0
 data-network-sat18-strips-p14,True,345.0
 data-network-sat18-strips-p15,True,478.0
-data-network-sat18-strips-p16,False,518.0
+data-network-sat18-strips-p16,True,518.0
 data-network-sat18-strips-p17,True,589.0
 data-network-sat18-strips-p18,False,472.0
 data-network-sat18-strips-p19,True,1224.0
