@@ -45,19 +45,25 @@ inline void reject_with_sec_cut(CPXCALLBACKCONTEXTptr context, const std::vector
 }
 
 /**
+ * Method to compute multiple violated landmarks by using the LMcut algorithm out of the candidate solutions and reject the candidate solution
+ */
+[[nodiscard]]
+unsigned int add_lmcut_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const std::vector<unsigned int>& used_actions);
+
+/**
  * Method to compute a violated landmark by using the complementary landmarks technique out of the candidate solutions and reject the candidate
  * solution
  */
 [[nodiscard]]
 unsigned int add_comp_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const binary_set& unreachable_actions,
-                              const std::vector<unsigned int>& unused_actions, const binary_set& reachable_state);
+                             const std::vector<unsigned int>& unused_actions, const binary_set& reachable_state);
 
 /**
  * Method to compute a violated landmark by using the fontier landmarks technique out of the candidate solutions and reject the candidate solution
  */
 [[nodiscard]]
 unsigned int add_front_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const std::vector<unsigned int>& unused_actions,
-                         const binary_set& reachable_state);
+                              const binary_set& reachable_state);
 
 /**
  * Method to compute a violated S.E.C. out of the candidate solutions and reject the candidate solution

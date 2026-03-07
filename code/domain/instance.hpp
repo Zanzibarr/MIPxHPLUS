@@ -8,9 +8,7 @@
 #define HPLUS_INST_HPP
 
 #include "../external/bs.hxx"
-
-#define INFBOUND_DBL 1e20
-#define INFBOUND_INT std::numeric_limits<unsigned int>::max()
+#include "../external/logger.hxx"
 
 namespace hplus {
 

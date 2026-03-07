@@ -26,6 +26,70 @@ HOW I DO VERSIONING:
 <!-- ### :rocket: Performance Improvements -->
 
 
+## [2.6.0] - 2026/03/05
+<!-- ### :warning: Known issues -->
+### :ballot_box_with_check: Fixed
+- Additional init() removed 0ing of used actions in lmcut int separator
+### :heavy_exclamation_mark: Changed
+- Updated LMcut implementation
+### :heavy_plus_sign: Added
+- Precise time measuring for LMcut in preprocessing
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+### :rocket: Performance Improvements
+- Unchanged performances
+
+
+## [2.5.1] - 2026/02/18
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+<!-- ### :heavy_exclamation_mark: Changed -->
+### :heavy_plus_sign: Added
+- Option to use LMcut to separate violated landmark constraints from integer solutions
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+### :rocket: Performance Improvements
+- Violated landmark constraints can now be separated using the LMcut algorithm, by setting the reduced costs of used actions to 0 (note that this separation procedure is not complete when there are 0-cost actions, so it will be complemented by the complementary landmark separation procedure)
+- Old LMC (just comp) vs new LMC (comp + lmc, no separation on fractional solutions):
+    - Solved: 2520 -> 2582
+    - Nodes: -58,-3,-56,-17%
+    - Time: -36,+15,-41,-28%
+- Best (FLM with minimalization) vs new LMC (comp + lmc, no separation on fractional solutions):
+    - Solved: 2559 -> 2582
+    - Nodes: -32,+45,+5,+75%
+    - Time: -20,-7,-26,-32%
+- Our Best method now uses both "comp" and "lmc" separation procedures on integer solutions, and doesn't separate landmarks on fractional solutions
+
+
+## [2.5.0] - 2026/02/16
+<!-- ### :warning: Known issues -->
+### :ballot_box_with_check: Fixed
+- Couldn't properly set the build type
+- Lower Bound after cutloop didn't get updated correctly when reaching time limit
+- Wrong vector sizes in basic model construction
+### :heavy_exclamation_mark: Changed
+- Updated list of best known solutions (both structure and added new values)
+### :heavy_plus_sign: Added
+- Minimalization of (violated) landmark found in relax callback
+- Cutoff CLI parameter to be passed to CPLEX as upper cutoff
+- Statistic about lower bound before starting the cutloop
+- Statistics about LM size in fractional
+- Compile time in executable output
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+### :rocket: Performance Improvements
+- Violated landmarks from fractional solutions are now improved through a local search strategy (minimalization of the landmark)
+- Old vs new FLM (Fractional LandMark):
+    - Solved: 2524 -> 2559
+    - Nodes: -36,-27,-36,-14%
+    - Time: -6,-11,-13,-23%
+- Best vs new FLM:
+    - Solved: 2520 -> 2559
+    - Nodes: -45,-35,-49,-65%
+    - Time: -2,+2,-16,-10%
+- Our Best method now uses FLM with minimalization
+
+
 ## [2.4.2] - 2025/11/24
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed

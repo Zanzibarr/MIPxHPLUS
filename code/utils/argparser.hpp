@@ -20,9 +20,15 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         "Find a solution / the optimal solution to the deletefree relaxation of a SAS+ planning task\nVersion: " + std::string(VERSION),
         "Copyright 2025 Matteo Zanella, Domenico Salvagnin");
     args::HelpFlag help(parser, "help", "Display the help menu", {HPLUS_CLI_HELP_FLAG});
+
+    // ~~~~~~~~~~~~~~ INPUT FILE ~~~~~~~~~~~~~ //
     args::Positional<std::string> input_file(parser, "input file", "Specify the input file (a .sas file provided by the FastDownward translator)");
+
+    // ~~~~~~~~~~~~ EXECUTION TYPE ~~~~~~~~~~~ //
     args::Flag info(parser, "info flag", "Show info about an instance", {HPLUS_CLI_INFO_FLAG});
     args::Flag run(parser, "run flag", "Run the specified algorithm", {HPLUS_CLI_RUN_FLAG});
+
+    // ~~~~~~~~~~~ ALGORITHM TO RUN ~~~~~~~~~~ //
     args::ValueFlag<std::string> algorithm(
         parser, "string",
         "Specify the algorithm to run (default: " + std::string(HPLUS_DEF_ALG_STRING) + ", options: [" + std::string(HPLUS_CLI_ALG_FLAG_TL) +
@@ -31,6 +37,8 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
             " (greedy cost x effect)," + std::string(HPLUS_CLI_ALG_FLAG_GREEDYHMAX) + " (lookahead hmax)," +
             std::string(HPLUS_CLI_ALG_FLAG_GREEDYHADD) + " (lookahead hadd)])",
         {HPLUS_CLI_ALG_FLAG}, HPLUS_DEF_ALG_STRING);
+
+    // ~~~~~ WARM START AND PREPROCESSING ~~~~ //
     args::ValueFlag<std::string> warm_start(parser, "string",
                                             "Select an option for warm start (default: " + std::string(HPLUS_DEF_WS_STRING) + ", options: [" +
                                                 std::string(HPLUS_CLI_WS_FLAG_NONE) + " (none)," + std::string(HPLUS_CLI_WS_FLAG_GREEDYCOST) +
@@ -46,10 +54,23 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         "Specify the pcf to find additional landmark constraints using LM-cut (def: " + std::string(HPLUS_DEF_PREP_LMCUT) +
             "; options: 0 (none: no LM-cut), a (ARB), i (INV), v (VDM), r (RND))",
         {HPLUS_CLI_PREP_LMCUT_FLAG}, HPLUS_DEF_PREP_LMCUT);
+    args::ValueFlag<int> cutoff(parser, "int >= -1",
+                                "Specify the (upper) cutoff value to give to CPLEX (def: " + std::to_string(HPLUS_DEF_CUTOFF) +
+                                    "; options: -1 (none), >= 0 (the cutoff vlaue)",
+                                {HPLUS_CLI_CUTOFF_FLAG}, HPLUS_DEF_CUTOFF);
+
+    // ~~~~~~~~~~~~~~~ LOGGING ~~~~~~~~~~~~~~~ //
     args::ValueFlag<std::string> log(
         parser, "string",
         "Write on stdout / file (def: " + std::string(HPLUS_DEF_LOG) + "; options: 0 (stdout), <file_path> (absolute path to the file to write to))",
         {HPLUS_CLI_LOG_FLAG}, HPLUS_DEF_LOG);
+    args::ValueFlag<unsigned int> verbosity(
+        parser, "non-negative int, [0,3]",
+        "Set the verbosity (def: " + std::to_string(HPLUS_DEF_VERBOSE) +
+            "; options: 0 (only final solution), 1 (statistics), 2 (execution log), 3 (debugging + integrity checks))",
+        {HPLUS_CLI_VERBOSE_FLAG}, HPLUS_DEF_VERBOSE);
+
+    // ~~~~~~~~~~~~~~~~ LIMITS ~~~~~~~~~~~~~~~ //
     args::ValueFlag<unsigned int> time_limit(parser, "non-negative int, [0,+inf)",
                                              "Set the time limit (def: " + std::to_string(HPLUS_DEF_TIMELIMIT) +
                                                  " s; options: 0 (no timelimit), <positive int (!=0)> (setting that as timelimit (seconds)))",
@@ -62,33 +83,36 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
                                                "Set the memory limit (def: " + std::to_string(HPLUS_DEF_MEMORYLIMIT) +
                                                    " MB; options: <positive int (!= 0)> (setting that as memory limit (MB)))",
                                                {HPLUS_CLI_MEMORYLIMIT_FLAG}, HPLUS_DEF_MEMORYLIMIT);
+
+    // ~~~~~~~~~~~~~ RANDOM SEED ~~~~~~~~~~~~~ //
     args::ValueFlag<int> seed(parser, "int",
                               "Set a seed for random operations (def: " + std::to_string(HPLUS_DEF_RANDOM_SEED) + "; options: <positive int>)",
                               {HPLUS_CLI_SEED_FLAG}, HPLUS_DEF_RANDOM_SEED);
-    args::ValueFlag<unsigned int> verbosity(
-        parser, "non-negative int, [0,3]",
-        "Set the verbosity (def: " + std::to_string(HPLUS_DEF_VERBOSE) +
-            "; options: 0 (only final solution), 1 (statistics), 2 (execution log), 3 (debugging + integrity checks))",
-        {HPLUS_CLI_VERBOSE_FLAG}, HPLUS_DEF_VERBOSE);
+
+    // ~~~~~~~~~~ INTEGER CALLBACKS ~~~~~~~~~~ //
+    args::ValueFlag<std::string> cand_cuts(
+        parser, "string",
+        "(ONLY FOR [" + std::string(HPLUS_CLI_ALG_FLAG_CUTS) +
+            "] ALGORITHM) Specify what cuts to separate from the candidate (integer) solutions (def: " + std::string(HPLUS_DEF_CANDCUTS) +
+            "; options: 0 (don't separate cuts), a combination of ['f','c','l','s'] (respectively for frontier / complementary / LMcut landmarks and "
+            "SEC))",
+        {HPLUS_CLI_CANDCUTS_FLAG}, HPLUS_DEF_CANDCUTS);
+
+    // ~~~~~~~~~~~ FRACT CALLBACKS ~~~~~~~~~~~ //
     args::ValueFlag<std::string> fract_cuts(
         parser, "string",
         "(ONLY FOR [" + std::string(HPLUS_CLI_ALG_FLAG_CUTS) + "] ALGORITHM) Specify what cuts to separate from the fractional solutions (def: " +
             std::string(HPLUS_DEF_FRACTCUTS) + "; options: 0 (don't separate cuts), a combination of ['l','s'] (respectively for landmarks and SEC))",
         {HPLUS_CLI_FRACTCUTS_FLAG}, HPLUS_DEF_FRACTCUTS);
-    args::ValueFlag<std::string> cand_cuts(
-        parser, "string",
-        "(ONLY FOR [" + std::string(HPLUS_CLI_ALG_FLAG_CUTS) +
-            "] ALGORITHM) Specify what cuts to separate from the candidate (integer) solutions (def: " + std::string(HPLUS_DEF_CANDCUTS) +
-            "; options: 0 (don't separate cuts), a combination of ['f','c','s'] (respectively for frontier / complementary landmarks and SEC))",
-        {HPLUS_CLI_CANDCUTS_FLAG}, HPLUS_DEF_CANDCUTS);
     args::ValueFlag<bool> fract_cuts_at_nodes(
         parser, "0/1",
         "(ONLY FOR [" + std::string(HPLUS_CLI_ALG_FLAG_CUTS) +
-            "] ALGORITHM) Specify wether to separate cuts also at nodes or not (if not, specified cuts, will be applied only at the root node) "
+            "] ALGORITHM) Specify whether to separate cuts also at nodes or not (if not, specified cuts, will be applied only at the root node) "
             "(def: " +
             std::to_string(HPLUS_DEF_FRACTCUTS_AT_NODES) + "; options: 0 (don't separate cuts at nodes), 1 (separate cuts also at nodes))",
         {HPLUS_CLI_FRACTCUTS_AT_NODES_FLAG}, HPLUS_DEF_FRACTCUTS_AT_NODES);
 
+    // ~~~~~~~~~~ ROOT NODE CUTLOOP ~~~~~~~~~~ //
     args::ValueFlag<bool> custom_cutloop(parser, "0/1",
                                          "(ONLY FOR [" + std::string(HPLUS_CLI_ALG_FLAG_CUTS) +
                                              "] ALGORITHM) Flag for using the custom cutloop (def: " + std::to_string(HPLUS_DEF_CUSTOM_CUTLOOP) +
@@ -120,6 +144,44 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
                                         "Threshold for custom cutloop's termination condition on (lower bound / incumbent) gap (def: " +
                                             std::to_string(HPLUS_DEF_CL_GAP_STOP) + "; options: <double in range [0,1]>)",
                                         {HPLUS_CLI_CUTLOOP_GAP_STOP_FLAG}, HPLUS_DEF_CL_GAP_STOP);
+
+    // ~~~~~~~~ FRACT LM MINIMIZATION ~~~~~~~~ //
+    args::ValueFlag<bool> fract_cuts_min_lm(
+        parser, "0/1",
+        "(ONLY FOR [" + std::string(HPLUS_CLI_ALG_FLAG_CUTS) + "] ALGORITHM) Specify whether to minimize fractional landmarks (def: " +
+            std::to_string(HPLUS_DEF_MIN_FRACT_LM) + "; options: 0 (don't use minimization strategy), 1 (use minimization strategy))",
+        {HPLUS_CLI_FRACTCUTS_MIN_LM_FLAG}, HPLUS_DEF_MIN_FRACT_LM);
+    args::ValueFlag<int> lm_min_iter(
+        parser, "int >= -1",
+        "(ONLY FOR [" + std::string(HPLUS_CLI_ALG_FLAG_CUTS) +
+            "] ALGORITHM) Specify the maximum number of minimization iterations in the fractional landmark separation procedure (def: " +
+            std::to_string(HPLUS_DEF_MINIMIZATION_IT) + "; options: -1 (no limit), 0 (no minimization procedure), <positive int>)",
+        {HPLUS_CLI_MINIMIZATION_BOUND_IT}, HPLUS_DEF_MINIMIZATION_IT);
+    args::ValueFlag<double> lm_min_viol(parser, "non-negative double, [0,1]",
+                                        "(ONLY FOR [" + std::string(HPLUS_CLI_ALG_FLAG_CUTS) +
+                                            "] ALGORITHM) Specify the cut violation ratio (with respect to the violation of the first cut found) "
+                                            "below which we choose to ignore the cut (def: " +
+                                            std::to_string(HPLUS_DEF_MINIMIZATION_VIOL) + "; options: <double in range [0,1]>",
+                                        {HPLUS_CLI_MINIMIZATION_BOUND_VIOL}, HPLUS_DEF_MINIMIZATION_VIOL);
+    args::ValueFlag<int> lm_min_lh(
+        parser, "int >= -1",
+        "(ONLY FOR [" + std::string(HPLUS_CLI_ALG_FLAG_CUTS) +
+            "] ALGORITHM) Specify the maximum number of minimization iterations in the fractional landmark separation procedure (def: " +
+            std::to_string(HPLUS_DEF_MINIMIZATION_LH) + "; options: -1 (no limit), 0 (no minimization procedure), <positive int>)",
+        {HPLUS_CLI_MINIMIZATION_BOUND_LH}, HPLUS_DEF_MINIMIZATION_LH);
+    args::ValueFlag<bool> lm_min_sort(parser, "0/1",
+                                      "(ONLY FOR [" + std::string(HPLUS_CLI_ALG_FLAG_CUTS) +
+                                          "] ALGORITHM) Specify whether to sort landmarks in minimization procedure (def: " +
+                                          std::to_string(HPLUS_DEF_MINIMIZATION_SORT) + "; options: 0 (don't sort landmarks), 1 (sort landmarks))",
+                                      {HPLUS_CLI_MINIMIZATION_SORT}, HPLUS_DEF_MINIMIZATION_SORT);
+    args::ValueFlag<bool> lm_min_improv(parser, "0/1",
+                                        "(ONLY FOR [" + std::string(HPLUS_CLI_ALG_FLAG_CUTS) +
+                                            "] ALGORITHM) Specify whether to only pick better landmarks in minimization procedure (def: " +
+                                            std::to_string(HPLUS_DEF_MINIMIZATION_IMPROV) +
+                                            "; options: 0 (don't sort landmarks), 1 (sort landmarks))",
+                                        {HPLUS_CLI_MINIMIZATION_IMPROV}, HPLUS_DEF_MINIMIZATION_IMPROV);
+
+    // ~~~~~~~~~~~~~~~~ INOUT ~~~~~~~~~~~~~~~~ //
     args::ValueFlag<bool> inout(parser, "0/1",
                                 "(ONLY FOR [" + std::string(HPLUS_CLI_ALG_FLAG_CUTS) + "] ALGORITHM with custom cutloop [" +
                                     std::string(HPLUS_CLI_CUTLOOP_FLAG) + "]) Using In-Out strategy in custom cutloop (def: " +
@@ -138,6 +200,8 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
                                               "] parameter will be multiplied for at each In-Out iteration (def: " +
                                               std::to_string(HPLUS_DEF_IO_WEIGHT_UPD) + "; options: <double in range [0,1)>)",
                                           {HPLUS_CLI_INOUT_WEIGHT_UPD_FLAG}, HPLUS_DEF_IO_WEIGHT_UPD);
+
+    // ~~~~~~~~~~~~~~~~ OTHER ~~~~~~~~~~~~~~~~ //
     args::ValueFlag<bool> testing(parser, "0/1",
                                   "Flag for testing or debugging (def: 0; options: 0 (testing flag set to false), 1 (testing flag set to true))",
                                   {HPLUS_CLI_TESTING_FLAG}, false);
@@ -185,6 +249,7 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         logger::get_instance().initialize(false, "", true, (exec.threads > 1 && VERBOSE_DEBUG()));
 
     if (VERBOSE_BASIC()) {
+        LOG_INFO << compile_date();
         LOG_INFO << today();
         LOG_INFO << version();
     }
@@ -269,6 +334,10 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         } else
             exec.prep_lmcut = s;
     }
+    if (cutoff) {
+        exec.cutoff = args::get(cutoff);
+        if (exec.cutoff < HPLUS_DEF_CUTOFF) exec.cutoff = HPLUS_DEF_CUTOFF;
+    }
     if (fract_cuts) {
         exec.fract_cuts = "";
         std::string s{args::get(fract_cuts)};
@@ -282,6 +351,37 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         } else
             exec.fract_cuts = s;
     }
+    if (fract_cuts_min_lm) exec.min_fract_lm = args::get(fract_cuts_min_lm);
+    if (lm_min_iter) {
+        int i = args::get(lm_min_iter);
+        if (i == 0) {
+            LOG_WARNING << "Setting 0 iterations means to not use the minimization procedure; removing landmark minimization procedure";
+            exec.min_fract_lm = false;
+        } else if (i < 0)
+            exec.lm_min_it = INFBOUND_INT;
+        else
+            exec.lm_min_it = static_cast<unsigned int>(i);
+    }
+    if (lm_min_viol) {
+        double v = args::get(lm_min_viol);
+        if (v < 0 || v > 1)
+            LOG_WARNING << "Illegal value for " << HPLUS_CLI_MINIMIZATION_BOUND_VIOL
+                        << "; using default value: " << std::to_string(HPLUS_DEF_MINIMIZATION_VIOL);
+        else
+            exec.lm_min_viol = v;
+    }
+    if (lm_min_lh) {
+        int i = args::get(lm_min_lh);
+        if (i == 0) {
+            LOG_WARNING << "Setting 0 lookahead iterations means to not use the minimization procedure; removing landmark minimization procedure";
+            exec.min_fract_lm = false;
+        } else if (i < 0)
+            exec.lm_min_lookahead = INFBOUND_INT;
+        else
+            exec.lm_min_lookahead = static_cast<unsigned int>(i);
+    }
+    if (lm_min_sort) exec.lm_min_sort = args::get(lm_min_sort);
+    if (lm_min_improv) exec.lm_min_improv = args::get(lm_min_improv);
     if (fract_cuts_at_nodes) exec.fract_cuts_at_nodes = args::get(fract_cuts_at_nodes);
 
     if (cand_cuts) {
@@ -289,6 +389,7 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         std::string s{args::get(cand_cuts)};
         if (s.find('f') != std::string::npos) exec.cand_cuts += "f";
         if (s.find('c') != std::string::npos) exec.cand_cuts += "c";
+        if (s.find('l') != std::string::npos) exec.cand_cuts += "l";
         if (s.find('s') != std::string::npos) exec.cand_cuts += "s";
     }
     if (custom_cutloop) exec.custom_cutloop = args::get(custom_cutloop);
@@ -349,7 +450,7 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
     // Check that it's all as it's supposed to be
     if (exec.threads > static_cast<unsigned int>(std::thread::hardware_concurrency())) {
         exec.threads = static_cast<unsigned int>(std::thread::hardware_concurrency());
-        if (VERBOSE_BASIC()) LOG_WARNING << "This machine has " << exec.threads << " cores: using up to " << exec.threads << " threads";
+        LOG_WARNING << "This machine has " << exec.threads << " cores: using up to " << exec.threads << " threads";
     }
     if (info && run) LOG_ERROR << "You need to specify only one functionality among " << HPLUS_CLI_INFO_FLAG << " and " << HPLUS_CLI_RUN_FLAG;
     if (!exec.prep && exec.prep_lmcut != "0") {
@@ -401,6 +502,7 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         LOG_WARNING << "Warmstart disabled: disabling In-Out strategy";
         exec.inout = false;
     }
+    if (exec.fract_cuts.find('l') == std::string::npos && exec.min_fract_lm) exec.min_fract_lm = false;
 }
 
 #endif

@@ -139,6 +139,9 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplu
         stopcheck();
     }
 
+    ind.resize(inst.m);
+    val.resize(inst.m);
+
     // If preprocessing is used, there might be Disjunctive Action Landmarks to add as constraints... those must be counted as acyclicity constraints,
     // since those are not needed for the base model correctness
     if (exec.prep) {

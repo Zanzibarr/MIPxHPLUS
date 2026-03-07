@@ -3,8 +3,8 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 cmake_path(GET CMAKE_HOME_DIRECTORY PARENT_PATH HOME_DIR)
-
 project(hplus)
 
 # Enforce out-of-source build
@@ -12,10 +12,15 @@ if (CMAKE_SOURCE_DIR STREQUAL CMAKE_BINARY_DIR)
     message(FATAL_ERROR "Out-of-source build required. Create a 'build' directory and run cmake from there.")
 endif()
 
-# Build type configuration
+# Build type configuration - default to Debug for development
 if(NOT CMAKE_BUILD_TYPE)
-    set(CMAKE_BUILD_TYPE "Release" CACHE STRING "Build type" FORCE)
+    set(CMAKE_BUILD_TYPE "Debug" CACHE STRING "Build type" FORCE)
+    set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS "Debug" "Release" "RelWithDebInfo" "MinSizeRel")
 endif()
+
+# Build flags - with sanitizer support for debug builds
+set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -fsanitize=address -fno-omit-frame-pointer")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 
 # Compiler flags with option for customization
 option(ENABLE_WARNINGS "Enable compiler warnings" OFF)
@@ -38,6 +43,7 @@ if(NOT DEFINED CPLEX_PATH)
     foreach(PATH ${CPLEX_POSSIBLE_PATHS})
         if(EXISTS "${PATH}/cplex/lib")
             set(CPLEX_PATH ${PATH})
+            break()
         endif()
     endforeach()
 endif()
@@ -53,7 +59,6 @@ endif()
 
 set(CPLEX_DIR "${CPLEX_PATH}/cplex/lib/${ARCH}/static_pic" CACHE PATH "CPLEX library directory")
 set(CPLEX_INCLUDE "${CPLEX_PATH}/cplex/include/ilcplex" CACHE PATH "CPLEX include directory")
-
 message(STATUS "Found CPLEX: ${CPLEX_PATH}")
 
 # Validate CPLEX paths
@@ -111,13 +116,25 @@ find_library(CPLEX_LIBRARY
     PATHS ${CPLEX_DIR}
     NO_DEFAULT_PATH
 )
-
 if(NOT CPLEX_LIBRARY)
     message(FATAL_ERROR "CPLEX library not found in ${CPLEX_DIR}")
 endif()
 
+# Create a dummy file to force recompilation
+add_custom_command(
+    OUTPUT ${CMAKE_BINARY_DIR}/timestamp.h.tmp
+    COMMAND ${CMAKE_COMMAND} -E echo "// Forcing recompilation" >> ${CMAKE_BINARY_DIR}/timestamp.h.tmp
+    VERBATIM
+)
+
+add_custom_target(force_timestamp ALL
+    DEPENDS ${CMAKE_BINARY_DIR}/timestamp.h.tmp
+    COMMAND ${CMAKE_COMMAND} -E touch ${CMAKE_SOURCE_DIR}/main.cpp
+)
+
 # Executables
 add_executable(hplus main.cpp)
+add_dependencies(hplus force_timestamp)
 
 target_link_libraries(hplus
     domain_lib
@@ -135,20 +152,10 @@ add_definitions(
     -DHPLUS_HOME_DIR="${HOME_DIR}" 
 )
 
-# Build flags
-set(CMAKE_CXX_FLAGS_RELEASE "-DNDEBUG -O3")
-set(CMAKE_CXX_FLAGS_DEBUG "-Og -ggdb")
-
-add_custom_target(opt 
-    COMMAND echo "Flags used: ${CMAKE_CXX_FLAGS_RELEASE}"
-    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --config Release
-    COMMAND_EXPAND_LISTS
-)
-add_custom_target(debug 
-    COMMAND echo "Flags used: ${CMAKE_CXX_FLAGS_DEBUG}"
-    COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --config Debug
-    COMMAND_EXPAND_LISTS
-)
-add_custom_target(clear
-    COMMAND rm -r ${CMAKE_HOME_DIRECTORY}/build/*
-)
+# Print build configuration
+message(STATUS "Build type: ${CMAKE_BUILD_TYPE}")
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    message(STATUS "Debug flags: ${CMAKE_CXX_FLAGS_DEBUG}")
+elseif(CMAKE_BUILD_TYPE STREQUAL "Release")
+    message(STATUS "Release flags: ${CMAKE_CXX_FLAGS_RELEASE}")
+endif()

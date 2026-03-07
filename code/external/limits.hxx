@@ -1,9 +1,13 @@
 /**
  * @file limits.hxx
  * @brief Utilities about setting memory/time limits
+ * @version 1.0.0
  *
  * @author Matteo Zanella <matteozanella2@gmail.com>
  * Copyright 2025 Matteo Zanella
+ * @see https://github.com/Zanzibarr/limits
+ *
+ * SPDX-License-Identifier: MIT
  */
 
 #ifndef LIM_HXX
@@ -11,10 +15,9 @@
 
 #include <sys/resource.h>
 
-#include <chrono>  // std::chrono
-#include <thread>  // std::thread
-
-#include "logger.hxx"
+#include <chrono>    // std::chrono
+#include <iostream>  // std::cerr
+#include <thread>    // std::thread
 
 inline int GLOBAL_TERMINATE_CONDITION = 0;
 
@@ -65,7 +68,7 @@ inline bool set_memory_limit(int limit_mb) {
     rl.rlim_max = limit_bytes;
 
     if (setrlimit(RLIMIT_AS, &rl) != 0) {
-        LOG_WARNING << "setrlimit failed: ";
+        std::cerr << "[WARNING]: setrlimit failed: ";
         return false;
     }
 
