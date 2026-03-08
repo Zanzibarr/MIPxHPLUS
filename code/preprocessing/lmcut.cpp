@@ -268,7 +268,7 @@ auto LMcut::compute_lmcut_private(hmax_function hmax) -> std::pair<std::vector<s
 
     while (hmax(goal_, hmax_values_, initial_hmax_values_).second > HPLUS_EPSILON) {
         const auto& [cut, val] = compute_cut(hmax);
-        // check_landmark(cut);
+        check_landmark(cut);
         lmcut_value += val;
         update_hmax_values(cut, hmax);
         landmarks.push_back(std::move(cut));
@@ -292,22 +292,31 @@ auto LMcut::int_separation(const std::vector<unsigned int>& used_actions, hmax_f
     init();
 
     // Set reduced costs of used actions to 0
-    for (const auto& i : used_actions) {
-        reduced_costs_[i] = 0;
+    for (const auto& idx : used_actions) {
+        reduced_costs_[idx] = 0;
     }
 
     return compute_lmcut_private(hmax);
 }
 
-auto LMcut::fract_separation(const std::vector<double>& actions_weights, hmax_function hmax)
-    -> std::pair<std::vector<std::vector<unsigned int>>, double> {
+auto LMcut::fract_separation(const std::vector<double>& actions_weights, hmax_function hmax) -> std::vector<std::vector<unsigned int>> {
     init();
 
     for (unsigned int i = 0; i < actions_weights.size(); i++) {
         reduced_costs_[i] = reduced_costs_[i] * (1 - actions_weights[i]);
     }
 
-    return compute_lmcut_private(hmax);
+    auto [landmarks, lmcut_value] = compute_lmcut_private(hmax);
+
+    std::erase_if(landmarks, [&actions_weights](const std::vector<unsigned int>& landmark) {
+        double sum = 0;
+        for (const auto& act_i : landmark) {
+            sum += actions_weights[act_i];
+        }
+        return sum >= 1;
+    });
+
+    return landmarks;
 }
 
 void LMcut::check_landmark(const std::vector<unsigned int>& landmark) {

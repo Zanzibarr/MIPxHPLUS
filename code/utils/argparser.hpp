@@ -10,10 +10,12 @@
 #include <stdlib.h>
 #include <sys/stat.h>  // For stat buffer {}
 
+#include <algorithm>
 #include <csignal>
 
 #include "../domain/execution.hpp"
 #include "../external/args.hxx"
+#include "hplus_algs.hpp"
 
 static void parse_cli(const int argc, const char** argv, hplus::execution& exec) {
     args::ArgumentParser parser(
@@ -101,8 +103,9 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
     // ~~~~~~~~~~~ FRACT CALLBACKS ~~~~~~~~~~~ //
     args::ValueFlag<std::string> fract_cuts(
         parser, "string",
-        "(ONLY FOR [" + std::string(HPLUS_CLI_ALG_FLAG_CUTS) + "] ALGORITHM) Specify what cuts to separate from the fractional solutions (def: " +
-            std::string(HPLUS_DEF_FRACTCUTS) + "; options: 0 (don't separate cuts), a combination of ['l','s'] (respectively for landmarks and SEC))",
+        "(ONLY FOR [" + std::string(HPLUS_CLI_ALG_FLAG_CUTS) +
+            "] ALGORITHM) Specify what cuts to separate from the fractional solutions (def: " + std::string(HPLUS_DEF_FRACTCUTS) +
+            "; options: 0 (don't separate cuts), a combination of ['m','l','s'] (respectively for landmarks (with max-flow or with lmcut) and SEC))",
         {HPLUS_CLI_FRACTCUTS_FLAG}, HPLUS_DEF_FRACTCUTS);
     args::ValueFlag<bool> fract_cuts_at_nodes(
         parser, "0/1",
@@ -234,19 +237,22 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         }
         exec.threads = t;
     }
-    if (seed) exec.seed = args::get(seed);
+    if (seed) {
+        exec.seed = args::get(seed);
+    }
 
     init_rng(exec.seed);
 
     if (log) {
         exec.log_file = HPLUS_LOG_DIR "/" + args::get(log);
-        if (exec.log_file == "0")
+        if (exec.log_file == "0") {
             logger::get_instance().initialize(false, "", true, (exec.threads > 1 && VERBOSE_DEBUG()));
-        else {
+        } else {
             logger::get_instance().initialize(true, exec.log_file, true, (exec.threads > 1 && VERBOSE_DEBUG()));
         }
-    } else
+    } else {
         logger::get_instance().initialize(false, "", true, (exec.threads > 1 && VERBOSE_DEBUG()));
+    }
 
     if (VERBOSE_BASIC()) {
         LOG_INFO << compile_date();
@@ -266,58 +272,66 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         unsigned int m{args::get(memory_limit)};
         ASSERT(m != 0);
         exec.memorylimit = m;
-        if (!memlim::set_memory_limit(m)) LOG_ERROR << "An error occurred while setting up memory limits";
+        if (!memlim::set_memory_limit(m)) {
+            LOG_ERROR << "An error occurred while setting up memory limits";
+        }
     }
 
     // Get parsed info
     if (input_file) {
         exec.file = args::get(input_file);
         exec.file_name = std::filesystem::path(exec.file).filename().string();
-    } else
+    } else {
         LOG_ERROR << "Missing input file";
+    }
     struct stat buffer{};
     if (stat((exec.file).c_str(), &buffer) != 0) {
         LOG_ERROR << "Failed to open input file";
     }
-    if (run)
+    if (run) {
         exec.type = hplus::exec_type::RUN;
-    else if (info)
+    } else if (info) {
         exec.type = hplus::exec_type::INFO;
+    }
     if (algorithm) {
         std::string a{args::get(algorithm)};
-        if (a == HPLUS_CLI_ALG_FLAG_TL)
+        if (a == HPLUS_CLI_ALG_FLAG_TL) {
             exec.alg = hplus::algorithm::TL;
-        else if (a == HPLUS_CLI_ALG_FLAG_VE)
+        } else if (a == HPLUS_CLI_ALG_FLAG_VE) {
             exec.alg = hplus::algorithm::VE;
-        else if (a == HPLUS_CLI_ALG_FLAG_CUTS)
+        } else if (a == HPLUS_CLI_ALG_FLAG_CUTS) {
             exec.alg = hplus::algorithm::CUTS;
-        else if (a == HPLUS_CLI_ALG_FLAG_GREEDYCOST)
+        } else if (a == HPLUS_CLI_ALG_FLAG_GREEDYCOST) {
             exec.alg = hplus::algorithm::GC;
-        else if (a == HPLUS_CLI_ALG_FLAG_GREEDYCXE)
+        } else if (a == HPLUS_CLI_ALG_FLAG_GREEDYCXE) {
             exec.alg = hplus::algorithm::GCXE;
-        else if (a == HPLUS_CLI_ALG_FLAG_GREEDYHMAX)
+        } else if (a == HPLUS_CLI_ALG_FLAG_GREEDYHMAX) {
             exec.alg = hplus::algorithm::GHM;
-        else if (a == HPLUS_CLI_ALG_FLAG_GREEDYHADD)
+        } else if (a == HPLUS_CLI_ALG_FLAG_GREEDYHADD) {
             exec.alg = hplus::algorithm::GHA;
-        else
+        } else {
             LOG_ERROR << "Algorithm '" << a << "' is not in the list of possible algorithms";
+        }
     }
     if (warm_start) {
         std::string ws{args::get(warm_start)};
-        if (ws == HPLUS_CLI_WS_FLAG_NONE)
+        if (ws == HPLUS_CLI_WS_FLAG_NONE) {
             exec.ws = hplus::warmstart::NONE;
-        else if (ws == HPLUS_CLI_WS_FLAG_GREEDYCXE)
+        } else if (ws == HPLUS_CLI_WS_FLAG_GREEDYCXE) {
             exec.ws = hplus::warmstart::GCXE;
-        else if (ws == HPLUS_CLI_WS_FLAG_GREEDYCOST)
+        } else if (ws == HPLUS_CLI_WS_FLAG_GREEDYCOST) {
             exec.ws = hplus::warmstart::GC;
-        else if (ws == HPLUS_CLI_WS_FLAG_GREEDYHMAX)
+        } else if (ws == HPLUS_CLI_WS_FLAG_GREEDYHMAX) {
             exec.ws = hplus::warmstart::GHM;
-        else if (ws == HPLUS_CLI_WS_FLAG_GREEDYHADD)
+        } else if (ws == HPLUS_CLI_WS_FLAG_GREEDYHADD) {
             exec.ws = hplus::warmstart::GHA;
-        else
+        } else {
             LOG_ERROR << "Warm start '" << ws << "' is not in the list of possible warm starts";
+        }
     }
-    if (prep) exec.prep = args::get(prep);
+    if (prep) {
+        exec.prep = args::get(prep);
+    }
     if (prep_lmcut) {
         exec.prep_lmcut = "";
         std::string s{args::get(prep_lmcut)};
@@ -329,130 +343,176 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
             exec.prep_lmcut = s;
             if (exec.prep_lmcut.empty()) {
                 LOG_WARNING << "Wrong parameter for " << HPLUS_CLI_PREP_LMCUT_FLAG << "; using default value: " << HPLUS_DEF_PREP_LMCUT;
-                exec.fract_cuts = HPLUS_DEF_PREP_LMCUT;
+                exec.prep_lmcut = HPLUS_DEF_PREP_LMCUT;
             }
-        } else
+        } else {
             exec.prep_lmcut = s;
+        }
     }
     if (cutoff) {
         exec.cutoff = args::get(cutoff);
-        if (exec.cutoff < HPLUS_DEF_CUTOFF) exec.cutoff = HPLUS_DEF_CUTOFF;
+        exec.cutoff = std::max(exec.cutoff, HPLUS_DEF_CUTOFF);
     }
     if (fract_cuts) {
         exec.fract_cuts = "";
         std::string s{args::get(fract_cuts)};
         if (s != "0") {
-            if (s.find('l') != std::string::npos) exec.fract_cuts += "l";
-            if (s.find('s') != std::string::npos) exec.fract_cuts += "s";
+            if (s.find('m') != std::string::npos) {
+                exec.fract_cuts += "m";
+            }
+            if (s.find('l') != std::string::npos) {
+                exec.fract_cuts += "l";
+            }
+            if (s.find('s') != std::string::npos) {
+                exec.fract_cuts += "s";
+            }
             if (exec.fract_cuts.empty()) {
                 LOG_WARNING << "Wrong parameter for " << HPLUS_CLI_FRACTCUTS_FLAG << "; using default value: " << HPLUS_DEF_FRACTCUTS;
                 exec.fract_cuts = HPLUS_DEF_FRACTCUTS;
             }
-        } else
+        } else {
             exec.fract_cuts = s;
+        }
     }
-    if (fract_cuts_min_lm) exec.min_fract_lm = args::get(fract_cuts_min_lm);
+    if (fract_cuts_min_lm) {
+        exec.min_fract_lm = args::get(fract_cuts_min_lm);
+    }
     if (lm_min_iter) {
         int i = args::get(lm_min_iter);
         if (i == 0) {
             LOG_WARNING << "Setting 0 iterations means to not use the minimization procedure; removing landmark minimization procedure";
             exec.min_fract_lm = false;
-        } else if (i < 0)
+        } else if (i < 0) {
             exec.lm_min_it = INFBOUND_INT;
-        else
+        } else {
             exec.lm_min_it = static_cast<unsigned int>(i);
+        }
     }
     if (lm_min_viol) {
         double v = args::get(lm_min_viol);
-        if (v < 0 || v > 1)
+        if (v < 0 || v > 1) {
             LOG_WARNING << "Illegal value for " << HPLUS_CLI_MINIMIZATION_BOUND_VIOL
                         << "; using default value: " << std::to_string(HPLUS_DEF_MINIMIZATION_VIOL);
-        else
+        } else {
             exec.lm_min_viol = v;
+        }
     }
     if (lm_min_lh) {
         int i = args::get(lm_min_lh);
         if (i == 0) {
             LOG_WARNING << "Setting 0 lookahead iterations means to not use the minimization procedure; removing landmark minimization procedure";
             exec.min_fract_lm = false;
-        } else if (i < 0)
+        } else if (i < 0) {
             exec.lm_min_lookahead = INFBOUND_INT;
-        else
+        } else {
             exec.lm_min_lookahead = static_cast<unsigned int>(i);
+        }
     }
-    if (lm_min_sort) exec.lm_min_sort = args::get(lm_min_sort);
-    if (lm_min_improv) exec.lm_min_improv = args::get(lm_min_improv);
-    if (fract_cuts_at_nodes) exec.fract_cuts_at_nodes = args::get(fract_cuts_at_nodes);
+    if (lm_min_sort) {
+        exec.lm_min_sort = args::get(lm_min_sort);
+    }
+    if (lm_min_improv) {
+        exec.lm_min_improv = args::get(lm_min_improv);
+    }
+    if (fract_cuts_at_nodes) {
+        exec.fract_cuts_at_nodes = args::get(fract_cuts_at_nodes);
+    }
 
     if (cand_cuts) {
         exec.cand_cuts = "";
         std::string s{args::get(cand_cuts)};
-        if (s.find('f') != std::string::npos) exec.cand_cuts += "f";
-        if (s.find('c') != std::string::npos) exec.cand_cuts += "c";
-        if (s.find('l') != std::string::npos) exec.cand_cuts += "l";
-        if (s.find('s') != std::string::npos) exec.cand_cuts += "s";
+        if (s.find('f') != std::string::npos) {
+            exec.cand_cuts += "f";
+        }
+        if (s.find('c') != std::string::npos) {
+            exec.cand_cuts += "c";
+        }
+        if (s.find('l') != std::string::npos) {
+            exec.cand_cuts += "l";
+        }
+        if (s.find('s') != std::string::npos) {
+            exec.cand_cuts += "s";
+        }
     }
-    if (custom_cutloop) exec.custom_cutloop = args::get(custom_cutloop);
-    if (cl_pruning) exec.cl_pruning = args::get(cl_pruning);
-    if (cl_min_iter) exec.cl_min_iter = args::get(cl_min_iter);
+    if (custom_cutloop) {
+        exec.custom_cutloop = args::get(custom_cutloop);
+    }
+    if (cl_pruning) {
+        exec.cl_pruning = args::get(cl_pruning);
+    }
+    if (cl_min_iter) {
+        exec.cl_min_iter = args::get(cl_min_iter);
+    }
     if (cl_improv) {
         double improv = args::get(cl_improv);
-        if (improv < 0 || improv > 1)
+        if (improv < 0 || improv > 1) {
             LOG_WARNING << "Illegal value for " << HPLUS_CLI_CUTLOOP_IMPROVEMENT_FLAG
                         << "; using default value: " << std::to_string(HPLUS_DEF_CL_IMPROV);
-        else
+        } else {
             exec.cl_improv = improv;
+        }
     }
     if (cl_past_iter) {
         unsigned int it = args::get(cl_past_iter);
-        if (it == 0)
+        if (it == 0) {
             LOG_WARNING << "Illegal value for " << HPLUS_CLI_CUTLOOP_PAST_ITER_FLAG
                         << "; using default value: " << std::to_string(HPLUS_DEF_CL_PAST_ITER);
-        else
+        } else {
             exec.cl_past_iter = it;
+        }
     }
     if (cl_gap_stop) {
         double gap = args::get(cl_gap_stop);
-        if (gap < 0 || gap > 1)
+        if (gap < 0 || gap > 1) {
             LOG_WARNING << "Illegal value for " << HPLUS_CLI_CUTLOOP_GAP_STOP_FLAG
                         << "; using default value: " << std::to_string(HPLUS_DEF_CL_GAP_STOP);
-        else
+        } else {
             exec.cl_gap_stop = gap;
+        }
     }
-    if (inout) exec.inout = args::get(inout);
+    if (inout) {
+        exec.inout = args::get(inout);
+    }
     if (io_max_it) {
         unsigned int it = args::get(io_max_it);
-        if (it == 0)
+        if (it == 0) {
             LOG_WARNING << "Illegal value for " << HPLUS_CLI_INOUT_MAX_ITER_FLAG << "; using default value: " << std::to_string(HPLUS_DEF_IO_MAX_IT);
-        else
+        } else {
             exec.io_max_iter = it;
+        }
     }
     if (io_weight) {
         double weight = args::get(io_weight);
-        if (weight < 0 || weight > 1)
+        if (weight < 0 || weight > 1) {
             LOG_WARNING << "Illegal value for " << HPLUS_CLI_INOUT_WEIGHT_FLAG << "; using default value: " << std::to_string(HPLUS_DEF_IO_WEIGHT);
-        else
+        } else {
             exec.io_weight = weight;
+        }
     }
     if (io_weight_upd) {
         double weight = args::get(io_weight_upd);
-        if (weight < 0 || weight >= 1)
+        if (weight < 0 || weight >= 1) {
             LOG_WARNING << "Illegal value for " << HPLUS_CLI_INOUT_WEIGHT_UPD_FLAG
                         << "; using default value: " << std::to_string(HPLUS_DEF_IO_WEIGHT_UPD);
-        else
+        } else {
             exec.io_weight_update = weight;
+        }
     }
     if (testing) {
         exec.testing = args::get(testing);
-        if (exec.testing) LOG_WARNING << "Testing flag set to true";
+        if (exec.testing) {
+            LOG_WARNING << "Testing flag set to true";
+        }
     }
 
     // Check that it's all as it's supposed to be
-    if (exec.threads > static_cast<unsigned int>(std::thread::hardware_concurrency())) {
-        exec.threads = static_cast<unsigned int>(std::thread::hardware_concurrency());
+    if (exec.threads > std::thread::hardware_concurrency()) {
+        exec.threads = std::thread::hardware_concurrency();
         LOG_WARNING << "This machine has " << exec.threads << " cores: using up to " << exec.threads << " threads";
     }
-    if (info && run) LOG_ERROR << "You need to specify only one functionality among " << HPLUS_CLI_INFO_FLAG << " and " << HPLUS_CLI_RUN_FLAG;
+    if (info && run) {
+        LOG_ERROR << "You need to specify only one functionality among " << HPLUS_CLI_INFO_FLAG << " and " << HPLUS_CLI_RUN_FLAG;
+    }
     if (!exec.prep && exec.prep_lmcut != "0") {
         LOG_WARNING << "Preprocessing has been disabled bu LM-cut is selected: disabling LM-cut";
         exec.prep_lmcut = "0";
@@ -479,13 +539,16 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
                 LOG_ERROR << "Unhandled algorithm in parse_cli: " << static_cast<int>(exec.alg);
         }
     }
-    if (exec.alg == hplus::algorithm::CUTS && exec.cand_cuts.empty())
+    if (exec.alg == hplus::algorithm::CUTS && exec.cand_cuts.empty()) {
         LOG_ERROR << "You can't disable all three candidate cuts from the " << HPLUS_CLI_ALG_FLAG_CUTS << " algorithm";
+    }
     if (exec.alg != hplus::algorithm::CUTS && exec.fract_cuts != "0") {
         LOG_WARNING << "Cuts on the fractional solutions aren't needed with this algorithm: disabling fractional cuts";
         exec.fract_cuts = "0";
     }
-    if (exec.fract_cuts == "0" && exec.fract_cuts_at_nodes) exec.fract_cuts_at_nodes = false;
+    if (exec.fract_cuts == "0" && exec.fract_cuts_at_nodes) {
+        exec.fract_cuts_at_nodes = false;
+    }
     if (exec.fract_cuts == "0" && exec.custom_cutloop) {
         LOG_WARNING << "If you want to use the custom cutloop, please specify a fractional solution separator: disabling custom cutloop";
         exec.custom_cutloop = false;
@@ -502,7 +565,9 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         LOG_WARNING << "Warmstart disabled: disabling In-Out strategy";
         exec.inout = false;
     }
-    if (exec.fract_cuts.find('l') == std::string::npos && exec.min_fract_lm) exec.min_fract_lm = false;
+    if (exec.fract_cuts.find('m') == std::string::npos && exec.min_fract_lm) {
+        exec.min_fract_lm = false;
+    }
 }
 
 #endif
