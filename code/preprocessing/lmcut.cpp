@@ -5,6 +5,7 @@
 
 #include "bs.hxx"
 #include "limits.hxx"
+#include "logger.hxx"
 #include "utils.hpp"
 
 auto hmax::hmax_arbitrary(const std::vector<unsigned int>& preconditions, const std::vector<double>& hmax_values,
@@ -137,8 +138,7 @@ void LMcut::update_hmax_values(const std::vector<unsigned int>& changed_actions,
 
         for (const auto& act_i : inst_->act_with_pre[fact]) {
             // If this action's pcf is not 'fact', than since we are lowering the hmax values, the hmax won't change for this action... skip
-            // ... or if 'fact' is act_i's pcf but it's hmax is that same value, nothing would change... skip
-            if (pcf_[act_i] != -1 && (pcf_[act_i] != fact || (std::abs(hmax_values_[fact] - pcf_hmax_[act_i]) <= HPLUS_EPSILON))) {
+            if (pcf_[act_i] != -1 && pcf_[act_i] != fact) {
                 continue;
             }
 
@@ -217,18 +217,28 @@ auto LMcut::compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned in
     const auto& check_update_cut_pregoal = [&](unsigned int act_i) -> void {
         explored.add(act_i);
 
-        bool added_to_cut{false};
-        for (const auto& eff : inst_->actions[act_i].eff_sparse) {
-            if (goal_section[eff]) {
-                if (reduced_costs_[act_i] > HPLUS_EPSILON && !added_to_cut) {
+        if (reduced_costs_[act_i] > HPLUS_EPSILON) {
+            bool added_to_cut{false};
+            for (const auto& eff : inst_->actions[act_i].eff_sparse) {
+                if (goal_section[eff]) {
+                    if (added_to_cut) {
+                        continue;
+                    }
+                    added_to_cut = true;
                     cut.push_back(act_i);
                     min_reduced_cost = std::min(min_reduced_cost, reduced_costs_[act_i]);
-                    added_to_cut = true;
+                } else if (!(pre_goal_section[eff])) {
+                    pre_goal_section.add(eff);
+                    queue.push_back(static_cast<int>(eff));
                 }
-
-            } else if (!pre_goal_section[eff]) {
-                pre_goal_section.add(eff);
-                queue.push_back(static_cast<int>(eff));
+            }
+        } else {
+            for (const auto& eff : inst_->actions[act_i].eff_sparse) {
+                ASSERT(!(goal_section[eff]));
+                if (!(pre_goal_section[eff])) {
+                    pre_goal_section.add(eff);
+                    queue.push_back(static_cast<int>(eff));
+                }
             }
         }
     };
