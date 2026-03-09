@@ -116,7 +116,7 @@ void LMcut::update_and_enqueue_effects_values(priority_queue<double>& queue, uns
             continue;
         }
 
-        hmax_values_[eff] = new_cost;
+        hmax_values_[eff] = new_cost <= HPLUS_EPSILON ? 0 : new_cost;  // Fix numerical issues for close-to-0 values
         if (queue.has(eff)) {
             queue.change(eff, new_cost);
         } else {
@@ -154,7 +154,7 @@ void LMcut::update_hmax_values(const std::vector<unsigned int>& changed_actions,
 
             // Update the pcf
             pcf_[act_i] = act_pcf;
-            pcf_hmax_[act_i] = act_hmax;
+            pcf_hmax_[act_i] = act_hmax <= HPLUS_EPSILON ? 0 : act_hmax;  // Fix numerical issues for close-to-0 values
 
             // If the hmax of this action hasnt changed, skip
             if (std::abs(pcf_hmax_[act_i] - old_hmax) <= HPLUS_EPSILON) {
@@ -205,7 +205,7 @@ auto LMcut::compute_goal_section(hmax_function hmax) -> binary_set {
 }
 
 auto LMcut::compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned int>, double> {
-    auto goal_section = compute_goal_section(hmax);
+    const auto& goal_section = compute_goal_section(hmax);
 
     // Compute the pre_goal section and the cut
     std::vector<unsigned int> cut;
@@ -261,6 +261,9 @@ auto LMcut::compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned in
 
     for (const auto& act_i : cut) {
         reduced_costs_[act_i] -= min_reduced_cost;
+        if (reduced_costs_[act_i] <= HPLUS_EPSILON) {
+            reduced_costs_[act_i] = 0;  // Fix numerical issues for close-to-0 values
+        }
     }
 
     return {cut, min_reduced_cost};
