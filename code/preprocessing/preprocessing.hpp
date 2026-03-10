@@ -10,7 +10,7 @@
 #include <map>
 
 #include "../domain/hplus_algs.hpp"
-#include "lmcut.hpp"
+#include "../lmcut/lmcut.hpp"
 
 namespace prep {
 

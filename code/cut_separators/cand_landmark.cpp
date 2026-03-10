@@ -1,6 +1,6 @@
 #include <algorithm>
 
-#include "../preprocessing/lmcut.hpp"
+#include "../lmcut/lmcut.hpp"
 #include "cand_callback.hpp"
 #include "instance.hpp"
 

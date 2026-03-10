@@ -218,24 +218,30 @@ auto LMcut::compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned in
         explored.add(act_i);
 
         if (reduced_costs_[act_i] > HPLUS_EPSILON) {
-            bool added_to_cut{false};
+            binary_set added_facts(inst_->n);
             for (const auto& eff : inst_->actions[act_i].eff_sparse) {
                 if (goal_section[eff]) {
-                    if (added_to_cut) {
-                        continue;
-                    }
-                    added_to_cut = true;
                     cut.push_back(act_i);
                     min_reduced_cost = std::min(min_reduced_cost, reduced_costs_[act_i]);
-                } else if (!(pre_goal_section[eff])) {
-                    pre_goal_section.add(eff);
-                    queue.push_back(static_cast<int>(eff));
+                    // Early exit condition... if this action crosses the cut there' no need to add its effects to the pre_goal section
+                    return;
+                }
+
+                if (!pre_goal_section[eff] && !added_facts[eff]) {
+                    added_facts.add(eff);
                 }
             }
+
+            // If we didn't exit early add the effects to the pre_goal section
+            for (const auto& eff : added_facts) {
+                pre_goal_section.add(eff);
+                queue.push_back(static_cast<int>(eff));
+            }
+
         } else {
             for (const auto& eff : inst_->actions[act_i].eff_sparse) {
-                ASSERT(!(goal_section[eff]));
-                if (!(pre_goal_section[eff])) {
+                ASSERT(!goal_section[eff]);
+                if (!pre_goal_section[eff]) {
                     pre_goal_section.add(eff);
                     queue.push_back(static_cast<int>(eff));
                 }

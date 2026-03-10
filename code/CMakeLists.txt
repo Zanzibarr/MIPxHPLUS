@@ -95,6 +95,7 @@ include_directories(
     utils
     domain
     preprocessing
+    lmcut
     search_heuristics
     cut_separators
     search_exact
@@ -102,7 +103,7 @@ include_directories(
 )
 
 # Generate libraries
-set(SOURCE_DIRS "domain" "search_heuristics" "cut_separators" "preprocessing" "search_exact")
+set(SOURCE_DIRS "domain" "search_heuristics" "cut_separators" "preprocessing" "lmcut" "search_exact")
 foreach(SOURCE_DIR ${SOURCE_DIRS})
     file(GLOB SOURCES "${SOURCE_DIR}/*.cpp")
     if(SOURCES)
@@ -139,6 +140,7 @@ add_dependencies(hplus force_timestamp)
 target_link_libraries(hplus
     domain_lib
     preprocessing_lib
+    lmcut_lib
     search_heuristics_lib
     cut_separators_lib
     search_exact_lib
