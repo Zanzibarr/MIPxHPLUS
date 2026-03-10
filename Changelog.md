@@ -26,6 +26,18 @@ HOW I DO VERSIONING:
 <!-- ### :rocket: Performance Improvements -->
 
 
+## [2.6.1] - 2026/03/10
+<!-- ### :warning: Known issues -->
+### :ballot_box_with_check: Fixed
+- Fixed precision errors for close-to-0 values in fractional LMcut separator
+### :heavy_exclamation_mark: Changed
+- Smarter landmark selection in LMcut
+<!-- ### :heavy_plus_sign: Added -->
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+<!-- ### :rocket: Performance Improvements -->
+
+
 ## [2.6.0] - 2026/03/05
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed

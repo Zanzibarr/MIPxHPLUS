@@ -8,6 +8,7 @@
 #define HPLUS_STATS_HPP
 
 #include <string>
+#include "utils.hpp"
 
 namespace hplus {
 
