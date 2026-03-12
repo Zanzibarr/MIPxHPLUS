@@ -9,8 +9,9 @@
 
 #include <cplex.h>
 
-#include "../domain/hplus_algs.hpp"
 #include "../utils/cycle_det.hpp"
+#include "execution.hpp"
+#include "instance.hpp"
 
 namespace callbacks {
 
@@ -32,36 +33,43 @@ namespace relax_cuts {
  * Analyze the current relaxation point: generate data structures to be used in later parts of the callback
  */
 [[nodiscard]]
-std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash> relaxationpoint_info(const hplus::instance& inst,
-                                                                                                  std::vector<double>& relax_point);
+auto relaxationpoint_info(const hplus::instance& inst, std::vector<double>& relax_point)
+    -> std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash>;
 
 /**
- * Compute the violated landmark (if there's one) out of the relaxed solution
+ * Compute the violated landmark with the max-flow algorithm (if there's one) out of the relaxed solution
  */
 [[nodiscard]]
-std::pair<bool, std::vector<unsigned int>> get_violated_landmark(const hplus::execution& exec, const hplus::instance& inst,
-                                                                 std::vector<double> relax_point, unsigned int& act_in_lm, unsigned int& n_lm);
+auto get_r3_violated_landmark(const hplus::execution& exec, const hplus::instance& inst, std::vector<double> relax_point, unsigned int& act_in_lm,
+                              unsigned int& n_lm) -> std::pair<bool, std::vector<unsigned int>>;
+
+/**
+ * Compute the violated landmark with LMcut (if there's one) out of the relaxed solution
+ */
+[[nodiscard]]
+auto get_lmcut_violated_landmarks(const hplus::execution& exec, const hplus::instance& inst, const std::vector<double>& relax_point,
+                                  unsigned int& act_in_lm, unsigned int& n_lm) -> std::pair<bool, std::vector<std::vector<unsigned int>>>;
 
 /**
  * Compute the violated landmark (if there's one) out of the relaxed solution and reject the relaxed solution
  */
 [[nodiscard]]
-unsigned int add_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, const hplus::instance& inst,
-                        const std::vector<double>& relax_point, unsigned int& n_act_in_lm, unsigned int& n_lm);
+auto add_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, const hplus::instance& inst, const std::vector<double>& relax_point,
+                unsigned int& n_act_in_lm, unsigned int& n_lm) -> unsigned int;
 
 /**
  * Compute the violated S.E.C. (if there's one) out of the relaxed solution
  */
 [[nodiscard]]
-std::pair<bool, std::vector<std::vector<unsigned int>>> get_violated_sec(
-    const hplus::instance& inst, const std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash>& fadd_weights);
+auto get_violated_sec(const hplus::instance& inst, const std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash>& fadd_weights)
+    -> std::pair<bool, std::vector<std::vector<unsigned int>>>;
 
 /**
  * Compute the violated S.E.C. (if there's one) out of the relaxed solution and reject the relaxed solution
  */
 [[nodiscard]]
-unsigned int add_sec_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst,
-                         const std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash>& fadd_weights);
+auto add_sec_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst,
+                 const std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash>& fadd_weights) -> unsigned int;
 
 }  // namespace relax_cuts
 

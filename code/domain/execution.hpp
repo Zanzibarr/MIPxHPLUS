@@ -182,7 +182,7 @@ inline void print(const execution& exec) {
         if (!exec.cand_cuts.empty()) LOG << "Candidate cuts:                                    " << std::setw(5) << exec.cand_cuts;
 
         LOG << "Fractional cuts:                                      " << std::setw(2) << exec.fract_cuts;
-        if (exec.fract_cuts.find('l') != std::string::npos) LOG << "Minimization of fractional landmarks:                  " << exec.min_fract_lm;
+        if (exec.fract_cuts.find('m') != std::string::npos) LOG << "Minimization of fractional landmarks:                  " << exec.min_fract_lm;
         if (exec.min_fract_lm) {
             LOG << "- Upper bound on number of iterations:        " << std::setw(10) << exec.lm_min_it;
             LOG << "- Violation ratio threshold:                       " << std::fixed << std::setprecision(3) << exec.lm_min_viol;
