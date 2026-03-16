@@ -1,11 +1,11 @@
 #include "lmcut.hpp"
 
+#include <algorithm>
 #include <deque>
 #include <limits>
 
 #include "bs.hxx"
 #include "limits.hxx"
-#include "logger.hxx"
 #include "utils.hpp"
 
 auto hmax::hmax_arbitrary(const std::vector<unsigned int>& preconditions, const std::vector<double>& hmax_values,
@@ -276,6 +276,22 @@ auto LMcut::compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned in
         }
     }
 
+    // TODO: Test the effects of this
+    // Note that this MUST be done after the cut has been computed...
+    std::vector<unsigned int> removed;
+    for (const auto& act_i : cut) {
+        // If an action in the cut has a precondition that's outside of the pre_goal section, then simply changing that pcf would remove this
+        // action from the cut (while the rest of the graph remains unchanged: given that the pcf is not in the pre_goal, the pre_goal won't be
+        // expanded by using this pcf instead... moreover the goal section cannot change, since this can't be a 0-cost action, otherwise the pcf
+        // would be in the goal section too, and this action wouldn't be in the cut)
+        if (!pre_goal_section.contains(inst_->actions[act_i].pre)) {
+            removed.push_back(act_i);
+        }
+    }
+
+    const auto iter = std::set_difference(cut.begin(), cut.end(), removed.begin(), removed.end(), cut.begin());
+    cut.resize(iter - cut.begin());
+
     for (const auto& act_i : cut) {
         reduced_costs_[act_i] -= min_reduced_cost;
         if (reduced_costs_[act_i] <= HPLUS_EPSILON) {
@@ -298,7 +314,7 @@ auto LMcut::compute_lmcut_private(hmax_function hmax) -> std::pair<std::vector<s
 
     while (hmax(goal_, hmax_values_, initial_hmax_values_).second > HPLUS_EPSILON) {
         const auto& [cut, val] = compute_cut(hmax);
-        // check_landmark(cut); // This is an (expensive) integrity check... don't use this in runs where performance is measured
+        check_landmark(cut);  // This is an (expensive) integrity check... //! //FIXME don't use this in runs where performance is measured
         lmcut_value += val;
         update_hmax_values(cut, hmax);
         landmarks.push_back(std::move(cut));
@@ -307,6 +323,23 @@ auto LMcut::compute_lmcut_private(hmax_function hmax) -> std::pair<std::vector<s
             throw timelimit_exception("Reached time limit.");
         }
     }
+
+    // TODO: Optimize
+    // // Try to minimalize the landmarks computed
+    // for (auto& landmark : landmarks) {
+    //     // landmark.size() iterations -> we keep removing the first element, and if needed adding it at the end... basically a queue
+    //     for (unsigned int _ = 0, lm_size = landmark.size(); _ < lm_size; _++) {
+    //         unsigned int act_i = *landmark.begin();
+    //         landmark.erase(landmark.begin());  // Keep removing the first element until we visit all of them
+    //         if (!check_landmark(landmark)) {   // TODO: Use minimization procedure used for comp
+    //             landmark.push_back(act_i);     // If removing this action the landmark is not valid anymore, add it back to the end
+    //         }
+    //     }
+    // }
+
+    // for (const auto& landmark : landmarks) {
+    //     LOG_DEBUG << "Size: " << landmark.size();
+    // }
 
     return {landmarks, lmcut_value};
 }
@@ -353,18 +386,17 @@ void LMcut::check_landmark(const std::vector<unsigned int>& landmark) {
     // This function is meant to be a check for debugging... it's not optimized to be used as a routine
     bool found = false;
     binary_set state(inst_->n);
-    binary_set used_actions(inst_->m);
-    binary_set act_in_lm(inst_->m);
-    for (auto act_i : landmark) {
-        act_in_lm.add(act_i);
+    binary_set remaining_actions(inst_->m, true);
+    for (const auto& act_i : landmark) {
+        remaining_actions.remove(act_i);
     }
 
     while (!found) {
         auto state_before = state;
-        for (unsigned int act_i = 0; act_i < inst_->m; act_i++) {
+        for (const auto& act_i : remaining_actions) {
             const auto& act = inst_->actions[act_i];
-            if (!used_actions[act_i] && !act_in_lm[act_i] && state.contains(act.pre)) {
-                used_actions.add(act_i);
+            if (state.contains(act.pre)) {
+                remaining_actions.remove(act_i);
                 state |= act.eff;
             }
         }

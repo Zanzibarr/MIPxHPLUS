@@ -3,6 +3,7 @@
 #include "../lmcut/lmcut.hpp"
 #include "cand_callback.hpp"
 #include "instance.hpp"
+#include "logger.hxx"
 
 [[nodiscard]]
 auto cand_cuts::add_lmcut_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const std::vector<unsigned int>& unused_actions)
@@ -95,6 +96,7 @@ auto cand_cuts::add_comp_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::inst
     std::vector<unsigned int> landmark;
     std::set_difference(unused_actions.begin(), unused_actions.end(), extension.begin(), extension.end(), std::back_inserter(landmark));
     reject_with_lm_cut(context, landmark);
+    // LOG_DEBUG << "* Size: " << landmark.size();
     return 1;
 }
 
