@@ -5,7 +5,9 @@
 #include <limits>
 
 #include "bs.hxx"
+// #include "cand_callback.hpp"
 #include "limits.hxx"
+#include "logger.hxx"
 #include "utils.hpp"
 
 auto hmax::hmax_arbitrary(const std::vector<unsigned int>& preconditions, const std::vector<double>& hmax_values,
@@ -209,7 +211,6 @@ auto LMcut::compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned in
 
     // Compute the pre_goal section and the cut
     std::vector<unsigned int> cut;
-    double min_reduced_cost{std::numeric_limits<double>::infinity()};
     binary_set pre_goal_section(inst_->n);
     binary_set explored(inst_->m);
     std::deque<int> queue;
@@ -222,7 +223,6 @@ auto LMcut::compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned in
             for (const auto& eff : inst_->actions[act_i].eff_sparse) {
                 if (goal_section[eff]) {
                     cut.push_back(act_i);
-                    min_reduced_cost = std::min(min_reduced_cost, reduced_costs_[act_i]);
                     // Early exit condition... if this action crosses the cut there's no need to add its non-goal_section effects to the
                     // pre_goal_section
                     //
@@ -276,6 +276,8 @@ auto LMcut::compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned in
         }
     }
 
+    // auto size = cut.size();
+
     // TODO: Test the effects of this
     // Note that this MUST be done after the cut has been computed...
     std::vector<unsigned int> removed;
@@ -291,6 +293,40 @@ auto LMcut::compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned in
 
     const auto iter = std::set_difference(cut.begin(), cut.end(), removed.begin(), removed.end(), cut.begin());
     cut.resize(iter - cut.begin());
+    // for (const auto& act_i : removed) {
+    //     explored.remove(act_i);
+    // }
+
+    // binary_set unapplicable_actions(inst_->m, true);
+    // for (const auto& x : cut) {
+    //     unapplicable_actions.remove(x);
+    // }
+    // binary_set reachable_state(inst_->n);
+
+    // while (true) {
+    //     auto state_before = reachable_state;
+    //     for (const auto& act_i : unapplicable_actions) {
+    //         const auto& act = inst_->actions[act_i];
+    //         if (reachable_state.contains(act.pre)) {
+    //             unapplicable_actions.remove(act_i);
+    //             reachable_state |= act.eff;
+    //         }
+    //     }
+    //     ASSERT(!reachable_state.contains(inst_->goal));
+    //     if (state_before == reachable_state) {
+    //         break;  // Valid landmark: without its actions we can't reach the goal
+    //     }
+    // }
+
+    // // Further try to minimize the landmark
+    // cand_cuts::landmark_minimalization(*inst_, cut, unapplicable_actions, reachable_state);
+
+    // LOG_DEBUG << "Removed " << (size - cut.size()) << " actions over " << size;
+
+    double min_reduced_cost = std::numeric_limits<double>::infinity();
+    for (const auto& act_i : cut) {
+        min_reduced_cost = std::min(min_reduced_cost, reduced_costs_[act_i]);
+    }
 
     for (const auto& act_i : cut) {
         reduced_costs_[act_i] -= min_reduced_cost;
@@ -323,19 +359,6 @@ auto LMcut::compute_lmcut_private(hmax_function hmax) -> std::pair<std::vector<s
             throw timelimit_exception("Reached time limit.");
         }
     }
-
-    // TODO: Optimize
-    // // Try to minimalize the landmarks computed
-    // for (auto& landmark : landmarks) {
-    //     // landmark.size() iterations -> we keep removing the first element, and if needed adding it at the end... basically a queue
-    //     for (unsigned int _ = 0, lm_size = landmark.size(); _ < lm_size; _++) {
-    //         unsigned int act_i = *landmark.begin();
-    //         landmark.erase(landmark.begin());  // Keep removing the first element until we visit all of them
-    //         if (!check_landmark(landmark)) {   // TODO: Use minimization procedure used for comp
-    //             landmark.push_back(act_i);     // If removing this action the landmark is not valid anymore, add it back to the end
-    //         }
-    //     }
-    // }
 
     // for (const auto& landmark : landmarks) {
     //     LOG_DEBUG << "Size: " << landmark.size();

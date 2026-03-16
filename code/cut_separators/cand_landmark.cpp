@@ -28,33 +28,30 @@ auto cand_cuts::add_lmcut_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::ins
     return landmarks.size();
 }
 
-[[nodiscard]]
-auto cand_cuts::add_comp_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const binary_set& unreachable_actions,
-                                const std::vector<unsigned int>& unused_actions, const binary_set& reachable_state) -> unsigned int {
-    binary_set unapplicable{unreachable_actions};
+void cand_cuts::landmark_minimalization(const hplus::instance& inst, std::vector<unsigned int>& landmark, binary_set unapplicable_actions,
+                                        binary_set reachable_state) {
     binary_set extension(inst.m);
-    binary_set state{reachable_state};
     const auto& goal{inst.goal};
-    for (const auto& act_i : unused_actions) {
+    for (const auto& act_i : landmark) {
         const auto& action = inst.actions[act_i];
         // If the effects of this action won't change the reachable state, just apply it
-        if (state.contains(action.eff)) {
+        if (reachable_state.contains(action.eff)) {
             extension.add(act_i);
             continue;
         }
 
         // If the action is unreachable, then it won't change the set of reachable facts -> I can add it to the extension
-        if (!state.contains(action.pre)) {
+        if (!reachable_state.contains(action.pre)) {
             extension.add(act_i);
             // Add this action to the unapplicable actions, to eventually add its effects when it'd become applicable
-            unapplicable.add(act_i);
+            unapplicable_actions.add(act_i);
             continue;
         }
 
         // Here the action is reachable and it has new effects
 
+        binary_set state_sim{reachable_state | action.eff};
         // If the effect of this action reaches the goal, we don't add it to the extension
-        binary_set state_sim{state | action.eff};
         if (state_sim.contains(goal)) {
             continue;
         }
@@ -63,7 +60,7 @@ auto cand_cuts::add_comp_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::inst
         binary_set new_reachable(inst.m);
         while (true) {
             bool skip{true};
-            for (const auto& act_j : unapplicable) {
+            for (const auto& act_j : unapplicable_actions) {
                 if (new_reachable[act_j]) {
                     continue;
                 }
@@ -87,14 +84,21 @@ auto cand_cuts::add_comp_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::inst
         // unapplicable ones
         if (!state_sim.contains(goal)) {
             extension.add(act_i);
-            state = state_sim;
-            unapplicable -= new_reachable;
+            reachable_state = state_sim;
+            unapplicable_actions -= new_reachable;
         }
     }
 
     // Compute the landmark as the set of actions that are unused, but not in the extension
-    std::vector<unsigned int> landmark;
-    std::set_difference(unused_actions.begin(), unused_actions.end(), extension.begin(), extension.end(), std::back_inserter(landmark));
+    const auto iter = std::set_difference(landmark.begin(), landmark.end(), extension.begin(), extension.end(), landmark.begin());
+    landmark.resize(iter - landmark.begin());
+}
+
+[[nodiscard]]
+auto cand_cuts::add_comp_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const binary_set& unreachable_actions,
+                                const std::vector<unsigned int>& unused_actions, const binary_set& reachable_state) -> unsigned int {
+    std::vector<unsigned int> landmark(unused_actions.begin(), unused_actions.end());
+    landmark_minimalization(inst, landmark, unreachable_actions, reachable_state);
     reject_with_lm_cut(context, landmark);
     // LOG_DEBUG << "* Size: " << landmark.size();
     return 1;
