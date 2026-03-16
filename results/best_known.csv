@@ -1597,11 +1597,11 @@ pipesworld-notankage-p30-net3-b20-g8,True,30.0
 pipesworld-notankage-p31-net4-b14-g3,False,18.0
 pipesworld-notankage-p32-net4-b14-g5,True,20.0
 pipesworld-notankage-p33-net4-b16-g5,True,18.0
-pipesworld-notankage-p34-net4-b16-g6,False,25.0
+pipesworld-notankage-p34-net4-b16-g6,False,24.0
 pipesworld-notankage-p35-net4-b18-g4,False,16.0
 pipesworld-notankage-p36-net4-b18-g6,True,18.0
 pipesworld-notankage-p37-net4-b20-g5,True,14.0
-pipesworld-notankage-p38-net4-b20-g7,False,18.0
+pipesworld-notankage-p38-net4-b20-g7,True,18.0
 pipesworld-notankage-p39-net4-b22-g7,False,20.0
 pipesworld-notankage-p40-net4-b22-g8,False,22.0
 pipesworld-notankage-p41-net5-b22-g2,True,8.0
@@ -1638,7 +1638,7 @@ pipesworld-tankage-p21-net3-b12-g2-t60,True,9.0
 pipesworld-tankage-p22-net3-b12-g4-t60,True,19.0
 pipesworld-tankage-p23-net3-b14-g3-t60,True,15.0
 pipesworld-tankage-p24-net3-b14-g5-t60,True,19.0
-pipesworld-tankage-p25-net3-b16-g5-t60,False,20.0
+pipesworld-tankage-p25-net3-b16-g5-t60,True,20.0
 pipesworld-tankage-p26-net3-b16-g7-t70,False,24.0
 pipesworld-tankage-p27-net3-b18-g6-t70,True,19.0
 pipesworld-tankage-p28-net3-b18-g7-t70,True,26.0
@@ -2331,7 +2331,7 @@ thoughtful-sat14-strips-p13_7_86-typed,False,82.0
 thoughtful-sat14-strips-target-typed-20,False,86.0
 thoughtful-sat14-strips-target-typed-21,False,96.0
 thoughtful-sat14-strips-target-typed-22,False,101.0
-thoughtful-sat14-strips-target-typed-23,False,85.0
+thoughtful-sat14-strips-target-typed-23,True,85.0
 thoughtful-sat14-strips-target-typed-24,False,82.0
 thoughtful-sat14-strips-target-typed-25,False,92.0
 thoughtful-sat14-strips-target-typed-26,False,98.0
@@ -2455,7 +2455,7 @@ transport-opt08-strips-p25,True,549.0
 transport-opt08-strips-p26,True,514.0
 transport-opt08-strips-p27,True,528.0
 transport-opt08-strips-p28,True,641.0
-transport-opt08-strips-p29,False,719.0
+transport-opt08-strips-p29,True,719.0
 transport-opt08-strips-p30,True,665.0
 transport-opt11-strips-p01,True,505.0
 transport-opt11-strips-p02,True,165.0
@@ -2503,7 +2503,7 @@ transport-sat08-strips-p03,True,211.0
 transport-sat08-strips-p04,True,240.0
 transport-sat08-strips-p05,True,290.0
 transport-sat08-strips-p06,False,361.0
-transport-sat08-strips-p07,False,427.0
+transport-sat08-strips-p07,False,422.0
 transport-sat08-strips-p08,True,339.0
 transport-sat08-strips-p09,False,406.0
 transport-sat08-strips-p10,False,495.0
@@ -2516,7 +2516,7 @@ transport-sat08-strips-p16,False,585.0
 transport-sat08-strips-p17,False,684.0
 transport-sat08-strips-p18,False,640.0
 transport-sat08-strips-p19,False,754.0
-transport-sat08-strips-p20,False,726.0
+transport-sat08-strips-p20,False,724.0
 transport-sat08-strips-p21,True,386.0
 transport-sat08-strips-p22,True,421.0
 transport-sat08-strips-p23,True,512.0
@@ -2535,7 +2535,7 @@ transport-sat11-strips-p05,False,684.0
 transport-sat11-strips-p06,False,640.0
 transport-sat11-strips-p07,False,754.0
 transport-sat11-strips-p08,False,495.0
-transport-sat11-strips-p09,False,726.0
+transport-sat11-strips-p09,False,724.0
 transport-sat11-strips-p10,False,1144.0
 transport-sat11-strips-p11,False,462.0
 transport-sat11-strips-p12,False,507.0
@@ -2548,7 +2548,7 @@ transport-sat11-strips-p18,False,1175.0
 transport-sat11-strips-p19,False,1265.0
 transport-sat11-strips-p20,False,1309.0
 transport-sat14-strips-p01,False,523.0
-transport-sat14-strips-p02,False,573.0
+transport-sat14-strips-p02,False,570.0
 transport-sat14-strips-p03,False,547.0
 transport-sat14-strips-p04,False,1122.0
 transport-sat14-strips-p05,False,1003.0
