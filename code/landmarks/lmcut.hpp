@@ -54,11 +54,10 @@ class LMcut {
     // Compute LMcut on the instance passed at construction using the specified hmax function
     auto compute_lmcut(hmax_function hmax) -> std::pair<std::vector<std::vector<unsigned int>>, double>;
     // Compute violated landmarks given an integer solution using the specified hmax function
-    auto int_separation(const std::vector<unsigned int>& used_actions, hmax_function hmax)
-        -> std::pair<std::vector<std::vector<unsigned int>>, double>;
+    auto int_separation(const std::vector<unsigned int>& used_actions, hmax_function hmax) -> std::pair<bool, std::vector<std::vector<unsigned int>>>;
     // Compute violated landmarks given a fracitonal solution using the specified hmax function (here LMcut value has no meaning, so it's not
     // returned)
-    auto fract_separation(const std::vector<double>& actions_weights, hmax_function hmax) -> std::vector<std::vector<unsigned int>>;
+    auto fract_separation(const std::vector<double>& actions_weights, hmax_function hmax) -> std::pair<bool, std::vector<std::vector<unsigned int>>>;
 
     // Check that a landmark is valid for the instance passed at construction
     void check_landmark(const std::vector<unsigned int>& landmark);

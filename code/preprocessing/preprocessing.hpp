@@ -10,7 +10,7 @@
 #include <map>
 
 #include "../domain/hplus_algs.hpp"
-#include "../lmcut/lmcut.hpp"
+#include "lmcut.hpp"
 
 namespace prep {
 
@@ -34,9 +34,9 @@ inline void lmcut_landmarks_extraction(const hplus::execution& exec, hplus::inst
     std::map<char, hmax_function> hmax_functions{
         {'a', hmax::hmax_arbitrary}, {'i', hmax::hmax_inverse}, {'v', hmax::hmax_value_decrease_minimization}, {'r', hmax::hmax_random}};
 
-    for (auto x : exec.prep_lmcut) {
+    for (auto choice : exec.prep_lmcut) {
         double start = GET_TIME();
-        const auto& [landmarks, lmcut_value] = lmcut.compute_lmcut(hmax_functions[x]);
+        const auto& [landmarks, lmcut_value] = lmcut.compute_lmcut(hmax_functions[choice]);
         double diff = GET_TIME() - start;
         for (const auto& landmark : landmarks) {
             inst.landmarks.push_back(std::move(landmark));
@@ -65,8 +65,12 @@ inline void prepare_optimization_helpers(hplus::instance& inst) {
     inst.act_with_pre = std::vector<std::vector<unsigned int>>(inst.n);
     inst.act_with_eff = std::vector<std::vector<unsigned int>>(inst.n);
     for (unsigned int act_i = 0; act_i < inst.m; ++act_i) {
-        for (const auto& pre_i : inst.actions[act_i].pre_sparse) inst.act_with_pre[pre_i].push_back(act_i);
-        for (const auto& eff_i : inst.actions[act_i].eff_sparse) inst.act_with_eff[eff_i].push_back(act_i);
+        for (const auto& pre_i : inst.actions[act_i].pre_sparse) {
+            inst.act_with_pre[pre_i].push_back(act_i);
+        }
+        for (const auto& eff_i : inst.actions[act_i].eff_sparse) {
+            inst.act_with_eff[eff_i].push_back(act_i);
+        }
     }
 
     inst.eliminated_facts = binary_set{1};
@@ -74,7 +78,9 @@ inline void prepare_optimization_helpers(hplus::instance& inst) {
 }
 
 inline void preprocess(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats) {
-    if (VERBOSE_BASIC()) LOG_INFO << "Preprocessing instance";
+    if (VERBOSE_BASIC()) {
+        LOG_INFO << "Preprocessing instance";
+    }
 
     double start_time = GET_TIME();
     stats.preprocessing = static_cast<double>(exec.timelimit) - start_time;

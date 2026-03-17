@@ -9,10 +9,16 @@ std::pair<bool, unsigned int> heur::greedy_choice_cost(const hplus::instance& in
     bool found = false;
 
     for (const auto& act_i : candidates) {
-        if (inst.fixed_actions[act_i]) return {true, act_i};
-        if (inst.actions[act_i].cost == 0) return {true, act_i};
+        if (inst.fixed_actions[act_i]) {
+            return {true, act_i};
+        }
+        if (inst.actions[act_i].cost == 0) {
+            return {true, act_i};
+        }
 
-        if (inst.actions[act_i].cost >= best_cost) continue;
+        if (inst.actions[act_i].cost >= best_cost) {
+            continue;
+        }
 
         best_cost = inst.actions[act_i].cost;
         best_choice = act_i;

@@ -12,12 +12,12 @@
 #include "../external/bs.hxx"
 #include "utils.hpp"
 
-typedef struct {
+using network_edge = struct {
     unsigned int to;   // Destination node
     unsigned int rev;  // Index of reverse edge in the destination's adjacency list
     double c;          // Remaining capacity of the edge
     bool is_reverse;
-} network_edge;
+};
 
 // ##################################################################### //
 // ########################## GRAPH DEBUGGING ########################## //
@@ -39,8 +39,11 @@ static inline void write_graph(const std::string& file_path, const std::vector<s
 
     for (unsigned int from = 0; from < graph.size(); from++) {
         for (const auto& [to, rev, c, is_rev] : graph[from]) {
-            if (is_rev) continue;
-            double flow = graph[to][rev].c, res_cap = c;
+            if (is_rev) {
+                continue;
+            }
+            double flow = graph[to][rev].c;
+            double res_cap = c;
 
             if (flow > HPLUS_EPSILON) {
                 file << "   " << from << " -> " << to << " [label=\"" << res_cap << "/" << flow << "\"];\n";
@@ -61,11 +64,13 @@ static inline void write_graph(const std::string& file_path, const std::vector<s
  * @return true/false based on whether the flow conservation is respected or not
  */
 [[nodiscard]] [[maybe_unused]]
-static inline bool is_flow_conservative(const std::vector<std::vector<network_edge>>& graph, unsigned int source, unsigned int sink) {
+static inline auto is_flow_conservative(const std::vector<std::vector<network_edge>>& graph, unsigned int source, unsigned int sink) -> bool {
     std::vector<double> flow_at(graph.size(), 0);
     for (unsigned int u = 0; u < graph.size(); u++) {
         for (const auto& [v, rev, flow, is_rev] : graph[u]) {
-            if (!is_rev) continue;
+            if (!is_rev) {
+                continue;
+            }
             flow_at[u] += flow;
             flow_at[v] -= flow;
         }
@@ -74,7 +79,9 @@ static inline bool is_flow_conservative(const std::vector<std::vector<network_ed
     bool result = true;
 
     for (unsigned int u = 0; u < graph.size(); u++) {
-        if (u == sink || u == source) continue;
+        if (u == sink || u == source) {
+            continue;
+        }
         if (std::abs(flow_at[u]) > HPLUS_EPSILON) {
             result = false;
             LOG_WARNING << "Flow is not conserved at node " << u;
@@ -95,8 +102,8 @@ static inline bool is_flow_conservative(const std::vector<std::vector<network_ed
 
 /** @brief Look for an augmenting path */
 [[nodiscard]]
-static inline bool max_flow_augmenting_path(std::vector<std::vector<network_edge>>& graph, unsigned int s, unsigned int t, unsigned int n,
-                                            std::vector<int>& level) {
+static inline auto max_flow_augmenting_path(std::vector<std::vector<network_edge>>& graph, unsigned int s, unsigned int t, unsigned int n,
+                                            std::vector<int>& level) -> bool {
     level.assign(n, -1);  // Initialize all levels to -1 (unvisited)
     std::queue<int> q;
     level[s] = 0;
@@ -119,9 +126,11 @@ static inline bool max_flow_augmenting_path(std::vector<std::vector<network_edge
 
 /** @brief Push flow through the augmenting path */
 [[nodiscard]]
-static inline double max_flow_push_flow(std::vector<std::vector<network_edge>>& graph, unsigned int v, unsigned int t, double f,
-                                        std::vector<int>& level, std::vector<int>& iter) {
-    if (v == t) return f;  // Reached sink, return the flow
+static inline auto max_flow_push_flow(std::vector<std::vector<network_edge>>& graph, unsigned int v, unsigned int t, double f,
+                                      std::vector<int>& level, std::vector<int>& iter) -> double {
+    if (v == t) {
+        return f;  // Reached sink, return the flow
+    }
 
     // iter[v] remembers which edge to start from (optimization to avoid revisiting dead ends)
     for (int& i = iter[v]; i < static_cast<int>(graph[v].size()); i++) {
@@ -152,10 +161,11 @@ static inline double max_flow_push_flow(std::vector<std::vector<network_edge>>& 
  * @return The computed max flow
  */
 [[nodiscard]]
-static inline double compute_max_flow(std::vector<std::vector<network_edge>>& graph, unsigned int source, unsigned int sink) {
+static inline auto compute_max_flow(std::vector<std::vector<network_edge>>& graph, unsigned int source, unsigned int sink) -> double {
     double flow{0};
     const unsigned int n{static_cast<unsigned int>(graph.size())};
-    std::vector<int> level(n), iter(n);
+    std::vector<int> level(n);
+    std::vector<int> iter(n);
 
     // Repeat while there's an augmenting path from source to sink
     while (max_flow_augmenting_path(graph, source, sink, n, level)) {
@@ -163,7 +173,9 @@ static inline double compute_max_flow(std::vector<std::vector<network_edge>>& gr
         double f;
 
         // Keep finding blocking flows until no more paths exist in this level graph
-        while ((f = max_flow_push_flow(graph, source, sink, std::numeric_limits<double>::infinity(), level, iter)) > HPLUS_EPSILON) flow += f;
+        while ((f = max_flow_push_flow(graph, source, sink, std::numeric_limits<double>::infinity(), level, iter)) > HPLUS_EPSILON) {
+            flow += f;
+        }
     }
 
     return flow;
@@ -178,7 +190,7 @@ static inline double compute_max_flow(std::vector<std::vector<network_edge>>& gr
  * @return The left partition of the graph
  */
 [[nodiscard]]
-static inline binary_set get_min_cut_lpartition(const std::vector<std::vector<network_edge>>& graph, unsigned int source) {
+static inline auto get_min_cut_lpartition(const std::vector<std::vector<network_edge>>& graph, unsigned int source) -> binary_set {
     binary_set reachable(graph.size());
     std::queue<unsigned int> q;
     q.push(source);
@@ -205,8 +217,8 @@ static inline binary_set get_min_cut_lpartition(const std::vector<std::vector<ne
 
 /** @brief BFS algorithm to remove flow from source -> target path (if any) */
 [[nodiscard]]
-static double bfs_remove_flow(std::vector<std::vector<network_edge>>& graph, unsigned int source, unsigned int target, double max_flow,
-                              std::vector<size_t>& parent_edge, std::vector<unsigned int>& parent_node, binary_set& visited) {
+static auto bfs_remove_flow(std::vector<std::vector<network_edge>>& graph, unsigned int source, unsigned int target, double max_flow,
+                            std::vector<size_t>& parent_edge, std::vector<unsigned int>& parent_node, binary_set& visited) -> double {
     // Reset visited set
     visited.clear();
 
@@ -263,7 +275,8 @@ static double bfs_remove_flow(std::vector<std::vector<network_edge>>& graph, uns
  * @return Amount of flow successfully removed
  */
 [[nodiscard]]
-static inline double flow_removal(std::vector<std::vector<network_edge>>& graph, unsigned int from, unsigned int to, const double flow_to_remove) {
+static inline auto flow_removal(std::vector<std::vector<network_edge>>& graph, unsigned int from, unsigned int to, const double flow_to_remove)
+    -> double {
     // Pre-allocate structures to avoid repeated allocations
     std::vector<size_t> parent_edge(graph.size());
     std::vector<unsigned int> parent_node(graph.size());

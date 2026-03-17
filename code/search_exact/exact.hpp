@@ -10,9 +10,10 @@
 #include <cplex.h>
 
 #include <new>
-#include <numeric>
 
 #include "../cut_separators/callbacks.hpp"
+#include "hplus_algs.hpp"
+#include "limits.hxx"
 
 namespace tl {
 void add_acyclicity_constraints(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp);
@@ -35,9 +36,11 @@ void cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, const hplus::
 namespace exact {
 
 inline void init_cplex(hplus::execution& exec, CPXENVptr& env, CPXLPptr& lp) {
-    if (VERBOSE_BASIC()) LOG_INFO << "Initializing CPLEX environment";
+    if (VERBOSE_BASIC()) {
+        LOG_INFO << "Initializing CPLEX environment";
+    }
 
-    int cpxerror;
+    int cpxerror = 0;
     env = CPXopenCPLEX(&cpxerror);
     CPX_HANDLE_CALL(cpxerror);
     lp = CPXcreateprob(env, &cpxerror, exec.file_name.c_str());
@@ -102,8 +105,9 @@ void get_cplex_solution(hplus::execution& exec, hplus::instance& inst, hplus::st
 inline void set_cplex_timelimit(hplus::execution& exec, const CPXENVptr& env) {
     if (exec.timelimit > 0 && static_cast<double>(exec.timelimit) > GET_TIME()) {
         CPX_HANDLE_CALL(CPXsetdblparam(env, CPXPARAM_TimeLimit, static_cast<double>(exec.timelimit) - GET_TIME()));
-    } else
+    } else {
         throw timelimit_exception("Reached time limit.");
+    }
     timelim::cancel_time_limit();
 }
 
@@ -117,7 +121,9 @@ inline void run_cplex(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, hplu
 
     double start_time{GET_TIME()};
     stats.cplex_execution = static_cast<double>(exec.timelimit) - start_time;
-    if (VERBOSE_BASIC()) LOG_INFO << "Running CPLEX MIP";
+    if (VERBOSE_BASIC()) {
+        LOG_INFO << "Running CPLEX MIP";
+    }
 
     CPX_HANDLE_CALL(CPXmipopt(env, lp));
 
@@ -125,7 +131,9 @@ inline void run_cplex(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, hplu
 }
 
 inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats) {
-    if (VERBOSE_BASIC()) LOG_INFO << "Running exact search algorithm";
+    if (VERBOSE_BASIC()) {
+        LOG_INFO << "Running exact search algorithm";
+    }
 
     ASSERT(inst.sol_s != hplus::solution_status::INFEAS);
 
@@ -145,7 +153,9 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
 
     // ~~~~ BASE MODEL + ACYC. CONSTRAINTS ~~~ //
     build_base_model(exec, inst, stats, env, lp);
-    if (exec.alg != hplus::algorithm::CUTS) add_acyclicity_constraints(exec, inst, stats, env, lp);
+    if (exec.alg != hplus::algorithm::CUTS) {
+        add_acyclicity_constraints(exec, inst, stats, env, lp);
+    }
 
     stats.build = GET_TIME() - start_time;
 
@@ -158,10 +168,14 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
     // Run cplex
     try {
         if (exec.alg == hplus::algorithm::CUTS) {
-            if (exec.custom_cutloop) cutloop::cutloop(env, lp, exec, inst, stats);
+            if (exec.custom_cutloop) {
+                cutloop::cutloop(env, lp, exec, inst, stats);
+            }
             callbacks::set_cplex_callbacks(exec, callback_userhandle, env, lp);
         }
-        if (exec.ws != hplus::warmstart::NONE) post_warm_start(exec, inst, env, lp);
+        if (exec.ws != hplus::warmstart::NONE) {
+            post_warm_start(exec, inst, env, lp);
+        }
 
         run_cplex(env, lp, exec, stats);
 
@@ -174,7 +188,9 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
     // ====================================================== //
 
     // There are info to gather or resources to free only if we used the CUTS algorithm
-    if (exec.alg == hplus::algorithm::CUTS) callbacks::gather_stats_from_threads(stats, callback_userhandle);
+    if (exec.alg == hplus::algorithm::CUTS) {
+        callbacks::gather_stats_from_threads(stats, callback_userhandle);
+    }
     get_cplex_solution(exec, inst, stats, env, lp);
     close_cplex(env, lp);
 }

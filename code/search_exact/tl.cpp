@@ -1,7 +1,10 @@
 #include "exact.hpp"
+#include "hplus_algs.hpp"
 
 void tl::add_acyclicity_constraints(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp) {
-    if (VERBOSE_BASIC()) LOG_INFO << "Adding acyclicity constraints for TL model";
+    if (VERBOSE_BASIC()) {
+        LOG_INFO << "Adding acyclicity constraints for TL model";
+    }
 
     // ====================================================== //
     // =================== CPLEX VARIABLES ================== //
@@ -38,13 +41,13 @@ void tl::add_acyclicity_constraints(const hplus::execution& exec, hplus::instanc
 
     for (unsigned int act_i = 0; act_i < inst.m; ++act_i) {
         unsigned int var_count{0};
-        for (const auto& q : inst.actions[act_i].eff_sparse) {
+        for (const auto& eff : inst.actions[act_i].eff_sparse) {
             ind[0] = get_fa_idx(act_i, var_count);
             val[0] = max_steps;
-            ind[1] = get_tvar_idx(q);
+            ind[1] = get_tvar_idx(eff);
             val[1] = -1;
-            for (const auto& p : inst.actions[act_i].pre_sparse) {
-                ind[2] = get_tvar_idx(p);
+            for (const auto& pre : inst.actions[act_i].pre_sparse) {
+                ind[2] = get_tvar_idx(pre);
                 val[2] = 1;
                 CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, 3, &rhs, &sense_l, &begin, ind.data(), val.data(), nullptr, nullptr));
                 stats.const_acyc++;
@@ -55,7 +58,9 @@ void tl::add_acyclicity_constraints(const hplus::execution& exec, hplus::instanc
 }
 
 void tl::post_warm_start(const hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
-    if (VERBOSE_BASIC()) LOG_INFO << "Posting warm start to TL model";
+    if (VERBOSE_BASIC()) {
+        LOG_INFO << "Posting warm start to TL model";
+    }
 
     binary_set state{inst.n};
     const auto& warm_start{inst.sol.sequence};
@@ -74,7 +79,9 @@ void tl::post_warm_start(const hplus::execution& exec, hplus::instance& inst, CP
         int var_count{-1};
         for (const auto& var_i : inst.actions[act_i].eff_sparse) {
             var_count++;
-            if (state[var_i]) continue;
+            if (state[var_i]) {
+                continue;
+            }
 
             unsigned int fadd_idx = inst.m + inst.fadd_cpx_start[act_i] + var_count;
             val[fadd_idx] = 1;

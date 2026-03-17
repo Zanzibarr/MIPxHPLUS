@@ -1,7 +1,9 @@
 #include "exact.hpp"
 
 void cuts::post_warm_start(const hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
-    if (VERBOSE_BASIC()) LOG_INFO << "Posting warm start to CUTS model";
+    if (VERBOSE_BASIC()) {
+        LOG_INFO << "Posting warm start to CUTS model";
+    }
 
     binary_set state{inst.n};
     const auto& warm_start{inst.sol.sequence};
@@ -18,7 +20,9 @@ void cuts::post_warm_start(const hplus::execution& exec, hplus::instance& inst, 
         int var_count{-1};
         for (const auto& var_i : inst.actions[act_i].eff_sparse) {
             var_count++;
-            if (state[var_i]) continue;
+            if (state[var_i]) {
+                continue;
+            }
 
             unsigned int fadd_idx = inst.m + inst.fadd_cpx_start[act_i] + var_count;
             val[fadd_idx] = 1;

@@ -95,7 +95,7 @@ include_directories(
     utils
     domain
     preprocessing
-    lmcut
+    landmarks
     search_heuristics
     cut_separators
     search_exact
@@ -103,7 +103,7 @@ include_directories(
 )
 
 # Generate libraries
-set(SOURCE_DIRS "domain" "search_heuristics" "cut_separators" "preprocessing" "lmcut" "search_exact")
+set(SOURCE_DIRS "domain" "search_heuristics" "cut_separators" "preprocessing" "landmarks" "search_exact")
 foreach(SOURCE_DIR ${SOURCE_DIRS})
     file(GLOB SOURCES "${SOURCE_DIR}/*.cpp")
     if(SOURCES)
@@ -137,17 +137,36 @@ add_custom_target(force_timestamp ALL
 add_executable(hplus main.cpp)
 add_dependencies(hplus force_timestamp)
 
-target_link_libraries(hplus
-    domain_lib
-    preprocessing_lib
-    lmcut_lib
-    search_heuristics_lib
-    cut_separators_lib
-    search_exact_lib
-    ${CPLEX_LIBRARY}
-    Threads::Threads
-    dl
-)
+if(UNIX AND NOT APPLE)
+    # GNU ld does a single left-to-right pass over static archives, so
+    # --start-group/--end-group forces multiple passes to resolve circular
+    # or out-of-order symbol dependencies between the internal libraries.
+    target_link_libraries(hplus
+        -Wl,--start-group
+        domain_lib
+        preprocessing_lib
+        landmarks_lib
+        search_heuristics_lib
+        cut_separators_lib
+        search_exact_lib
+        -Wl,--end-group
+        ${CPLEX_LIBRARY}
+        Threads::Threads
+        dl
+    )
+else()
+    target_link_libraries(hplus
+        domain_lib
+        preprocessing_lib
+        landmarks_lib
+        search_heuristics_lib
+        cut_separators_lib
+        search_exact_lib
+        ${CPLEX_LIBRARY}
+        Threads::Threads
+        dl
+    )
+endif()
 
 # Define flags and default values
 add_definitions(

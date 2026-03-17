@@ -55,15 +55,15 @@ void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::
     double start_time = GET_TIME();
 
     std::vector<double> relax_point(inst.m + inst.nfadd);
-    double _{CPX_INFBOUND};
-    CPX_HANDLE_CALL(CPXcallbackgetrelaxationpoint(context, relax_point.data(), 0, inst.m + inst.nfadd - 1, &_));
+    double obj{CPX_INFBOUND};
+    CPX_HANDLE_CALL(CPXcallbackgetrelaxationpoint(context, relax_point.data(), 0, inst.m + inst.nfadd - 1, &obj));
 
     // Fix numerical errors
-    for (auto& x : relax_point) {
-        if (x <= HPLUS_EPSILON) {
-            x = 0;
-        } else if (x >= 1 - HPLUS_EPSILON) {
-            x = 1;
+    for (auto& val : relax_point) {
+        if (val <= HPLUS_EPSILON) {
+            val = 0;
+        } else if (val >= 1 - HPLUS_EPSILON) {
+            val = 1;
         }
     }
 

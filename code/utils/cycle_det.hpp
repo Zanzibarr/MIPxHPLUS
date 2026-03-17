@@ -8,7 +8,6 @@
 #define HPLUS_CYCLE_DET_HPP
 
 #include <queue>
-#include <stack>
 #include <unordered_map>
 
 #include "utils.hpp"
@@ -67,7 +66,9 @@ static inline void cycle_dfs(const std::vector<std::vector<unsigned int>>& graph
             ++state.neighbor_idx;
 
             // If we already used this edge we skip (we don't care about a cycle where one of its edges was already in a cycle)
-            if (removed_edges[state.vertex][neighbor_idx]) continue;
+            if (removed_edges[state.vertex][neighbor_idx]) {
+                continue;
+            }
 
             // If we reached an element that was already in the stack, we found a cycle
             if (in_stack[neighbor]) {
@@ -91,7 +92,9 @@ static inline void cycle_dfs(const std::vector<std::vector<unsigned int>>& graph
 
                 // Store cycles and mark each of these edges as already used
                 cycles.push_back(std::move(cycle_labels));
-                for (const auto& [from, to_idx] : cycle_edges) removed_edges[from][to_idx] = true;
+                for (const auto& [from, to_idx] : cycle_edges) {
+                    removed_edges[from][to_idx] = true;
+                }
 
                 return;
             }
@@ -113,8 +116,12 @@ static inline void cycle_dfs(const std::vector<std::vector<unsigned int>>& graph
         if (!advanced) {
             in_stack[state.vertex] = false;
             removed_nodes[state.vertex] = true;  // Mark as fully explored
-            if (!current_path.empty()) current_path.pop_back();
-            if (!current_path_edges.empty()) current_path_edges.pop_back();
+            if (!current_path.empty()) {
+                current_path.pop_back();
+            }
+            if (!current_path_edges.empty()) {
+                current_path_edges.pop_back();
+            }
             stack.pop_back();
         }
     }
@@ -133,19 +140,25 @@ static inline void cycle_dfs(const std::vector<std::vector<unsigned int>>& graph
 static inline std::vector<std::vector<unsigned int>> find_cycles_unweighted(
     const std::vector<std::vector<unsigned int>>& graph,
     const std::unordered_map<std::pair<unsigned int, unsigned int>, unsigned int, pair_hash>& edge_labels) {
-    if (graph.empty()) return {};
+    if (graph.empty()) {
+        return {};
+    }
 
     std::vector<std::vector<unsigned int>> cycles;
 
     // Track edge usage per (from, to_index)
     std::vector<std::vector<bool>> used_edges(graph.size());
-    for (unsigned int from = 0; from < graph.size(); ++from) used_edges[from].resize(graph[from].size(), false);
+    for (unsigned int from = 0; from < graph.size(); ++from) {
+        used_edges[from].resize(graph[from].size(), false);
+    }
     // Data structure to prune completely visited nodes -> if a node has been completely visited (and no (new) cycle has been found -> that node won't
     // appear in any cycle)
     std::vector<bool> globally_visited(graph.size(), false);
 
     for (unsigned int v = 0; v < graph.size(); v++) {
-        if (globally_visited[v]) continue;
+        if (globally_visited[v]) {
+            continue;
+        }
 
         bool has_free_edges{false};
         for (unsigned int i = 0; i < graph[v].size(); ++i) {
@@ -155,7 +168,9 @@ static inline std::vector<std::vector<unsigned int>> find_cycles_unweighted(
             }
         }
 
-        if (has_free_edges) cycle_dfs(graph, edge_labels, v, used_edges, globally_visited, cycles);
+        if (has_free_edges) {
+            cycle_dfs(graph, edge_labels, v, used_edges, globally_visited, cycles);
+        }
     }
 
     return cycles;
@@ -189,19 +204,27 @@ static inline std::pair<std::vector<std::pair<unsigned int, unsigned int>>, std:
         pq.pop();
 
         // Skip if this is an outdated entry (we found a better path already)
-        if (dist_u > distance[u]) continue;
+        if (dist_u > distance[u]) {
+            continue;
+        }
 
         // Early termination when we reach destination
-        if (u == destination) break;
+        if (u == destination) {
+            break;
+        }
 
         for (unsigned int i = 0; i < graph[u].size(); ++i) {
-            if (removed_edges[u][i]) continue;
+            if (removed_edges[u][i]) {
+                continue;
+            }
 
             unsigned int v = graph[u][i];
             double weight = edge_weights.at({u, v});
 
             // Skip edges that are too heavy for our cycle constraint (weight(cycle) < 1)
-            if (weight >= max_edge_weight) continue;
+            if (weight >= max_edge_weight) {
+                continue;
+            }
 
             // If we found a better path to v
             if (distance[u] + weight < distance[v]) {
@@ -215,7 +238,9 @@ static inline std::pair<std::vector<std::pair<unsigned int, unsigned int>>, std:
     }
 
     // No path found
-    if (distance[destination] == std::numeric_limits<double>::infinity()) return {{}, {}};
+    if (distance[destination] == std::numeric_limits<double>::infinity()) {
+        return {{}, {}};
+    }
 
     // Reconstruct path
     std::vector<std::pair<unsigned int, unsigned int>> vertex_path;
@@ -248,17 +273,21 @@ static inline std::pair<std::vector<std::pair<unsigned int, unsigned int>>, std:
  * @return std::vector<std::vector<T>> The list of cycles expressed by the labels of the edges that would compose that cycle
  */
 [[nodiscard]]
-static inline std::vector<std::vector<unsigned int>> find_cycles_weighted_lessthan1(
+static inline auto find_cycles_weighted_lessthan1(
     const std::vector<std::vector<unsigned int>>& graph,
     const std::unordered_map<std::pair<unsigned int, unsigned int>, unsigned int, pair_hash>& edge_labels,
-    const std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash>& edge_weights) {
-    if (graph.empty()) return {};
+    const std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash>& edge_weights) -> std::vector<std::vector<unsigned int>> {
+    if (graph.empty()) {
+        return {};
+    }
 
     std::vector<std::vector<unsigned int>> cycles;
 
     // Track edge usage per (from, to_index)
     std::vector<std::vector<bool>> used_edges(graph.size());
-    for (unsigned int from = 0; from < graph.size(); ++from) used_edges[from].resize(graph[from].size(), false);
+    for (unsigned int from = 0; from < graph.size(); ++from) {
+        used_edges[from].resize(graph[from].size(), false);
+    }
 
     for (unsigned int v = 0; v < graph.size(); v++) {
         // Skip if vertex has no unused outgoing edges
@@ -269,10 +298,14 @@ static inline std::vector<std::vector<unsigned int>> find_cycles_weighted_lessth
                 break;
             }
         }
-        if (!has_unused_edges) continue;
+        if (!has_unused_edges) {
+            continue;
+        }
 
         for (unsigned int w_idx = 0; w_idx < graph[v].size(); ++w_idx) {
-            if (used_edges[v][w_idx]) continue;
+            if (used_edges[v][w_idx]) {
+                continue;
+            }
 
             // For each unused edge outgoing
 
@@ -288,22 +321,30 @@ static inline std::vector<std::vector<unsigned int>> find_cycles_weighted_lessth
             // Find shortest path from w back to v, with edge weight constraint
             double max_allowed_edge_weight = 1.0 - vw_weight;
             const auto& [path_vertices, path_edges_indices] = dijkstra_with_path_info(graph, edge_weights, w, v, used_edges, max_allowed_edge_weight);
-            if (path_vertices.empty()) continue;
+            if (path_vertices.empty()) {
+                continue;
+            }
 
             // Calculate total cycle weight
             double cycle_weight = vw_weight;
-            for (const auto& [from, to] : path_vertices) cycle_weight += edge_weights.at({from, to});
+            for (const auto& [from, to] : path_vertices) {
+                cycle_weight += edge_weights.at({from, to});
+            }
 
             // Skip if cycle weight >= 1 (we know that there can't be another cycle using {v, w} with lower weight, since the path {w -> v} was the
             // shortest one we could find, using unused edges)
-            if (cycle_weight >= 1.0 - HPLUS_EPSILON) continue;
+            if (cycle_weight >= 1.0 - HPLUS_EPSILON) {
+                continue;
+            }
 
             // Build the cycle from edge labels
             std::vector<unsigned int> cycle;
             cycle.reserve(path_vertices.size() + 1);  // Reserve space for efficiency
 
             // Add the path edges (w -> ... -> v)
-            for (const auto& [from, to] : path_vertices) cycle.push_back(edge_labels.at({from, to}));
+            for (const auto& [from, to] : path_vertices) {
+                cycle.push_back(edge_labels.at({from, to}));
+            }
 
             // Add the closing edge (v -> w)
             cycle.push_back(edge_labels.at({v, w}));

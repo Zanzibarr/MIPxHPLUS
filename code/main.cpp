@@ -5,14 +5,17 @@
 #include <tuple>
 
 #include "domain/hplus_algs.hpp"
+#include "limits.hxx"
+#include "utils.hpp"
 #include "utils/argparser.hpp"
 
-static void signal_callback_handler([[maybe_unused]] const int _) {
+static void signal_callback_handler(const int /*signal*/) {
     LOG_WARNING << "---------------------------------------------------";
     LOG_WARNING << " > Ctrl+C signal detected, terminating execution. <";
     LOG_WARNING << "---------------------------------------------------";
-    if (CHECK_STOP()) [[unlikely]]
-        _Exit(EXIT_FAILURE);
+    if (CHECK_STOP()) {
+        [[unlikely]] _Exit(EXIT_FAILURE);
+    }
     GLOBAL_TERMINATE_CONDITION = 1;
 }
 
@@ -28,14 +31,14 @@ static std::tuple<hplus::execution, hplus::instance, hplus::statistics> init() {
     hplus::init(exec);
     hplus::instance inst;
     hplus::init(inst);
-    hplus::statistics stats;
+    hplus::statistics stats{};
     hplus::init(stats);
     return std::tuple(exec, inst, stats);
 }
 
 static void close() { timelim::cancel_time_limit(); }
 
-int main(const int argc, const char** argv) {
+auto main(const int argc, const char** argv) -> int {
     try {
         auto [exec, inst, stats] = init();
         double start_time = GET_TIME();
@@ -43,8 +46,12 @@ int main(const int argc, const char** argv) {
         parse_cli(argc, argv, exec);
         hplus::read_file(exec, inst, stats);
 
-        if (VERBOSE_STATS()) hplus::print(exec);
-        if (exec.type == hplus::exec_type::INFO || VERBOSE_STATS()) hplus::print(inst);
+        if (VERBOSE_STATS()) {
+            hplus::print(exec);
+        }
+        if (exec.type == hplus::exec_type::INFO || VERBOSE_STATS()) {
+            hplus::print(inst);
+        }
 
         switch (exec.type) {
             case hplus::exec_type::INFO:
@@ -63,9 +70,15 @@ int main(const int argc, const char** argv) {
         // algorithm), since however we get here, I assume that inst and stats are updated and no other operations are needed.
 
         hplus::print_sol(inst);
-        if (inst.sol_s == hplus::solution_status::INFEAS) stats.lower_bound = 1e20;
-        if (inst.sol_s == hplus::solution_status::LOST) stats.status = HPLUS_STATUS_LOST;
-        if (VERBOSE_STATS()) hplus::print(stats);
+        if (inst.sol_s == hplus::solution_status::INFEAS) {
+            stats.lower_bound = INFBOUND_DBL;
+        }
+        if (inst.sol_s == hplus::solution_status::LOST) {
+            stats.status = HPLUS_STATUS_LOST;
+        }
+        if (VERBOSE_STATS()) {
+            hplus::print(stats);
+        }
         close();
 
     } catch (std::bad_alloc& e) {

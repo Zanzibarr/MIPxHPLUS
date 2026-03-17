@@ -1,5 +1,6 @@
 #include "lmcut.hpp"
 
+#include <algorithm>
 #include <deque>
 #include <limits>
 
@@ -209,7 +210,6 @@ auto LMcut::compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned in
 
     // Compute the pre_goal section and the cut
     std::vector<unsigned int> cut;
-    double min_reduced_cost{std::numeric_limits<double>::infinity()};
     binary_set pre_goal_section(inst_->n);
     binary_set explored(inst_->m);
     std::deque<int> queue;
@@ -222,7 +222,6 @@ auto LMcut::compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned in
             for (const auto& eff : inst_->actions[act_i].eff_sparse) {
                 if (goal_section[eff]) {
                     cut.push_back(act_i);
-                    min_reduced_cost = std::min(min_reduced_cost, reduced_costs_[act_i]);
                     // Early exit condition... if this action crosses the cut there's no need to add its non-goal_section effects to the
                     // pre_goal_section
                     //
@@ -276,6 +275,42 @@ auto LMcut::compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned in
         }
     }
 
+    // auto size = cut.size();
+
+    // Note that this MUST be done after the cut has been computed 'cause before the pre_goal might change...
+    binary_set removed(inst_->m);
+    for (const auto& act_i : cut) {
+        // If an action in the cut has a precondition that's outside of the pre_goal section, then simply changing that pcf would remove this
+        // action from the cut (while the rest of the graph remains unchanged: given that the pcf is not in the pre_goal, the pre_goal won't be
+        // expanded by using this pcf instead... moreover the goal section cannot change, since this can't be a 0-cost action, otherwise the pcf
+        // would be in the goal section too, and this action wouldn't be in the cut)
+        if (!pre_goal_section.contains(inst_->actions[act_i].pre)) {
+            removed.add(act_i);
+        }
+    }
+    std::erase_if(cut, [&removed](const auto& elem) { return removed[elem]; });
+    explored -= removed;
+
+    // unsigned int removed_first = size - cut.size();
+
+    // binary_set unapplicable_actions(inst_->m);
+    // for (unsigned int act_i = 0; act_i < inst_->m; act_i++) {
+    //     if (!pre_goal_section.contains(inst_->actions[act_i].pre)) {
+    //         unapplicable_actions.add(act_i);
+    //     }
+    // }
+
+    // // Further try to minimize the landmark
+    // int_lm_sep::landmark_minimalization(*inst_, cut, unapplicable_actions, pre_goal_section);
+
+    // LOG_DEBUG << "Removal: " << removed_first << " + " << size - cut.size() - removed_first << " = " << size - cut.size() << " actions over " <<
+    // size;
+
+    double min_reduced_cost = std::numeric_limits<double>::infinity();
+    for (const auto& act_i : cut) {
+        min_reduced_cost = std::min(min_reduced_cost, reduced_costs_[act_i]);
+    }
+
     for (const auto& act_i : cut) {
         reduced_costs_[act_i] -= min_reduced_cost;
         if (reduced_costs_[act_i] <= HPLUS_EPSILON) {
@@ -298,7 +333,7 @@ auto LMcut::compute_lmcut_private(hmax_function hmax) -> std::pair<std::vector<s
 
     while (hmax(goal_, hmax_values_, initial_hmax_values_).second > HPLUS_EPSILON) {
         const auto& [cut, val] = compute_cut(hmax);
-        // check_landmark(cut); // This is an (expensive) integrity check... don't use this in runs where performance is measured
+        check_landmark(cut);  // This is an (expensive) integrity check... //! //FIXME don't use this in runs where performance is measured
         lmcut_value += val;
         update_hmax_values(cut, hmax);
         landmarks.push_back(std::move(cut));
@@ -307,6 +342,10 @@ auto LMcut::compute_lmcut_private(hmax_function hmax) -> std::pair<std::vector<s
             throw timelimit_exception("Reached time limit.");
         }
     }
+
+    // for (const auto& landmark : landmarks) {
+    //     LOG_DEBUG << "Size: " << landmark.size();
+    // }
 
     return {landmarks, lmcut_value};
 }
@@ -318,7 +357,7 @@ auto LMcut::compute_lmcut(hmax_function hmax) -> std::pair<std::vector<std::vect
 }
 
 auto LMcut::int_separation(const std::vector<unsigned int>& used_actions, hmax_function hmax)
-    -> std::pair<std::vector<std::vector<unsigned int>>, double> {
+    -> std::pair<bool, std::vector<std::vector<unsigned int>>> {
     init();
 
     // Set reduced costs of used actions to 0
@@ -326,17 +365,20 @@ auto LMcut::int_separation(const std::vector<unsigned int>& used_actions, hmax_f
         reduced_costs_[idx] = 0;
     }
 
-    return compute_lmcut_private(hmax);
+    const auto& [landmarks, lmcut_val] = compute_lmcut_private(hmax);
+
+    return {!landmarks.empty(), landmarks};
 }
 
-auto LMcut::fract_separation(const std::vector<double>& actions_weights, hmax_function hmax) -> std::vector<std::vector<unsigned int>> {
+auto LMcut::fract_separation(const std::vector<double>& actions_weights, hmax_function hmax)
+    -> std::pair<bool, std::vector<std::vector<unsigned int>>> {
     init();
 
     for (unsigned int i = 0; i < actions_weights.size(); i++) {
         reduced_costs_[i] = reduced_costs_[i] * (1 - actions_weights[i]);
     }
 
-    auto [landmarks, lmcut_value] = compute_lmcut_private(hmax);
+    auto [landmarks, lmcut_val] = compute_lmcut_private(hmax);
 
     std::erase_if(landmarks, [&actions_weights](const std::vector<unsigned int>& landmark) {
         double sum = 0;
@@ -346,25 +388,24 @@ auto LMcut::fract_separation(const std::vector<double>& actions_weights, hmax_fu
         return sum >= 1;
     });
 
-    return landmarks;
+    return {!landmarks.empty(), landmarks};
 }
 
 void LMcut::check_landmark(const std::vector<unsigned int>& landmark) {
     // This function is meant to be a check for debugging... it's not optimized to be used as a routine
     bool found = false;
     binary_set state(inst_->n);
-    binary_set used_actions(inst_->m);
-    binary_set act_in_lm(inst_->m);
-    for (auto act_i : landmark) {
-        act_in_lm.add(act_i);
+    binary_set remaining_actions(inst_->m, true);
+    for (const auto& act_i : landmark) {
+        remaining_actions.remove(act_i);
     }
 
     while (!found) {
         auto state_before = state;
-        for (unsigned int act_i = 0; act_i < inst_->m; act_i++) {
+        for (const auto& act_i : remaining_actions) {
             const auto& act = inst_->actions[act_i];
-            if (!used_actions[act_i] && !act_in_lm[act_i] && state.contains(act.pre)) {
-                used_actions.add(act_i);
+            if (state.contains(act.pre)) {
+                remaining_actions.remove(act_i);
                 state |= act.eff;
             }
         }

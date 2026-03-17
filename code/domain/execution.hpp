@@ -108,8 +108,8 @@ inline void init(execution& exec) {
 }
 
 [[nodiscard]]
-inline std::string to_string(exec_type t) {
-    switch (t) {
+inline auto to_string(exec_type type) -> std::string {
+    switch (type) {
         case exec_type::INFO:
             return HPLUS_CLI_INFO_FLAG;
         case exec_type::RUN:
@@ -119,8 +119,8 @@ inline std::string to_string(exec_type t) {
 }
 
 [[nodiscard]]
-inline std::string to_string(algorithm a) {
-    switch (a) {
+inline auto to_string(algorithm alg) -> std::string {
+    switch (alg) {
         case algorithm::TL:
             return HPLUS_CLI_ALG_FLAG_TL;
         case algorithm::VE:
@@ -140,8 +140,8 @@ inline std::string to_string(algorithm a) {
 }
 
 [[nodiscard]]
-inline std::string to_string(warmstart ws) {
-    switch (ws) {
+inline auto to_string(warmstart wst) -> std::string {
+    switch (wst) {
         case warmstart::NONE:
             return HPLUS_CLI_WS_FLAG_NONE;
         case warmstart::GC:
@@ -157,10 +157,14 @@ inline std::string to_string(warmstart ws) {
 }
 
 inline void print(const execution& exec) {
-    if (exec.verbosity < hplus::verbose::STATISTICS) return;
+    if (exec.verbosity < hplus::verbose::STATISTICS) {
+        return;
+    }
     LOG << "------------------ List of parameters ------------------";
     LOG << "Verbosity:                                             " << static_cast<int>(exec.verbosity);
-    if (exec.log_file != "0") LOG << "Log file: " << std::filesystem::absolute(exec.log_file).lexically_normal().string();
+    if (exec.log_file != "0") {
+        LOG << "Log file: " << std::filesystem::absolute(exec.log_file).lexically_normal().string();
+    }
     LOG << "Time limit:                                      " << std::setw(exec.timelimit > 0 ? 5 : 7) << exec.timelimit
         << (exec.timelimit > 0 ? " s" : "");
     LOG << "Memory limit:                              " << std::setw(exec.memorylimit > 0 ? 10 : 13) << exec.memorylimit
@@ -176,13 +180,21 @@ inline void print(const execution& exec) {
     LOG << "Preprocessing:                                         " << exec.prep;
     LOG << "Preprocessing (LM-cut):                       " << std::setw(10) << exec.prep_lmcut;
     LOG << "Algorithm:                                    " << std::setw(10) << to_string(exec.alg);
-    if (exec.alg < hplus::algorithm::GC) LOG << "Warm start:                                   " << std::setw(10) << to_string(exec.ws);
-    if (exec.cutoff >= 0) LOG << "Cutoff value:                                 " << std::setw(10) << exec.cutoff;
+    if (exec.alg < hplus::algorithm::GC) {
+        LOG << "Warm start:                                   " << std::setw(10) << to_string(exec.ws);
+    }
+    if (exec.cutoff >= 0) {
+        LOG << "Cutoff value:                                 " << std::setw(10) << exec.cutoff;
+    }
     if (exec.alg == hplus::algorithm::CUTS) {
-        if (!exec.cand_cuts.empty()) LOG << "Candidate cuts:                                    " << std::setw(5) << exec.cand_cuts;
+        if (!exec.cand_cuts.empty()) {
+            LOG << "Candidate cuts:                                    " << std::setw(5) << exec.cand_cuts;
+        }
 
         LOG << "Fractional cuts:                                      " << std::setw(2) << exec.fract_cuts;
-        if (exec.fract_cuts.find('m') != std::string::npos) LOG << "Minimization of fractional landmarks:                  " << exec.min_fract_lm;
+        if (exec.fract_cuts.find('m') != std::string::npos) {
+            LOG << "Minimization of fractional landmarks:                  " << exec.min_fract_lm;
+        }
         if (exec.min_fract_lm) {
             LOG << "- Upper bound on number of iterations:        " << std::setw(10) << exec.lm_min_it;
             LOG << "- Violation ratio threshold:                       " << std::fixed << std::setprecision(3) << exec.lm_min_viol;
@@ -190,8 +202,12 @@ inline void print(const execution& exec) {
             LOG << "- Sorting of landmark:                                 " << exec.lm_min_sort;
             LOG << "- Expand only better landmarks:                        " << exec.lm_min_improv;
         }
-        if (exec.fract_cuts != "0") LOG << "Fractional cuts at nodes:                              " << exec.fract_cuts_at_nodes;
-        if (exec.fract_cuts != "0") LOG << "Custom cut-loop                                        " << exec.custom_cutloop;
+        if (exec.fract_cuts != "0") {
+            LOG << "Fractional cuts at nodes:                              " << exec.fract_cuts_at_nodes;
+        }
+        if (exec.fract_cuts != "0") {
+            LOG << "Custom cut-loop                                        " << exec.custom_cutloop;
+        }
     }
     if (exec.custom_cutloop) {
         LOG << "- Pruning                                              " << exec.cl_pruning;
@@ -206,7 +222,9 @@ inline void print(const execution& exec) {
             LOG << "- Weight update:                                    " << std::fixed << std::setprecision(2) << exec.io_weight_update;
         }
     }
-    if (exec.testing) LOG << "Testing mode:                                          1";
+    if (exec.testing) {
+        LOG << "Testing mode:                                          1";
+    }
     LOG << "--------------------------------------------------------";
 }
 }  // namespace hplus
