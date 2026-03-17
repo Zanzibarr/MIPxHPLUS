@@ -1,6 +1,7 @@
 #include "fract_separators.hpp"
 
 #include <set>
+#include <stack>
 
 #include "limits.hxx"
 #include "lmcut.hpp"

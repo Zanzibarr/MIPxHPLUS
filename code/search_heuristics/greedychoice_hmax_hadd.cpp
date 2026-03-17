@@ -96,7 +96,7 @@ auto heur::greedy_choice_hmax(const hplus::instance& inst, const std::list<unsig
         double hmax_value = htype(userhandle.goal_sparse, userhandle.values, hmax);
 
         while (!userhandle.trail.empty()) {
-            const auto& [p, old_value] = userhandle.trail.top();
+            auto [p, old_value] = userhandle.trail.top();
             userhandle.trail.pop();
             userhandle.values[p] = old_value;
         }
