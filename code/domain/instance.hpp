@@ -21,7 +21,6 @@ struct solution {
 };
 
 struct action {
-    binary_set pre, eff;
     std::vector<unsigned int> pre_sparse, eff_sparse;
     unsigned int cost;
 };
