@@ -16,13 +16,13 @@
 namespace heur {
 
 [[nodiscard]]
-constexpr double hmax(double a, double b) {
-    return a > b ? a : b;
+constexpr auto hmax(double fact_a, double fact_b) -> double {
+    return fact_a > fact_b ? fact_a : fact_b;
 }
 
 [[nodiscard]]
-constexpr double hadd(double a, double b) {
-    return a + b;
+constexpr auto hadd(double fact_a, double fact_b) -> double {
+    return fact_a + fact_b;
 }
 
 struct greedychoice_userhandle {
@@ -38,26 +38,28 @@ void greedy(const hplus::execution& exec, hplus::instance& inst, hplus::statisti
                                                            greedychoice_userhandle&));
 
 [[nodiscard]]
-std::pair<bool, unsigned int> greedy_choice_cost(const hplus::instance& inst, const std::list<unsigned int>& candidates, const binary_set& state,
-                                                 greedychoice_userhandle& userhandle);
+auto greedy_choice_cost(const hplus::instance& inst, const std::list<unsigned int>& candidates, const binary_set& state,
+                        greedychoice_userhandle& userhandle) -> std::pair<bool, unsigned int>;
 
 [[nodiscard]]
-std::pair<bool, unsigned int> greedy_choice_cxe(const hplus::instance& inst, const std::list<unsigned int>& candidates, const binary_set& state,
-                                                greedychoice_userhandle& userhandle);
+auto greedy_choice_cxe(const hplus::instance& inst, const std::list<unsigned int>& candidates, const binary_set& state,
+                       greedychoice_userhandle& userhandle) -> std::pair<bool, unsigned int>;
 
 [[nodiscard]]
-std::pair<bool, unsigned int> greedy_choice_hmax(const hplus::instance& inst, const std::list<unsigned int>& candidates, const binary_set& state,
-                                                 greedychoice_userhandle& userhandle);
+auto greedy_choice_hmax(const hplus::instance& inst, const std::list<unsigned int>& candidates, const binary_set& state,
+                        greedychoice_userhandle& userhandle) -> std::pair<bool, unsigned int>;
 
 [[nodiscard]]
-std::pair<bool, unsigned int> greedy_choice_hadd(const hplus::instance& inst, const std::list<unsigned int>& candidates, const binary_set& state,
-                                                 greedychoice_userhandle& userhandle);
+auto greedy_choice_hadd(const hplus::instance& inst, const std::list<unsigned int>& candidates, const binary_set& state,
+                        greedychoice_userhandle& userhandle) -> std::pair<bool, unsigned int>;
 
 void init_htype_values(const hplus::instance& inst, const std::list<unsigned int>& initial_actions, std::vector<double>& values,
                        priority_queue<double>& pq, double (*h_eqtype)(double, double));
 
 inline void heuristic(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats) {
-    if (VERBOSE_BASIC()) LOG_INFO << "Running heuristic search algorithm";
+    if (VERBOSE_BASIC()) {
+        LOG_INFO << "Running heuristic search algorithm";
+    }
 
     double start_time = GET_TIME();
     stats.heur_time = static_cast<double>(exec.timelimit) - start_time;

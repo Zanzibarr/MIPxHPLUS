@@ -1,3 +1,4 @@
+#include "limits.hxx"
 #include "preprocessing.hpp"
 
 void prep::relevance_analysis_backward(hplus::instance& inst, binary_set& relevant_variables) {
@@ -10,8 +11,9 @@ void prep::relevance_analysis_backward(hplus::instance& inst, binary_set& releva
             relevant_actions.add(act_i);
         }
     }
-    if (CHECK_STOP()) [[unlikely]]
-        throw timelimit_exception("Reached time limit.");
+    if (CHECK_STOP()) {
+        [[unlikely]] throw timelimit_exception("Reached time limit.");
+    }
 
     // list of actions yet to check
     auto cand_actions_sparse{(!relevant_actions).sparse()};
@@ -23,7 +25,9 @@ void prep::relevance_analysis_backward(hplus::instance& inst, binary_set& releva
         std::vector<unsigned int> new_relevant_actions;
         new_relevant_actions.reserve(inst.m);
         for (const auto& act_i : cand_actions_sparse) {
-            if (!inst.actions[act_i].eff.intersects(relevant_variables)) continue;
+            if (!inst.actions[act_i].eff.intersects(relevant_variables)) {
+                continue;
+            }
 
             relevant_actions.add(act_i);
             relevant_variables |= inst.actions[act_i].pre;
@@ -33,8 +37,9 @@ void prep::relevance_analysis_backward(hplus::instance& inst, binary_set& releva
         const auto it{std::set_difference(cand_actions_sparse.begin(), cand_actions_sparse.end(), new_relevant_actions.begin(),
                                           new_relevant_actions.end(), cand_actions_sparse.begin())};
         cand_actions_sparse.resize(it - cand_actions_sparse.begin());
-        if (CHECK_STOP()) [[unlikely]]
-            throw timelimit_exception("Reached time limit.");
+        if (CHECK_STOP()) {
+            [[unlikely]] throw timelimit_exception("Reached time limit.");
+        }
     }
     relevant_variables |= inst.goal;
 
@@ -47,6 +52,8 @@ void prep::relevance_analysis_forward(hplus::instance& inst, binary_set& relevan
     std::vector<unsigned int> rem_act = ((!inst.eliminated_actions) & (!inst.fixed_actions)).sparse();
 
     for (const auto& act_i : rem_act) {
-        if (!inst.actions[act_i].eff.intersects(relevant_variables)) inst.eliminated_actions.add(act_i);
+        if (!inst.actions[act_i].eff.intersects(relevant_variables)) {
+            inst.eliminated_actions.add(act_i);
+        }
     }
 }

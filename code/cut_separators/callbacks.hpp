@@ -12,6 +12,7 @@
 #include <cplex.h>
 
 #include "cand_callback.hpp"
+#include "hplus_algs.hpp"
 #include "relax_callback.hpp"
 
 namespace callbacks {
@@ -50,10 +51,12 @@ static int CPXPUBLIC callback_hub(CPXCALLBACKCONTEXTptr context, CPXLONG context
 }
 
 inline void set_cplex_callbacks(hplus::execution& exec, callback_userhandle& userhandle, CPXENVptr& env, CPXLPptr& lp) {
-    if (VERBOSE_BASIC()) LOG_INFO << "Setting up CPLEX callbacks";
+    if (VERBOSE_BASIC()) {
+        LOG_INFO << "Setting up CPLEX callbacks";
+    }
 
-    for (unsigned int t = 0; t < exec.threads; ++t) {
-        thread_data td{
+    for (unsigned int _ = 0; _ < exec.threads; ++_) {
+        thread_data thr_data{
             .usercuts_lm = 0,
             .usercuts_sec = 0,
             .relax_calls = 0,
@@ -64,7 +67,7 @@ inline void set_cplex_callbacks(hplus::execution& exec, callback_userhandle& use
             .relax_time = 0.0,
         };
 
-        userhandle.thread_specific_data.push_back(std::move(td));
+        userhandle.thread_specific_data.push_back(std::move(thr_data));
     }
 
     // Setting up callbacks
@@ -75,7 +78,9 @@ inline void set_cplex_callbacks(hplus::execution& exec, callback_userhandle& use
     // If we have cuts and we have no cutloop, we need to add the callback, since cuts at root must be done somewhere (wether cuts must be done at
     // nodes or not) -> yes callback
     // If we have cuts and we have cuts at nodes -> yes callback
-    if (exec.fract_cuts != "0" && (exec.fract_cuts_at_nodes || !exec.custom_cutloop)) callback_contex |= CPX_CALLBACKCONTEXT_RELAXATION;
+    if (exec.fract_cuts != "0" && (exec.fract_cuts_at_nodes || !exec.custom_cutloop)) {
+        callback_contex |= CPX_CALLBACKCONTEXT_RELAXATION;
+    }
 
     CPX_HANDLE_CALL(CPXcallbacksetfunc(env, lp, callback_contex, callback_hub, &userhandle));
 }

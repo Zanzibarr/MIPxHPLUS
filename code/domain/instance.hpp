@@ -72,9 +72,10 @@ inline void init(instance& inst) {
 
 inline void print(const instance& inst) {
     LOG << "----------------- Info on the instance -----------------";
-    if (!inst.actions.empty())
+    if (!inst.actions.empty()) {
         LOG << "Metric:                             " << std::setw(20)
             << (inst.equal_costs ? (inst.actions[0].cost == 1 ? "unitary costs" : "constant costs") : "integer costs");
+    }
     LOG << "# facts:                                      " << std::setw(10) << inst.n;
     LOG << "# actions:                                    " << std::setw(10) << inst.m;
     LOG << "# first adders:                               " << std::setw(10) << inst.nfadd;

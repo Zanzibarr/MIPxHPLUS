@@ -21,7 +21,6 @@
 #include <random>
 #include <vector>
 
-#include "../external/limits.hxx"
 #include "../external/logger.hxx"
 
 // ##################################################################### //
@@ -184,12 +183,12 @@ inline void init_rng(int seed) { g_rng.seed(seed); }
     }
 
 [[nodiscard]]
-inline std::string compile_date() {
+inline auto compile_date() -> std::string {
     return std::string("Compiled on ") + COMPILE_DATETIME;
 }
 
 [[nodiscard]]
-inline std::string today() {
+inline auto today() -> std::string {
     auto now = std::chrono::system_clock::now();
     std::time_t end_time = std::chrono::system_clock::to_time_t(now);
     std::string time_str = std::ctime(&end_time);
@@ -200,25 +199,33 @@ inline std::string today() {
 }
 
 [[nodiscard]]
-inline std::string version() {
+inline auto version() -> std::string {
     return "Version: " VERSION;
 }
 
 [[nodiscard]]
-inline bool isint(const std::string& str, const int from = std::numeric_limits<int>::min(), const int to = std::numeric_limits<int>::max()) {
+inline auto isint(const std::string& str, const int from = std::numeric_limits<int>::min(), const int to = std::numeric_limits<int>::max()) -> bool {
     // Handle empty string
-    if (str.empty()) return false;
+    if (str.empty()) {
+        return false;
+    }
 
     // Check for leading whitespace or sign
     size_t i{0};
-    if (str[i] == '+' || str[i] == '-') i++;
+    if (str[i] == '+' || str[i] == '-') {
+        i++;
+    }
 
     // Must have at least one digit
-    if (i == str.length() || !std::isdigit(str[i])) return false;
+    if (i == str.length() || (std::isdigit(str[i]) == 0)) {
+        return false;
+    }
 
     // Check remaining characters are digits
     for (; i < str.length(); i++) {
-        if (!std::isdigit(str[i])) return false;
+        if (std::isdigit(str[i]) == 0) {
+            return false;
+        }
     }
 
     try {
@@ -232,20 +239,24 @@ inline bool isint(const std::string& str, const int from = std::numeric_limits<i
 }
 
 [[nodiscard]]
-inline const std::vector<std::string> split_string(const std::string& str, const char del) {
+inline auto split_string(const std::string& str, const char del) -> std::vector<std::string> {
     std::vector<std::string> tokens;
     tokens.reserve(std::count(str.begin(), str.end(), del) + 1);
 
-    size_t start{0}, end;
+    size_t start{0};
+    size_t end{0};
 
     while ((end = str.find(del, start)) != std::string::npos) {
-        if (end > start)  // Avoid empty strings
+        if (end > start) {  // Avoid empty strings
             tokens.push_back(str.substr(start, end - start));
+        }
         start = end + 1;
     }
 
     // Add the last token if it exists
-    if (start < str.length()) tokens.push_back(str.substr(start));
+    if (start < str.length()) {
+        tokens.push_back(str.substr(start));
+    }
 
     return tokens;
 }
@@ -261,14 +272,20 @@ inline const std::vector<std::string> split_string(const std::string& str, const
  */
 template <typename T>
 [[nodiscard]]
-static inline std::string vtos(std::vector<T> v, unsigned int size = 20) {
+static inline auto vtos(std::vector<T> v, unsigned int size = 20) -> std::string {
     std::string s;
-    if (v.size() <= size)
-        for (const auto& x : v) s.append(std::to_string(x)).append(";");
-    else {
-        for (unsigned int i = 0; i < size / 2; i++) s.append(std::to_string(v[i])).append(";");
+    if (v.size() <= size) {
+        for (const auto& x : v) {
+            s.append(std::to_string(x)).append(";");
+        }
+    } else {
+        for (unsigned int i = 0; i < size / 2; i++) {
+            s.append(std::to_string(v[i])).append(";");
+        }
         s.append("...[").append(std::to_string(v.size() - size)).append("];");
-        for (unsigned int i = size / 2; i > 0; i--) s.append(std::to_string(v[v.size() - i])).append(";");
+        for (unsigned int i = size / 2; i > 0; i--) {
+            s.append(std::to_string(v[v.size() - i])).append(";");
+        }
     }
     return s;
 }

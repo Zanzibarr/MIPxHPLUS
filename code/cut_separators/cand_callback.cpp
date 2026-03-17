@@ -4,6 +4,9 @@
 #include <deque>
 #include <numeric>
 
+#include "../landmarks/int_separators.hpp"
+#include "hplus_algs.hpp"
+
 /**
  * Analyze the current candidate point: generate data structures to be used in later parts of the callback
  */
@@ -176,18 +179,28 @@ void callbacks::candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::e
     // -> c : complementary landmark cuts
     // -> l : LMcut cuts
     // -> s : SEC
+    std::vector<std::vector<unsigned int>> landmarks;
     if (exec.cand_cuts.find('f') != std::string::npos) {
-        usercuts_lm += cand_cuts::add_front_lm_cut(context, inst, unused_actions, reachable_state);
+        landmarks.push_back(int_lm_sep::get_front_violated_landmark(inst, unused_actions, reachable_state));
     }
     unsigned int lmc_violated{0};
     if (exec.cand_cuts.find('l') != std::string::npos) {
-        lmc_violated = cand_cuts::add_lmcut_lm_cut(context, inst, unused_actions);
+        const auto& [found, lmcut_landmarks] = int_lm_sep::get_lmcut_violated_landmarks(inst, xstar);
+        if (found) {
+            lmc_violated = lmcut_landmarks.size();
+            landmarks.insert(landmarks.end(), lmcut_landmarks.begin(), lmcut_landmarks.end());
+            // } else {
+            //     LOG_WARNING << "Heuristic int lm separator didn't find any landmark... trying \"comp\" separator";
+        }
     }
-    usercuts_lm += lmc_violated;
     if (exec.cand_cuts.find('c') != std::string::npos || lmc_violated == 0) {
         // Since the lmcut approach is (currently) an heuristic approach, if no landmark is found we need to complement it with an exact approach when
         // needed
-        usercuts_lm += cand_cuts::add_comp_lm_cut(context, inst, unreachable_actions, unused_actions, reachable_state);
+        landmarks.push_back(int_lm_sep::get_comp_violated_landmark(inst, unreachable_actions, unused_actions, reachable_state));
+    }
+    usercuts_lm += landmarks.size();
+    for (const auto& landmark : landmarks) {
+        cand_cuts::reject_with_lm_cut(context, landmark);
     }
     if (exec.cand_cuts.find('s') != std::string::npos) {
         usercuts_sec += cand_cuts::add_sec_cut(context, inst, unreachable_actions, used_first_achievers);

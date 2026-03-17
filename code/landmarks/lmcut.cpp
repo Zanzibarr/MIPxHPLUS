@@ -5,7 +5,6 @@
 #include <limits>
 
 #include "bs.hxx"
-// #include "cand_callback.hpp"
 #include "limits.hxx"
 #include "logger.hxx"
 #include "utils.hpp"
@@ -278,50 +277,34 @@ auto LMcut::compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned in
 
     // auto size = cut.size();
 
-    // TODO: Test the effects of this
-    // Note that this MUST be done after the cut has been computed...
-    std::vector<unsigned int> removed;
+    // Note that this MUST be done after the cut has been computed 'cause before the pre_goal might change...
+    binary_set removed(inst_->m);
     for (const auto& act_i : cut) {
         // If an action in the cut has a precondition that's outside of the pre_goal section, then simply changing that pcf would remove this
         // action from the cut (while the rest of the graph remains unchanged: given that the pcf is not in the pre_goal, the pre_goal won't be
         // expanded by using this pcf instead... moreover the goal section cannot change, since this can't be a 0-cost action, otherwise the pcf
         // would be in the goal section too, and this action wouldn't be in the cut)
         if (!pre_goal_section.contains(inst_->actions[act_i].pre)) {
-            removed.push_back(act_i);
+            removed.add(act_i);
         }
     }
+    std::erase_if(cut, [&removed](const auto& elem) { return removed[elem]; });
+    explored -= removed;
 
-    const auto iter = std::set_difference(cut.begin(), cut.end(), removed.begin(), removed.end(), cut.begin());
-    cut.resize(iter - cut.begin());
-    // for (const auto& act_i : removed) {
-    //     explored.remove(act_i);
-    // }
+    // unsigned int removed_first = size - cut.size();
 
-    // binary_set unapplicable_actions(inst_->m, true);
-    // for (const auto& x : cut) {
-    //     unapplicable_actions.remove(x);
-    // }
-    // binary_set reachable_state(inst_->n);
-
-    // while (true) {
-    //     auto state_before = reachable_state;
-    //     for (const auto& act_i : unapplicable_actions) {
-    //         const auto& act = inst_->actions[act_i];
-    //         if (reachable_state.contains(act.pre)) {
-    //             unapplicable_actions.remove(act_i);
-    //             reachable_state |= act.eff;
-    //         }
-    //     }
-    //     ASSERT(!reachable_state.contains(inst_->goal));
-    //     if (state_before == reachable_state) {
-    //         break;  // Valid landmark: without its actions we can't reach the goal
+    // binary_set unapplicable_actions(inst_->m);
+    // for (unsigned int act_i = 0; act_i < inst_->m; act_i++) {
+    //     if (!pre_goal_section.contains(inst_->actions[act_i].pre)) {
+    //         unapplicable_actions.add(act_i);
     //     }
     // }
 
     // // Further try to minimize the landmark
-    // cand_cuts::landmark_minimalization(*inst_, cut, unapplicable_actions, reachable_state);
+    // int_lm_sep::landmark_minimalization(*inst_, cut, unapplicable_actions, pre_goal_section);
 
-    // LOG_DEBUG << "Removed " << (size - cut.size()) << " actions over " << size;
+    // LOG_DEBUG << "Removal: " << removed_first << " + " << size - cut.size() - removed_first << " = " << size - cut.size() << " actions over " <<
+    // size;
 
     double min_reduced_cost = std::numeric_limits<double>::infinity();
     for (const auto& act_i : cut) {
@@ -374,7 +357,7 @@ auto LMcut::compute_lmcut(hmax_function hmax) -> std::pair<std::vector<std::vect
 }
 
 auto LMcut::int_separation(const std::vector<unsigned int>& used_actions, hmax_function hmax)
-    -> std::pair<std::vector<std::vector<unsigned int>>, double> {
+    -> std::pair<bool, std::vector<std::vector<unsigned int>>> {
     init();
 
     // Set reduced costs of used actions to 0
@@ -382,17 +365,20 @@ auto LMcut::int_separation(const std::vector<unsigned int>& used_actions, hmax_f
         reduced_costs_[idx] = 0;
     }
 
-    return compute_lmcut_private(hmax);
+    const auto& [landmarks, lmcut_val] = compute_lmcut_private(hmax);
+
+    return {!landmarks.empty(), landmarks};
 }
 
-auto LMcut::fract_separation(const std::vector<double>& actions_weights, hmax_function hmax) -> std::vector<std::vector<unsigned int>> {
+auto LMcut::fract_separation(const std::vector<double>& actions_weights, hmax_function hmax)
+    -> std::pair<bool, std::vector<std::vector<unsigned int>>> {
     init();
 
     for (unsigned int i = 0; i < actions_weights.size(); i++) {
         reduced_costs_[i] = reduced_costs_[i] * (1 - actions_weights[i]);
     }
 
-    auto [landmarks, lmcut_value] = compute_lmcut_private(hmax);
+    auto [landmarks, lmcut_val] = compute_lmcut_private(hmax);
 
     std::erase_if(landmarks, [&actions_weights](const std::vector<unsigned int>& landmark) {
         double sum = 0;
@@ -402,7 +388,7 @@ auto LMcut::fract_separation(const std::vector<double>& actions_weights, hmax_fu
         return sum >= 1;
     });
 
-    return landmarks;
+    return {!landmarks.empty(), landmarks};
 }
 
 void LMcut::check_landmark(const std::vector<unsigned int>& landmark) {

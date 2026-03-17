@@ -9,7 +9,14 @@
 
 #include <cplex.h>
 
-#include "../domain/hplus_algs.hpp"
+#include <algorithm>
+#include <vector>
+
+#include "bs.hxx"
+#include "execution.hpp"
+#include "instance.hpp"
+#include "statistics.hpp"
+#include "utils.hpp"
 
 namespace cand_cuts {
 
@@ -37,40 +44,13 @@ inline void reject_with_sec_cut(CPXCALLBACKCONTEXTptr context, const std::vector
     for (const auto& cycle : cycles) {
         begin.push_back(static_cast<int>(ind.size()));
         rhs.push_back(static_cast<double>(cycle.size() - 1));
-        std::copy(cycle.begin(), cycle.end(),
-                  std::back_inserter(ind));  // labels in the cycle are the indexes for the first adders in the cplex model
+        std::ranges::copy(cycle,
+                          std::back_inserter(ind));  // labels in the cycle are the indexes for the first adders in the cplex model
         val.insert(val.end(), cycle.size(), 1.0);
     }
     CPX_HANDLE_CALL(CPXcallbackrejectcandidate(context, cycles.size(), static_cast<int>(ind.size()), rhs.data(), sense.data(), begin.data(),
                                                ind.data(), val.data()));
 }
-
-/**
- * Method to minimalize a landmark
- */
-void landmark_minimalization(const hplus::instance& inst, std::vector<unsigned int>& landmark, binary_set unapplicable_actions,
-                             binary_set reachable_state);
-
-/**
- * Method to compute multiple violated landmarks by using the LMcut algorithm out of the candidate solutions and reject the candidate solution
- */
-[[nodiscard]] auto add_lmcut_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const std::vector<unsigned int>& used_actions)
-    -> unsigned int;
-
-/**
- * Method to compute a violated landmark by using the complementary landmarks technique out of the candidate solutions and reject the candidate
- * solution
- */
-[[nodiscard]]
-auto add_comp_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const binary_set& unreachable_actions,
-                     const std::vector<unsigned int>& unused_actions, const binary_set& reachable_state) -> unsigned int;
-
-/**
- * Method to compute a violated landmark by using the fontier landmarks technique out of the candidate solutions and reject the candidate solution
- */
-[[nodiscard]]
-auto add_front_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const std::vector<unsigned int>& unused_actions,
-                      const binary_set& reachable_state) -> unsigned int;
 
 /**
  * Method to compute a violated S.E.C. out of the candidate solutions and reject the candidate solution

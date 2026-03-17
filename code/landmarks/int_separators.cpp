@@ -1,35 +1,13 @@
-#include <algorithm>
 
-#include "../lmcut/lmcut.hpp"
-#include "cand_callback.hpp"
-#include "instance.hpp"
-#include "logger.hxx"
+#include "int_separators.hpp"
 
-[[nodiscard]]
-auto cand_cuts::add_lmcut_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const std::vector<unsigned int>& unused_actions)
-    -> unsigned int {
-    LMcut lmcut(inst);
+#include <vector>
 
-    std::vector<unsigned int> used_actions;
-    for (unsigned int i = 0, j = 0; i < inst.m; ++i) {
-        if (j < unused_actions.size() && unused_actions[j] == i) {
-            ++j;
-        } else {
-            used_actions.push_back(i);
-        }
-    }
+#include "lmcut.hpp"
+#include "utils.hpp"
 
-    const auto& [landmarks, lmcut_val] = lmcut.int_separation(used_actions, hmax::hmax_arbitrary);
-
-    for (const auto& landmark : landmarks) {
-        reject_with_lm_cut(context, landmark);
-    }
-
-    return landmarks.size();
-}
-
-void cand_cuts::landmark_minimalization(const hplus::instance& inst, std::vector<unsigned int>& landmark, binary_set unapplicable_actions,
-                                        binary_set reachable_state) {
+void int_lm_sep::landmark_minimalization(const hplus::instance& inst, std::vector<unsigned int>& landmark, binary_set unapplicable_actions,
+                                         binary_set reachable_state) {
     binary_set extension(inst.m);
     const auto& goal{inst.goal};
     for (const auto& act_i : landmark) {
@@ -90,29 +68,41 @@ void cand_cuts::landmark_minimalization(const hplus::instance& inst, std::vector
     }
 
     // Compute the landmark as the set of actions that are unused, but not in the extension
-    const auto iter = std::set_difference(landmark.begin(), landmark.end(), extension.begin(), extension.end(), landmark.begin());
-    landmark.resize(iter - landmark.begin());
+    std::erase_if(landmark, [&extension](const auto& elem) { return extension[elem]; });
 }
 
 [[nodiscard]]
-auto cand_cuts::add_comp_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const binary_set& unreachable_actions,
-                                const std::vector<unsigned int>& unused_actions, const binary_set& reachable_state) -> unsigned int {
+auto int_lm_sep::get_lmcut_violated_landmarks(const hplus::instance& inst, const std::vector<double>& xstar)
+    -> std::pair<bool, std::vector<std::vector<unsigned int>>> {
+    LMcut lmcut(inst);
+
+    std::vector<unsigned int> used_actions;
+    for (unsigned int act_i = 0; act_i < inst.m; ++act_i) {
+        if (xstar[act_i] > HPLUS_CPX_INT_ROUNDING) {
+            used_actions.push_back(act_i);
+        }
+    }
+
+    return lmcut.int_separation(used_actions, hmax::hmax_arbitrary);
+}
+
+[[nodiscard]]
+auto int_lm_sep::get_comp_violated_landmark(const hplus::instance& inst, const binary_set& unreachable_actions,
+                                            const std::vector<unsigned int>& unused_actions, const binary_set& reachable_state)
+    -> std::vector<unsigned int> {
     std::vector<unsigned int> landmark(unused_actions.begin(), unused_actions.end());
     landmark_minimalization(inst, landmark, unreachable_actions, reachable_state);
-    reject_with_lm_cut(context, landmark);
-    // LOG_DEBUG << "* Size: " << landmark.size();
-    return 1;
+    return landmark;
 }
 
 [[nodiscard]]
-auto cand_cuts::add_front_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const std::vector<unsigned int>& unused_actions,
-                                 const binary_set& reachable_state) -> unsigned int {
+auto int_lm_sep::get_front_violated_landmark(const hplus::instance& inst, const std::vector<unsigned int>& unused_actions,
+                                             const binary_set& reachable_state) -> std::vector<unsigned int> {
     std::vector<unsigned int> landmark;
     for (unsigned int act_i : unused_actions) {
         if (reachable_state.contains(inst.actions[act_i].pre) && !reachable_state.contains(inst.actions[act_i].eff)) {
             landmark.push_back(act_i);
         }
     }
-    reject_with_lm_cut(context, landmark);
-    return 1;
+    return landmark;
 }

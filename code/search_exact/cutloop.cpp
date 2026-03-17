@@ -1,7 +1,12 @@
+#include <math.h>
+
 #include <algorithm>
 
 #include "../cut_separators/relax_callback.hpp"
 #include "exact.hpp"
+#include "fract_separators.hpp"
+#include "hplus_algs.hpp"
+#include "limits.hxx"
 
 inline void init_cutloop(CPXENVptr& env, CPXLPptr& lp) { CPX_HANDLE_CALL(CPXchgprobtype(env, lp, CPXPROB_LP)); }
 
@@ -58,7 +63,8 @@ inline auto generate_cuts(CPXENVptr& env, CPXLPptr& lp, const std::vector<double
 
         // Adding landmark as new constraint
         if (exec.fract_cuts.find('m') != std::string::npos) {
-            const auto& [found_lm, landmark]{relax_cuts::get_r3_violated_landmark(exec, inst, relax_point, stats.total_act_in_lm, stats.total_n_lm)};
+            const auto& [found_lm,
+                         landmark]{fract_lm_sep::get_r3_violated_landmark(exec, inst, relax_point, stats.total_act_in_lm, stats.total_n_lm)};
             if (found_lm) {
                 ind = std::vector<int>(landmark.begin(), landmark.end());
                 val = std::vector<double>(landmark.size(), 1.0);
@@ -73,7 +79,7 @@ inline auto generate_cuts(CPXENVptr& env, CPXLPptr& lp, const std::vector<double
         }
         if (exec.fract_cuts.find('l') != std::string::npos) {
             const auto& [found_lm,
-                         landmarks]{relax_cuts::get_lmcut_violated_landmarks(exec, inst, relax_point, stats.total_act_in_lm, stats.total_n_lm)};
+                         landmarks]{fract_lm_sep::get_lmcut_violated_landmarks(exec, inst, relax_point, stats.total_act_in_lm, stats.total_n_lm)};
             if (found_lm) {
                 for (const auto& landmark : landmarks) {
                     ind = std::vector<int>(landmark.begin(), landmark.end());
@@ -101,10 +107,10 @@ inline auto generate_cuts(CPXENVptr& env, CPXLPptr& lp, const std::vector<double
                 for (const auto& cycle : cycles) {
                     begin.push_back(static_cast<int>(ind.size()));
                     rhs.push_back(static_cast<double>(cycle.size() - 1));
-                    std::copy(cycle.begin(), cycle.end(),
-                              std::back_inserter(ind));  // labels in the cycle are the indexes for the first adders in the cplex model
+                    std::ranges::copy(cycle,
+                                      std::back_inserter(ind));  // labels in the cycle are the indexes for the first adders in the cplex model
                     val.insert(val.end(), cycle.size(), 1.0);
-                    nnz += cycle.size();
+                    nnz += static_cast<int>(cycle.size());
                 }
                 CPX_HANDLE_CALL(
                     CPXaddrows(env, lp, 0, cycles.size(), nnz, rhs.data(), sense.data(), begin.data(), ind.data(), val.data(), nullptr, nullptr));
@@ -121,12 +127,16 @@ inline auto generate_cuts(CPXENVptr& env, CPXLPptr& lp, const std::vector<double
         while (inout_it <= exec.io_max_iter && new_cuts == 0) {
             inout_it++;
             std::vector<double> inout_relax_point;
-            if (inout_it == exec.io_max_iter) w = 0;
+            if (inout_it == exec.io_max_iter) {
+                w = 0;
+            }
             for (unsigned int i = 0; i < relax_point.size(); i++) {
                 inout_relax_point.push_back((relax_point[i] * (1 - w)) + (incumbent[i] * w));
             }
             add_cuts(inout_relax_point);
-            if (new_cuts == 0) w *= exec.io_weight_update;
+            if (new_cuts == 0) {
+                w *= exec.io_weight_update;
+            }
         }
 
         // Dynamic In-Out weight adjustment
@@ -172,7 +182,7 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
     std::vector<double> lb_history;
 
     const auto& repeat_cutloop = [&]() {
-        double current_lb;
+        double current_lb = NAN;
         CPX_HANDLE_CALL(CPXgetobjval(env, lp, &current_lb));
         lb_history.push_back(current_lb);
 
@@ -238,14 +248,14 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
     }
     while (repeat_cutloop() && !CHECK_STOP()) {
         std::vector<double> relax_point(ncols);
-        CPXgetx(env, lp, relax_point.data(), 0, ncols - 1);
+        CPXgetx(env, lp, relax_point.data(), 0, static_cast<int>(ncols - 1));
 
         // Fix numerical errors
-        for (auto& x : relax_point) {
-            if (x <= HPLUS_EPSILON) {
-                x = 0;
-            } else if (x >= 1 - HPLUS_EPSILON) {
-                x = 1;
+        for (auto& val : relax_point) {
+            if (val <= HPLUS_EPSILON) {
+                val = 0;
+            } else if (val >= 1 - HPLUS_EPSILON) {
+                val = 1;
             }
         }
 

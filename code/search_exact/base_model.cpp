@@ -1,11 +1,17 @@
+#include <algorithm>
+
 #include "exact.hpp"
+#include "hplus_algs.hpp"
 
 void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp) {
-    if (VERBOSE_BASIC()) LOG_INFO << "Building base model for exact search";
+    if (VERBOSE_BASIC()) {
+        LOG_INFO << "Building base model for exact search";
+    }
 
     auto stopcheck = []() {
-        if (CHECK_STOP()) [[unlikely]]
+        if (CHECK_STOP()) {
             throw timelimit_exception("Reached time limit.");
+        }
     };
 
     // ====================================================== //
@@ -75,8 +81,11 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplu
     std::vector<int> ind(inst.m + 1);
     std::vector<double> val(inst.m + 1);
     int nnz{0};
-    constexpr char sense_e{'E'}, sense_l{'L'}, sense_g{'G'};
-    constexpr double rhs_0{0}, rhs_1{1};
+    constexpr char sense_e{'E'};
+    constexpr char sense_l{'L'};
+    constexpr char sense_g{'G'};
+    constexpr double rhs_0{0};
+    constexpr double rhs_1{1};
     constexpr int begin{0};
 
     for (unsigned int var_i = 0; var_i < inst.n; var_i++) {
@@ -103,20 +112,22 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplu
         stopcheck();
     }
 
-    for (unsigned int p = 0; p < inst.n; p++) {
-        for (unsigned int q = 0; q < inst.n; q++) {
+    for (unsigned int fact_p = 0; fact_p < inst.n; fact_p++) {
+        for (unsigned int fact_q = 0; fact_q < inst.n; fact_q++) {
             nnz = 0;
-            ind[nnz] = get_var_idx(q);
+            ind[nnz] = get_var_idx(fact_q);
             val[nnz++] = -1;
-            for (const auto& act_i : inst.act_with_eff[p]) {
-                if (!inst.actions[act_i].pre[q]) continue;
+            for (const auto& act_i : inst.act_with_eff[fact_p]) {
+                if (!inst.actions[act_i].pre[fact_q]) {
+                    continue;
+                }
                 unsigned int var_count =
-                    static_cast<unsigned int>(std::find(inst.actions[act_i].eff_sparse.begin(), inst.actions[act_i].eff_sparse.end(), p) -
+                    static_cast<unsigned int>(std::find(inst.actions[act_i].eff_sparse.begin(), inst.actions[act_i].eff_sparse.end(), fact_p) -
                                               inst.actions[act_i].eff_sparse.begin());
                 ind[nnz] = get_fa_idx(act_i, var_count);
                 val[nnz++] = 1;
             }
-            // if nnz == 1 than we have -p <= 0, hence it's always true, we can ignore this constraint
+            // if nnz == 1 than we have -fact_p <= 0, hence it's always true, we can ignore this constraint
             if (nnz != 1) {
                 stats.const_base++;
                 CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, nnz, &rhs_0, &sense_l, &begin, ind.data(), val.data(), nullptr, nullptr));
@@ -167,11 +178,15 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplu
 }
 
 void parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp, const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats) {
-    if (VERBOSE_BASIC()) LOG_INFO << "Parsing CPLEX status";
+    if (VERBOSE_BASIC()) {
+        LOG_INFO << "Parsing CPLEX status";
+    }
     std::vector<double> tmp(1);
     switch (CPXgetx(env, lp, tmp.data(), 0, 0)) {
         case CPXERR_NO_SOLN:  // No solution found
-            if (exec.ws == hplus::warmstart::NONE) inst.sol_s = hplus::solution_status::NOTFOUND;
+            if (exec.ws == hplus::warmstart::NONE) {
+                inst.sol_s = hplus::solution_status::NOTFOUND;
+            }
             return;
         default:
             break;
@@ -192,7 +207,9 @@ void parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp, const hplus::e
         case CPXMIP_TIME_LIM_INFEAS:  // exceeded time limit, no intermediate solution found
             [[fallthrough]];
         case CPXMIP_ABORT_INFEAS:  // terminated by user, not found solution
-            if (exec.ws == hplus::warmstart::NONE) inst.sol_s = hplus::solution_status::NOTFOUND;
+            if (exec.ws == hplus::warmstart::NONE) {
+                inst.sol_s = hplus::solution_status::NOTFOUND;
+            }
             break;
         case CPXMIP_INFEASIBLE:  // proven to be infeasible
             inst.sol_s = hplus::solution_status::INFEAS;
@@ -227,7 +244,7 @@ void parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp, const hplus::e
 
 void store_cplex_solution(hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, const CPXENVptr& env, const CPXLPptr& lp) {
     std::vector<double> plan(inst.m + inst.nfadd, 0.0);
-    switch (int code = CPXgetx(env, lp, plan.data(), 0, inst.m + inst.nfadd - 1)) {
+    switch (int code = CPXgetx(env, lp, plan.data(), 0, static_cast<int>(inst.m + inst.nfadd - 1))) {
         case CPXERR_NO_MEMORY:
             [[fallthrough]];
         case CPXERR_THREAD_FAILED:
@@ -253,7 +270,9 @@ void store_cplex_solution(hplus::execution& exec, hplus::instance& inst, hplus::
                     break;
                 }
             }
-            if (set_zero) plan[act_i] = 0;
+            if (set_zero) {
+                plan[act_i] = 0;
+            }
         }
     }
 
@@ -261,31 +280,36 @@ void store_cplex_solution(hplus::execution& exec, hplus::instance& inst, hplus::
     std::vector<unsigned int> cpx_result;
     cpx_result.reserve(inst.m);
     for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
-        if (plan[act_i] > HPLUS_CPX_INT_ROUNDING) cpx_result.push_back(act_i);
+        if (plan[act_i] > HPLUS_CPX_INT_ROUNDING) {
+            cpx_result.push_back(act_i);
+        }
     }
 
     std::vector<unsigned int> solution;
     solution.reserve(inst.m);
-    binary_set remaining{static_cast<unsigned int>(cpx_result.size()), true}, state{inst.n};
+    binary_set remaining{static_cast<unsigned int>(cpx_result.size()), true};
+    binary_set state{inst.n};
     unsigned int cost{0};
 
     // Check we are getting ALL the actions that cplex uses
     while (!remaining.empty()) {
         bool intcheck{false};
-        for (const auto& i : remaining) {
-            if (!state.contains(inst.actions[cpx_result[i]].pre)) continue;
+        for (const auto& idx : remaining) {
+            if (!state.contains(inst.actions[cpx_result[idx]].pre)) {
+                continue;
+            }
 
-            remaining.remove(i);
-            state |= inst.actions[cpx_result[i]].eff;
-            solution.push_back(cpx_result[i]);
+            remaining.remove(idx);
+            state |= inst.actions[cpx_result[idx]].eff;
+            solution.push_back(cpx_result[idx]);
             intcheck = true;
-            cost += inst.actions[cpx_result[i]].cost;
+            cost += inst.actions[cpx_result[idx]].cost;
         }
         ASSERT(intcheck);
     }
 
     // store solution
-    hplus::solution sol{solution, cost};
+    hplus::solution sol{.sequence = solution, .cost = cost};
     hplus::update_sol(exec, inst, sol, stats);
 }
 
@@ -294,11 +318,15 @@ void exact::get_cplex_solution(hplus::execution& exec, hplus::instance& inst, hp
 
     stats.nodes = CPXgetnodecnt(env, lp);
 
-    if (inst.sol_s > hplus::solution_status::FEAS) return;
+    if (inst.sol_s > hplus::solution_status::FEAS) {
+        return;
+    }
 
     CPX_HANDLE_CALL(CPXgetbestobjval(env, lp, &stats.lower_bound));
-    if (stats.lower_bound < 0) stats.lower_bound = 0;
+    stats.lower_bound = std::max<double>(stats.lower_bound, 0);
 
-    if (VERBOSE_BASIC()) LOG_INFO << "Reading CPLEX solution";
+    if (VERBOSE_BASIC()) {
+        LOG_INFO << "Reading CPLEX solution";
+    }
     store_cplex_solution(exec, inst, stats, env, lp);
 }

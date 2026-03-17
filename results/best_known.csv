@@ -2455,7 +2455,7 @@ transport-opt08-strips-p25,True,549.0
 transport-opt08-strips-p26,True,514.0
 transport-opt08-strips-p27,True,528.0
 transport-opt08-strips-p28,True,641.0
-transport-opt08-strips-p29,False,719.0
+transport-opt08-strips-p29,True,719.0
 transport-opt08-strips-p30,True,665.0
 transport-opt11-strips-p01,True,505.0
 transport-opt11-strips-p02,True,165.0

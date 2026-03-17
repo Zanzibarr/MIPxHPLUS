@@ -1,4 +1,5 @@
 #include "heuristic.hpp"
+#include "limits.hxx"
 
 void heur::greedy(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats,
                   std::pair<bool, unsigned int> (*greedy_choice)(const hplus::instance& inst, const std::list<unsigned int>&, const binary_set&,
@@ -9,7 +10,9 @@ void heur::greedy(const hplus::execution& exec, hplus::instance& inst, hplus::st
 
     std::list<unsigned int> candidates;
     for (unsigned int act_i = 0; act_i < inst.m; ++act_i) {
-        if (inst.actions[act_i].pre_sparse.empty()) candidates.push_back(act_i);
+        if (inst.actions[act_i].pre_sparse.empty()) {
+            candidates.push_back(act_i);
+        }
     }
 
     binary_set state{inst.n};
@@ -43,11 +46,14 @@ void heur::greedy(const hplus::execution& exec, hplus::instance& inst, hplus::st
 
         // add new actions to the candidates
         const auto& new_state = state | inst.actions[choice].eff;
-        for (const auto& p : inst.actions[choice].eff_sparse) {
-            if (state[p]) continue;
-            for (const auto& act_i : inst.act_with_pre[p]) {
-                if (new_state.contains(inst.actions[act_i].pre) && std::find(candidates.begin(), candidates.end(), act_i) == candidates.end())
+        for (const auto& eff : inst.actions[choice].eff_sparse) {
+            if (state[eff]) {
+                continue;
+            }
+            for (const auto& act_i : inst.act_with_pre[eff]) {
+                if (new_state.contains(inst.actions[act_i].pre) && std::find(candidates.begin(), candidates.end(), act_i) == candidates.end()) {
                     candidates.push_back(act_i);
+                }
             }
         }
 
@@ -58,8 +64,9 @@ void heur::greedy(const hplus::execution& exec, hplus::instance& inst, hplus::st
         sol.cost += inst.actions[choice].cost;
         state = new_state;
 
-        if (CHECK_STOP()) [[unlikely]]
-            throw timelimit_exception("Reached time limit.");
+        if (CHECK_STOP()) {
+            [[unlikely]] throw timelimit_exception("Reached time limit.");
+        }
     }
 
     hplus::update_sol(exec, inst, sol, stats);
