@@ -11,7 +11,6 @@
 #include <cplex.h>
 
 #include "cand_callback.hpp"
-#include "hplus_algs.hpp"
 #include "relax_callback.hpp"
 
 namespace callbacks {
@@ -43,16 +42,14 @@ static auto CPXPUBLIC callback_hub(CPXCALLBACKCONTEXTptr context, CPXLONG contex
                                thread_data[thread_id].cand_time, thread_data[thread_id].cand_calls);
             break;
         default:
-            LOG_ERROR << "Unhandled CPLEX callback context: " << contextid;
+            LOG_ERROR_S("Unhandled CPLEX callback context: " + std::to_string(contextid));
     }
 
     return 0;
 }
 
 inline void set_cplex_callbacks(hplus::execution& exec, callback_userhandle& userhandle, CPXENVptr& env, CPXLPptr& lp) {
-    if (VERBOSE_BASIC()) {
-        LOG_INFO << "Setting up CPLEX callbacks";
-    }
+    LOG_INFO_S("Setting up CPLEX callbacks");
 
     for (unsigned int _ = 0; _ < exec.threads; ++_) {
         thread_data thr_data{

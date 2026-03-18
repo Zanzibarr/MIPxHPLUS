@@ -8,8 +8,9 @@
 
 #include <map>
 
-#include "hplus_algs.hpp"
+#include "execution.hpp"
 #include "lmcut.hpp"
+#include "statistics.hpp"
 
 namespace prep {
 
@@ -40,9 +41,7 @@ inline void lmcut_landmarks_extraction(const hplus::execution& exec, hplus::inst
         for (const auto& landmark : landmarks) {
             inst.landmarks.push_back(std::move(landmark));
         }
-        if (VERBOSE_BASIC()) {
-            LOG_INFO << "Computed a lm-cut value of: " << lmcut_value << " in " << diff << "s";
-        }
+        LOG_INFO_S("Computed a lm-cut value of: " + std::to_string(lmcut_value) + " in " + std::to_string(diff) + "s");
     }
 }
 
@@ -77,9 +76,7 @@ inline void prepare_optimization_helpers(hplus::instance& inst) {
 }
 
 inline void preprocess(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats) {
-    if (VERBOSE_BASIC()) {
-        LOG_INFO << "Preprocessing instance";
-    }
+    LOG_INFO_S("Preprocessing instance");
 
     double start_time = GET_TIME();
     stats.preprocessing = static_cast<double>(exec.timelimit) - start_time;

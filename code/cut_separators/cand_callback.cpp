@@ -86,7 +86,7 @@ static auto candidatepoint_info(const hplus::instance& inst, const std::vector<d
  * This method is called when there's a solution that reaches the goal, but there are unreachable actions, so there's a loop: we can reject this
  * solution and easily compute the better solution without using the unreachable actions (and other if some optimizations are applicable)
  */
-static void reject_with_new_sol(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats,
+static void reject_with_new_sol(CPXCALLBACKCONTEXTptr context, hplus::instance& inst, hplus::statistics& stats,
                                 const std::vector<unsigned int>& reachable_action_sequence) {
     unsigned int ncols{inst.m + inst.nfadd + inst.n};
     std::vector<int> ind(ncols);
@@ -121,7 +121,7 @@ static void reject_with_new_sol(CPXCALLBACKCONTEXTptr context, const hplus::exec
     }
 
     // Store the new solution
-    hplus::update_sol(exec, inst, sol, stats);
+    hplus::update_sol(inst, sol, stats);
 
     // Give CPLEX the better solution
     CPX_HANDLE_CALL(CPXcallbackpostheursoln(context, ncols, ind.data(), val.data(), static_cast<double>(cost), CPXCALLBACKSOLUTION_NOCHECK));
@@ -156,7 +156,7 @@ void callbacks::candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::e
             cost += inst.actions[act_i].cost;
         }
         // Check wether this is a better solution than the one we already have
-        hplus::update_sol(exec, inst, hplus::solution{.sequence = reachable_action_sequence, .cost = cost, .updating = false}, stats);
+        hplus::update_sol(inst, hplus::solution{.sequence = reachable_action_sequence, .cost = cost, .updating = false}, stats);
         cand_time += GET_TIME() - start_time;
         return;
     }
@@ -166,7 +166,7 @@ void callbacks::candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::e
     // NOTE!: This rejects the candidate solution, BUT we post another one that is guaranteed to be a better one (either only less actions, or even a
     // better incumbent)
     if (reachable_state.superset_of(inst.goal)) {
-        reject_with_new_sol(context, exec, inst, stats, reachable_action_sequence);
+        reject_with_new_sol(context, inst, stats, reachable_action_sequence);
         cand_time += GET_TIME() - start_time;
         return;
     }
@@ -189,7 +189,7 @@ void callbacks::candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::e
             lmc_violated = lmcut_landmarks.size();
             landmarks.insert(landmarks.end(), lmcut_landmarks.begin(), lmcut_landmarks.end());
             // } else {
-            //     LOG_WARNING << "Heuristic int lm separator didn't find any landmark... trying \"comp\" separator";
+            //     LOG_WARN_S("Heuristic int lm separator didn't find any landmark... trying \"comp\" separator");
         }
     }
     if (exec.cand_cuts.find('c') != std::string::npos || lmc_violated == 0) {

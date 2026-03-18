@@ -84,13 +84,13 @@ static inline auto is_flow_conservative(const std::vector<std::vector<network_ed
         }
         if (std::abs(flow_at[u]) > HPLUS_EPSILON) {
             result = false;
-            LOG_WARNING << "Flow is not conserved at node " << u;
+            LOG_ERROR_S("Flow is not conserved at node " + std::to_string(u));
         }
     }
 
     if (std::abs(flow_at[source] + flow_at[sink]) > HPLUS_EPSILON) {
         result = false;
-        LOG_WARNING << "Flow outoging from source is not the same going into the sink";
+        LOG_ERROR_S("Flow outoging from source is not the same going into the sink");
     }
 
     return result;

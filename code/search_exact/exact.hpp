@@ -11,21 +11,20 @@
 #include <new>
 
 #include "callbacks.hpp"
-#include "hplus_algs.hpp"
 #include "limits.hxx"
 
 namespace tl {
-void add_acyclicity_constraints(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp);
-void post_warm_start(const hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp);
+void add_acyclicity_constraints(hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp);
+void post_warm_start(hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp);
 }  // namespace tl
 
 namespace ve {
-void add_acyclicity_constraints(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp);
-void post_warm_start(const hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp);
+void add_acyclicity_constraints(hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp);
+void post_warm_start(hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp);
 }  // namespace ve
 
 namespace cuts {
-void post_warm_start(const hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp);
+void post_warm_start(hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp);
 }  // namespace cuts
 
 namespace cutloop {
@@ -35,9 +34,7 @@ void cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, const hplus::
 namespace exact {
 
 inline void init_cplex(hplus::execution& exec, CPXENVptr& env, CPXLPptr& lp) {
-    if (VERBOSE_BASIC()) {
-        LOG_INFO << "Initializing CPLEX environment";
-    }
+    LOG_INFO_S("Initializing CPLEX environment");
 
     int cpxerror = 0;
     env = CPXopenCPLEX(&cpxerror);
@@ -68,34 +65,34 @@ void build_base_model(hplus::execution& exec, hplus::instance& inst, hplus::stat
 inline void add_acyclicity_constraints(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp) {
     switch (exec.alg) {
         case hplus::algorithm::TL:
-            tl::add_acyclicity_constraints(exec, inst, stats, env, lp);
+            tl::add_acyclicity_constraints(inst, stats, env, lp);
             break;
         case hplus::algorithm::VE:
-            ve::add_acyclicity_constraints(exec, inst, stats, env, lp);
+            ve::add_acyclicity_constraints(inst, stats, env, lp);
             break;
         default:
-            LOG_ERROR << "Unhandled algorithm for acyclicity constraints: " << static_cast<int>(exec.alg);
+            LOG_ERROR_S("Unhandled algorithm for acyclicity constraints: " + std::to_string(static_cast<int>(exec.alg)));
     }
 }
 
 inline void post_warm_start(const hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
     if (exec.cutoff >= 0) {
-        LOG_INFO << "Setting cutoff value of " << exec.cutoff;
+        LOG_INFO_S("Setting cutoff value of " + std::to_string(exec.cutoff));
         CPX_HANDLE_CALL(CPXsetdblparam(env, CPXPARAM_MIP_Tolerances_UpperCutoff, exec.cutoff));
     }
 
     switch (exec.alg) {
         case hplus::algorithm::TL:
-            tl::post_warm_start(exec, inst, env, lp);
+            tl::post_warm_start(inst, env, lp);
             break;
         case hplus::algorithm::VE:
-            ve::post_warm_start(exec, inst, env, lp);
+            ve::post_warm_start(inst, env, lp);
             break;
         case hplus::algorithm::CUTS:
-            cuts::post_warm_start(exec, inst, env, lp);
+            cuts::post_warm_start(inst, env, lp);
             break;
         default:
-            LOG_ERROR << "Unhandled algorithm for acyclicity constraints: " << static_cast<int>(exec.alg);
+            LOG_ERROR_S("Unhandled algorithm for acyclicity constraints: " + std::to_string(static_cast<int>(exec.alg)));
     }
 }
 
@@ -120,9 +117,7 @@ inline void run_cplex(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, hplu
 
     double start_time{GET_TIME()};
     stats.cplex_execution = static_cast<double>(exec.timelimit) - start_time;
-    if (VERBOSE_BASIC()) {
-        LOG_INFO << "Running CPLEX MIP";
-    }
+    LOG_INFO_S("Running CPLEX MIP");
 
     CPX_HANDLE_CALL(CPXmipopt(env, lp));
 
@@ -130,9 +125,7 @@ inline void run_cplex(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, hplu
 }
 
 inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats) {
-    if (VERBOSE_BASIC()) {
-        LOG_INFO << "Running exact search algorithm";
-    }
+    LOG_INFO_S("Running exact search algorithm");
 
     ASSERT(inst.sol_s != hplus::solution_status::INFEAS);
 
@@ -179,7 +172,7 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
         run_cplex(env, lp, exec, stats);
 
     } catch (std::bad_alloc& e) {
-        LOG_WARNING << "OUT OF MEMORY";
+        LOG_WARN_S("OUT OF MEMORY");
     }
 
     // ====================================================== //

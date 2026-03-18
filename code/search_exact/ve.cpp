@@ -5,14 +5,11 @@
 #include "algorithms.hpp"
 #include "bs_utils.hpp"
 #include "exact.hpp"
-#include "hplus_algs.hpp"
 #include "limits.hxx"
 #include "pq.hxx"
 
-void ve::add_acyclicity_constraints(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp) {
-    if (VERBOSE_BASIC()) {
-        LOG_INFO << "Adding acyclicity constraints for VE model";
-    }
+void ve::add_acyclicity_constraints(hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp) {
+    LOG_INFO_S("Adding acyclicity constraints for VE model");
 
     const auto stopcheck = []() {
         if (CHECK_STOP()) {
@@ -238,10 +235,8 @@ void ve::add_acyclicity_constraints(const hplus::execution& exec, hplus::instanc
     }
 }
 
-void ve::post_warm_start(const hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
-    if (VERBOSE_BASIC()) {
-        LOG_INFO << "Posting warm start to VE model";
-    }
+void ve::post_warm_start(hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
+    LOG_INFO_S("Posting warm start to VE model");
 
     BinarySet state{inst.n};
     const auto& warm_start{inst.sol.sequence};

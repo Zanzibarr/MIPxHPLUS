@@ -1,10 +1,8 @@
 #include "bs_utils.hpp"
 #include "exact.hpp"
 
-void cuts::post_warm_start(const hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
-    if (VERBOSE_BASIC()) {
-        LOG_INFO << "Posting warm start to CUTS model";
-    }
+void cuts::post_warm_start(hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
+    LOG_INFO_S("Posting warm start to CUTS model");
 
     BinarySet state{inst.n};
     const auto& warm_start{inst.sol.sequence};

@@ -1,6 +1,7 @@
 #include "bs.hxx"
 #include "bs_utils.hpp"
 #include "heuristic.hpp"
+#include "hplus_algs.hpp"
 #include "limits.hxx"
 
 void heur::greedy(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats,
@@ -71,7 +72,7 @@ void heur::greedy(const hplus::execution& exec, hplus::instance& inst, hplus::st
         }
     }
 
-    hplus::update_sol(exec, inst, sol, stats);
+    hplus::update_sol(inst, sol, stats);
     inst.sol_s = hplus::solution_status::FEAS;
     stats.heur_cost = sol.cost;
     stats.status = HPLUS_STATUS_FEAS;

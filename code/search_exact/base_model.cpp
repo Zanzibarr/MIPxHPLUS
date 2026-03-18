@@ -6,9 +6,7 @@
 #include "hplus_algs.hpp"
 
 void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp) {
-    if (VERBOSE_BASIC()) {
-        LOG_INFO << "Building base model for exact search";
-    }
+    LOG_INFO_S("Building base model for exact search");
 
     auto stopcheck = []() {
         if (CHECK_STOP()) {
@@ -180,9 +178,7 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplu
 }
 
 void parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp, const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats) {
-    if (VERBOSE_BASIC()) {
-        LOG_INFO << "Parsing CPLEX status";
-    }
+    LOG_INFO_S("Parsing CPLEX status");
     std::vector<double> tmp(1);
     switch (CPXgetx(env, lp, tmp.data(), 0, 0)) {
         case CPXERR_NO_SOLN:  // No solution found
@@ -222,7 +218,7 @@ void parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp, const hplus::e
             inst.sol_s = hplus::solution_status::OPT;
             break;
         default:  // unhandled status
-            LOG_ERROR << "Error in parse_cpx_status: unhandled cplex status (" << status << ")";
+            LOG_ERROR_S("Error in parse_cpx_status: unhandled cplex status (" + std::to_string(status) + ")");
             break;
     }
 
@@ -240,7 +236,7 @@ void parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp, const hplus::e
             stats.status = HPLUS_STATUS_NOTFOUND;
             break;
         default:
-            LOG_ERROR << "Unhandled solution status: " << static_cast<int>(inst.sol_s);
+            LOG_ERROR_S("Unhandled solution status: " + std::to_string(static_cast<int>(inst.sol_s)));
     }
 }
 
@@ -257,7 +253,8 @@ void store_cplex_solution(hplus::execution& exec, hplus::instance& inst, hplus::
         case 0:
             break;
         default:
-            LOG_ERROR << "Unhandled CPLEX error code: " << code << " at " << __func__ << "(): " << __FILE__ << ":" << __LINE__;
+            LOG_ERROR_S("Unhandled CPLEX error code: " + std::to_string(code) + " at " + __func__ + "(): " + __FILE__ + ":" +
+                        std::to_string(__LINE__));
             break;
     }
 
@@ -312,7 +309,7 @@ void store_cplex_solution(hplus::execution& exec, hplus::instance& inst, hplus::
 
     // store solution
     hplus::solution sol{.sequence = solution, .cost = cost};
-    hplus::update_sol(exec, inst, sol, stats);
+    hplus::update_sol(inst, sol, stats);
 }
 
 void exact::get_cplex_solution(hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, const CPXENVptr& env, const CPXLPptr& lp) {
@@ -327,8 +324,6 @@ void exact::get_cplex_solution(hplus::execution& exec, hplus::instance& inst, hp
     CPX_HANDLE_CALL(CPXgetbestobjval(env, lp, &stats.lower_bound));
     stats.lower_bound = std::max<double>(stats.lower_bound, 0);
 
-    if (VERBOSE_BASIC()) {
-        LOG_INFO << "Reading CPLEX solution";
-    }
+    LOG_INFO_S("Reading CPLEX solution");
     store_cplex_solution(exec, inst, stats, env, lp);
 }

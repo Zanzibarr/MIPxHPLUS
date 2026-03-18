@@ -419,15 +419,15 @@ void LMcut::check_landmark(const std::vector<unsigned int>& landmark) {
     }
 
     if (found) {  // If this was a valid landmark we wouldn't be able to find a valid plan to the goal
-        LOG_WARNING << vtos(landmark, landmark.size());
-        LOG_WARNING << "inst_->m: " << inst_->m;
-        LOG_WARNING << "GOAL:" << std::string(inst_->goal);
+        LOG_WARN_S(vtos(landmark, landmark.size()));
+        LOG_WARN_S("inst_->m: " + std::to_string(inst_->m));
+        LOG_WARN_S("GOAL:" + std::string(inst_->goal));
         for (const auto& act_i : landmark) {
-            LOG_WARNING << "Act " << act_i;
-            LOG_WARNING << "Cost: " << inst_->actions[act_i].cost;
-            LOG_WARNING << "PRE: " << vtos(inst_->actions[act_i].pre_sparse);
-            LOG_WARNING << "EFF: " << vtos(inst_->actions[act_i].eff_sparse);
+            LOG_WARN_S("Act " + std::to_string(act_i));
+            LOG_WARN_S("Cost: " + std::to_string(inst_->actions[act_i].cost));
+            LOG_WARN_S("PRE: " + vtos(inst_->actions[act_i].pre_sparse));
+            LOG_WARN_S("EFF: " + vtos(inst_->actions[act_i].eff_sparse));
         }
-        LOG_ERROR << "Found invalid landmark.";
+        LOG_ERROR_S("Found invalid landmark.");
     }
 }

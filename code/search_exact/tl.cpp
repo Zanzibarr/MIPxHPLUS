@@ -1,11 +1,8 @@
 #include "bs_utils.hpp"
 #include "exact.hpp"
-#include "hplus_algs.hpp"
 
-void tl::add_acyclicity_constraints(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp) {
-    if (VERBOSE_BASIC()) {
-        LOG_INFO << "Adding acyclicity constraints for TL model";
-    }
+void tl::add_acyclicity_constraints(hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp) {
+    LOG_INFO_S("Adding acyclicity constraints for TL model");
 
     // ====================================================== //
     // =================== CPLEX VARIABLES ================== //
@@ -58,10 +55,8 @@ void tl::add_acyclicity_constraints(const hplus::execution& exec, hplus::instanc
     }
 }
 
-void tl::post_warm_start(const hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
-    if (VERBOSE_BASIC()) {
-        LOG_INFO << "Posting warm start to TL model";
-    }
+void tl::post_warm_start(hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
+    LOG_INFO_S("Posting warm start to TL model");
 
     BinarySet state{inst.n};
     const auto& warm_start{inst.sol.sequence};

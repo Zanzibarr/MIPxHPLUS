@@ -59,7 +59,7 @@ inline void init(statistics& stats) {
 }
 
 inline void print(const statistics& stats) {
-    LOG << "---------------------- Statistics ----------------------";
+    LOG_S("---------------------- Statistics ----------------------");
     LOG << " >> Status              " << std::setw(28) << stats.status << " <<";
     LOG << " >> Facts prep          " << std::setw(28) << stats.n_prep << " <<";
     LOG << " >> Acts prep           " << std::setw(28) << stats.m_prep << " <<";
@@ -90,7 +90,7 @@ inline void print(const statistics& stats) {
     LOG << " >> Cutloop time        " << std::setw(27) << std::fixed << std::setprecision(4) << stats.cutloop << "s <<";
     LOG << " >> CPLEX time          " << std::setw(27) << std::fixed << std::setprecision(4) << stats.cplex_execution << "s <<";
     LOG << " >> Total time          " << std::setw(27) << std::fixed << std::setprecision(4) << stats.total << "s <<";
-    LOG << "--------------------------------------------------------";
+    LOG_S("--------------------------------------------------------");
 }
 
 }  // namespace hplus

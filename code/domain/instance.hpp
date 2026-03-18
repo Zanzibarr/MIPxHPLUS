@@ -69,7 +69,7 @@ inline void init(instance& inst) {
 }
 
 inline void print(const instance& inst) {
-    LOG << "----------------- Info on the instance -----------------";
+    LOG_S("----------------- Info on the instance -----------------");
     if (!inst.actions.empty()) {
         LOG << "Metric:                             " << std::setw(20)
             << (inst.equal_costs ? (inst.actions[0].cost == 1 ? "unitary costs" : "constant costs") : "integer costs");
@@ -77,32 +77,34 @@ inline void print(const instance& inst) {
     LOG << "# facts:                                      " << std::setw(10) << inst.n;
     LOG << "# actions:                                    " << std::setw(10) << inst.m;
     LOG << "# first adders:                               " << std::setw(10) << inst.nfadd;
-    LOG << "--------------------------------------------------------";
+    LOG_S("--------------------------------------------------------");
 }
 
 inline void print_sol(instance& inst) {
     if (inst.sol.updating) {
-        LOG_WARNING << "Execution terminated while updating the solution and the solution got lost";
+        LOG_WARN_S("Execution terminated while updating the solution and the solution got lost");
         inst.sol_s = solution_status::LOST;
     }
     switch (inst.sol_s) {
         case solution_status::LOST:
             break;
         case solution_status::INFEAS:
-            LOG << "The problem is infeasible";
+            LOG_S("The problem is infeasible");
             break;
         case solution_status::NOTFOUND:
-            LOG << "No solution found within memory and time limits";
+            LOG_S("No solution found within memory and time limits");
             break;
         case solution_status::FEAS:
-            LOG << "The solution found has not been proven optimal";
+            LOG_S("The solution found has not been proven optimal");
             [[fallthrough]];
         case solution_status::OPT:
-            LOG << "Solution cost: " << inst.sol.cost;
-            // for (const auto& act_idx : inst.sol.sequence) LOG << "(" << inst.actions_names[act_idx] << ")";
+            LOG_S("Solution cost: " + std::to_string(inst.sol.cost));
+            // for (const auto& act_idx : inst.sol.sequence) {
+            //     LOG_S("(" + inst.actions_names[act_idx] + ")");
+            // }
             break;
         default:
-            LOG_ERROR << "Unhandled solution status in hplus::print_sol(hplus::instance): " << static_cast<int>(inst.sol_s);
+            LOG_ERROR_S("Unhandled solution status in hplus::print_sol(hplus::instance): " + std::to_string(static_cast<int>(inst.sol_s)));
     }
 }
 }  // namespace hplus

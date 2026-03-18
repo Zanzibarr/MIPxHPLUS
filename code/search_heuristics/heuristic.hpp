@@ -9,8 +9,11 @@
 #include <list>
 #include <stack>
 
-#include "hplus_algs.hpp"
+#include "bs.hxx"
+#include "execution.hpp"
+#include "instance.hpp"
 #include "pq.hxx"
+#include "statistics.hpp"
 
 namespace heur {
 
@@ -56,9 +59,7 @@ void init_htype_values(const hplus::instance& inst, const std::list<unsigned int
                        priority_queue<double>& pq, double (*h_eqtype)(double, double));
 
 inline void heuristic(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats) {
-    if (VERBOSE_BASIC()) {
-        LOG_INFO << "Running heuristic search algorithm";
-    }
+    LOG_INFO_S("Running heuristic search algorithm");
 
     double start_time = GET_TIME();
     stats.heur_time = static_cast<double>(exec.timelimit) - start_time;
@@ -77,7 +78,7 @@ inline void heuristic(const hplus::execution& exec, hplus::instance& inst, hplus
             greedy(exec, inst, stats, greedy_choice_hadd);
             break;
         default:
-            LOG_ERROR << "Unhandled algorithm type in heuristic: " << static_cast<int>(exec.ws);
+            LOG_ERROR_S("Unhandled algorithm type in heuristic: " + std::to_string(static_cast<int>(exec.ws)));
     }
 
     stats.heur_time = GET_TIME() - start_time;

@@ -5,7 +5,6 @@
 #include "bs_utils.hpp"
 #include "exact.hpp"
 #include "fract_separators.hpp"
-#include "hplus_algs.hpp"
 #include "limits.hxx"
 #include "relax_callback.hpp"
 
@@ -42,7 +41,7 @@ inline void solve_relaxation(CPXENVptr& env, CPXLPptr& lp, const hplus::executio
         case CPX_STAT_ABORT_USER:
             break;
         default:
-            LOG_ERROR << "Error in solve_relaxation: unhandled cplex status (" << status << ")";
+            LOG_ERROR_S("Error in solve_relaxation: unhandled cplex status (" + std::to_string(status) + ")");
     }
 }
 
@@ -170,7 +169,7 @@ inline void pruning(CPXENVptr& env, CPXLPptr& lp, int base_constraints) {
 }
 
 void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, const hplus::instance& inst, hplus::statistics& stats) {
-    LOG_INFO << "Running custom Cut-Loop";
+    LOG_INFO_S("Running custom Cut-Loop");
 
     double start_time{GET_TIME()};
     stats.cutloop = static_cast<double>(exec.timelimit) - start_time;
@@ -244,9 +243,7 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
     double inout_w = exec.io_weight;
 
     solve_relaxation(env, lp, exec, stats);
-    if (VERBOSE_BASIC()) {
-        LOG_INFO << "Lower bound at start of cutloop: " << stats.lower_bound;
-    }
+    LOG_INFO_S("Lower bound at start of cutloop: " + std::to_string(stats.lower_bound));
     while (repeat_cutloop() && !CHECK_STOP()) {
         std::vector<double> relax_point(ncols);
         CPXgetx(env, lp, relax_point.data(), 0, static_cast<int>(ncols - 1));
@@ -276,9 +273,7 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
         stats.cutloop_it = iteration;
     }
 
-    if (VERBOSE_BASIC()) {
-        LOG_INFO << "Lower bound at end of cutloop: " << stats.lower_bound;
-    }
+    LOG_INFO_S("Lower bound at end of cutloop: " + std::to_string(stats.lower_bound));
 
     // Purging of slack constraints (if we exited due to time limit, we might not have a full solution, so pruning constraints might remove more than
     // necessary)
