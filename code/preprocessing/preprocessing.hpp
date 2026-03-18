@@ -17,9 +17,9 @@ void landmark_extraction(hplus::instance& inst, std::vector<std::vector<unsigned
 
 void first_adders_extraction(hplus::instance& inst, std::vector<std::vector<unsigned int>>& landmarks);
 
-void relevance_analysis_backward(hplus::instance& inst, binary_set& relevant_variables);
+void relevance_analysis_backward(hplus::instance& inst, BinarySet& relevant_variables);
 
-void relevance_analysis_forward(hplus::instance& inst, binary_set& relevant_variables);
+void relevance_analysis_forward(hplus::instance& inst, BinarySet& relevant_variables);
 
 void dominated_actions_extraction(hplus::instance& inst, const std::vector<std::vector<unsigned int>>& landmarks);
 
@@ -47,10 +47,10 @@ inline void lmcut_landmarks_extraction(const hplus::execution& exec, hplus::inst
 }
 
 inline void prepare_preprocessing(hplus::instance& inst) {
-    inst.fixed_facts = binary_set{inst.n};
-    inst.fixed_actions = binary_set{inst.m};
-    inst.eliminated_facts = binary_set{inst.n};
-    inst.eliminated_actions = binary_set{inst.m};
+    inst.fixed_facts = BinarySet{inst.n};
+    inst.fixed_actions = BinarySet{inst.m};
+    inst.eliminated_facts = BinarySet{inst.n};
+    inst.eliminated_actions = BinarySet{inst.m};
 }
 
 inline void prepare_optimization_helpers(hplus::instance& inst) {
@@ -72,8 +72,8 @@ inline void prepare_optimization_helpers(hplus::instance& inst) {
         }
     }
 
-    inst.eliminated_facts = binary_set{1};
-    inst.eliminated_actions = binary_set{1};
+    inst.eliminated_facts = BinarySet{1};
+    inst.eliminated_actions = BinarySet{1};
 }
 
 inline void preprocess(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats) {
@@ -85,7 +85,7 @@ inline void preprocess(const hplus::execution& exec, hplus::instance& inst, hplu
     stats.preprocessing = static_cast<double>(exec.timelimit) - start_time;
 
     std::vector<std::vector<unsigned int>> landmarks(inst.n);
-    binary_set relevant_variables(inst.n);
+    BinarySet relevant_variables(inst.n);
 
     landmark_extraction(inst, landmarks);
     first_adders_extraction(inst, landmarks);

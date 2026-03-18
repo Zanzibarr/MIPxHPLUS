@@ -294,7 +294,7 @@ auto LMcut::compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned in
 
     // unsigned int removed_first = size - cut.size();
 
-    // binary_set unapplicable_actions(inst_->m);
+    // BinarySet unapplicable_actions(inst_->m);
     // for (unsigned int act_i = 0; act_i < inst_->m; act_i++) {
     //     if (!pre_goal_section.contains(inst_->actions[act_i].pre)) {
     //         unapplicable_actions.add(act_i);
@@ -395,8 +395,8 @@ auto LMcut::fract_separation(const std::vector<double>& actions_weights, hmax_fu
 void LMcut::check_landmark(const std::vector<unsigned int>& landmark) {
     // This function is meant to be a check for debugging... it's not optimized to be used as a routine
     bool found = false;
-    binary_set state(inst_->n);
-    binary_set remaining_actions(inst_->m, true);
+    BinarySet state(inst_->n);
+    BinarySet remaining_actions(inst_->m, true);
     for (const auto& act_i : landmark) {
         remaining_actions.remove(act_i);
     }
@@ -410,7 +410,7 @@ void LMcut::check_landmark(const std::vector<unsigned int>& landmark) {
                 state |= act.eff_sparse;
             }
         }
-        if (state.contains(inst_->goal)) {
+        if (state.superset_of(inst_->goal)) {
             found = true;
         }
         if (state_before == state) {

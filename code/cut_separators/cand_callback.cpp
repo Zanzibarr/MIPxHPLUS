@@ -15,12 +15,12 @@
  */
 [[nodiscard]]
 static auto candidatepoint_info(const hplus::instance& inst, const std::vector<double>& xstar)
-    -> std::tuple<std::vector<unsigned int>, binary_set, std::vector<unsigned int>, binary_set, std::vector<std::vector<unsigned int>>> {
-    binary_set used_actions(inst.m);
+    -> std::tuple<std::vector<unsigned int>, BinarySet, std::vector<unsigned int>, BinarySet, std::vector<std::vector<unsigned int>>> {
+    BinarySet used_actions(inst.m);
     std::vector<unsigned int> reachable_action_sequence;
-    binary_set unreachable_actions(inst.m);
+    BinarySet unreachable_actions(inst.m);
     std::vector<unsigned int> unused_actions;
-    binary_set reachable_state(inst.n);
+    BinarySet reachable_state(inst.n);
     std::vector<std::vector<unsigned int>> used_first_achievers(inst.m);
 
     for (unsigned int act_i = 0; act_i < inst.m; ++act_i) {
@@ -95,7 +95,7 @@ static void reject_with_new_sol(CPXCALLBACKCONTEXTptr context, const hplus::exec
     hplus::solution sol{.sequence = std::vector<unsigned int>(), .cost = 0, .updating = false};
 
     // Compute a better solution (we already know that we can reach the goal)
-    binary_set state{inst.n};
+    BinarySet state{inst.n};
     unsigned int cost{0};
     for (const auto& act_i : reachable_action_sequence) {
         if (bs_contains(state, inst.actions[act_i].eff_sparse)) {
@@ -115,7 +115,7 @@ static void reject_with_new_sol(CPXCALLBACKCONTEXTptr context, const hplus::exec
         }
         state |= inst.actions[act_i].eff_sparse;
         cost += inst.actions[act_i].cost;
-        if (state.contains(inst.goal)) {
+        if (state.superset_of(inst.goal)) {
             break;  // If we already reached the goal, we can exit early (ignore all other applicable actions)
         }
     }
@@ -150,7 +150,7 @@ void callbacks::candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::e
 
     // If the solution is feasible, we don't have to cut it
     if (unreachable_actions.empty()) {
-        ASSERT(reachable_state.contains(inst.goal));
+        ASSERT(reachable_state.superset_of(inst.goal));
         unsigned int cost{0};
         for (const auto& act_i : reachable_action_sequence) {
             cost += inst.actions[act_i].cost;
@@ -165,7 +165,7 @@ void callbacks::candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::e
     // unreachable, in this case we know that we can obtain the same (or a better) solution by using a strict subset of used actions
     // NOTE!: This rejects the candidate solution, BUT we post another one that is guaranteed to be a better one (either only less actions, or even a
     // better incumbent)
-    if (reachable_state.contains(inst.goal)) {
+    if (reachable_state.superset_of(inst.goal)) {
         reject_with_new_sol(context, exec, inst, stats, reachable_action_sequence);
         cand_time += GET_TIME() - start_time;
         return;

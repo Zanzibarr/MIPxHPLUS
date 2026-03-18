@@ -218,7 +218,7 @@ static inline auto get_min_cut_lpartition(const std::vector<std::vector<network_
 /** @brief BFS algorithm to remove flow from source -> target path (if any) */
 [[nodiscard]]
 static auto bfs_remove_flow(std::vector<std::vector<network_edge>>& graph, unsigned int source, unsigned int target, double max_flow,
-                            std::vector<size_t>& parent_edge, std::vector<unsigned int>& parent_node, binary_set& visited) -> double {
+                            std::vector<size_t>& parent_edge, std::vector<unsigned int>& parent_node, BinarySet& visited) -> double {
     // Reset visited set
     visited.clear();
 
@@ -280,7 +280,7 @@ static inline auto flow_removal(std::vector<std::vector<network_edge>>& graph, u
     // Pre-allocate structures to avoid repeated allocations
     std::vector<size_t> parent_edge(graph.size());
     std::vector<unsigned int> parent_node(graph.size());
-    binary_set visited(graph.size());
+    BinarySet visited(graph.size());
 
     double remaining = flow_to_remove;
 

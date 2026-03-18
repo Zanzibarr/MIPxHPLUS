@@ -6,7 +6,7 @@
 void prep::dominated_actions_extraction(hplus::instance& inst, const std::vector<std::vector<unsigned int>>& landmarks) {
     const auto& rem_act{(!inst.eliminated_actions).sparse()};
 
-    std::vector<binary_set> act_flm(inst.m, binary_set(inst.n));
+    std::vector<BinarySet> act_flm(inst.m, BinarySet(inst.n));
 
     // compute the landmarks for each action remaining
     for (const auto& act_i : rem_act) {
@@ -21,7 +21,7 @@ void prep::dominated_actions_extraction(hplus::instance& inst, const std::vector
     }
 
     bs_searcher candidates{inst.n};
-    std::vector<binary_set> actions_effects(inst.m, binary_set(inst.n));
+    std::vector<BinarySet> actions_effects(inst.m, BinarySet(inst.n));
     for (const auto& act_i : rem_act) {
         if (inst.fixed_actions[act_i]) {
             continue;
@@ -32,7 +32,7 @@ void prep::dominated_actions_extraction(hplus::instance& inst, const std::vector
         candidates.add(act_i, actions_effects[act_i]);
     }
 
-    binary_set dominated_actions{inst.m};
+    BinarySet dominated_actions{inst.m};
 
     // find all dominated actions and eliminate them
     for (const auto& dominant_act : rem_act) {

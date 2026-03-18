@@ -302,8 +302,8 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
         offsets[i] = n_exp;
         n_exp += var_ranges[i];
     }
-    binary_set istate = binary_set(n_exp);
-    inst.goal = binary_set(n_exp);
+    BinarySet istate = BinarySet(n_exp);
+    inst.goal = BinarySet(n_exp);
     for (size_t i = 0; i < num_variables; i++) {
         istate.add(offsets[i] + tmp_istate[i]);
         if (tmp_goal[i] >= 0) {
@@ -341,7 +341,7 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
         istate_offsets[i] = counter;
     }
     inst.n = n_opt;
-    binary_set goal_opt{inst.n};
+    BinarySet goal_opt{inst.n};
     for (const auto& var : inst.goal) {
         if (!istate[var]) {
             goal_opt.add(var - istate_offsets[var]);
@@ -385,10 +385,10 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
 
 void hplus::update_sol(const execution& exec, instance& inst, const solution& sol, statistics& stats) {
     const auto& [sol_plan, sol_cost, _]{sol};
-    binary_set dbcheck{inst.m};
+    BinarySet dbcheck{inst.m};
     unsigned int costcheck{0};
     ASSERT(sol_plan.size() <= inst.m);  // check that there aren't more actions that there exists
-    binary_set state{inst.n};
+    BinarySet state{inst.n};
     for (const auto& act_i : sol_plan) {
         ASSERT(act_i < inst.m);   // check that the solution only contains existing actions
         ASSERT(!dbcheck[act_i]);  // check that there are no duplicates
@@ -397,7 +397,7 @@ void hplus::update_sol(const execution& exec, instance& inst, const solution& so
         state |= inst.actions[act_i].eff_sparse;
         costcheck += inst.actions[act_i].cost;
     }
-    ASSERT(state.contains(inst.goal));  // check if the solution leads to the goal state
+    ASSERT(state.superset_of(inst.goal));  // check if the solution leads to the goal state
     ASSERT(costcheck == sol_cost);      // check if the cost is the declared one
 
     if (sol_cost >= inst.sol.cost) {

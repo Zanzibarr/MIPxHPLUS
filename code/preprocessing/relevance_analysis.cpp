@@ -2,8 +2,8 @@
 #include "limits.hxx"
 #include "preprocessing.hpp"
 
-void prep::relevance_analysis_backward(hplus::instance& inst, binary_set& relevant_variables) {
-    binary_set relevant_actions{inst.m};
+void prep::relevance_analysis_backward(hplus::instance& inst, BinarySet& relevant_variables) {
+    BinarySet relevant_actions{inst.m};
 
     // compute first round of relevand variables and actions
     for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
@@ -49,7 +49,7 @@ void prep::relevance_analysis_backward(hplus::instance& inst, binary_set& releva
     inst.eliminated_actions |= !relevant_actions;                       // eliminating actions will be done at once, later
 }
 
-void prep::relevance_analysis_forward(hplus::instance& inst, binary_set& relevant_variables) {
+void prep::relevance_analysis_forward(hplus::instance& inst, BinarySet& relevant_variables) {
     std::vector<unsigned int> rem_act = ((!inst.eliminated_actions) & (!inst.fixed_actions)).sparse();
 
     for (const auto& act_i : rem_act) {

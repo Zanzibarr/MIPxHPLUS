@@ -55,7 +55,7 @@ inline void reject_with_sec_cut(CPXCALLBACKCONTEXTptr context, const std::vector
  * Method to compute a violated S.E.C. out of the candidate solutions and reject the candidate solution
  */
 [[nodiscard]]
-auto add_sec_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const binary_set& unreachable_actions,
+auto add_sec_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const BinarySet& unreachable_actions,
                  const std::vector<std::vector<unsigned int>>& used_first_achievers) -> unsigned int;
 
 }  // namespace cand_cuts

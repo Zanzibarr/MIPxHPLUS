@@ -1,7 +1,7 @@
 #include "heuristic.hpp"
 
 [[nodiscard]]
-std::pair<bool, unsigned int> heur::greedy_choice_cxe(const hplus::instance& inst, const std::list<unsigned int>& candidates, const binary_set& state,
+std::pair<bool, unsigned int> heur::greedy_choice_cxe(const hplus::instance& inst, const std::list<unsigned int>& candidates, const BinarySet& state,
                                                       [[maybe_unused]] heur::greedychoice_userhandle& userhandle) {
     unsigned int best_choice = 0;
     double best_cxe = std::numeric_limits<double>::max();

@@ -289,8 +289,8 @@ void store_cplex_solution(hplus::execution& exec, hplus::instance& inst, hplus::
 
     std::vector<unsigned int> solution;
     solution.reserve(inst.m);
-    binary_set remaining{static_cast<unsigned int>(cpx_result.size()), true};
-    binary_set state{inst.n};
+    BinarySet remaining{static_cast<unsigned int>(cpx_result.size()), true};
+    BinarySet state{inst.n};
     unsigned int cost{0};
 
     // Check we are getting ALL the actions that cplex uses

@@ -4,7 +4,7 @@
 #include "limits.hxx"
 
 void heur::greedy(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats,
-                  std::pair<bool, unsigned int> (*greedy_choice)(const hplus::instance& inst, const std::list<unsigned int>&, const binary_set&,
+                  std::pair<bool, unsigned int> (*greedy_choice)(const hplus::instance& inst, const std::list<unsigned int>&, const BinarySet&,
                                                                  greedychoice_userhandle&)) {
     hplus::solution sol;
     sol.sequence.reserve(inst.m);
@@ -17,7 +17,7 @@ void heur::greedy(const hplus::execution& exec, hplus::instance& inst, hplus::st
         }
     }
 
-    binary_set state{inst.n};
+    BinarySet state{inst.n};
     greedychoice_userhandle userhandle;
     if (exec.ws >= hplus::warmstart::GHM) {
         // Userhandle for hmax-hadd heuristic
@@ -26,11 +26,11 @@ void heur::greedy(const hplus::execution& exec, hplus::instance& inst, hplus::st
         userhandle.goal_sparse = inst.goal.sparse();
         userhandle.trail = std::stack<std::pair<unsigned int, double>>{};
         userhandle.pq = priority_queue<double>{inst.n};
-        userhandle.used_actions = binary_set(inst.m);
+        userhandle.used_actions = BinarySet(inst.m);
         heur::init_htype_values(inst, candidates, userhandle.values, userhandle.pq, exec.ws == hplus::warmstart::GHM ? heur::hmax : heur::hadd);
     }
 
-    while (!state.contains(inst.goal)) {
+    while (!state.superset_of(inst.goal)) {
         if (candidates.empty()) [[unlikely]] {
             inst.sol_s = hplus::solution_status::INFEAS;
             stats.status = HPLUS_STATUS_INFEAS;

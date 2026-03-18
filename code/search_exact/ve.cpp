@@ -243,7 +243,7 @@ void ve::post_warm_start(const hplus::execution& exec, hplus::instance& inst, CP
         LOG_INFO << "Posting warm start to VE model";
     }
 
-    binary_set state{inst.n};
+    BinarySet state{inst.n};
     const auto& warm_start{inst.sol.sequence};
 
     const unsigned int ncols{static_cast<unsigned int>(CPXgetnumcols(env, lp))};

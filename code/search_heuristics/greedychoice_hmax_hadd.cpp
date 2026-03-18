@@ -12,9 +12,9 @@ static auto htype(const std::vector<unsigned int>& state, const std::vector<doub
 }
 
 static void update_htype_values(const hplus::instance& inst, const std::vector<unsigned int>& new_facts, std::vector<double>& values,
-                                priority_queue<double>& pq, std::stack<std::pair<unsigned int, double>>& trail, const binary_set& used_actions,
+                                priority_queue<double>& pq, std::stack<std::pair<unsigned int, double>>& trail, const BinarySet& used_actions,
                                 double (*h_eqtype)(double, double)) {
-    binary_set trail_flags{inst.n};
+    BinarySet trail_flags{inst.n};
     for (const auto& fact : new_facts) {
         trail.emplace(fact, values[fact]);
         trail_flags.add(fact);
@@ -76,11 +76,11 @@ void heur::init_htype_values(const hplus::instance& inst, const std::list<unsign
         }
     }
     std::stack<std::pair<unsigned int, double>> _{};
-    update_htype_values(inst, std::vector<unsigned int>(), values, pq, _, binary_set(inst.m), h_eqtype);
+    update_htype_values(inst, std::vector<unsigned int>(), values, pq, _, BinarySet(inst.m), h_eqtype);
 }
 
 [[nodiscard]]
-auto heur::greedy_choice_hmax(const hplus::instance& inst, const std::list<unsigned int>& candidates, const binary_set& state,
+auto heur::greedy_choice_hmax(const hplus::instance& inst, const std::list<unsigned int>& candidates, const BinarySet& state,
                               heur::greedychoice_userhandle& userhandle) -> std::pair<bool, unsigned int> {
     unsigned int best_choice = 0;
     double best_hmax = std::numeric_limits<double>::infinity();
@@ -124,7 +124,7 @@ auto heur::greedy_choice_hmax(const hplus::instance& inst, const std::list<unsig
 }
 
 [[nodiscard]]
-auto heur::greedy_choice_hadd(const hplus::instance& inst, const std::list<unsigned int>& candidates, const binary_set& state,
+auto heur::greedy_choice_hadd(const hplus::instance& inst, const std::list<unsigned int>& candidates, const BinarySet& state,
                               heur::greedychoice_userhandle& userhandle) -> std::pair<bool, unsigned int> {
     unsigned int best_choice = 0;
     double best_hadd = std::numeric_limits<double>::infinity();

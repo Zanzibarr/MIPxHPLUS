@@ -11,7 +11,7 @@
 [[nodiscard]]
 static inline auto compute_r1_r2_incremental(const hplus::instance& inst, const std::vector<double>& relax_point, std::vector<double>& r1_values,
                                              std::vector<double>& r1_act_values, std::vector<double>& r2_values, std::vector<double>& r2_act_values,
-                                             binary_set& state, std::queue<unsigned int>& actions_queue, binary_set& acts_in_queue,
+                                             BinarySet& state, std::queue<unsigned int>& actions_queue, BinarySet& acts_in_queue,
                                              std::stack<std::pair<unsigned int, double>>& trail) -> double {
     // Trail keys:
     // - [0, inst.n): r1_values
@@ -382,8 +382,8 @@ static inline auto compute_r3_incremental(const hplus::instance& inst, std::vect
 [[nodiscard]]
 static inline auto extract_landmark(const hplus::instance& inst, const std::vector<std::vector<network_edge>>& graph) -> std::vector<unsigned int> {
     std::set<unsigned int> graph_reach{get_min_cut_lpartition(graph, inst.n)};
-    binary_set facts_reach(inst.n);
-    // This needs to be done since binary_set check for the capacity of the sets... I need to make sure this has the same capacity of the
+    BinarySet facts_reach(inst.n);
+    // This needs to be done since BinarySet check for the capacity of the sets... I need to make sure this has the same capacity of the
     // preconditions and effects of actions
     for (unsigned int i = 0; i < inst.n; i++) {
         if (graph_reach.contains(i)) {
@@ -391,7 +391,7 @@ static inline auto extract_landmark(const hplus::instance& inst, const std::vect
         }
     }
 
-    ASSERT(!facts_reach.contains(inst.goal));
+    ASSERT(!facts_reach.superset_of(inst.goal));
 
     std::vector<unsigned int> landmark;
     for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
@@ -414,8 +414,8 @@ auto fract_lm_sep::get_r3_violated_landmark(const hplus::execution& exec, const 
     std::vector<double> r2_values(inst.n, 0);
     std::vector<double> r2_act_values(inst.m, 0);
     std::queue<unsigned int> r1r2_actions_queue;
-    binary_set r1r2_state(inst.n);
-    binary_set r1r2_acts_in_queue(inst.m);
+    BinarySet r1r2_state(inst.n);
+    BinarySet r1r2_acts_in_queue(inst.m);
     std::stack<std::pair<unsigned int, double>> r1r2_trail;
 
     // R3 data
@@ -458,7 +458,7 @@ auto fract_lm_sep::get_r3_violated_landmark(const hplus::execution& exec, const 
         // ====================================================== //
         // ======== R1 R2 incremental computation helpers ======= //
         // ====================================================== //
-        binary_set r1r2_prev_state(r1r2_state);
+        BinarySet r1r2_prev_state(r1r2_state);
         // Trail keys:
         // - [0, inst.n): r1_values
         // - [inst.n, inst.n + inst.m): r1_act_values

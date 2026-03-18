@@ -218,7 +218,7 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
 
     init_cutloop(env, lp);
 
-    binary_set state{inst.n};
+    BinarySet state{inst.n};
     const auto& warm_start{inst.sol.sequence};
 
     const unsigned int ncols{static_cast<unsigned int>(CPXgetnumcols(env, lp))};

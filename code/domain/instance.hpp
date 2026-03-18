@@ -31,8 +31,8 @@ struct instance {
     std::vector<action> actions;
     std::vector<std::string> actions_names;
     // Preprocessing
-    binary_set eliminated_facts, eliminated_actions;  // used only for preprocessing
-    binary_set fixed_facts, fixed_actions;
+    BinarySet eliminated_facts, eliminated_actions;  // used only for preprocessing
+    BinarySet fixed_facts, fixed_actions;
     std::vector<unsigned int> fadd_cpx_start;
     std::vector<std::vector<unsigned int>> act_with_pre, act_with_eff;
     std::vector<std::vector<unsigned int>> landmarks;
@@ -40,7 +40,7 @@ struct instance {
     std::vector<unsigned int> veg_starts;
     std::vector<std::vector<unsigned int>> veg_cumulative_graph;
     // Goal
-    binary_set goal;
+    BinarySet goal;
     // Solution
     solution_status sol_s;
     solution sol;
@@ -53,17 +53,17 @@ inline void init(instance& inst) {
                     .nfadd = 0,
                     .actions = std::vector<action>(),
                     .actions_names = std::vector<std::string>(),
-                    .eliminated_facts = binary_set(),
-                    .eliminated_actions = binary_set(),
-                    .fixed_facts = binary_set(),
-                    .fixed_actions = binary_set(),
+                    .eliminated_facts = BinarySet(),
+                    .eliminated_actions = BinarySet(),
+                    .fixed_facts = BinarySet(),
+                    .fixed_actions = BinarySet(),
                     .fadd_cpx_start = std::vector<unsigned int>(),
                     .act_with_pre = std::vector<std::vector<unsigned int>>(),
                     .act_with_eff = std::vector<std::vector<unsigned int>>(),
                     .landmarks = std::vector<std::vector<unsigned int>>(),
                     .veg_starts = std::vector<unsigned int>(),
                     .veg_cumulative_graph = std::vector<std::vector<unsigned int>>(),
-                    .goal = binary_set(),
+                    .goal = BinarySet(),
                     .sol_s = solution_status::NOTFOUND,
                     .sol = solution{.sequence = std::vector<unsigned int>(), .cost = std::numeric_limits<unsigned int>::max(), .updating = false}};
 }

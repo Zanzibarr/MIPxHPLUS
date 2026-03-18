@@ -29,27 +29,27 @@ struct greedychoice_userhandle {
     std::vector<unsigned int> goal_sparse;              // sparse representation of the goal
     std::stack<std::pair<unsigned int, double>> trail;  // trail for hmax/hadd updates
     priority_queue<double> pq;                          // priority queue for hmax/hadd updates
-    binary_set used_actions;
+    BinarySet used_actions;
 };
 
 void greedy(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats,
-            std::pair<bool, unsigned int> (*greedy_choice)(const hplus::instance& inst, const std::list<unsigned int>&, const binary_set&,
+            std::pair<bool, unsigned int> (*greedy_choice)(const hplus::instance& inst, const std::list<unsigned int>&, const BinarySet&,
                                                            greedychoice_userhandle&));
 
 [[nodiscard]]
-auto greedy_choice_cost(const hplus::instance& inst, const std::list<unsigned int>& candidates, const binary_set& state,
+auto greedy_choice_cost(const hplus::instance& inst, const std::list<unsigned int>& candidates, const BinarySet& state,
                         greedychoice_userhandle& userhandle) -> std::pair<bool, unsigned int>;
 
 [[nodiscard]]
-auto greedy_choice_cxe(const hplus::instance& inst, const std::list<unsigned int>& candidates, const binary_set& state,
+auto greedy_choice_cxe(const hplus::instance& inst, const std::list<unsigned int>& candidates, const BinarySet& state,
                        greedychoice_userhandle& userhandle) -> std::pair<bool, unsigned int>;
 
 [[nodiscard]]
-auto greedy_choice_hmax(const hplus::instance& inst, const std::list<unsigned int>& candidates, const binary_set& state,
+auto greedy_choice_hmax(const hplus::instance& inst, const std::list<unsigned int>& candidates, const BinarySet& state,
                         greedychoice_userhandle& userhandle) -> std::pair<bool, unsigned int>;
 
 [[nodiscard]]
-auto greedy_choice_hadd(const hplus::instance& inst, const std::list<unsigned int>& candidates, const binary_set& state,
+auto greedy_choice_hadd(const hplus::instance& inst, const std::list<unsigned int>& candidates, const BinarySet& state,
                         greedychoice_userhandle& userhandle) -> std::pair<bool, unsigned int>;
 
 void init_htype_values(const hplus::instance& inst, const std::list<unsigned int>& initial_actions, std::vector<double>& values,

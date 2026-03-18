@@ -2,7 +2,7 @@
 
 [[nodiscard]]
 std::pair<bool, unsigned int> heur::greedy_choice_cost(const hplus::instance& inst, const std::list<unsigned int>& candidates,
-                                                       [[maybe_unused]] const binary_set& state,
+                                                       [[maybe_unused]] const BinarySet& state,
                                                        [[maybe_unused]] heur::greedychoice_userhandle& userhandle) {
     unsigned int best_choice = 0;
     unsigned int best_cost = std::numeric_limits<unsigned int>::max();

@@ -7,9 +7,9 @@
 #include "lmcut.hpp"
 #include "utils.hpp"
 
-void int_lm_sep::landmark_minimalization(const hplus::instance& inst, std::vector<unsigned int>& landmark, binary_set unapplicable_actions,
-                                         binary_set reachable_state) {
-    binary_set extension(inst.m);
+void int_lm_sep::landmark_minimalization(const hplus::instance& inst, std::vector<unsigned int>& landmark, BinarySet unapplicable_actions,
+                                         BinarySet reachable_state) {
+    BinarySet extension(inst.m);
     const auto& goal{inst.goal};
     for (const auto& act_i : landmark) {
         const auto& action = inst.actions[act_i];
@@ -29,15 +29,15 @@ void int_lm_sep::landmark_minimalization(const hplus::instance& inst, std::vecto
 
         // Here the action is reachable and it has new effects
 
-        binary_set state_sim(reachable_state);
+        BinarySet state_sim(reachable_state);
         state_sim |= action.eff_sparse;
         // If the effect of this action reaches the goal, we don't add it to the extension
-        if (state_sim.contains(goal)) {
+        if (state_sim.superset_of(goal)) {
             continue;
         }
 
         // Simulate the effects of using this action
-        binary_set new_reachable(inst.m);
+        BinarySet new_reachable(inst.m);
         while (true) {
             bool skip{true};
             for (const auto& act_j : unapplicable_actions) {
@@ -48,7 +48,7 @@ void int_lm_sep::landmark_minimalization(const hplus::instance& inst, std::vecto
                 if (bs_contains(state_sim, inst.actions[act_j].pre_sparse)) {
                     new_reachable.add(act_j);
                     state_sim |= inst.actions[act_j].eff_sparse;
-                    if (state_sim.contains(goal)) {
+                    if (state_sim.superset_of(goal)) {
                         skip = true;
                         break;
                     }
@@ -62,7 +62,7 @@ void int_lm_sep::landmark_minimalization(const hplus::instance& inst, std::vecto
 
         // If the new state doesn't contain the goal, then we can update the reachable state and remove the applicable actions from the previously
         // unapplicable ones
-        if (!state_sim.contains(goal)) {
+        if (!state_sim.superset_of(goal)) {
             extension.add(act_i);
             reachable_state = state_sim;
             unapplicable_actions -= new_reachable;
@@ -89,8 +89,8 @@ auto int_lm_sep::get_lmcut_violated_landmarks(const hplus::instance& inst, const
 }
 
 [[nodiscard]]
-auto int_lm_sep::get_comp_violated_landmark(const hplus::instance& inst, const binary_set& unreachable_actions,
-                                            const std::vector<unsigned int>& unused_actions, const binary_set& reachable_state)
+auto int_lm_sep::get_comp_violated_landmark(const hplus::instance& inst, const BinarySet& unreachable_actions,
+                                            const std::vector<unsigned int>& unused_actions, const BinarySet& reachable_state)
     -> std::vector<unsigned int> {
     std::vector<unsigned int> landmark(unused_actions.begin(), unused_actions.end());
     landmark_minimalization(inst, landmark, unreachable_actions, reachable_state);
@@ -99,7 +99,7 @@ auto int_lm_sep::get_comp_violated_landmark(const hplus::instance& inst, const b
 
 [[nodiscard]]
 auto int_lm_sep::get_front_violated_landmark(const hplus::instance& inst, const std::vector<unsigned int>& unused_actions,
-                                             const binary_set& reachable_state) -> std::vector<unsigned int> {
+                                             const BinarySet& reachable_state) -> std::vector<unsigned int> {
     std::vector<unsigned int> landmark;
     for (unsigned int act_i : unused_actions) {
         if (bs_contains(reachable_state, inst.actions[act_i].pre_sparse) && !bs_contains(reachable_state, inst.actions[act_i].eff_sparse)) {

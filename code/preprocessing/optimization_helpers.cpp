@@ -27,7 +27,7 @@ void prep::eliminated_facts_removal(hplus::instance& inst, hplus::statistics& st
     }
 
     // Adjust positions of facts in the goal
-    binary_set new_goal(inst.n - removed);
+    BinarySet new_goal(inst.n - removed);
     for (const auto& p : inst.goal) {
         if (!inst.eliminated_facts[p]) {
             new_goal.add(p - removed_offsets[p]);
@@ -51,7 +51,7 @@ void prep::eliminated_facts_removal(hplus::instance& inst, hplus::statistics& st
     landmarks.resize(counter);
 
     // Adjust positions of facts in fixed_facts
-    binary_set new_fixed_facts(inst.n - removed);
+    BinarySet new_fixed_facts(inst.n - removed);
     for (const auto& fact : inst.fixed_facts) {
         if (!inst.eliminated_facts[fact]) {
             new_fixed_facts.add(fact - removed_offsets[fact]);
@@ -64,7 +64,7 @@ void prep::eliminated_facts_removal(hplus::instance& inst, hplus::statistics& st
 }
 
 void prep::eliminated_actions_removal(hplus::instance& inst, hplus::statistics& stats) {
-    binary_set new_fixed_actions(inst.m - inst.eliminated_actions.sparse().size());
+    BinarySet new_fixed_actions(inst.m - inst.eliminated_actions.sparse().size());
     unsigned int write_pos = 0;
     for (unsigned int read_pos = 0; read_pos < inst.actions.size(); ++read_pos) {
         if (!inst.eliminated_actions[read_pos]) {
