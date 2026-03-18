@@ -9,6 +9,8 @@
 #include "bs_utils.hpp"
 #include "limits.hxx"
 #include "logger.hxx"
+#include "stats_registry.hxx"
+#include "timer.hxx"
 #include "utils.hpp"
 
 auto hmax::hmax_arbitrary(const std::vector<unsigned int>& preconditions, const std::vector<double>& hmax_values,
@@ -352,6 +354,7 @@ auto LMcut::compute_lmcut_private(hmax_function hmax) -> std::pair<std::vector<s
 }
 
 auto LMcut::compute_lmcut(hmax_function hmax) -> std::pair<std::vector<std::vector<unsigned int>>, double> {
+    auto _lmcut = make_scoped_timer<"lmcut">(STATS);
     init();
 
     return compute_lmcut_private(hmax);

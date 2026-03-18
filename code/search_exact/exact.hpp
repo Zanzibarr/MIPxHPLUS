@@ -12,14 +12,15 @@
 
 #include "callbacks.hpp"
 #include "limits.hxx"
+#include "timer.hxx"
 
 namespace tl {
-void add_acyclicity_constraints(hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp);
+void add_acyclicity_constraints(hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp);
 void post_warm_start(hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp);
 }  // namespace tl
 
 namespace ve {
-void add_acyclicity_constraints(hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp);
+void add_acyclicity_constraints(hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp);
 void post_warm_start(hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp);
 }  // namespace ve
 
@@ -60,15 +61,15 @@ inline void init_cplex(hplus::execution& exec, CPXENVptr& env, CPXLPptr& lp) {
     CPX_HANDLE_CALL(CPXsetintparam(env, CPXPARAM_RandomSeed, exec.seed));
 }
 
-void build_base_model(hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp);
+void build_base_model(hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp);
 
-inline void add_acyclicity_constraints(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp) {
+inline void add_acyclicity_constraints(const hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
     switch (exec.alg) {
         case hplus::algorithm::TL:
-            tl::add_acyclicity_constraints(inst, stats, env, lp);
+            tl::add_acyclicity_constraints(inst, env, lp);
             break;
         case hplus::algorithm::VE:
-            ve::add_acyclicity_constraints(inst, stats, env, lp);
+            ve::add_acyclicity_constraints(inst, env, lp);
             break;
         default:
             LOG_ERROR_S("Unhandled algorithm for acyclicity constraints: " + std::to_string(static_cast<int>(exec.alg)));
@@ -112,16 +113,13 @@ inline void close_cplex(CPXENVptr& env, CPXLPptr& lp) {
     CPX_HANDLE_CALL(CPXcloseCPLEX(&env));
 }
 
-inline void run_cplex(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, hplus::statistics& stats) {
+inline void run_cplex(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec) {
     exec.exec_s = hplus::exec_status::CPX_EXEC;
+    auto _cpx_exec = make_scoped_timer<"cpx_execution">(STATS);
 
-    double start_time{GET_TIME()};
-    stats.cplex_execution = static_cast<double>(exec.timelimit) - start_time;
     LOG_INFO_S("Running CPLEX MIP");
 
     CPX_HANDLE_CALL(CPXmipopt(env, lp));
-
-    stats.cplex_execution = GET_TIME() - start_time;
 }
 
 inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats) {
@@ -133,23 +131,21 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
     // ================= BUILDING THE MODEL ================= //
     // ====================================================== //
 
-    double start_time = GET_TIME();
     CPXENVptr env = nullptr;
     CPXLPptr lp = nullptr;
-    callbacks::callback_userhandle callback_userhandle{.exec = exec, .inst = inst, .stats = stats, .thread_specific_data = {}};
+    callbacks::callback_userhandle callback_userhandle{.exec = exec, .inst = inst, .stats = stats};
 
-    stats.build = static_cast<double>(exec.timelimit) - start_time;
     exec.exec_s = hplus::exec_status::MODEL_BUILD;
+    {
+        auto _build = make_scoped_timer<"build">(STATS);
+        init_cplex(exec, env, lp);
 
-    init_cplex(exec, env, lp);
-
-    // ~~~~ BASE MODEL + ACYC. CONSTRAINTS ~~~ //
-    build_base_model(exec, inst, stats, env, lp);
-    if (exec.alg != hplus::algorithm::CUTS) {
-        add_acyclicity_constraints(exec, inst, stats, env, lp);
+        // ~~~~ BASE MODEL + ACYC. CONSTRAINTS ~~~ //
+        build_base_model(exec, inst, env, lp);
+        if (exec.alg != hplus::algorithm::CUTS) {
+            add_acyclicity_constraints(exec, inst, env, lp);
+        }
     }
-
-    stats.build = GET_TIME() - start_time;
 
     // ====================================================== //
     // =================== CPLEX EXECUTION ================== //
@@ -169,7 +165,7 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
             post_warm_start(exec, inst, env, lp);
         }
 
-        run_cplex(env, lp, exec, stats);
+        run_cplex(env, lp, exec);
 
     } catch (std::bad_alloc& e) {
         LOG_WARN_S("OUT OF MEMORY");
@@ -180,9 +176,6 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
     // ====================================================== //
 
     // There are info to gather or resources to free only if we used the CUTS algorithm
-    if (exec.alg == hplus::algorithm::CUTS) {
-        callbacks::gather_stats_from_threads(stats, callback_userhandle);
-    }
     get_cplex_solution(exec, inst, stats, env, lp);
     close_cplex(env, lp);
 }

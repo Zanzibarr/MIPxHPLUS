@@ -5,7 +5,7 @@
 #include "exact.hpp"
 #include "hplus_algs.hpp"
 
-void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp) {
+void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
     LOG_INFO_S("Building base model for exact search");
 
     auto stopcheck = []() {
@@ -65,7 +65,7 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplu
     CPX_HANDLE_CALL(CPXnewcols(env, lp, count, objs.data(), lbs.data(), ubs.data(), types.data(), nullptr));
     stopcheck();
 
-    stats.var_base = inst.n + inst.m + inst.nfadd;
+    STATS.counter_set<"n_var_base">(inst.n + inst.m + inst.nfadd);
 
     // ====================================================== //
     // ================== CPLEX CONSTRAINTS ================= //
@@ -106,7 +106,7 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplu
             const char fix = 'B';
             CPX_HANDLE_CALL(CPXchgbds(env, lp, 1, ind.data(), &fix, &rhs_0));
         } else {
-            stats.const_base++;
+            STATS.counter_inc<"n_const_base">();
             CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, nnz, &rhs_0, &sense_e, &begin, ind.data(), val.data(), nullptr, nullptr));
         }
         stopcheck();
@@ -129,7 +129,7 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplu
             }
             // if nnz == 1 than we have -fact_p <= 0, hence it's always true, we can ignore this constraint
             if (nnz != 1) {
-                stats.const_base++;
+                STATS.counter_inc<"n_const_base">();
                 CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, nnz, &rhs_0, &sense_l, &begin, ind.data(), val.data(), nullptr, nullptr));
             }
             stopcheck();
@@ -144,7 +144,7 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplu
             val[0] = -1;
             ind[1] = get_fa_idx(act_i, var_count);
             val[1] = 1;
-            stats.const_base++;
+            STATS.counter_inc<"n_const_base">();
             CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind.data(), val.data(), nullptr, nullptr));
         }
         stopcheck();
@@ -170,7 +170,7 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplu
                 ind[nnz] = static_cast<int>(act_i);
                 val[nnz++] = 1;
             }
-            stats.const_acyc++;
+            STATS.counter_inc<"n_const_acyc">();
             CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, nnz, &rhs_1, &sense_g, &begin, ind.data(), val.data(), nullptr, nullptr));
         }
         stopcheck();
@@ -315,7 +315,7 @@ void store_cplex_solution(hplus::execution& exec, hplus::instance& inst, hplus::
 void exact::get_cplex_solution(hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, const CPXENVptr& env, const CPXLPptr& lp) {
     parse_cplex_status(env, lp, exec, inst, stats);
 
-    stats.nodes = CPXgetnodecnt(env, lp);
+    STATS.counter_set<"nodes">(CPXgetnodecnt(env, lp));
 
     if (inst.sol_s > hplus::solution_status::FEAS) {
         return;

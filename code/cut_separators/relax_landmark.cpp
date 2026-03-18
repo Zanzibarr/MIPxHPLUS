@@ -3,16 +3,16 @@
 
 [[nodiscard]]
 auto relax_cuts::add_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, const hplus::instance& inst,
-                            const std::vector<double>& relax_point, unsigned int& n_act_in_lm, unsigned int& n_lm) -> unsigned int {
+                            const std::vector<double>& relax_point) -> unsigned int {
     std::vector<std::vector<unsigned int>> landmarks;
     if (exec.fract_cuts.find('m') != std::string::npos) {
-        const auto& [found, landmark] = fract_lm_sep::get_r3_violated_landmark(exec, inst, relax_point, n_act_in_lm, n_lm);
+        const auto& [found, landmark] = fract_lm_sep::get_r3_violated_landmark(exec, inst, relax_point);
         if (found) {
             landmarks.push_back(std::move(landmark));
         }
     }
     if (exec.fract_cuts.find('l') != std::string::npos) {
-        const auto& [found, landmarks_lmcut] = fract_lm_sep::get_lmcut_violated_landmarks(exec, inst, relax_point, n_act_in_lm, n_lm);
+        const auto& [found, landmarks_lmcut] = fract_lm_sep::get_lmcut_violated_landmarks(exec, inst, relax_point);
         if (found) {
             for (auto landmark : landmarks_lmcut) {
                 landmarks.push_back(std::move(landmark));

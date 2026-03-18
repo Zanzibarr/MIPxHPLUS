@@ -2,6 +2,7 @@
 
 #include "cycle_det.hpp"
 #include "relax_callback.hpp"
+#include "stats_registry.hxx"
 
 [[nodiscard]]
 static auto build_graph(const hplus::instance& inst, const std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash>& fadd_weights)
@@ -44,6 +45,7 @@ auto relax_cuts::get_violated_sec(const hplus::instance& inst,
 [[nodiscard]]
 auto relax_cuts::add_sec_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst,
                              const std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash>& fadd_weights) -> unsigned int {
+    auto _fract_sec = make_scoped_timer<"fract_sec_separator">(STATS);
     const auto& [found, cycles]{get_violated_sec(inst, fadd_weights)};
     if (!found) {
         return 0;

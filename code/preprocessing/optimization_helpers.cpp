@@ -1,7 +1,7 @@
 #include "algorithms.hpp"
 #include "preprocessing.hpp"
 
-void prep::eliminated_facts_removal(hplus::instance& inst, hplus::statistics& stats, std::vector<std::vector<unsigned int>>& landmarks) {
+void prep::eliminated_facts_removal(hplus::instance& inst, std::vector<std::vector<unsigned int>>& landmarks) {
     // Remove eliminated facts from preconditions and effects
     unsigned int removed{static_cast<unsigned int>(inst.eliminated_facts.sparse().size())};
     std::vector<unsigned int> removed_offsets(inst.n, 0);
@@ -60,10 +60,10 @@ void prep::eliminated_facts_removal(hplus::instance& inst, hplus::statistics& st
     inst.fixed_facts = new_fixed_facts;
 
     inst.n -= removed;
-    stats.n_prep = inst.n - inst.fixed_facts.sparse().size();
+    STATS.counter_set<"n_prep">(inst.n - inst.fixed_facts.sparse().size());
 }
 
-void prep::eliminated_actions_removal(hplus::instance& inst, hplus::statistics& stats) {
+void prep::eliminated_actions_removal(hplus::instance& inst) {
     BinarySet new_fixed_actions(inst.m - inst.eliminated_actions.sparse().size());
     unsigned int write_pos = 0;
     for (unsigned int read_pos = 0; read_pos < inst.actions.size(); ++read_pos) {
@@ -86,11 +86,11 @@ void prep::eliminated_actions_removal(hplus::instance& inst, hplus::statistics& 
     inst.fixed_actions = new_fixed_actions;
 
     inst.m = write_pos;
-    stats.m_prep = inst.m - inst.fixed_actions.sparse().size();
+    STATS.counter_set<"m_prep">(inst.m - inst.fixed_actions.sparse().size());
     unsigned int count{0};
     for (const auto& act : inst.actions) {
         count += act.eff_sparse.size();
     }
     inst.nfadd = count;
-    stats.nfadd_prep = count;
+    STATS.counter_set<"nfadd_prep">(count);
 }

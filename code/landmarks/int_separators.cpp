@@ -5,6 +5,8 @@
 
 #include "bs_utils.hpp"
 #include "lmcut.hpp"
+#include "stats_registry.hxx"
+#include "timer.hxx"
 #include "utils.hpp"
 
 void int_lm_sep::landmark_minimalization(const hplus::instance& inst, std::vector<unsigned int>& landmark, BinarySet unapplicable_actions,
@@ -76,6 +78,7 @@ void int_lm_sep::landmark_minimalization(const hplus::instance& inst, std::vecto
 [[nodiscard]]
 auto int_lm_sep::get_lmcut_violated_landmarks(const hplus::instance& inst, const std::vector<double>& xstar)
     -> std::pair<bool, std::vector<std::vector<unsigned int>>> {
+    auto _cand_lm = make_scoped_timer<"cand_lm_separator">(STATS);
     LMcut lmcut(inst);
 
     std::vector<unsigned int> used_actions;
@@ -85,26 +88,34 @@ auto int_lm_sep::get_lmcut_violated_landmarks(const hplus::instance& inst, const
         }
     }
 
-    return lmcut.int_separation(used_actions, hmax::hmax_arbitrary);
+    const auto& [found, landmarks] = lmcut.int_separation(used_actions, hmax::hmax_arbitrary);
+    for (const auto& landmark : landmarks) {
+        STATS.gauge_record<"cand_lm_size">(landmark.size());
+    }
+    return {found, landmarks};
 }
 
 [[nodiscard]]
 auto int_lm_sep::get_comp_violated_landmark(const hplus::instance& inst, const BinarySet& unreachable_actions,
                                             const std::vector<unsigned int>& unused_actions, const BinarySet& reachable_state)
     -> std::vector<unsigned int> {
+    auto _cand_lm = make_scoped_timer<"cand_lm_separator">(STATS);
     std::vector<unsigned int> landmark(unused_actions.begin(), unused_actions.end());
     landmark_minimalization(inst, landmark, unreachable_actions, reachable_state);
+    STATS.gauge_record<"cand_lm_size">(landmark.size());
     return landmark;
 }
 
 [[nodiscard]]
 auto int_lm_sep::get_front_violated_landmark(const hplus::instance& inst, const std::vector<unsigned int>& unused_actions,
                                              const BinarySet& reachable_state) -> std::vector<unsigned int> {
+    auto _cand_lm = make_scoped_timer<"cand_lm_separator">(STATS);
     std::vector<unsigned int> landmark;
     for (unsigned int act_i : unused_actions) {
         if (bs_contains(reachable_state, inst.actions[act_i].pre_sparse) && !bs_contains(reachable_state, inst.actions[act_i].eff_sparse)) {
             landmark.push_back(act_i);
         }
     }
+    STATS.gauge_record<"cand_lm_size">(landmark.size());
     return landmark;
 }

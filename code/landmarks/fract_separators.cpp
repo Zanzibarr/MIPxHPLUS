@@ -7,6 +7,8 @@
 #include "limits.hxx"
 #include "lmcut.hpp"
 #include "max_flow.hpp"
+#include "stats_registry.hxx"
+#include "timer.hxx"
 
 [[nodiscard]]
 static inline auto compute_r1_r2_incremental(const hplus::instance& inst, const std::vector<double>& relax_point, std::vector<double>& r1_values,
@@ -404,8 +406,9 @@ static inline auto extract_landmark(const hplus::instance& inst, const std::vect
 }
 
 [[nodiscard]]
-auto fract_lm_sep::get_r3_violated_landmark(const hplus::execution& exec, const hplus::instance& inst, std::vector<double> relax_point,
-                                            unsigned int& act_in_lm, unsigned int& n_lm) -> std::pair<bool, std::vector<unsigned int>> {
+auto fract_lm_sep::get_r3_violated_landmark(const hplus::execution& exec, const hplus::instance& inst, std::vector<double> relax_point)
+    -> std::pair<bool, std::vector<unsigned int>> {
+    auto _fract_lm = make_scoped_timer<"fract_lm_separator">(STATS);
     std::vector<unsigned int> landmark;
 
     // R1 and R2 data
@@ -617,22 +620,20 @@ auto fract_lm_sep::get_r3_violated_landmark(const hplus::execution& exec, const 
         }
     }
 
-    act_in_lm += landmark.size();
-    n_lm++;
+    STATS.gauge_record<"fract_lm_size">(landmark.size());
 
     return {true, landmark};
 }
 
-auto fract_lm_sep::get_lmcut_violated_landmarks(const hplus::execution& /*exec*/, const hplus::instance& inst, const std::vector<double>& relax_point,
-                                                unsigned int& act_in_lm, unsigned int& n_lm)
+auto fract_lm_sep::get_lmcut_violated_landmarks(const hplus::execution& /*exec*/, const hplus::instance& inst, const std::vector<double>& relax_point)
     -> std::pair<bool, std::vector<std::vector<unsigned int>>> {
+    auto _fract_lm = make_scoped_timer<"fract_lm_separator">(STATS);
     LMcut lmcut(inst);
     std::vector<double> actions_weights(relax_point.begin(), relax_point.begin() + inst.m);
     const auto& [found, landmarks] = lmcut.fract_separation(actions_weights, hmax::hmax_arbitrary);
 
     for (const auto& landmark : landmarks) {
-        act_in_lm += landmark.size();
-        n_lm++;
+        STATS.gauge_record<"fract_lm_size">(landmark.size());
     }
 
     return {found, landmarks};

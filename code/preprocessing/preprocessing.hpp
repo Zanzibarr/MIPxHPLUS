@@ -11,6 +11,7 @@
 #include "execution.hpp"
 #include "lmcut.hpp"
 #include "statistics.hpp"
+#include "timer.hxx"
 
 namespace prep {
 
@@ -24,9 +25,9 @@ void relevance_analysis_forward(hplus::instance& inst, BinarySet& relevant_varia
 
 void dominated_actions_extraction(hplus::instance& inst, const std::vector<std::vector<unsigned int>>& landmarks);
 
-void eliminated_facts_removal(hplus::instance& inst, hplus::statistics& stats, std::vector<std::vector<unsigned int>>& landmarks);
+void eliminated_facts_removal(hplus::instance& inst, std::vector<std::vector<unsigned int>>& landmarks);
 
-void eliminated_actions_removal(hplus::instance& inst, hplus::statistics& stats);
+void eliminated_actions_removal(hplus::instance& inst);
 
 inline void lmcut_landmarks_extraction(const hplus::execution& exec, hplus::instance& inst) {
     LMcut lmcut(inst);
@@ -75,11 +76,9 @@ inline void prepare_optimization_helpers(hplus::instance& inst) {
     inst.eliminated_actions = BinarySet{1};
 }
 
-inline void preprocess(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats) {
+inline void preprocess(const hplus::execution& exec, hplus::instance& inst) {
     LOG_INFO_S("Preprocessing instance");
-
-    double start_time = GET_TIME();
-    stats.preprocessing = static_cast<double>(exec.timelimit) - start_time;
+    auto _prep = make_scoped_timer<"preprocessing">(STATS);
 
     std::vector<std::vector<unsigned int>> landmarks(inst.n);
     BinarySet relevant_variables(inst.n);
@@ -88,17 +87,15 @@ inline void preprocess(const hplus::execution& exec, hplus::instance& inst, hplu
     first_adders_extraction(inst, landmarks);
     relevance_analysis_backward(inst, relevant_variables);
     relevance_analysis_forward(inst, relevant_variables);
-    eliminated_facts_removal(inst, stats, landmarks);  // Done here since no more facts will be eliminated, and this could make the next steps faster
+    eliminated_facts_removal(inst, landmarks);  // Done here since no more facts will be eliminated, and this could make the next steps faster
     dominated_actions_extraction(inst, landmarks);
-    eliminated_actions_removal(inst, stats);
+    eliminated_actions_removal(inst);
 
     prepare_optimization_helpers(inst);
 
     if (exec.prep_lmcut != "0") {
         lmcut_landmarks_extraction(exec, inst);
     }
-
-    stats.preprocessing = GET_TIME() - start_time;
 }
 
 }  // namespace prep

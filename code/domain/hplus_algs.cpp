@@ -5,16 +5,17 @@
 #include "heuristic.hpp"
 #include "limits.hxx"
 #include "preprocessing.hpp"
+#include "timer.hxx"
 
 void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
     LOG_INFO_S("Parsing input file");
+    auto _parsing = make_scoped_timer<"parsing">(STATS);
 
     std::ifstream file(exec.file.c_str(), std::ifstream::in);
     if (!file.good()) {
         LOG_ERROR_S("Unable to open file " + exec.file);
     }
 
-    stats.parsing = static_cast<double>(exec.timelimit) - GET_TIME();
     exec.exec_s = exec_status::INSTANCE_BUILDING;
     std::string line;
 
@@ -274,7 +275,6 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
             if (tmp_istate[i] == tmp_goal[i] || tmp_goal[i] < 0) {
                 continue;
             }
-            stats.parsing = GET_TIME();
             inst.sol_s = solution_status::INFEAS;
             stats.status = HPLUS_STATUS_INFEAS;
             return;
@@ -356,11 +356,9 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
     }
 
     inst.nfadd = inst.nfadd;
-    stats.n_prep = inst.n;
-    stats.m_prep = inst.m;
-    stats.nfadd_prep = inst.nfadd;
-
-    stats.parsing = GET_TIME();
+    STATS.counter_set<"n_prep">(inst.n);
+    STATS.counter_set<"m_prep">(inst.m);
+    STATS.counter_set<"nfadd_prep">(inst.nfadd);
 
     const bool is_infeasible = (  // add here other fast feasibility checks
         inst.m == 0 && !inst.goal.empty());
@@ -411,6 +409,7 @@ void hplus::run(execution& exec, instance& inst, statistics& stats) {
     if (inst.sol_s == solution_status::INFEAS) {
         return;
     }
+
     try {
         auto stopcheck = []() {
             if (CHECK_STOP()) {
@@ -423,7 +422,7 @@ void hplus::run(execution& exec, instance& inst, statistics& stats) {
         prep::prepare_preprocessing(inst);
         if (exec.prep) {
             exec.exec_s = exec_status::PREPROCESSING;
-            prep::preprocess(exec, inst, stats);
+            prep::preprocess(exec, inst);
         } else {  // prepare_optimization_helpers is already in the preprocess function but needs to be called even if no preprocessing is done
             prep::prepare_optimization_helpers(inst);
         }

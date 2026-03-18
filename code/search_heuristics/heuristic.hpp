@@ -14,6 +14,7 @@
 #include "instance.hpp"
 #include "pq.hxx"
 #include "statistics.hpp"
+#include "timer.hxx"
 
 namespace heur {
 
@@ -60,9 +61,7 @@ void init_htype_values(const hplus::instance& inst, const std::list<unsigned int
 
 inline void heuristic(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats) {
     LOG_INFO_S("Running heuristic search algorithm");
-
-    double start_time = GET_TIME();
-    stats.heur_time = static_cast<double>(exec.timelimit) - start_time;
+    auto _heur = make_scoped_timer<"heuristic">(STATS);
 
     switch (exec.ws) {
         case hplus::warmstart::GC:
@@ -80,8 +79,6 @@ inline void heuristic(const hplus::execution& exec, hplus::instance& inst, hplus
         default:
             LOG_ERROR_S("Unhandled algorithm type in heuristic: " + std::to_string(static_cast<int>(exec.ws)));
     }
-
-    stats.heur_time = GET_TIME() - start_time;
 }
 
 }  // namespace heur

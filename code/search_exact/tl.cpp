@@ -1,7 +1,8 @@
 #include "bs_utils.hpp"
 #include "exact.hpp"
+#include "stats_registry.hxx"
 
-void tl::add_acyclicity_constraints(hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp) {
+void tl::add_acyclicity_constraints(hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
     LOG_INFO_S("Adding acyclicity constraints for TL model");
 
     // ====================================================== //
@@ -18,7 +19,7 @@ void tl::add_acyclicity_constraints(hplus::instance& inst, hplus::statistics& st
 
     CPX_HANDLE_CALL(CPXnewcols(env, lp, inst.n, objs.data(), lbs.data(), ubs.data(), types.data(), nullptr));
 
-    stats.var_acyc = inst.n;
+    STATS.counter_set<"n_var_acyc">(inst.n);
 
     // ====================================================== //
     // ================== CPLEX CONSTRAINTS ================= //
@@ -48,7 +49,7 @@ void tl::add_acyclicity_constraints(hplus::instance& inst, hplus::statistics& st
                 ind[2] = get_tvar_idx(pre);
                 val[2] = 1;
                 CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, 3, &rhs, &sense_l, &begin, ind.data(), val.data(), nullptr, nullptr));
-                stats.const_acyc++;
+                STATS.counter_inc<"n_const_acyc">();
             }
             var_count++;
         }

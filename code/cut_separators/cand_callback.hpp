@@ -62,7 +62,6 @@ auto add_sec_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, con
 
 namespace callbacks {
 
-void candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats,
-                        unsigned int& usercuts_lm, unsigned int& usercuts_sec, double& cand_time, unsigned int& cand_calls);
+void candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats);
 
 }  // namespace callbacks

@@ -9,6 +9,7 @@
 #include "bs_utils.hpp"
 #include "hplus_algs.hpp"
 #include "int_separators.hpp"
+#include "timer.hxx"
 
 /**
  * Analyze the current candidate point: generate data structures to be used in later parts of the callback
@@ -136,10 +137,9 @@ static void reject_with_new_sol(CPXCALLBACKCONTEXTptr context, hplus::instance& 
     CPX_HANDLE_CALL(CPXcallbackrejectcandidate(context, 0, 0, &rejrhs, &rejsense, &rejbegin, &rejind, &rejval));
 }
 
-void callbacks::candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats,
-                                   unsigned int& usercuts_lm, unsigned int& usercuts_sec, double& cand_time, unsigned int& cand_calls) {
-    double start_time = GET_TIME();
-    cand_calls++;
+void callbacks::candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats) {
+    auto _cand = make_scoped_timer<"cand_callback">(STATS);
+    STATS.counter_inc<"cand_calls">();
 
     std::vector<double> xstar(inst.m + inst.nfadd);
     double cost{CPX_INFBOUND};
@@ -157,7 +157,6 @@ void callbacks::candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::e
         }
         // Check wether this is a better solution than the one we already have
         hplus::update_sol(inst, hplus::solution{.sequence = reachable_action_sequence, .cost = cost, .updating = false}, stats);
-        cand_time += GET_TIME() - start_time;
         return;
     }
 
@@ -167,7 +166,6 @@ void callbacks::candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::e
     // better incumbent)
     if (reachable_state.superset_of(inst.goal)) {
         reject_with_new_sol(context, inst, stats, reachable_action_sequence);
-        cand_time += GET_TIME() - start_time;
         return;
     }
 
@@ -197,13 +195,12 @@ void callbacks::candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::e
         // needed
         landmarks.push_back(int_lm_sep::get_comp_violated_landmark(inst, unreachable_actions, unused_actions, reachable_state));
     }
-    usercuts_lm += landmarks.size();
+    STATS.counter_inc<"cand_lm">(landmarks.size());
     for (const auto& landmark : landmarks) {
         cand_cuts::reject_with_lm_cut(context, landmark);
     }
     if (exec.cand_cuts.find('s') != std::string::npos) {
-        usercuts_sec += cand_cuts::add_sec_cut(context, inst, unreachable_actions, used_first_achievers);
+        auto cand_sec = cand_cuts::add_sec_cut(context, inst, unreachable_actions, used_first_achievers);
+        STATS.counter_inc<"cand_sec">(cand_sec);
     }
-
-    cand_time += GET_TIME() - start_time;
 }
