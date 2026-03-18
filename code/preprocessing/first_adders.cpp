@@ -1,4 +1,3 @@
-#include <set>
 #include <vector>
 
 #include "limits.hxx"
@@ -6,7 +5,7 @@
 
 void prep::first_adders_extraction(hplus::instance& inst, std::vector<std::vector<unsigned int>>& landmarks) {
     for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
-        std::set<unsigned int> fact_lm_for_a;
+        std::unordered_set<unsigned int> fact_lm_for_a;
         for (const auto& pre : inst.actions[act_i].pre_sparse) {
             for (const auto& fact_q : landmarks[pre]) {
                 fact_lm_for_a.insert(fact_q);

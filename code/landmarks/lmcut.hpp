@@ -7,7 +7,7 @@
 #pragma once
 
 #include <functional>
-#include <set>
+#include <unordered_set>
 
 #include "instance.hpp"
 #include "pq.hxx"
@@ -67,7 +67,7 @@ class LMcut {
     auto compute_lmcut_private(hmax_function hmax) -> std::pair<std::vector<std::vector<unsigned int>>, double>;
 
     void update_and_enqueue_effects_values(priority_queue<double>& queue, unsigned int act_i);
-    auto compute_goal_section(hmax_function hmax) -> std::set<unsigned int>;
+    auto compute_goal_section(hmax_function hmax) -> std::unordered_set<unsigned int>;
 
     void update_hmax_values(const std::vector<unsigned int>& changed_actions, hmax_function hmax);
     auto compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned int>, double>;

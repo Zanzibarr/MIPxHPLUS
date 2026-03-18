@@ -171,8 +171,8 @@ void LMcut::update_hmax_values(const std::vector<unsigned int>& changed_actions,
     }
 }
 
-auto LMcut::compute_goal_section(hmax_function hmax) -> std::set<unsigned int> {
-    std::set<unsigned int> goal_section;
+auto LMcut::compute_goal_section(hmax_function hmax) -> std::unordered_set<unsigned int> {
+    std::unordered_set<unsigned int> goal_section;
     std::deque<int> queue;
 
     // Simulate a 0-cost action with precondition the goal state -> set its pcf as starting goal_section
@@ -180,7 +180,7 @@ auto LMcut::compute_goal_section(hmax_function hmax) -> std::set<unsigned int> {
     goal_section.insert(goal_pcf);
     queue.push_back(goal_pcf);
 
-    std::set<unsigned int> explored;
+    std::unordered_set<unsigned int> explored;
 
     // Compute the goal section
     while (!queue.empty()) {
@@ -214,15 +214,15 @@ auto LMcut::compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned in
 
     // Compute the pre_goal section and the cut
     std::vector<unsigned int> cut;
-    std::set<unsigned int> pre_goal_section;
-    std::set<unsigned int> explored;
+    std::unordered_set<unsigned int> pre_goal_section;
+    std::unordered_set<unsigned int> explored;
     std::deque<int> queue;
 
     const auto& check_update_cut_pregoal = [&](unsigned int act_i) -> void {
         explored.insert(act_i);
 
         if (reduced_costs_[act_i] > HPLUS_EPSILON) {
-            std::set<unsigned int> added_facts;
+            std::unordered_set<unsigned int> added_facts;
             for (const auto& eff : inst_->actions[act_i].eff_sparse) {
                 if (goal_section.contains(eff)) {
                     cut.push_back(act_i);
@@ -282,7 +282,7 @@ auto LMcut::compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned in
     // auto size = cut.size();
 
     // Note that this MUST be done after the cut has been computed 'cause before the pre_goal might change...
-    std::set<unsigned int> removed;
+    std::unordered_set<unsigned int> removed;
     for (const auto& act_i : cut) {
         // If an action in the cut has a precondition that's outside of the pre_goal section, then simply changing that pcf would remove this
         // action from the cut (while the rest of the graph remains unchanged: given that the pcf is not in the pre_goal, the pre_goal won't be

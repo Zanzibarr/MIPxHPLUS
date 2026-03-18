@@ -20,7 +20,7 @@ static inline auto compute_r1_r2_incremental(const hplus::instance& inst, const 
     // - [inst.n, inst.n + inst.m): r1_act_values
     // - [inst.n + inst.m, 2*inst.n + inst.m): r2_values
     // - [2*inst.n + inst.m, 2*inst.n + 2*inst.m): r2_act_values
-    std::set<unsigned int> trail_flags;
+    std::unordered_set<unsigned int> trail_flags;
 
     while (!actions_queue.empty()) {
         const auto choice{actions_queue.front()};
@@ -341,7 +341,7 @@ static inline auto compute_r3_incremental(const hplus::instance& inst, std::vect
     }
 
     // Remove disconnected parts of the graph
-    std::set<unsigned int> reachable;
+    std::unordered_set<unsigned int> reachable;
     std::queue<unsigned int> to_visit;
     to_visit.push(source);
     reachable.insert(source);
@@ -383,7 +383,7 @@ static inline auto compute_r3_incremental(const hplus::instance& inst, std::vect
 
 [[nodiscard]]
 static inline auto extract_landmark(const hplus::instance& inst, const std::vector<std::vector<network_edge>>& graph) -> std::vector<unsigned int> {
-    std::set<unsigned int> graph_reach{get_min_cut_lpartition(graph, inst.n)};
+    std::unordered_set<unsigned int> graph_reach{get_min_cut_lpartition(graph, inst.n)};
     BinarySet facts_reach(inst.n);
     // This needs to be done since BinarySet check for the capacity of the sets... I need to make sure this has the same capacity of the
     // preconditions and effects of actions

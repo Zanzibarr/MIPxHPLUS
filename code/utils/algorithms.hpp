@@ -11,7 +11,7 @@
 // ##################################################################### //
 
 #include <algorithm>
-#include <set>
+#include <unordered_set>
 #include <vector>
 
 template <typename T>
@@ -40,6 +40,6 @@ static inline auto sorted_contains(const std::vector<T>& vec, T value) -> bool {
 
 template <typename T>
 [[nodiscard]]
-static inline auto set_contains(const std::set<T>& set, const std::vector<T>& vec) -> bool {
+static inline auto set_contains(const std::unordered_set<T>& set, const std::vector<T>& vec) -> bool {
     return std::ranges::all_of(vec, [&set](unsigned int val) { return set.contains(val); });
 }

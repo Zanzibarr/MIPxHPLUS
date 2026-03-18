@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <set>
 #include <tuple>
 
 #include "algorithms.hpp"
@@ -22,7 +21,7 @@ void ve::add_acyclicity_constraints(hplus::instance& inst, CPXENVptr& env, CPXLP
     // ====================================================== //
 
     // Initialize data structures
-    std::vector<std::set<unsigned int>> graph(inst.n);
+    std::vector<std::unordered_set<unsigned int>> graph(inst.n);
     inst.veg_cumulative_graph.resize(inst.n);
     std::vector<std::tuple<unsigned int, unsigned int, unsigned int>> triangles_list;
     priority_queue<unsigned int> nodes_queue(2 * inst.n);
@@ -73,7 +72,7 @@ void ve::add_acyclicity_constraints(hplus::instance& inst, CPXENVptr& env, CPXLP
         // p -> idx -> q
         // | / > |
 
-        std::set<unsigned int> new_nodes;
+        std::unordered_set<unsigned int> new_nodes;
 
         // Process all predecessors of idx
         for (unsigned int pre = 0; pre < inst.n; ++pre) {

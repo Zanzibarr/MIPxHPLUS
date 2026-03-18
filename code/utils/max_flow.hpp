@@ -7,9 +7,9 @@
 #pragma once
 
 #include <queue>
-#include <set>
 
 #include "bs.hxx"
+#include "logger.hxx"
 #include "utils.hpp"
 
 using network_edge = struct {
@@ -190,8 +190,9 @@ static inline auto compute_max_flow(std::vector<std::vector<network_edge>>& grap
  * @return The left partition of the graph
  */
 [[nodiscard]]
-static inline auto get_min_cut_lpartition(const std::vector<std::vector<network_edge>>& graph, unsigned int source) -> std::set<unsigned int> {
-    std::set<unsigned int> reachable;
+static inline auto get_min_cut_lpartition(const std::vector<std::vector<network_edge>>& graph, unsigned int source)
+    -> std::unordered_set<unsigned int> {
+    std::unordered_set<unsigned int> reachable;
     std::queue<unsigned int> q;
     q.push(source);
     reachable.insert(source);

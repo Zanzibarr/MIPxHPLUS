@@ -23,7 +23,7 @@ struct statistics {
 inline void init(statistics& stats) { stats = statistics{.heur_cost = INFBOUND_INT, .cost = INFBOUND_INT, .status = 3, .lower_bound = 0}; }
 
 inline void print(const statistics& stats) {
-    LOG_S("---------------------- Statistics ----------------------");
+    LOG_S("------------------------- Results ----------------------");
     LOG << " >> Status              " << std::setw(28) << stats.status << " <<";
     LOG << " >> Lower bound         " << std::setw(28)
         << (stats.lower_bound >= INFBOUND_DBL ? "1e20" : (std::ostringstream() << std::fixed << std::setprecision(3) << stats.lower_bound).str())
@@ -33,7 +33,6 @@ inline void print(const statistics& stats) {
     LOG_S(STATS.stats_report_to_str());
     LOG_S(STATS.counter_report_to_str());
     LOG_S(STATS.gauge_report_to_str());
-    LOG_S("--------------------------------------------------------");
 }
 
 }  // namespace hplus
