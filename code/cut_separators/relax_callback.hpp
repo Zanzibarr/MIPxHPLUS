@@ -4,12 +4,11 @@
  * @author Zanella Matteo (matteozanella2@gmail.com)
  */
 
-#ifndef HPLUS_RELAX_CALLBACK_HPP
-#define HPLUS_RELAX_CALLBACK_HPP
+#pragma once
 
 #include <cplex.h>
 
-#include "../utils/cycle_det.hpp"
+#include "cycle_det.hpp"
 #include "execution.hpp"
 #include "instance.hpp"
 
@@ -58,5 +57,3 @@ auto add_sec_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst,
                  const std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash>& fadd_weights) -> unsigned int;
 
 }  // namespace relax_cuts
-
-#endif

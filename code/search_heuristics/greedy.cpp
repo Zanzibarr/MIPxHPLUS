@@ -1,3 +1,5 @@
+#include "bs.hxx"
+#include "bs_utils.hpp"
 #include "heuristic.hpp"
 #include "limits.hxx"
 
@@ -45,24 +47,24 @@ void heur::greedy(const hplus::execution& exec, hplus::instance& inst, hplus::st
         candidates.remove(choice);
 
         // add new actions to the candidates
-        const auto& new_state = state | inst.actions[choice].eff;
-        for (const auto& eff : inst.actions[choice].eff_sparse) {
-            if (state[eff]) {
-                continue;
-            }
+        std::vector<unsigned int> new_eff(inst.actions[choice].eff_sparse.begin(), inst.actions[choice].eff_sparse.end());
+        std::erase_if(new_eff, [&state](const auto val) { return state[val]; });
+        state |= new_eff;
+
+        for (const auto& eff : new_eff) {
             for (const auto& act_i : inst.act_with_pre[eff]) {
-                if (new_state.contains(inst.actions[act_i].pre) && std::find(candidates.begin(), candidates.end(), act_i) == candidates.end()) {
+                if (bs_contains(state, inst.actions[act_i].pre_sparse) &&
+                    std::find(candidates.begin(), candidates.end(), act_i) == candidates.end()) {
                     candidates.push_back(act_i);
                 }
             }
         }
 
         // purge unnecessary actions from candidates
-        candidates.remove_if([&](unsigned int act_i) { return new_state.contains(inst.actions[act_i].eff) && !inst.fixed_actions[act_i]; });
+        candidates.remove_if([&](unsigned int act_i) { return bs_contains(state, inst.actions[act_i].eff_sparse) && !inst.fixed_actions[act_i]; });
 
         sol.sequence.push_back(choice);
         sol.cost += inst.actions[choice].cost;
-        state = new_state;
 
         if (CHECK_STOP()) {
             [[unlikely]] throw timelimit_exception("Reached time limit.");

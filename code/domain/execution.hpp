@@ -5,12 +5,11 @@
  * @author Zanella Matteo (matteozanella2@gmail.com)
  */
 
-#ifndef HPLUS_EXECUTION_HPP
-#define HPLUS_EXECUTION_HPP
+#pragma once
 
 #include <filesystem>
 
-#include "../utils/utils.hpp"
+#include "utils.hpp"
 
 namespace hplus {
 
@@ -228,5 +227,3 @@ inline void print(const execution& exec) {
     LOG << "--------------------------------------------------------";
 }
 }  // namespace hplus
-
-#endif

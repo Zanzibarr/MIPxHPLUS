@@ -1,4 +1,4 @@
-#include "../landmarks/fract_separators.hpp"
+#include "fract_separators.hpp"
 #include "relax_callback.hpp"
 
 [[nodiscard]]

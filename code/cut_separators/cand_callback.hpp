@@ -4,8 +4,7 @@
  * @author Zanella Matteo (matteozanella2@gmail.com)
  */
 
-#ifndef HPLUS_CAND_CALLBACK_HPP
-#define HPLUS_CAND_CALLBACK_HPP
+#pragma once
 
 #include <cplex.h>
 
@@ -67,5 +66,3 @@ void candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::execution& e
                         unsigned int& usercuts_lm, unsigned int& usercuts_sec, double& cand_time, unsigned int& cand_calls);
 
 }  // namespace callbacks
-
-#endif

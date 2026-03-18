@@ -4,10 +4,10 @@
 #include <new>
 #include <tuple>
 
-#include "domain/hplus_algs.hpp"
+#include "argparser.hpp"
+#include "hplus_algs.hpp"
 #include "limits.hxx"
 #include "utils.hpp"
-#include "utils/argparser.hpp"
 
 static void signal_callback_handler(const int /*signal*/) {
     LOG_WARNING << "---------------------------------------------------";

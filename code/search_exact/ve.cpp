@@ -2,11 +2,12 @@
 #include <set>
 #include <tuple>
 
-#include "../external/pq.hxx"
-#include "../utils/algorithms.hpp"
+#include "algorithms.hpp"
+#include "bs_utils.hpp"
 #include "exact.hpp"
 #include "hplus_algs.hpp"
 #include "limits.hxx"
+#include "pq.hxx"
 
 void ve::add_acyclicity_constraints(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp) {
     if (VERBOSE_BASIC()) {
@@ -271,7 +272,7 @@ void ve::post_warm_start(const hplus::execution& exec, hplus::instance& inst, CP
                 val[veg_idx] = 1;
             }
         }
-        state |= inst.actions[act_i].eff;
+        state |= inst.actions[act_i].eff_sparse;
     }
 
     CPX_HANDLE_CALL(CPXaddmipstarts(env, lp, 1, ncols, &izero, ind.data(), val.data(), &effortlevel, nullptr));

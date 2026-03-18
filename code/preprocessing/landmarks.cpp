@@ -1,6 +1,7 @@
 #include <algorithm>
-#include <deque>  // std::deque
+#include <deque>
 
+#include "bs_utils.hpp"
 #include "limits.hxx"
 #include "preprocessing.hpp"
 
@@ -72,7 +73,7 @@ void prep::landmark_extraction(hplus::instance& inst, std::vector<std::vector<un
 
             landmarks[eff] = x;
             for (const auto& act_i : act_with_pre[eff]) {
-                if (s_set.contains(inst.actions[act_i].pre) && std::ranges::find(actions_queue, act_i) == actions_queue.end()) {
+                if (bs_contains(s_set, inst.actions[act_i].pre_sparse) && std::ranges::find(actions_queue, act_i) == actions_queue.end()) {
                     actions_queue.push_back(act_i);
                 }
             }

@@ -1,6 +1,6 @@
 #include <algorithm>
 
-#include "../utils/cycle_det.hpp"
+#include "cycle_det.hpp"
 #include "relax_callback.hpp"
 
 [[nodiscard]]

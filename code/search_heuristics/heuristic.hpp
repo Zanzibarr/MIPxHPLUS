@@ -4,14 +4,13 @@
  * @author Zanella Matteo (matteozanella2@gmail.com)
  */
 
-#ifndef HPLUS_HEUR_HPP
-#define HPLUS_HEUR_HPP
+#pragma once
 
 #include <list>
 #include <stack>
 
-#include "../domain/hplus_algs.hpp"
-#include "../external/pq.hxx"
+#include "hplus_algs.hpp"
+#include "pq.hxx"
 
 namespace heur {
 
@@ -85,5 +84,3 @@ inline void heuristic(const hplus::execution& exec, hplus::instance& inst, hplus
 }
 
 }  // namespace heur
-
-#endif

@@ -1,3 +1,4 @@
+#include "bs_utils.hpp"
 #include "exact.hpp"
 
 void cuts::post_warm_start(const hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
@@ -29,7 +30,7 @@ void cuts::post_warm_start(const hplus::execution& exec, hplus::instance& inst, 
             unsigned int var_idx = inst.m + inst.nfadd + var_i;
             val[var_idx] = 1;
         }
-        state |= inst.actions[act_i].eff;
+        state |= inst.actions[act_i].eff_sparse;
     }
 
     CPX_HANDLE_CALL(CPXaddmipstarts(env, lp, 1, ncols, &izero, ind.data(), val.data(), &effortlevel, nullptr));

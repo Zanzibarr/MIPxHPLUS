@@ -3,6 +3,7 @@
 #include <set>
 #include <stack>
 
+#include "bs_utils.hpp"
 #include "limits.hxx"
 #include "lmcut.hpp"
 #include "max_flow.hpp"
@@ -17,7 +18,7 @@ static inline auto compute_r1_r2_incremental(const hplus::instance& inst, const 
     // - [inst.n, inst.n + inst.m): r1_act_values
     // - [inst.n + inst.m, 2*inst.n + inst.m): r2_values
     // - [2*inst.n + inst.m, 2*inst.n + 2*inst.m): r2_act_values
-    binary_set trail_flags((2 * inst.n) + (2 * inst.m));
+    std::set<unsigned int> trail_flags;
 
     while (!actions_queue.empty()) {
         const auto choice{actions_queue.front()};
@@ -44,20 +45,20 @@ static inline auto compute_r1_r2_incremental(const hplus::instance& inst, const 
         // Write to the trail the previous value
         if (r1_act_values[choice] - prev_r1_act_value > HPLUS_EPSILON) {
             unsigned int trail_key = inst.n + choice;
-            if (!trail_flags[trail_key]) {
+            if (!trail_flags.contains(trail_key)) {
                 trail.emplace(trail_key, prev_r1_act_value);
-                trail_flags.add(trail_key);
+                trail_flags.insert(trail_key);
             }
         }
         if (r2_act_values[choice] - prev_r2_act_value > HPLUS_EPSILON) {
             unsigned int trail_key = (2 * inst.n) + inst.m + choice;
-            if (!trail_flags[trail_key]) {
+            if (!trail_flags.contains(trail_key)) {
                 trail.emplace(trail_key, prev_r2_act_value);
-                trail_flags.add(trail_key);
+                trail_flags.insert(trail_key);
             }
         }
 
-        state |= inst.actions[choice].eff;
+        state |= inst.actions[choice].eff_sparse;
 
         // Values for facts are:
         // R1: the maximum among the values of the actions that achieve it
@@ -74,18 +75,18 @@ static inline auto compute_r1_r2_incremental(const hplus::instance& inst, const 
             // Update R1 values
             if (r1_values[eff] < r1_act_values[choice]) {
                 unsigned int trail_key = eff;
-                if (!trail_flags[trail_key]) {
+                if (!trail_flags.contains(trail_key)) {
                     trail.emplace(trail_key, r1_values[eff]);
-                    trail_flags.add(trail_key);
+                    trail_flags.insert(trail_key);
                 }
                 r1_values[eff] = std::max(r1_values[eff], r1_act_values[choice]);
             }
             // Update R2 values
             if (r2_values[eff] < 1 - HPLUS_EPSILON) {
                 unsigned int trail_key = inst.n + inst.m + eff;
-                if (!trail_flags[trail_key]) {
+                if (!trail_flags.contains(trail_key)) {
                     trail.emplace(trail_key, r2_values[eff]);
-                    trail_flags.add(trail_key);
+                    trail_flags.insert(trail_key);
                 }
                 r2_values[eff] += (r2_act_values[choice] - prev_r2_act_value);
                 r2_values[eff] = std::min(r2_values[eff], 1.0);
@@ -93,7 +94,7 @@ static inline auto compute_r1_r2_incremental(const hplus::instance& inst, const 
 
             // Since either R1 or R2 value for eff has been updated, we need to add to the queue all actions that have it as precondition
             for (const auto& act_i : inst.act_with_pre[eff]) {
-                if (!state.contains(inst.actions[act_i].pre)) {
+                if (!bs_contains(state, inst.actions[act_i].pre_sparse)) {
                     continue;  // Skip actions that can't be applied yet
                 }
                 if (acts_in_queue[act_i]) {
@@ -338,10 +339,10 @@ static inline auto compute_r3_incremental(const hplus::instance& inst, std::vect
     }
 
     // Remove disconnected parts of the graph
-    binary_set reachable(graph.size());
+    std::set<unsigned int> reachable;
     std::queue<unsigned int> to_visit;
     to_visit.push(source);
-    reachable.add(source);
+    reachable.insert(source);
 
     // Parts connected to the graph
     while (!to_visit.empty()) {
@@ -350,15 +351,21 @@ static inline auto compute_r3_incremental(const hplus::instance& inst, std::vect
 
         for (const auto& [to, rev, c, is_rev] : graph[node]) {
             // A node is connected with the rest if there's an edge connnected to it, which has flow
-            if (!is_rev && graph[to][rev].c > HPLUS_EPSILON && !reachable[to]) {
-                reachable.add(to);
+            if (!is_rev && graph[to][rev].c > HPLUS_EPSILON && !reachable.contains(to)) {
+                reachable.insert(to);
                 to_visit.push(to);
             }
         }
     }
 
+    std::vector<unsigned int> not_reachable;
+    for (unsigned int i = 0; i < graph.size(); ++i) {
+        if (!reachable.contains(i)) {
+            not_reachable.push_back(i);
+        }
+    }
     // Remove parts that have no flow reaching them from the source
-    for (const auto& node : !reachable) {
+    for (const auto& node : not_reachable) {
         for (auto& edge : graph[node]) {
             // If this is a reverse edge (contains flow)
             if (edge.is_reverse && edge.c > HPLUS_EPSILON) {
@@ -374,12 +381,12 @@ static inline auto compute_r3_incremental(const hplus::instance& inst, std::vect
 
 [[nodiscard]]
 static inline auto extract_landmark(const hplus::instance& inst, const std::vector<std::vector<network_edge>>& graph) -> std::vector<unsigned int> {
-    binary_set graph_reach{get_min_cut_lpartition(graph, inst.n)};
+    std::set<unsigned int> graph_reach{get_min_cut_lpartition(graph, inst.n)};
     binary_set facts_reach(inst.n);
     // This needs to be done since binary_set check for the capacity of the sets... I need to make sure this has the same capacity of the
     // preconditions and effects of actions
     for (unsigned int i = 0; i < inst.n; i++) {
-        if (graph_reach[i]) {
+        if (graph_reach.contains(i)) {
             facts_reach.add(i);
         }
     }
@@ -388,7 +395,7 @@ static inline auto extract_landmark(const hplus::instance& inst, const std::vect
 
     std::vector<unsigned int> landmark;
     for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
-        if (facts_reach.contains(inst.actions[act_i].pre) && !facts_reach.contains(inst.actions[act_i].eff)) {
+        if (bs_contains(facts_reach, inst.actions[act_i].pre_sparse) && !bs_contains(facts_reach, inst.actions[act_i].eff_sparse)) {
             landmark.push_back(act_i);
         }
     }

@@ -3,9 +3,12 @@
 #include <algorithm>
 #include <deque>
 #include <numeric>
+#include <vector>
 
-#include "../landmarks/int_separators.hpp"
+#include "bs.hxx"
+#include "bs_utils.hpp"
 #include "hplus_algs.hpp"
+#include "int_separators.hpp"
 
 /**
  * Analyze the current candidate point: generate data structures to be used in later parts of the callback
@@ -55,29 +58,25 @@ static auto candidatepoint_info(const hplus::instance& inst, const std::vector<d
         unreachable_actions.remove(act_i);
 
         // Compute new state
-        const auto& new_state{reachable_state | inst.actions[act_i].eff};
-        if (new_state == reachable_state) {
-            continue;  // No change in state -> no new applicable actions
+        if (bs_contains(reachable_state, inst.actions[act_i].eff_sparse)) {
+            continue;
         }
+        std::vector<unsigned int> new_eff(inst.actions[act_i].eff_sparse.begin(), inst.actions[act_i].eff_sparse.end());
+        std::erase_if(new_eff, [&reachable_state](const auto val) { return reachable_state[val]; });
+        reachable_state |= new_eff;
 
         // Find new applicable actions
-        for (const auto& pre : inst.actions[act_i].eff_sparse) {
-            if (reachable_state[pre]) {
-                continue;  // Already in state, skip
-            }
-
+        for (const auto& fact : new_eff) {
             // Check for actions that can now be applied
-            for (const auto& act_j : inst.act_with_pre[pre]) {
+            for (const auto& act_j : inst.act_with_pre[fact]) {
                 if (!used_actions[act_j]) {
                     continue;
                 }
-                if (new_state.contains(inst.actions[act_j].pre) && std::ranges::find(queue, act_j) == queue.end()) {
+                if (bs_contains(reachable_state, inst.actions[act_j].pre_sparse) && std::ranges::find(queue, act_j) == queue.end()) {
                     queue.push_back(act_j);
                 }
             }
         }
-        // Update the reachable state
-        reachable_state = std::move(new_state);
     }
 
     return {reachable_action_sequence, unreachable_actions, unused_actions, reachable_state, used_first_achievers};
@@ -99,7 +98,7 @@ static void reject_with_new_sol(CPXCALLBACKCONTEXTptr context, const hplus::exec
     binary_set state{inst.n};
     unsigned int cost{0};
     for (const auto& act_i : reachable_action_sequence) {
-        if (state.contains(inst.actions[act_i].eff)) {
+        if (bs_contains(state, inst.actions[act_i].eff_sparse)) {
             continue;  // If this action has no effects on this current state, we can optimize the solution by ignoring this action
         }
         sol.sequence.push_back(act_i);
@@ -114,7 +113,7 @@ static void reject_with_new_sol(CPXCALLBACKCONTEXTptr context, const hplus::exec
             unsigned int var_idx = inst.m + inst.nfadd + inst.actions[act_i].eff_sparse[i];
             val[var_idx] = 1;
         }
-        state |= inst.actions[act_i].eff;
+        state |= inst.actions[act_i].eff_sparse;
         cost += inst.actions[act_i].cost;
         if (state.contains(inst.goal)) {
             break;  // If we already reached the goal, we can exit early (ignore all other applicable actions)

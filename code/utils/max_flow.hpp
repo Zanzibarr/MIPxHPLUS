@@ -4,12 +4,12 @@
  * @author Zanella Matteo (matteozanella2@gmail.com)
  */
 
-#ifndef HPLUS_MAX_FLOW_HPP
-#define HPLUS_MAX_FLOW_HPP
+#pragma once
 
 #include <queue>
+#include <set>
 
-#include "../external/bs.hxx"
+#include "bs.hxx"
 #include "utils.hpp"
 
 using network_edge = struct {
@@ -190,19 +190,19 @@ static inline auto compute_max_flow(std::vector<std::vector<network_edge>>& grap
  * @return The left partition of the graph
  */
 [[nodiscard]]
-static inline auto get_min_cut_lpartition(const std::vector<std::vector<network_edge>>& graph, unsigned int source) -> binary_set {
-    binary_set reachable(graph.size());
+static inline auto get_min_cut_lpartition(const std::vector<std::vector<network_edge>>& graph, unsigned int source) -> std::set<unsigned int> {
+    std::set<unsigned int> reachable;
     std::queue<unsigned int> q;
     q.push(source);
-    reachable.add(source);
+    reachable.insert(source);
 
     while (!q.empty()) {
         const auto v = q.front();
         q.pop();
 
         for (const auto& e : graph[v]) {
-            if (e.c > HPLUS_EPSILON && !reachable[e.to]) {
-                reachable.add(e.to);
+            if (e.c > HPLUS_EPSILON && !reachable.contains(e.to)) {
+                reachable.insert(e.to);
                 q.push(e.to);
             }
         }
@@ -223,7 +223,7 @@ static auto bfs_remove_flow(std::vector<std::vector<network_edge>>& graph, unsig
     visited.clear();
 
     std::queue<std::pair<unsigned int, double>> queue;
-    queue.push({source, max_flow});
+    queue.emplace(source, max_flow);
     visited.add(source);
     parent_node[source] = UINT_MAX;
 
@@ -297,5 +297,3 @@ static inline auto flow_removal(std::vector<std::vector<network_edge>>& graph, u
 
     return flow_to_remove;
 }
-
-#endif

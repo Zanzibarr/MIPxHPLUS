@@ -4,8 +4,7 @@
  * @author Zanella Matteo (matteozanella2@gmail.com)
  */
 
-#ifndef HPLUS_CYCLE_DET_HPP
-#define HPLUS_CYCLE_DET_HPP
+#pragma once
 
 #include <queue>
 #include <unordered_map>
@@ -363,5 +362,3 @@ static inline auto find_cycles_weighted_lessthan1(
 
     return cycles;
 }
-
-#endif

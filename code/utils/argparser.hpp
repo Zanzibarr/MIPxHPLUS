@@ -4,8 +4,7 @@
  * @author Zanella Matteo (matteozanella2@gmail.com)
  */
 
-#ifndef HPLUS_ARGPARSER_HPP
-#define HPLUS_ARGPARSER_HPP
+#pragma once
 
 #include <stdlib.h>
 #include <sys/stat.h>  // For stat buffer {}
@@ -13,9 +12,10 @@
 #include <algorithm>
 #include <csignal>
 
-#include "../domain/execution.hpp"
-#include "../external/args.hxx"
+#include "args.hxx"
+#include "execution.hpp"
 #include "hplus_algs.hpp"
+#include "limits.hxx"
 
 static void parse_cli(const int argc, const char** argv, hplus::execution& exec) {
     args::ArgumentParser parser(
@@ -569,5 +569,3 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         exec.min_fract_lm = false;
     }
 }
-
-#endif

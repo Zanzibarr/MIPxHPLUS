@@ -1,3 +1,4 @@
+#include "bs_utils.hpp"
 #include "exact.hpp"
 #include "hplus_algs.hpp"
 
@@ -90,7 +91,7 @@ void tl::post_warm_start(const hplus::execution& exec, hplus::instance& inst, CP
             unsigned int tvar_idx = inst.m + inst.nfadd + inst.n + var_i;
             val[tvar_idx] = static_cast<double>(timestamp);
         }
-        state |= inst.actions[act_i].eff;
+        state |= inst.actions[act_i].eff_sparse;
     }
 
     CPX_HANDLE_CALL(CPXaddmipstarts(env, lp, 1, ncols, &izero, ind.data(), val.data(), &effortlevel, nullptr));

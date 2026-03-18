@@ -1,7 +1,8 @@
-#include "../preprocessing/preprocessing.hpp"
-#include "../search_exact/exact.hpp"
-#include "../search_heuristics/heuristic.hpp"
+#include "bs_utils.hpp"
+#include "exact.hpp"
+#include "heuristic.hpp"
 #include "limits.hxx"
+#include "preprocessing.hpp"
 
 void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
     if (VERBOSE_BASIC()) {
@@ -256,11 +257,7 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
         if (line != "end_operator") {
             LOG_ERROR << "Corrupted file";
         }
-        inst.actions[act_i] = action{.pre = binary_set(),
-                                     .eff = binary_set(),
-                                     .pre_sparse = std::vector<unsigned int>(),
-                                     .eff_sparse = std::vector<unsigned int>(),
-                                     .cost = cost};
+        inst.actions[act_i] = action{.pre_sparse = std::vector<unsigned int>(), .eff_sparse = std::vector<unsigned int>(), .cost = cost};
         inst.actions_names[act_i] = name;
 
         for (unsigned int i = 0; i < num_variables; i++) {
@@ -315,18 +312,16 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
     }
     inst.n = n_exp;
     for (size_t i = 0; i < inst.m; i++) {
-        binary_set act_pre{inst.n};
-        binary_set act_eff{inst.n};
+        std::vector<unsigned int> act_pre;
+        std::vector<unsigned int> act_eff;
         for (const auto& [var, val] : tmp_act_pre[i]) {
-            act_pre.add(offsets[var] + val);
+            act_pre.push_back(offsets[var] + val);
         }
         for (const auto& [var, val] : tmp_act_eff[i]) {
-            act_eff.add(offsets[var] + val);
+            act_eff.push_back(offsets[var] + val);
         }
-        inst.actions[i].pre = act_pre;
-        inst.actions[i].pre_sparse = act_pre.sparse();
-        inst.actions[i].eff = act_eff;
-        inst.actions[i].eff_sparse = act_eff.sparse();
+        inst.actions[i].pre_sparse = act_pre;
+        inst.actions[i].eff_sparse = act_eff;
     }
 
     // ====================================================== //
@@ -355,22 +350,20 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
     inst.goal = goal_opt;
     inst.nfadd = 0;
     for (size_t i = 0; i < inst.m; i++) {
-        binary_set act_pre{inst.n};
-        binary_set act_eff{inst.n};
+        std::vector<unsigned int> act_pre;
+        std::vector<unsigned int> act_eff;
         for (const auto& var : inst.actions[i].pre_sparse) {
             if (!istate[var]) {
-                act_pre.add(var - istate_offsets[var]);
+                act_pre.push_back(var - istate_offsets[var]);
             }
         }
         for (const auto& var : inst.actions[i].eff_sparse) {
             if (!istate[var]) {
-                act_eff.add(var - istate_offsets[var]);
+                act_eff.push_back(var - istate_offsets[var]);
             }
         }
-        inst.actions[i].pre = act_pre;
-        inst.actions[i].pre_sparse = act_pre.sparse();
-        inst.actions[i].eff = act_eff;
-        inst.actions[i].eff_sparse = act_eff.sparse();
+        inst.actions[i].pre_sparse = act_pre;
+        inst.actions[i].eff_sparse = act_eff;
         inst.nfadd += inst.actions[i].eff_sparse.size();
     }
 
@@ -400,8 +393,8 @@ void hplus::update_sol(const execution& exec, instance& inst, const solution& so
         ASSERT(act_i < inst.m);   // check that the solution only contains existing actions
         ASSERT(!dbcheck[act_i]);  // check that there are no duplicates
         dbcheck.add(act_i);
-        ASSERT(state.contains(inst.actions[act_i].pre));  // check if the preconditions are respected at each step
-        state |= inst.actions[act_i].eff;
+        ASSERT(bs_contains(state, inst.actions[act_i].pre_sparse));  // check if the preconditions are respected at each step
+        state |= inst.actions[act_i].eff_sparse;
         costcheck += inst.actions[act_i].cost;
     }
     ASSERT(state.contains(inst.goal));  // check if the solution leads to the goal state

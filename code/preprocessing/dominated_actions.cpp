@@ -1,3 +1,5 @@
+#include "bs.hxx"
+#include "bs_utils.hpp"
 #include "limits.hxx"
 #include "preprocessing.hpp"
 
@@ -19,11 +21,15 @@ void prep::dominated_actions_extraction(hplus::instance& inst, const std::vector
     }
 
     bs_searcher candidates{inst.n};
+    std::vector<binary_set> actions_effects(inst.m, binary_set(inst.n));
     for (const auto& act_i : rem_act) {
         if (inst.fixed_actions[act_i]) {
             continue;
         }
-        candidates.add(act_i, inst.actions[act_i].eff);
+        for (const auto& val : inst.actions[act_i].eff_sparse) {
+            actions_effects[act_i].add(val);
+        }
+        candidates.add(act_i, actions_effects[act_i]);
     }
 
     binary_set dominated_actions{inst.m};
@@ -34,15 +40,15 @@ void prep::dominated_actions_extraction(hplus::instance& inst, const std::vector
             continue;
         }
 
-        for (const auto& dominated_act : candidates.find_subsets(inst.actions[dominant_act].eff)) {
+        for (const auto& dominated_act : candidates.find_subsets(actions_effects[dominant_act])) {
             if (dominant_act == dominated_act || inst.actions[dominant_act].cost > inst.actions[dominated_act].cost ||
-                !act_flm[dominated_act].contains(inst.actions[dominant_act].pre)) {
+                !bs_contains(act_flm[dominated_act], inst.actions[dominant_act].pre_sparse)) {
                 [[likely]] continue;
             }
 
             dominated_actions.add(dominated_act);
             inst.eliminated_actions.add(dominated_act);
-            candidates.remove(dominated_act, inst.actions[dominated_act].eff);
+            candidates.remove(dominated_act, actions_effects[dominated_act]);
         }
         if (CHECK_STOP()) {
             [[unlikely]] throw timelimit_exception("Reached time limit.");

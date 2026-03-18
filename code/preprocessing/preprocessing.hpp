@@ -4,12 +4,11 @@
  * @author Zanella Matteo (matteozanella2@gmail.com)
  */
 
-#ifndef HPLUS_PREP_HPP
-#define HPLUS_PREP_HPP
+#pragma once
 
 #include <map>
 
-#include "../domain/hplus_algs.hpp"
+#include "hplus_algs.hpp"
 #include "lmcut.hpp"
 
 namespace prep {
@@ -106,5 +105,3 @@ inline void preprocess(const hplus::execution& exec, hplus::instance& inst, hplu
 }
 
 }  // namespace prep
-
-#endif

@@ -2,11 +2,12 @@
 
 #include <algorithm>
 
-#include "../cut_separators/relax_callback.hpp"
+#include "bs_utils.hpp"
 #include "exact.hpp"
 #include "fract_separators.hpp"
 #include "hplus_algs.hpp"
 #include "limits.hxx"
+#include "relax_callback.hpp"
 
 inline void init_cutloop(CPXENVptr& env, CPXLPptr& lp) { CPX_HANDLE_CALL(CPXchgprobtype(env, lp, CPXPROB_LP)); }
 
@@ -237,7 +238,7 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
             unsigned int var_idx = inst.m + inst.nfadd + var_i;
             incumbent[var_idx] = 1;
         }
-        state |= inst.actions[act_i].eff;
+        state |= inst.actions[act_i].eff_sparse;
     }
 
     double inout_w = exec.io_weight;

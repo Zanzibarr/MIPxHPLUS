@@ -6,8 +6,7 @@
  * @author Zanella Matteo (matteozanella2@gmail.com)
  */
 
-#ifndef HPLUS_CALLBACKS_HPP
-#define HPLUS_CALLBACKS_HPP
+#pragma once
 
 #include <cplex.h>
 
@@ -30,7 +29,7 @@ struct callback_userhandle {
  * Method called in CPLEX's generic callback
  * This methods handles the routing of the callbacks based on the context
  */
-static int CPXPUBLIC callback_hub(CPXCALLBACKCONTEXTptr context, CPXLONG contextid, void* userhandle) {
+static auto CPXPUBLIC callback_hub(CPXCALLBACKCONTEXTptr context, CPXLONG contextid, void* userhandle) -> int {
     auto& [exec, inst, stats, thread_data]{*static_cast<callback_userhandle*>(userhandle)};
     int thread_id{-1};
     CPX_HANDLE_CALL(CPXcallbackgetinfoint(context, CPXCALLBACKINFO_THREADID, &thread_id));
@@ -98,5 +97,3 @@ inline void gather_stats_from_threads(hplus::statistics& stats, callback_userhan
     }
 }
 }  // namespace callbacks
-
-#endif

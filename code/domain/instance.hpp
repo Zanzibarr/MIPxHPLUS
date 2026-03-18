@@ -4,11 +4,10 @@
  * @author Zanella Matteo (matteozanella2@gmail.com)
  */
 
-#ifndef HPLUS_INST_HPP
-#define HPLUS_INST_HPP
+#pragma once
 
-#include "../external/bs.hxx"
-#include "../external/logger.hxx"
+#include "bs.hxx"
+#include "logger.hxx"
 
 namespace hplus {
 
@@ -107,5 +106,3 @@ inline void print_sol(instance& inst) {
     }
 }
 }  // namespace hplus
-
-#endif

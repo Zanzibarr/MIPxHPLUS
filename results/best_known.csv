@@ -1639,7 +1639,7 @@ pipesworld-tankage-p22-net3-b12-g4-t60,True,19.0
 pipesworld-tankage-p23-net3-b14-g3-t60,True,15.0
 pipesworld-tankage-p24-net3-b14-g5-t60,True,19.0
 pipesworld-tankage-p25-net3-b16-g5-t60,True,20.0
-pipesworld-tankage-p26-net3-b16-g7-t70,False,24.0
+pipesworld-tankage-p26-net3-b16-g7-t70,True,24.0
 pipesworld-tankage-p27-net3-b18-g6-t70,True,19.0
 pipesworld-tankage-p28-net3-b18-g7-t70,True,26.0
 pipesworld-tankage-p29-net3-b20-g6-t70,True,21.0
@@ -2026,11 +2026,11 @@ snake-opt18-strips-p13,True,11.0
 snake-opt18-strips-p14,False,16.0
 snake-opt18-strips-p15,True,7.0
 snake-opt18-strips-p16,True,13.0
-snake-opt18-strips-p17,False,13.0
+snake-opt18-strips-p17,True,13.0
 snake-opt18-strips-p18,False,12.0
 snake-opt18-strips-p19,True,10.0
 snake-opt18-strips-p20,True,9.0
-snake-sat18-strips-p01,False,14.0
+snake-sat18-strips-p01,True,13.0
 snake-sat18-strips-p02,True,10.0
 snake-sat18-strips-p03,False,12.0
 snake-sat18-strips-p04,False,13.0

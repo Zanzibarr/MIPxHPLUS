@@ -4,10 +4,10 @@
  * @author Zanella Matteo (matteozanella2@gmail.com)
  */
 
-#ifndef HPLUS_STATS_HPP
-#define HPLUS_STATS_HPP
+#pragma once
 
 #include <string>
+
 #include "utils.hpp"
 
 namespace hplus {
@@ -94,5 +94,3 @@ inline void print(const statistics& stats) {
 }
 
 }  // namespace hplus
-
-#endif

@@ -4,8 +4,7 @@
  * @author Zanella Matteo (matteozanella2@gmail.com)
  */
 
-#ifndef HPLUS_UTILS_HPP
-#define HPLUS_UTILS_HPP
+#pragma once
 
 // ##################################################################### //
 // ############################## VERSION ############################## //
@@ -21,7 +20,7 @@
 #include <random>
 #include <vector>
 
-#include "../external/logger.hxx"
+#include "logger.hxx"
 
 // ##################################################################### //
 // ############################# CLI PARSER ############################ //
@@ -289,5 +288,3 @@ static inline auto vtos(std::vector<T> v, unsigned int size = 20) -> std::string
     }
     return s;
 }
-
-#endif

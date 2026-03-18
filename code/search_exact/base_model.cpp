@@ -1,5 +1,7 @@
 #include <algorithm>
 
+#include "algorithms.hpp"
+#include "bs_utils.hpp"
 #include "exact.hpp"
 #include "hplus_algs.hpp"
 
@@ -118,7 +120,7 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplu
             ind[nnz] = get_var_idx(fact_q);
             val[nnz++] = -1;
             for (const auto& act_i : inst.act_with_eff[fact_p]) {
-                if (!inst.actions[act_i].pre[fact_q]) {
+                if (!sorted_contains(inst.actions[act_i].pre_sparse, fact_q)) {
                     continue;
                 }
                 unsigned int var_count =
@@ -295,12 +297,12 @@ void store_cplex_solution(hplus::execution& exec, hplus::instance& inst, hplus::
     while (!remaining.empty()) {
         bool intcheck{false};
         for (const auto& idx : remaining) {
-            if (!state.contains(inst.actions[cpx_result[idx]].pre)) {
+            if (!bs_contains(state, inst.actions[cpx_result[idx]].pre_sparse)) {
                 continue;
             }
 
             remaining.remove(idx);
-            state |= inst.actions[cpx_result[idx]].eff;
+            state |= inst.actions[cpx_result[idx]].eff_sparse;
             solution.push_back(cpx_result[idx]);
             intcheck = true;
             cost += inst.actions[cpx_result[idx]].cost;

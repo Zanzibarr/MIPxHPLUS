@@ -1,3 +1,5 @@
+#include <vector>
+
 #include "heuristic.hpp"
 
 [[nodiscard]]
@@ -9,8 +11,8 @@ static auto htype(const std::vector<unsigned int>& state, const std::vector<doub
     return hvalue;
 }
 
-static void update_htype_values(const hplus::instance& inst, const binary_set& new_facts, std::vector<double>& values, priority_queue<double>& pq,
-                                std::stack<std::pair<unsigned int, double>>& trail, const binary_set& used_actions,
+static void update_htype_values(const hplus::instance& inst, const std::vector<unsigned int>& new_facts, std::vector<double>& values,
+                                priority_queue<double>& pq, std::stack<std::pair<unsigned int, double>>& trail, const binary_set& used_actions,
                                 double (*h_eqtype)(double, double)) {
     binary_set trail_flags{inst.n};
     for (const auto& fact : new_facts) {
@@ -74,7 +76,7 @@ void heur::init_htype_values(const hplus::instance& inst, const std::list<unsign
         }
     }
     std::stack<std::pair<unsigned int, double>> _{};
-    update_htype_values(inst, binary_set(inst.n), values, pq, _, binary_set(inst.m), h_eqtype);
+    update_htype_values(inst, std::vector<unsigned int>(), values, pq, _, binary_set(inst.m), h_eqtype);
 }
 
 [[nodiscard]]
@@ -91,7 +93,9 @@ auto heur::greedy_choice_hmax(const hplus::instance& inst, const std::list<unsig
             break;
         }
 
-        update_htype_values(inst, inst.actions[act_i].eff - state, userhandle.values, userhandle.pq, userhandle.trail, userhandle.used_actions, hmax);
+        std::vector<unsigned int> new_eff(inst.actions[act_i].eff_sparse.begin(), inst.actions[act_i].eff_sparse.end());
+        std::erase_if(new_eff, [&state](const auto val) { return state[val]; });
+        update_htype_values(inst, new_eff, userhandle.values, userhandle.pq, userhandle.trail, userhandle.used_actions, hmax);
 
         double hmax_value = htype(userhandle.goal_sparse, userhandle.values, hmax);
 
@@ -112,7 +116,9 @@ auto heur::greedy_choice_hmax(const hplus::instance& inst, const std::list<unsig
 
     std::stack<std::pair<unsigned int, double>> trail;
     userhandle.used_actions.add(best_choice);
-    update_htype_values(inst, inst.actions[best_choice].eff - state, userhandle.values, userhandle.pq, trail, userhandle.used_actions, hmax);
+    std::vector<unsigned int> new_eff(inst.actions[best_choice].eff_sparse.begin(), inst.actions[best_choice].eff_sparse.end());
+    std::erase_if(new_eff, [&state](const auto val) { return state[val]; });
+    update_htype_values(inst, new_eff, userhandle.values, userhandle.pq, trail, userhandle.used_actions, hmax);
 
     return {found, best_choice};
 }
@@ -132,7 +138,9 @@ auto heur::greedy_choice_hadd(const hplus::instance& inst, const std::list<unsig
             break;
         }
 
-        update_htype_values(inst, inst.actions[act_i].eff - state, userhandle.values, userhandle.pq, userhandle.trail, userhandle.used_actions, hadd);
+        std::vector<unsigned int> new_eff(inst.actions[act_i].eff_sparse.begin(), inst.actions[act_i].eff_sparse.end());
+        std::erase_if(new_eff, [&state](const auto val) { return state[val]; });
+        update_htype_values(inst, new_eff, userhandle.values, userhandle.pq, userhandle.trail, userhandle.used_actions, hadd);
 
         double hadd_value = current_hadd;
 
@@ -156,7 +164,9 @@ auto heur::greedy_choice_hadd(const hplus::instance& inst, const std::list<unsig
 
     std::stack<std::pair<unsigned int, double>> trail;
     userhandle.used_actions.add(best_choice);
-    update_htype_values(inst, inst.actions[best_choice].eff - state, userhandle.values, userhandle.pq, trail, userhandle.used_actions, hadd);
+    std::vector<unsigned int> new_eff(inst.actions[best_choice].eff_sparse.begin(), inst.actions[best_choice].eff_sparse.end());
+    std::erase_if(new_eff, [&state](const auto val) { return state[val]; });
+    update_htype_values(inst, new_eff, userhandle.values, userhandle.pq, trail, userhandle.used_actions, hadd);
 
     return {found, best_choice};
 }

@@ -1,3 +1,4 @@
+#include "bs_utils.hpp"
 #include "limits.hxx"
 #include "preprocessing.hpp"
 
@@ -6,8 +7,8 @@ void prep::relevance_analysis_backward(hplus::instance& inst, binary_set& releva
 
     // compute first round of relevand variables and actions
     for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
-        if (inst.actions[act_i].eff.intersects(inst.goal)) {
-            relevant_variables |= inst.actions[act_i].pre;
+        if (bs_intersects(inst.goal, inst.actions[act_i].eff_sparse)) {
+            relevant_variables |= inst.actions[act_i].pre_sparse;
             relevant_actions.add(act_i);
         }
     }
@@ -25,12 +26,12 @@ void prep::relevance_analysis_backward(hplus::instance& inst, binary_set& releva
         std::vector<unsigned int> new_relevant_actions;
         new_relevant_actions.reserve(inst.m);
         for (const auto& act_i : cand_actions_sparse) {
-            if (!inst.actions[act_i].eff.intersects(relevant_variables)) {
+            if (!bs_intersects(relevant_variables, inst.actions[act_i].eff_sparse)) {
                 continue;
             }
 
             relevant_actions.add(act_i);
-            relevant_variables |= inst.actions[act_i].pre;
+            relevant_variables |= inst.actions[act_i].pre_sparse;
             new_relevant_actions.push_back(act_i);
             new_act = true;
         }
@@ -52,7 +53,7 @@ void prep::relevance_analysis_forward(hplus::instance& inst, binary_set& relevan
     std::vector<unsigned int> rem_act = ((!inst.eliminated_actions) & (!inst.fixed_actions)).sparse();
 
     for (const auto& act_i : rem_act) {
-        if (!inst.actions[act_i].eff.intersects(relevant_variables)) {
+        if (!bs_intersects(relevant_variables, inst.actions[act_i].eff_sparse)) {
             inst.eliminated_actions.add(act_i);
         }
     }

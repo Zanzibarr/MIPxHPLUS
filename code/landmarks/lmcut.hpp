@@ -4,12 +4,11 @@
  * @author Zanella Matteo (matteozanella2@gmail.com)
  */
 
-#ifndef HPLUS_LMCUT_HPP
-#define HPLUS_LMCUT_HPP
+#pragma once
 
 #include <functional>
+#include <set>
 
-#include "bs.hxx"
 #include "instance.hpp"
 #include "pq.hxx"
 
@@ -68,7 +67,7 @@ class LMcut {
     auto compute_lmcut_private(hmax_function hmax) -> std::pair<std::vector<std::vector<unsigned int>>, double>;
 
     void update_and_enqueue_effects_values(priority_queue<double>& queue, unsigned int act_i);
-    auto compute_goal_section(hmax_function hmax) -> binary_set;
+    auto compute_goal_section(hmax_function hmax) -> std::set<unsigned int>;
 
     void update_hmax_values(const std::vector<unsigned int>& changed_actions, hmax_function hmax);
     auto compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned int>, double>;
@@ -82,5 +81,3 @@ class LMcut {
     std::vector<unsigned int> goal_;
     std::vector<unsigned int> initial_actions_;
 };
-
-#endif

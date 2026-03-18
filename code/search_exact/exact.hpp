@@ -4,14 +4,13 @@
  * @author Zanella Matteo (matteozanella2@gmail.com)
  */
 
-#ifndef HPLUS_EXACT_HPP
-#define HPLUS_EXACT_HPP
+#pragma once
 
 #include <cplex.h>
 
 #include <new>
 
-#include "../cut_separators/callbacks.hpp"
+#include "callbacks.hpp"
 #include "hplus_algs.hpp"
 #include "limits.hxx"
 
@@ -196,5 +195,3 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
 }
 
 }  // namespace exact
-
-#endif
