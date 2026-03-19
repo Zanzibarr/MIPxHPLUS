@@ -1,17 +1,18 @@
 #include <algorithm>
-#include <deque>  // std::deque
+#include <deque>
 
+#include "bs_utils.hpp"
 #include "limits.hxx"
 #include "preprocessing.hpp"
 
 void prep::landmark_extraction(hplus::instance& inst, std::vector<std::vector<unsigned int>>& landmarks_ret) {
-    // use the last bit as a flag to tell the binary_set is full
-    std::vector<binary_set> landmarks(inst.n, binary_set{inst.n + 1});
+    // use the last bit as a flag to tell the BinarySet is full
+    std::vector<BinarySet> landmarks(inst.n, BinarySet{inst.n + 1});
     for (unsigned int fact = 0; fact < inst.n; fact++) {
         landmarks[fact].add(inst.n);
     }
 
-    binary_set s_set{inst.n};
+    BinarySet s_set{inst.n};
 
     // add to the queue all initial actions...
     std::deque<unsigned int> actions_queue;
@@ -35,14 +36,14 @@ void prep::landmark_extraction(hplus::instance& inst, std::vector<std::vector<un
         const hplus::action& act{inst.actions[actions_queue.front()]};
         actions_queue.pop_front();
 
-        binary_set x_a{inst.n + 1};
+        BinarySet x_a{inst.n + 1};
         for (const auto& eff : act.eff_sparse) {
             x_a.add(eff);
         }
         for (const auto& eff : act.eff_sparse) {
             s_set.add(eff);
 
-            binary_set x{x_a};
+            BinarySet x{x_a};
             for (const auto& pre : act.pre_sparse) {
                 // if variable eff' has the "full" flag then the unification generates a "full" bitfield -> no need to unificate, just set the flag
                 if (landmarks[pre][inst.n]) {
@@ -72,7 +73,7 @@ void prep::landmark_extraction(hplus::instance& inst, std::vector<std::vector<un
 
             landmarks[eff] = x;
             for (const auto& act_i : act_with_pre[eff]) {
-                if (s_set.contains(inst.actions[act_i].pre) && std::ranges::find(actions_queue, act_i) == actions_queue.end()) {
+                if (bs_contains(s_set, inst.actions[act_i].pre_sparse) && std::ranges::find(actions_queue, act_i) == actions_queue.end()) {
                     actions_queue.push_back(act_i);
                 }
             }

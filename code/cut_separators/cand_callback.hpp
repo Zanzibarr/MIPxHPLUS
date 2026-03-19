@@ -4,8 +4,7 @@
  * @author Zanella Matteo (matteozanella2@gmail.com)
  */
 
-#ifndef HPLUS_CAND_CALLBACK_HPP
-#define HPLUS_CAND_CALLBACK_HPP
+#pragma once
 
 #include <cplex.h>
 
@@ -20,9 +19,7 @@
 
 namespace cand_cuts {
 
-/**
- * Reject the current candidate point with a Landmark Constraint
- */
+/// Reject the current candidate point with a Landmark Constraint
 inline void reject_with_lm_cut(CPXCALLBACKCONTEXTptr context, const std::vector<unsigned int>& landmark) {
     std::vector<int> ind(landmark.begin(), landmark.end());
     std::vector<double> val(landmark.size(), 1.0);
@@ -32,9 +29,7 @@ inline void reject_with_lm_cut(CPXCALLBACKCONTEXTptr context, const std::vector<
     CPX_HANDLE_CALL(CPXcallbackrejectcandidate(context, 1, landmark.size(), &rhs, &sense, &begin, ind.data(), val.data()));
 }
 
-/**
- * Reject the current candidate point with a Subtour Elimination Constraint
- */
+/// Reject the current candidate point with a Subtour Elimination Constraint
 inline void reject_with_sec_cut(CPXCALLBACKCONTEXTptr context, const std::vector<std::vector<unsigned int>>& cycles) {
     std::vector<int> ind;
     std::vector<int> begin;
@@ -52,20 +47,15 @@ inline void reject_with_sec_cut(CPXCALLBACKCONTEXTptr context, const std::vector
                                                ind.data(), val.data()));
 }
 
-/**
- * Method to compute a violated S.E.C. out of the candidate solutions and reject the candidate solution
- */
+/// Method to compute a violated S.E.C. out of the candidate solutions and reject the candidate solution
 [[nodiscard]]
-auto add_sec_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const binary_set& unreachable_actions,
+auto add_sec_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const BinarySet& unreachable_actions,
                  const std::vector<std::vector<unsigned int>>& used_first_achievers) -> unsigned int;
 
 }  // namespace cand_cuts
 
 namespace callbacks {
 
-void candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats,
-                        unsigned int& usercuts_lm, unsigned int& usercuts_sec, double& cand_time, unsigned int& cand_calls);
+void candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats);
 
 }  // namespace callbacks
-
-#endif

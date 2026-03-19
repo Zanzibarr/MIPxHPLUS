@@ -4,18 +4,19 @@
  * @author Zanella Matteo (matteozanella2@gmail.com)
  */
 
-#ifndef HPLUS_ARGPARSER_HPP
-#define HPLUS_ARGPARSER_HPP
+#pragma once
 
 #include <stdlib.h>
 #include <sys/stat.h>  // For stat buffer {}
 
 #include <algorithm>
 #include <csignal>
+#include <iostream>
 
-#include "../domain/execution.hpp"
-#include "../external/args.hxx"
-#include "hplus_algs.hpp"
+#include "args.hxx"
+#include "execution.hpp"
+#include "limits.hxx"
+#include "logger.hxx"
 
 static void parse_cli(const int argc, const char** argv, hplus::execution& exec) {
     args::ArgumentParser parser(
@@ -66,11 +67,6 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         parser, "string",
         "Write on stdout / file (def: " + std::string(HPLUS_DEF_LOG) + "; options: 0 (stdout), <file_path> (absolute path to the file to write to))",
         {HPLUS_CLI_LOG_FLAG}, HPLUS_DEF_LOG);
-    args::ValueFlag<unsigned int> verbosity(
-        parser, "non-negative int, [0,3]",
-        "Set the verbosity (def: " + std::to_string(HPLUS_DEF_VERBOSE) +
-            "; options: 0 (only final solution), 1 (statistics), 2 (execution log), 3 (debugging + integrity checks))",
-        {HPLUS_CLI_VERBOSE_FLAG}, HPLUS_DEF_VERBOSE);
 
     // ~~~~~~~~~~~~~~~~ LIMITS ~~~~~~~~~~~~~~~ //
     args::ValueFlag<unsigned int> time_limit(parser, "non-negative int, [0,+inf)",
@@ -221,14 +217,6 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
     }
 
     // First info we need -> to setup the logger
-    if (verbosity) {
-        unsigned int v{args::get(verbosity)};
-        if (v > 3) {
-            std::cerr << "Incorrect verbose parameter";
-            _Exit(EXIT_FAILURE);
-        }
-        exec.verbosity = static_cast<hplus::verbose>(v);
-    }
     if (threads) {
         unsigned int t{args::get(threads)};
         if (t == 0) {
@@ -246,19 +234,17 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
     if (log) {
         exec.log_file = HPLUS_LOG_DIR "/" + args::get(log);
         if (exec.log_file == "0") {
-            logger::get_instance().initialize(false, "", true, (exec.threads > 1 && VERBOSE_DEBUG()));
+            default_logger().initialize(false, "", true, (exec.threads > 1), true);
         } else {
-            logger::get_instance().initialize(true, exec.log_file, true, (exec.threads > 1 && VERBOSE_DEBUG()));
+            default_logger().initialize(true, exec.log_file, true, (exec.threads > 1), true);
         }
     } else {
-        logger::get_instance().initialize(false, "", true, (exec.threads > 1 && VERBOSE_DEBUG()));
+        default_logger().initialize(false, "", true, (exec.threads > 1), true);
     }
 
-    if (VERBOSE_BASIC()) {
-        LOG_INFO << compile_date();
-        LOG_INFO << today();
-        LOG_INFO << version();
-    }
+    LOG_INFO_S(compile_date());
+    LOG_INFO_S(today());
+    LOG_INFO_S(version());
 
     // Setup limits
     if (time_limit) {
@@ -273,7 +259,7 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         ASSERT(m != 0);
         exec.memorylimit = m;
         if (!memlim::set_memory_limit(m)) {
-            LOG_ERROR << "An error occurred while setting up memory limits";
+            LOG_ERROR_S("An error occurred while setting up memory limits");
         }
     }
 
@@ -282,11 +268,11 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         exec.file = args::get(input_file);
         exec.file_name = std::filesystem::path(exec.file).filename().string();
     } else {
-        LOG_ERROR << "Missing input file";
+        LOG_ERROR_S("Missing input file");
     }
     struct stat buffer{};
     if (stat((exec.file).c_str(), &buffer) != 0) {
-        LOG_ERROR << "Failed to open input file";
+        LOG_ERROR_S("Failed to open input file");
     }
     if (run) {
         exec.type = hplus::exec_type::RUN;
@@ -310,7 +296,7 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         } else if (a == HPLUS_CLI_ALG_FLAG_GREEDYHADD) {
             exec.alg = hplus::algorithm::GHA;
         } else {
-            LOG_ERROR << "Algorithm '" << a << "' is not in the list of possible algorithms";
+            LOG_ERROR_S("Algorithm '" + a + "' is not in the list of possible algorithms");
         }
     }
     if (warm_start) {
@@ -326,7 +312,7 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         } else if (ws == HPLUS_CLI_WS_FLAG_GREEDYHADD) {
             exec.ws = hplus::warmstart::GHA;
         } else {
-            LOG_ERROR << "Warm start '" << ws << "' is not in the list of possible warm starts";
+            LOG_ERROR_S("Warm start '" + ws + "' is not in the list of possible warm starts");
         }
     }
     if (prep) {
@@ -336,13 +322,13 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
         exec.prep_lmcut = "";
         std::string s{args::get(prep_lmcut)};
         if (s != "0") {
-            LOG_DEBUG << s;
-            LOG_DEBUG << HPLUS_ALL_LMCUT_PCF;
+            LOG_DEBUG_S(s);
+            LOG_DEBUG_S(HPLUS_ALL_LMCUT_PCF);
             s.erase(std::remove_if(s.begin(), s.end(), [&](const char a) { return std::string(HPLUS_ALL_LMCUT_PCF).find(a) == std::string::npos; }),
                     s.end());
             exec.prep_lmcut = s;
             if (exec.prep_lmcut.empty()) {
-                LOG_WARNING << "Wrong parameter for " << HPLUS_CLI_PREP_LMCUT_FLAG << "; using default value: " << HPLUS_DEF_PREP_LMCUT;
+                LOG_WARN_S("Wrong parameter for " + std::string(HPLUS_CLI_PREP_LMCUT_FLAG) + "; using default value: " + HPLUS_DEF_PREP_LMCUT);
                 exec.prep_lmcut = HPLUS_DEF_PREP_LMCUT;
             }
         } else {
@@ -367,7 +353,7 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
                 exec.fract_cuts += "s";
             }
             if (exec.fract_cuts.empty()) {
-                LOG_WARNING << "Wrong parameter for " << HPLUS_CLI_FRACTCUTS_FLAG << "; using default value: " << HPLUS_DEF_FRACTCUTS;
+                LOG_WARN_S("Wrong parameter for " + std::string(HPLUS_CLI_FRACTCUTS_FLAG) + "; using default value: " + HPLUS_DEF_FRACTCUTS);
                 exec.fract_cuts = HPLUS_DEF_FRACTCUTS;
             }
         } else {
@@ -380,7 +366,7 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
     if (lm_min_iter) {
         int i = args::get(lm_min_iter);
         if (i == 0) {
-            LOG_WARNING << "Setting 0 iterations means to not use the minimization procedure; removing landmark minimization procedure";
+            LOG_WARN_S("Setting 0 iterations means to not use the minimization procedure; removing landmark minimization procedure");
             exec.min_fract_lm = false;
         } else if (i < 0) {
             exec.lm_min_it = INFBOUND_INT;
@@ -391,8 +377,8 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
     if (lm_min_viol) {
         double v = args::get(lm_min_viol);
         if (v < 0 || v > 1) {
-            LOG_WARNING << "Illegal value for " << HPLUS_CLI_MINIMIZATION_BOUND_VIOL
-                        << "; using default value: " << std::to_string(HPLUS_DEF_MINIMIZATION_VIOL);
+            LOG_WARN_S("Illegal value for " + std::string(HPLUS_CLI_MINIMIZATION_BOUND_VIOL) +
+                       "; using default value: " + std::to_string(HPLUS_DEF_MINIMIZATION_VIOL));
         } else {
             exec.lm_min_viol = v;
         }
@@ -400,7 +386,7 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
     if (lm_min_lh) {
         int i = args::get(lm_min_lh);
         if (i == 0) {
-            LOG_WARNING << "Setting 0 lookahead iterations means to not use the minimization procedure; removing landmark minimization procedure";
+            LOG_WARN_S("Setting 0 lookahead iterations means to not use the minimization procedure; removing landmark minimization procedure");
             exec.min_fract_lm = false;
         } else if (i < 0) {
             exec.lm_min_lookahead = INFBOUND_INT;
@@ -446,8 +432,8 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
     if (cl_improv) {
         double improv = args::get(cl_improv);
         if (improv < 0 || improv > 1) {
-            LOG_WARNING << "Illegal value for " << HPLUS_CLI_CUTLOOP_IMPROVEMENT_FLAG
-                        << "; using default value: " << std::to_string(HPLUS_DEF_CL_IMPROV);
+            LOG_WARN_S("Illegal value for " + std::string(HPLUS_CLI_CUTLOOP_IMPROVEMENT_FLAG) +
+                       "; using default value: " + std::to_string(HPLUS_DEF_CL_IMPROV));
         } else {
             exec.cl_improv = improv;
         }
@@ -455,8 +441,8 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
     if (cl_past_iter) {
         unsigned int it = args::get(cl_past_iter);
         if (it == 0) {
-            LOG_WARNING << "Illegal value for " << HPLUS_CLI_CUTLOOP_PAST_ITER_FLAG
-                        << "; using default value: " << std::to_string(HPLUS_DEF_CL_PAST_ITER);
+            LOG_WARN_S("Illegal value for " + std::string(HPLUS_CLI_CUTLOOP_PAST_ITER_FLAG) +
+                       "; using default value: " + std::to_string(HPLUS_DEF_CL_PAST_ITER));
         } else {
             exec.cl_past_iter = it;
         }
@@ -464,8 +450,8 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
     if (cl_gap_stop) {
         double gap = args::get(cl_gap_stop);
         if (gap < 0 || gap > 1) {
-            LOG_WARNING << "Illegal value for " << HPLUS_CLI_CUTLOOP_GAP_STOP_FLAG
-                        << "; using default value: " << std::to_string(HPLUS_DEF_CL_GAP_STOP);
+            LOG_WARN_S("Illegal value for " + std::string(HPLUS_CLI_CUTLOOP_GAP_STOP_FLAG) +
+                       "; using default value: " + std::to_string(HPLUS_DEF_CL_GAP_STOP));
         } else {
             exec.cl_gap_stop = gap;
         }
@@ -476,7 +462,8 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
     if (io_max_it) {
         unsigned int it = args::get(io_max_it);
         if (it == 0) {
-            LOG_WARNING << "Illegal value for " << HPLUS_CLI_INOUT_MAX_ITER_FLAG << "; using default value: " << std::to_string(HPLUS_DEF_IO_MAX_IT);
+            LOG_WARN_S("Illegal value for " + std::string(HPLUS_CLI_INOUT_MAX_ITER_FLAG) +
+                       "; using default value: " + std::to_string(HPLUS_DEF_IO_MAX_IT));
         } else {
             exec.io_max_iter = it;
         }
@@ -484,7 +471,8 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
     if (io_weight) {
         double weight = args::get(io_weight);
         if (weight < 0 || weight > 1) {
-            LOG_WARNING << "Illegal value for " << HPLUS_CLI_INOUT_WEIGHT_FLAG << "; using default value: " << std::to_string(HPLUS_DEF_IO_WEIGHT);
+            LOG_WARN_S("Illegal value for " + std::string(HPLUS_CLI_INOUT_WEIGHT_FLAG) +
+                       "; using default value: " + std::to_string(HPLUS_DEF_IO_WEIGHT));
         } else {
             exec.io_weight = weight;
         }
@@ -492,8 +480,8 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
     if (io_weight_upd) {
         double weight = args::get(io_weight_upd);
         if (weight < 0 || weight >= 1) {
-            LOG_WARNING << "Illegal value for " << HPLUS_CLI_INOUT_WEIGHT_UPD_FLAG
-                        << "; using default value: " << std::to_string(HPLUS_DEF_IO_WEIGHT_UPD);
+            LOG_WARN_S("Illegal value for " + std::string(HPLUS_CLI_INOUT_WEIGHT_UPD_FLAG) +
+                       "; using default value: " + std::to_string(HPLUS_DEF_IO_WEIGHT_UPD));
         } else {
             exec.io_weight_update = weight;
         }
@@ -501,24 +489,24 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
     if (testing) {
         exec.testing = args::get(testing);
         if (exec.testing) {
-            LOG_WARNING << "Testing flag set to true";
+            LOG_WARN_S("Testing flag set to true");
         }
     }
 
     // Check that it's all as it's supposed to be
     if (exec.threads > std::thread::hardware_concurrency()) {
         exec.threads = std::thread::hardware_concurrency();
-        LOG_WARNING << "This machine has " << exec.threads << " cores: using up to " << exec.threads << " threads";
+        LOG_WARN_S("This machine has " + std::to_string(exec.threads) + " cores: using up to " + std::to_string(exec.threads) + " threads");
     }
     if (info && run) {
-        LOG_ERROR << "You need to specify only one functionality among " << HPLUS_CLI_INFO_FLAG << " and " << HPLUS_CLI_RUN_FLAG;
+        LOG_ERROR_S("You need to specify only one functionality among " + std::string(HPLUS_CLI_INFO_FLAG) + " and " + HPLUS_CLI_RUN_FLAG);
     }
     if (!exec.prep && exec.prep_lmcut != "0") {
-        LOG_WARNING << "Preprocessing has been disabled bu LM-cut is selected: disabling LM-cut";
+        LOG_WARN_S("Preprocessing has been disabled bu LM-cut is selected: disabling LM-cut");
         exec.prep_lmcut = "0";
     }
     if (exec.alg >= hplus::algorithm::GC && exec.ws != hplus::warmstart::NONE) {
-        LOG_WARNING << "With the specified algororithm there's no need for a warm start: disabling warm start option";
+        LOG_WARN_S("With the specified algororithm there's no need for a warm start: disabling warm start option");
         exec.ws = hplus::warmstart::NONE;
     }
     if (exec.alg >= hplus::algorithm::GC) {
@@ -536,38 +524,36 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
                 exec.ws = hplus::warmstart::GHA;
                 break;
             default:
-                LOG_ERROR << "Unhandled algorithm in parse_cli: " << static_cast<int>(exec.alg);
+                LOG_ERROR_S("Unhandled algorithm in parse_cli: " + std::to_string(static_cast<int>(exec.alg)));
         }
     }
     if (exec.alg == hplus::algorithm::CUTS && exec.cand_cuts.empty()) {
-        LOG_ERROR << "You can't disable all three candidate cuts from the " << HPLUS_CLI_ALG_FLAG_CUTS << " algorithm";
+        LOG_ERROR_S("You can't disable all three candidate cuts from the " + std::string(HPLUS_CLI_ALG_FLAG_CUTS) + " algorithm");
     }
     if (exec.alg != hplus::algorithm::CUTS && exec.fract_cuts != "0") {
-        LOG_WARNING << "Cuts on the fractional solutions aren't needed with this algorithm: disabling fractional cuts";
+        LOG_WARN_S("Cuts on the fractional solutions aren't needed with this algorithm: disabling fractional cuts");
         exec.fract_cuts = "0";
     }
     if (exec.fract_cuts == "0" && exec.fract_cuts_at_nodes) {
         exec.fract_cuts_at_nodes = false;
     }
     if (exec.fract_cuts == "0" && exec.custom_cutloop) {
-        LOG_WARNING << "If you want to use the custom cutloop, please specify a fractional solution separator: disabling custom cutloop";
+        LOG_WARN_S("If you want to use the custom cutloop, please specify a fractional solution separator: disabling custom cutloop");
         exec.custom_cutloop = false;
     }
     if (exec.alg != hplus::algorithm::CUTS && !exec.cand_cuts.empty()) {
-        LOG_WARNING << "Cuts on the candidate solutions aren't needed with this algorithm: disabling candidate cuts";
+        LOG_WARN_S("Cuts on the candidate solutions aren't needed with this algorithm: disabling candidate cuts");
         exec.cand_cuts = "";
     }
     if (exec.alg != hplus::algorithm::CUTS && exec.custom_cutloop) {
-        LOG_WARNING << "Custom cutloop isn't needed with this algorithm: disabling custom cutloop";
+        LOG_WARN_S("Custom cutloop isn't needed with this algorithm: disabling custom cutloop");
         exec.custom_cutloop = false;
     }
     if (exec.custom_cutloop && exec.ws == hplus::warmstart::NONE && exec.inout) {
-        LOG_WARNING << "Warmstart disabled: disabling In-Out strategy";
+        LOG_WARN_S("Warmstart disabled: disabling In-Out strategy");
         exec.inout = false;
     }
     if (exec.fract_cuts.find('m') == std::string::npos && exec.min_fract_lm) {
         exec.min_fract_lm = false;
     }
 }
-
-#endif

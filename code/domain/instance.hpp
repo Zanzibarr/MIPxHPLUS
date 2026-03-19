@@ -4,11 +4,10 @@
  * @author Zanella Matteo (matteozanella2@gmail.com)
  */
 
-#ifndef HPLUS_INST_HPP
-#define HPLUS_INST_HPP
+#pragma once
 
-#include "../external/bs.hxx"
-#include "../external/logger.hxx"
+#include "bs.hxx"
+#include "logger.hxx"
 
 namespace hplus {
 
@@ -21,7 +20,6 @@ struct solution {
 };
 
 struct action {
-    binary_set pre, eff;
     std::vector<unsigned int> pre_sparse, eff_sparse;
     unsigned int cost;
 };
@@ -33,8 +31,8 @@ struct instance {
     std::vector<action> actions;
     std::vector<std::string> actions_names;
     // Preprocessing
-    binary_set eliminated_facts, eliminated_actions;  // used only for preprocessing
-    binary_set fixed_facts, fixed_actions;
+    BinarySet eliminated_facts, eliminated_actions;  // used only for preprocessing
+    BinarySet fixed_facts, fixed_actions;
     std::vector<unsigned int> fadd_cpx_start;
     std::vector<std::vector<unsigned int>> act_with_pre, act_with_eff;
     std::vector<std::vector<unsigned int>> landmarks;
@@ -42,7 +40,7 @@ struct instance {
     std::vector<unsigned int> veg_starts;
     std::vector<std::vector<unsigned int>> veg_cumulative_graph;
     // Goal
-    binary_set goal;
+    BinarySet goal;
     // Solution
     solution_status sol_s;
     solution sol;
@@ -55,23 +53,23 @@ inline void init(instance& inst) {
                     .nfadd = 0,
                     .actions = std::vector<action>(),
                     .actions_names = std::vector<std::string>(),
-                    .eliminated_facts = binary_set(),
-                    .eliminated_actions = binary_set(),
-                    .fixed_facts = binary_set(),
-                    .fixed_actions = binary_set(),
+                    .eliminated_facts = BinarySet(),
+                    .eliminated_actions = BinarySet(),
+                    .fixed_facts = BinarySet(),
+                    .fixed_actions = BinarySet(),
                     .fadd_cpx_start = std::vector<unsigned int>(),
                     .act_with_pre = std::vector<std::vector<unsigned int>>(),
                     .act_with_eff = std::vector<std::vector<unsigned int>>(),
                     .landmarks = std::vector<std::vector<unsigned int>>(),
                     .veg_starts = std::vector<unsigned int>(),
                     .veg_cumulative_graph = std::vector<std::vector<unsigned int>>(),
-                    .goal = binary_set(),
+                    .goal = BinarySet(),
                     .sol_s = solution_status::NOTFOUND,
                     .sol = solution{.sequence = std::vector<unsigned int>(), .cost = std::numeric_limits<unsigned int>::max(), .updating = false}};
 }
 
 inline void print(const instance& inst) {
-    LOG << "----------------- Info on the instance -----------------";
+    LOG_S("----------------- Info on the instance -----------------");
     if (!inst.actions.empty()) {
         LOG << "Metric:                             " << std::setw(20)
             << (inst.equal_costs ? (inst.actions[0].cost == 1 ? "unitary costs" : "constant costs") : "integer costs");
@@ -79,34 +77,34 @@ inline void print(const instance& inst) {
     LOG << "# facts:                                      " << std::setw(10) << inst.n;
     LOG << "# actions:                                    " << std::setw(10) << inst.m;
     LOG << "# first adders:                               " << std::setw(10) << inst.nfadd;
-    LOG << "--------------------------------------------------------";
+    LOG_S("--------------------------------------------------------");
 }
 
 inline void print_sol(instance& inst) {
     if (inst.sol.updating) {
-        LOG_WARNING << "Execution terminated while updating the solution and the solution got lost";
+        LOG_WARN_S("Execution terminated while updating the solution and the solution got lost");
         inst.sol_s = solution_status::LOST;
     }
     switch (inst.sol_s) {
         case solution_status::LOST:
             break;
         case solution_status::INFEAS:
-            LOG << "The problem is infeasible";
+            LOG_S("The problem is infeasible");
             break;
         case solution_status::NOTFOUND:
-            LOG << "No solution found within memory and time limits";
+            LOG_S("No solution found within memory and time limits");
             break;
         case solution_status::FEAS:
-            LOG << "The solution found has not been proven optimal";
+            LOG_S("The solution found has not been proven optimal");
             [[fallthrough]];
         case solution_status::OPT:
-            LOG << "Solution cost: " << inst.sol.cost;
-            // for (const auto& act_idx : inst.sol.sequence) LOG << "(" << inst.actions_names[act_idx] << ")";
+            LOG_S("Solution cost: " + std::to_string(inst.sol.cost));
+            // for (const auto& act_idx : inst.sol.sequence) {
+            //     LOG_S("(" + inst.actions_names[act_idx] + ")");
+            // }
             break;
         default:
-            LOG_ERROR << "Unhandled solution status in hplus::print_sol(hplus::instance): " << static_cast<int>(inst.sol_s);
+            LOG_ERROR_S("Unhandled solution status in hplus::print_sol(hplus::instance): " + std::to_string(static_cast<int>(inst.sol_s)));
     }
 }
 }  // namespace hplus
-
-#endif

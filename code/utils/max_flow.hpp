@@ -4,12 +4,12 @@
  * @author Zanella Matteo (matteozanella2@gmail.com)
  */
 
-#ifndef HPLUS_MAX_FLOW_HPP
-#define HPLUS_MAX_FLOW_HPP
+#pragma once
 
 #include <queue>
 
-#include "../external/bs.hxx"
+#include "bs.hxx"
+#include "logger.hxx"
 #include "utils.hpp"
 
 using network_edge = struct {
@@ -84,13 +84,13 @@ static inline auto is_flow_conservative(const std::vector<std::vector<network_ed
         }
         if (std::abs(flow_at[u]) > HPLUS_EPSILON) {
             result = false;
-            LOG_WARNING << "Flow is not conserved at node " << u;
+            LOG_ERROR_S("Flow is not conserved at node " + std::to_string(u));
         }
     }
 
     if (std::abs(flow_at[source] + flow_at[sink]) > HPLUS_EPSILON) {
         result = false;
-        LOG_WARNING << "Flow outoging from source is not the same going into the sink";
+        LOG_ERROR_S("Flow outoging from source is not the same going into the sink");
     }
 
     return result;
@@ -190,19 +190,20 @@ static inline auto compute_max_flow(std::vector<std::vector<network_edge>>& grap
  * @return The left partition of the graph
  */
 [[nodiscard]]
-static inline auto get_min_cut_lpartition(const std::vector<std::vector<network_edge>>& graph, unsigned int source) -> binary_set {
-    binary_set reachable(graph.size());
+static inline auto get_min_cut_lpartition(const std::vector<std::vector<network_edge>>& graph, unsigned int source)
+    -> std::unordered_set<unsigned int> {
+    std::unordered_set<unsigned int> reachable;
     std::queue<unsigned int> q;
     q.push(source);
-    reachable.add(source);
+    reachable.insert(source);
 
     while (!q.empty()) {
         const auto v = q.front();
         q.pop();
 
         for (const auto& e : graph[v]) {
-            if (e.c > HPLUS_EPSILON && !reachable[e.to]) {
-                reachable.add(e.to);
+            if (e.c > HPLUS_EPSILON && !reachable.contains(e.to)) {
+                reachable.insert(e.to);
                 q.push(e.to);
             }
         }
@@ -218,12 +219,12 @@ static inline auto get_min_cut_lpartition(const std::vector<std::vector<network_
 /** @brief BFS algorithm to remove flow from source -> target path (if any) */
 [[nodiscard]]
 static auto bfs_remove_flow(std::vector<std::vector<network_edge>>& graph, unsigned int source, unsigned int target, double max_flow,
-                            std::vector<size_t>& parent_edge, std::vector<unsigned int>& parent_node, binary_set& visited) -> double {
+                            std::vector<size_t>& parent_edge, std::vector<unsigned int>& parent_node, BinarySet& visited) -> double {
     // Reset visited set
     visited.clear();
 
     std::queue<std::pair<unsigned int, double>> queue;
-    queue.push({source, max_flow});
+    queue.emplace(source, max_flow);
     visited.add(source);
     parent_node[source] = UINT_MAX;
 
@@ -280,7 +281,7 @@ static inline auto flow_removal(std::vector<std::vector<network_edge>>& graph, u
     // Pre-allocate structures to avoid repeated allocations
     std::vector<size_t> parent_edge(graph.size());
     std::vector<unsigned int> parent_node(graph.size());
-    binary_set visited(graph.size());
+    BinarySet visited(graph.size());
 
     double remaining = flow_to_remove;
 
@@ -297,5 +298,3 @@ static inline auto flow_removal(std::vector<std::vector<network_edge>>& graph, u
 
     return flow_to_remove;
 }
-
-#endif

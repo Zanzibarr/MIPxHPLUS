@@ -4,8 +4,7 @@
  * @author Zanella Matteo (matteozanella2@gmail.com)
  */
 
-#ifndef HPLUS_CYCLE_DET_HPP
-#define HPLUS_CYCLE_DET_HPP
+#pragma once
 
 #include <queue>
 #include <unordered_map>
@@ -18,7 +17,7 @@
 
 /** @brief Pair hash for edge_labels and edge_weights sets, where the key is the pair (from, to) of the edge */
 struct pair_hash {
-    std::size_t operator()(const std::pair<unsigned int, unsigned int>& p) const {
+    auto operator()(const std::pair<unsigned int, unsigned int>& p) const -> std::size_t {
         return std::hash<unsigned int>()(p.first) ^ (std::hash<unsigned int>()(p.second) << 1);
     }
 };
@@ -363,5 +362,3 @@ static inline auto find_cycles_weighted_lessthan1(
 
     return cycles;
 }
-
-#endif

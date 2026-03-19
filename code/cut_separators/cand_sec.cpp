@@ -1,8 +1,9 @@
-#include "../utils/cycle_det.hpp"
 #include "cand_callback.hpp"
+#include "cycle_det.hpp"
+#include "timer.hxx"
 
 [[nodiscard]]
-static auto build_graph(const hplus::instance& inst, const binary_set& unreachable_actions,
+static auto build_graph(const hplus::instance& inst, const BinarySet& unreachable_actions,
                         const std::vector<std::vector<unsigned int>>& used_first_achievers)
     -> std::tuple<std::vector<std::vector<unsigned int>>, std::unordered_map<std::pair<unsigned int, unsigned int>, unsigned int, pair_hash>> {
     std::vector<std::vector<unsigned int>> graph;
@@ -28,8 +29,9 @@ static auto build_graph(const hplus::instance& inst, const binary_set& unreachab
 }
 
 [[nodiscard]]
-auto cand_cuts::add_sec_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const binary_set& unreachable_actions,
+auto cand_cuts::add_sec_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const BinarySet& unreachable_actions,
                             const std::vector<std::vector<unsigned int>>& used_first_achievers) -> unsigned int {
+    auto _cand_sec = make_scoped_timer<"cand_sec_separator">(STATS);
     const auto& [graph, edge_labels] = build_graph(inst, unreachable_actions, used_first_achievers);
     // Find cycles in the causal relation graph using a DFS approach
     auto cycles = find_cycles_unweighted(graph, edge_labels);

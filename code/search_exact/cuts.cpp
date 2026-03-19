@@ -1,11 +1,10 @@
+#include "bs_utils.hpp"
 #include "exact.hpp"
 
-void cuts::post_warm_start(const hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
-    if (VERBOSE_BASIC()) {
-        LOG_INFO << "Posting warm start to CUTS model";
-    }
+void cuts::post_warm_start(hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
+    LOG_INFO_S("Posting warm start to CUTS model");
 
-    binary_set state{inst.n};
+    BinarySet state{inst.n};
     const auto& warm_start{inst.sol.sequence};
 
     const unsigned int ncols{static_cast<unsigned int>(CPXgetnumcols(env, lp))};
@@ -29,7 +28,7 @@ void cuts::post_warm_start(const hplus::execution& exec, hplus::instance& inst, 
             unsigned int var_idx = inst.m + inst.nfadd + var_i;
             val[var_idx] = 1;
         }
-        state |= inst.actions[act_i].eff;
+        state |= inst.actions[act_i].eff_sparse;
     }
 
     CPX_HANDLE_CALL(CPXaddmipstarts(env, lp, 1, ncols, &izero, ind.data(), val.data(), &effortlevel, nullptr));

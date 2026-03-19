@@ -1,10 +1,13 @@
 #include "relax_callback.hpp"
 
-#include <set>
+#include <unordered_set>
+
+#include "stats_registry.hxx"
+#include "timer.hxx"
 
 [[nodiscard]]
-std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash> relax_cuts::relaxationpoint_info(const hplus::instance& inst,
-                                                                                                              std::vector<double>& relax_point) {
+auto relax_cuts::relaxationpoint_info(const hplus::instance& inst, std::vector<double>& relax_point)
+    -> std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash> {
     std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash> fadd_weights;
     // Handle precision errors (i.e.: -1e^-06 is to be considered 0)
     for (unsigned int idx = 0; idx < inst.m; ++idx) {
@@ -30,12 +33,12 @@ std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash> rel
     return fadd_weights;
 }
 
-void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, const hplus::instance& inst, thread_data& data) {
+void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, const hplus::instance& inst) {
     int nodeuid{-1};
     int nodedepth{-1};
     CPX_HANDLE_CALL(CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODEUID, &nodeuid));
     CPX_HANDLE_CALL(CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODEDEPTH, &nodedepth));
-    static std::set<int> visited_nodes;
+    static std::unordered_set<int> visited_nodes;
     // If we have our custom cutloop in place, we don't need to generate cuts from fractionary solutions in the first root node relaxation
     if (exec.custom_cutloop && nodeuid == 0) {
         return;
@@ -50,9 +53,8 @@ void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::
     }
     visited_nodes.insert(nodeuid);
 
-    data.relax_calls++;
-
-    double start_time = GET_TIME();
+    STATS.counter_inc<"fract_calls">();
+    auto _fract_time = make_scoped_timer<"fract_callback">(STATS);
 
     std::vector<double> relax_point(inst.m + inst.nfadd);
     double obj{CPX_INFBOUND};
@@ -74,15 +76,14 @@ void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::
     // -> s : SEC
     try {
         if (exec.fract_cuts.find('m') != std::string::npos || (exec.fract_cuts.find('l') != std::string::npos)) {
-            data.usercuts_lm += relax_cuts::add_lm_cut(context, exec, inst, relax_point, data.acts_in_lm, data.n_lm);
+            auto fract_lm = relax_cuts::add_lm_cut(context, exec, inst, relax_point);
+            STATS.counter_inc<"fract_lm">(fract_lm);
         }
         if (exec.fract_cuts.find('s') != std::string::npos) {
-            data.usercuts_sec += relax_cuts::add_sec_cut(context, inst, fadd_weights);
+            auto fract_sec = relax_cuts::add_sec_cut(context, inst, fadd_weights);
+            STATS.counter_inc<"fract_sec">(fract_sec);
         }
     } catch (timelimit_exception& e) {
         return;
     }
-
-    // Update the candidate time
-    data.relax_time += GET_TIME() - start_time;
 }

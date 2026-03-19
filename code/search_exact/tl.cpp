@@ -1,10 +1,9 @@
+#include "bs_utils.hpp"
 #include "exact.hpp"
-#include "hplus_algs.hpp"
+#include "stats_registry.hxx"
 
-void tl::add_acyclicity_constraints(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp) {
-    if (VERBOSE_BASIC()) {
-        LOG_INFO << "Adding acyclicity constraints for TL model";
-    }
+void tl::add_acyclicity_constraints(hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
+    LOG_INFO_S("Adding acyclicity constraints for TL model");
 
     // ====================================================== //
     // =================== CPLEX VARIABLES ================== //
@@ -20,7 +19,7 @@ void tl::add_acyclicity_constraints(const hplus::execution& exec, hplus::instanc
 
     CPX_HANDLE_CALL(CPXnewcols(env, lp, inst.n, objs.data(), lbs.data(), ubs.data(), types.data(), nullptr));
 
-    stats.var_acyc = inst.n;
+    STATS.counter_set<"n_var_acyc">(inst.n);
 
     // ====================================================== //
     // ================== CPLEX CONSTRAINTS ================= //
@@ -50,19 +49,17 @@ void tl::add_acyclicity_constraints(const hplus::execution& exec, hplus::instanc
                 ind[2] = get_tvar_idx(pre);
                 val[2] = 1;
                 CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, 3, &rhs, &sense_l, &begin, ind.data(), val.data(), nullptr, nullptr));
-                stats.const_acyc++;
+                STATS.counter_inc<"n_const_acyc">();
             }
             var_count++;
         }
     }
 }
 
-void tl::post_warm_start(const hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
-    if (VERBOSE_BASIC()) {
-        LOG_INFO << "Posting warm start to TL model";
-    }
+void tl::post_warm_start(hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
+    LOG_INFO_S("Posting warm start to TL model");
 
-    binary_set state{inst.n};
+    BinarySet state{inst.n};
     const auto& warm_start{inst.sol.sequence};
 
     const unsigned int ncols{static_cast<unsigned int>(CPXgetnumcols(env, lp))};
@@ -90,7 +87,7 @@ void tl::post_warm_start(const hplus::execution& exec, hplus::instance& inst, CP
             unsigned int tvar_idx = inst.m + inst.nfadd + inst.n + var_i;
             val[tvar_idx] = static_cast<double>(timestamp);
         }
-        state |= inst.actions[act_i].eff;
+        state |= inst.actions[act_i].eff_sparse;
     }
 
     CPX_HANDLE_CALL(CPXaddmipstarts(env, lp, 1, ncols, &izero, ind.data(), val.data(), &effortlevel, nullptr));

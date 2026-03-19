@@ -26,6 +26,29 @@ HOW I DO VERSIONING:
 <!-- ### :rocket: Performance Improvements -->
 
 
+## [3.0.0] - 2026/03/19
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+### :heavy_exclamation_mark: Changed
+- Removed suboptimal use of BinarySet
+- Updated BinarySet, Logger implementations
+### :heavy_plus_sign: Added
+- Using StatsRegistry for timing and statistics
+- Landmark minimization in LMcut
+### :x: Removed
+- BinarySet pre and eff from actions
+<!-- ### :curly_loop: Other -->
+### :rocket: Performance Improvements
+- Landmark minimization in LMcut (compared with test run):
+    - Solved: 2564 -> 2594
+    - Nodes: -11,-50,-57,-38%
+    - Time: +57,-30,-40,-24%
+- Implementation adjustments (compared with LM min):
+    - Solved: 2594 -> 2600
+    - Nodes: -3,-0,-5,-12%
+    - Time: -31,-21,-33,-14%
+
+
 ## [2.6.1] - 2026/03/10
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed

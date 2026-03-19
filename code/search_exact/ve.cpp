@@ -1,17 +1,14 @@
 #include <algorithm>
-#include <set>
 #include <tuple>
 
-#include "../external/pq.hxx"
-#include "../utils/algorithms.hpp"
+#include "algorithms.hpp"
+#include "bs_utils.hpp"
 #include "exact.hpp"
-#include "hplus_algs.hpp"
 #include "limits.hxx"
+#include "pq.hxx"
 
-void ve::add_acyclicity_constraints(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp) {
-    if (VERBOSE_BASIC()) {
-        LOG_INFO << "Adding acyclicity constraints for VE model";
-    }
+void ve::add_acyclicity_constraints(hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
+    LOG_INFO_S("Adding acyclicity constraints for VE model");
 
     const auto stopcheck = []() {
         if (CHECK_STOP()) {
@@ -24,7 +21,7 @@ void ve::add_acyclicity_constraints(const hplus::execution& exec, hplus::instanc
     // ====================================================== //
 
     // Initialize data structures
-    std::vector<std::set<unsigned int>> graph(inst.n);
+    std::vector<std::unordered_set<unsigned int>> graph(inst.n);
     inst.veg_cumulative_graph.resize(inst.n);
     std::vector<std::tuple<unsigned int, unsigned int, unsigned int>> triangles_list;
     priority_queue<unsigned int> nodes_queue(2 * inst.n);
@@ -75,7 +72,7 @@ void ve::add_acyclicity_constraints(const hplus::execution& exec, hplus::instanc
         // p -> idx -> q
         // | / > |
 
-        std::set<unsigned int> new_nodes;
+        std::unordered_set<unsigned int> new_nodes;
 
         // Process all predecessors of idx
         for (unsigned int pre = 0; pre < inst.n; ++pre) {
@@ -152,7 +149,7 @@ void ve::add_acyclicity_constraints(const hplus::execution& exec, hplus::instanc
         stopcheck();
     }
 
-    stats.var_acyc = count;
+    STATS.counter_set<"n_var_acyc">(count);
 
     // ====================================================== //
     // ================== CPLEX CONSTRAINTS ================= //
@@ -192,7 +189,7 @@ void ve::add_acyclicity_constraints(const hplus::execution& exec, hplus::instanc
                     continue;
                 }
                 CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind.data(), val.data(), nullptr, nullptr));
-                stats.const_acyc++;
+                STATS.counter_inc<"n_const_acyc">();
             }
             stopcheck();
         }
@@ -210,7 +207,7 @@ void ve::add_acyclicity_constraints(const hplus::execution& exec, hplus::instanc
             ind[1] = get_veg_idx(var_j, var_i);
             val[1] = 1;
             CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, 2, &rhs_1, &sense_l, &begin, ind.data(), val.data(), nullptr, nullptr));
-            stats.const_acyc++;
+            STATS.counter_inc<"n_const_acyc">();
             stopcheck();
         }
     }
@@ -232,17 +229,15 @@ void ve::add_acyclicity_constraints(const hplus::execution& exec, hplus::instanc
             continue;
         }
         CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, 3, &rhs_1, &sense_l, &begin, ind.data(), val.data(), nullptr, nullptr));
-        stats.const_acyc++;
+        STATS.counter_inc<"n_const_acyc">();
         stopcheck();
     }
 }
 
-void ve::post_warm_start(const hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
-    if (VERBOSE_BASIC()) {
-        LOG_INFO << "Posting warm start to VE model";
-    }
+void ve::post_warm_start(hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
+    LOG_INFO_S("Posting warm start to VE model");
 
-    binary_set state{inst.n};
+    BinarySet state{inst.n};
     const auto& warm_start{inst.sol.sequence};
 
     const unsigned int ncols{static_cast<unsigned int>(CPXgetnumcols(env, lp))};
@@ -271,7 +266,7 @@ void ve::post_warm_start(const hplus::execution& exec, hplus::instance& inst, CP
                 val[veg_idx] = 1;
             }
         }
-        state |= inst.actions[act_i].eff;
+        state |= inst.actions[act_i].eff_sparse;
     }
 
     CPX_HANDLE_CALL(CPXaddmipstarts(env, lp, 1, ncols, &izero, ind.data(), val.data(), &effortlevel, nullptr));

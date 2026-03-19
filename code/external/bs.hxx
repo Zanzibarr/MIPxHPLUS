@@ -1,776 +1,741 @@
+#pragma once
+
 /**
  * @file binary_set.hxx
- * @brief Compact binary set and related classes
- * @version 1.0.0
+ * @brief Compact bitset-backed set for small non-negative integers.
+ * @version 1.1.0
+ *
+ * @details
+ * `BinarySet` stores a dense set of non-negative integers in a flat array
+ * of `uint64_t` words.  All single-element operations (`add`, `remove`,
+ * `contains`) are O(1) bit-manipulation with no branching on the value.
+ *
+ * Set-algebra operators (`&`, `|`, `^`, `-`) operate word-at-a-time using
+ * SIMD-friendly loops; `std::popcount` / `std::countr_zero` (C++20) handle
+ * cardinality and iteration.  An iterator class supports range-for by
+ * scanning for set bits via the `x & (x-1)` trick.
+ *
+ * Key design choices:
+ *   - Capacity is fixed at construction time (rounded up to the next word).
+ *   - The class deliberately avoids `std::bitset` to allow runtime-sized
+ *     capacity and to expose the word array for low-level operations.
  *
  * @author Matteo Zanella <matteozanella2@gmail.com>
- * Copyright 2025 Matteo Zanella
- * @see https://github.com/Zanzibarr/binary_set
+ * Copyright 2026 Matteo Zanella
  *
  * SPDX-License-Identifier: MIT
  */
 
-#ifndef BINARY_SET_HXX
-#define BINARY_SET_HXX
-
 #include <algorithm>  // std::all_of, std::fill, std::find
+#include <bit>        // std::popcount, std::countr_zero  [C++20]
 #include <cstddef>    // std::ptrdiff_t, std::size_t
+#include <cstdint>    // uint64_t
 #include <iterator>   // std::forward_iterator_tag
-#include <memory>     // std::unique_ptr, std::make_unique
+#include <ostream>    // std::ostream
 #include <stdexcept>  // std::invalid_argument, std::domain_error, std::out_of_range
 #include <string>     // std::string
 #include <vector>     // std::vector
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Internal constants
+// ─────────────────────────────────────────────────────────────────────────────
+namespace detail {
+inline constexpr unsigned int CHUNK_BITS = 64U;    ///< Bits per storage word
+using chunk_t = uint64_t;                          ///< Storage word type
+inline constexpr chunk_t CHUNK_ALL = ~chunk_t{0};  ///< All bits set
+}  // namespace detail
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  BinarySet
+// ═══════════════════════════════════════════════════════════════════════════
+
 /**
- * @brief A space-efficient binary set implementation using bit manipulation.
+ * @brief A space-efficient set of unsigned integers over a fixed universe.
  *
- * The binary_set stores elements as bits, where each bit position represents
- * whether an element is present (1) or absent (0) in the set. Elements are
- * unsigned integers in the range [0, capacity-1].
+ * Elements are unsigned integers in the range [0, capacity-1].  Internally,
+ * each element maps to one bit in a packed array of 64-bit words, so the
+ * storage overhead is approximately capacity/8 bytes.
  *
- * Features:
- * - Compact storage: Uses 1 bit per potential element
- * - Set operations: union, intersection, difference, complement
- * - Forward iteration over elements in ascending order
- * - Range-checked element access
+ * ### Complexity summary
+ * | Operation               | Time          | Notes                         |
+ * |-------------------------|---------------|-------------------------------|
+ * | add / remove / contains | O(1)          | Two arithmetic ops + bit test |
+ * | size / empty            | O(1)          | Maintained as running counter |
+ * | Set algebra (|, &, -, ^)| O(capacity/64)| Word-at-a-time                |
+ * | Iteration               | O(capacity)   | One popcount per word         |
+ * | sparse / string         | O(capacity)   | Full scan                     |
  *
- * Example:
- * binary_set bs(16);  // Create set with capacity 16 (elements 0-15)
- * bs.add(5);
- * bs.add(10);
- * if (bs.contains(5)) { ... }
- * for (unsigned int elem : bs){ iterate over elements }
+ * ### Thread safety
+ * No internal synchronisation.  Concurrent reads are safe; any concurrent
+ * mutation requires external locking.
+ *
+ * ### Example
+ * @code
+ * BinarySet a(16), b(16);
+ * a.add(1); a.add(3); a.add(5);
+ * b.add(3); b.add(5); b.add(7);
+ *
+ * BinarySet u = a | b;   // {1,3,5,7}
+ * BinarySet i = a & b;   // {3,5}
+ * BinarySet d = a - b;   // {1}
+ * BinarySet s = a ^ b;   // {1,7}
+ *
+ * for (unsigned int elem : a) { std::cout << elem << ' '; }   // 1 3 5
+ * std::cout << a;                                             // [X-X-X-----------]
+ * @endcode
  */
-class binary_set {
+class BinarySet {
    public:
-    // Iterator class forward declaration for use with begin()/end()
+    // Forward declaration for begin()/end()
     class iterator;
 
-    /**
-     * @brief Default constructor creates an empty set with capacity 0.
-     */
-    binary_set() noexcept = default;
+    // ───────────────────────────────────────────────────────────────────────
+    // Construction
+    // ───────────────────────────────────────────────────────────────────────
 
     /**
-     * @brief Constructs a binary set with specified capacity.
+     * @brief Default constructor — creates an unusable empty set with capacity 0.
      *
-     * @param capacity Maximum number of distinct elements (elements range [0,
-     * capacity-1])
-     * @param fill If true, initializes the set with all elements present; if
-     * false, set is empty
-     *
-     * @throw std::invalid_argument If capacity is 0
+     * A default-constructed set throws std::domain_error on any mutating or
+     * querying operation.  It exists to allow storage in containers before
+     * assignment.
      */
-    explicit binary_set(unsigned int capacity, bool fill = false) : capacity_(capacity) {
-        if (capacity == 0) throw std::invalid_argument("Cannot explicitly create a binary_set with capacity 0.");
+    BinarySet() noexcept = default;
 
-        if (fill) {
-            size_ = capacity_;
+    /**
+     * @brief Constructs a BinarySet with the given universe size.
+     *
+     * @param capacity  Number of distinct representable elements;
+     *                  elements are integers in [0, capacity-1].
+     * @param fill_all  If @c true the set is initialised with every element
+     *                  present; if @c false (default) the set is empty.
+     *
+     * @throw std::invalid_argument if @p capacity is 0.
+     *
+     * ### Example
+     * @code
+     * BinarySet empty_set(100);          // {}
+     * BinarySet full_set(100, true);     // {0,1,...,99}
+     * @endcode
+     */
+    explicit BinarySet(unsigned int capacity, bool fill_all = false) : capacity_(capacity) {
+        if (capacity == 0) {
+            throw std::invalid_argument("Cannot explicitly create a BinarySet with capacity 0.");
         }
+        const std::size_t n_chunks = chunks_needed(capacity_);
+        chunks_.assign(n_chunks, fill_all ? detail::CHUNK_ALL : detail::chunk_t{0});
 
-        set_.clear();
-        set_.resize((capacity_ + 7) / 8, fill ? static_cast<unsigned char>(~0u) : 0);
-        // Set appropriate bits in last byte if capacity is not a multiple of 8
-        if (fill && capacity_ % 8 != 0) {
-            set_[set_.size() - 1] &= static_cast<unsigned char>((1u << (capacity_ % 8)) - 1);
+        if (fill_all) {
+            mask_last_chunk();
+            size_ = capacity_;
         }
     }
 
-    /**
-     * @brief Adds an element to the set.
-     *
-     * @param element Element to add (must be in range [0, capacity-1])
-     * @return true if element was added (wasn't already present)
-     * @return false if element was already in the set
-     *
-     * @throw std::domain_error If this binary_set's capacity is 0
-     * @throw std::out_of_range If element >= capacity
-     */
-    bool add(unsigned int element) {
-        validate_element(element);
-        if (contains(element)) return false;
+    // ───────────────────────────────────────────────────────────────────────
+    // Element mutation
+    // ───────────────────────────────────────────────────────────────────────
 
-        set_[element / 8] |= (1u << (element % 8));
+    /**
+     * @brief Inserts @p element into the set.
+     *
+     * @param element  Must be in [0, capacity-1].
+     * @return @c true  if the element was not already present and was inserted.
+     * @return @c false if the element was already present (no-op).
+     *
+     * @throw std::domain_error   if capacity() == 0.
+     * @throw std::out_of_range   if element >= capacity().
+     */
+    auto add(unsigned int element) -> bool {
+        validate_element(element);
+        if (test_bit(element)) {
+            return false;
+        }
+        set_bit(element);
         ++size_;
         return true;
     }
 
     /**
-     * @brief Removes an element from the set.
+     * @brief Removes @p element from the set.
      *
-     * @param element Element to remove (must be in range [0, capacity-1])
-     * @return true if element was removed (was present)
-     * @return false if element wasn't in the set
+     * @param element  Must be in [0, capacity-1].
+     * @return @c true  if the element was present and has been removed.
+     * @return @c false if the element was absent (no-op).
      *
-     * @throw std::domain_error If this binary_set's capacity is 0
-     * @throw std::out_of_range If element >= capacity
+     * @throw std::domain_error   if capacity() == 0.
+     * @throw std::out_of_range   if element >= capacity().
      */
-    bool remove(unsigned int element) {
+    auto remove(unsigned int element) -> bool {
         validate_element(element);
-        if (!contains(element)) return false;
-
-        set_[element / 8] &= ~(1u << (element % 8));
+        if (!test_bit(element)) {
+            return false;
+        }
+        clear_bit(element);
         --size_;
         return true;
     }
 
     /**
      * @brief Removes all elements from the set.
+     *
+     * After this call size() == 0.  capacity() is unchanged.
      */
     void clear() noexcept {
-        std::fill(set_.begin(), set_.end(), 0);
+        std::ranges::fill(chunks_, detail::chunk_t{0});
         size_ = 0;
     }
 
     /**
-     * @brief Adds all possible elements to the set (fills to capacity).
+     * @brief Inserts every element in [0, capacity-1] into the set.
+     *
+     * After this call size() == capacity().  Equivalent to constructing with
+     * @c fill_all = true.
      */
     void fill() {
-        std::fill(set_.begin(), set_.end(), static_cast<unsigned char>(~0u));
-        // Clear extra bits in last byte if capacity is not a multiple of 8
-        if (capacity_ % 8 != 0 && capacity_ != 0) {
-            set_[set_.size() - 1] &= static_cast<unsigned char>((1u << (capacity_ % 8)) - 1);
-        }
+        std::ranges::fill(chunks_, detail::CHUNK_ALL);
+        mask_last_chunk();
         size_ = capacity_;
     }
 
+    // ───────────────────────────────────────────────────────────────────────
+    // Element queries
+    // ───────────────────────────────────────────────────────────────────────
+
     /**
-     * @brief Checks if an element is in the set.
+     * @brief Tests whether @p element is in the set.
      *
-     * @param element Element to look up (must be in range [0, capacity-1])
-     * @return true if element is present
-     * @return false if element is not present
+     * @param element  Must be in [0, capacity-1].
+     * @return @c true if present, @c false otherwise.
      *
-     * @throw std::domain_error If this binary_set's capacity is 0
-     * @throw std::out_of_range If element >= capacity
+     * @throw std::domain_error  if capacity() == 0.
+     * @throw std::out_of_range  if element >= capacity().
      */
-    [[nodiscard]]
-    bool contains(unsigned int element) const {
+    [[nodiscard]] auto contains(unsigned int element) const -> bool {
         validate_element(element);
-        return (set_[element / 8] & (1u << (element % 8))) != 0;
+        return test_bit(element);
     }
 
     /**
-     * @brief Subscript operator for element lookup (read-only).
+     * @brief Subscript read-only access — equivalent to contains().
      *
-     * @param element Element to check (must be in range [0, capacity-1])
-     * @return true if element is present
-     * @return false if element is not present
+     * @param element  Must be in [0, capacity-1].
      *
-     * @throw std::domain_error If this binary_set's capacity is 0
-     * @throw std::out_of_range If element >= capacity
+     * @throw std::domain_error  if capacity() == 0.
+     * @throw std::out_of_range  if element >= capacity().
      */
-    [[nodiscard]]
-    bool operator[](unsigned int element) const {
-        return contains(element);
-    }
+    [[nodiscard]] auto operator[](unsigned int element) const -> bool { return contains(element); }
+
+    // ───────────────────────────────────────────────────────────────────────
+    // Set-membership queries
+    // ───────────────────────────────────────────────────────────────────────
 
     /**
-     * @brief Returns the capacity of this set.
+     * @brief Tests whether every element of @p other is also in this set.
      *
-     * @return The maximum number of distinct elements this set can hold
+     * Equivalently, tests @p other ⊆ *this.
+     *
+     * @param other  Must have the same capacity as *this.
+     * @return @c true if @p other is a subset of this set.
+     *
+     * @throw std::invalid_argument if capacities differ.
+     *
+     * @see subset_of(), intersects()
      */
-    [[nodiscard]]
-    unsigned int capacity() const noexcept {
-        return capacity_;
-    }
-
-    /**
-     * @brief Returns the number of elements currently in the set.
-     *
-     * @return Number of elements in the set
-     */
-    [[nodiscard]]
-    std::size_t size() const noexcept {
-        return size_;
-    }
-
-    /**
-     * @brief Checks if the set is empty.
-     *
-     * @return true if the set contains no elements
-     * @return false if the set contains at least one element
-     */
-    [[nodiscard]]
-    bool empty() const noexcept {
-        return std::all_of(set_.begin(), set_.end(), [](unsigned char byte) { return byte == 0; });
-    }
-
-    /**
-     * @brief Returns a vector of all elements in the set.
-     *
-     * @return std::vector<unsigned int> containing all elements in ascending
-     * order
-     *
-     * @throw std::domain_error If this binary_set's capacity is 0
-     */
-    [[nodiscard]]
-    std::vector<unsigned int> sparse() const {
-        if (capacity_ == 0) throw std::domain_error("This binary set has a capacity of 0.");
-        return std::vector<unsigned int>{this->begin(), this->end()};
-    }
-
-    /**
-     * @brief Returns a string representation of the set.
-     *
-     * Format: '[' followed by 'X' for present elements and '-' for absent
-     * elements, then ']' Example: "[X--X-X]" represents a set with elements {0,
-     * 3, 5}
-     *
-     * @return std::string representation of the set
-     */
-    [[nodiscard]]
-    explicit operator std::string() const {
-        std::string result;
-        result.reserve(capacity_ + 2);
-
-        result.push_back('[');
-        for (unsigned int i = 0; i < capacity_; ++i) {
-            result.push_back(contains(i) ? 'X' : '-');
-        }
-        result.push_back(']');
-
-        return result;
-    }
-
-    // Set operations
-
-    /**
-     * @brief Computes the intersection of two sets.
-     *
-     * @param other Set to intersect with
-     * @return binary_set containing elements present in both sets
-     *
-     * @throw std::invalid_argument If the sets have different capacities
-     */
-    [[nodiscard]]
-    binary_set operator&(const binary_set &other) const {
+    [[nodiscard]] auto superset_of(const BinarySet& other) const -> bool {
         validate_same_capacity(other);
-
-        binary_set result{*this};
-        for (std::size_t i = 0; i < set_.size(); ++i) {
-            result.set_[i] &= other.set_[i];
-        }
-        result.recalculate_size();
-        return result;
-    }
-
-    /**
-     * @brief Performs intersection in-place.
-     *
-     * @param other Set to intersect with
-     * @return binary_set& Reference to this set after the operation
-     *
-     * @throw std::invalid_argument If the sets have different capacities
-     */
-    binary_set &operator&=(const binary_set &other) {
-        validate_same_capacity(other);
-
-        for (std::size_t i = 0; i < set_.size(); ++i) {
-            set_[i] &= other.set_[i];
-        }
-        recalculate_size();
-        return *this;
-    }
-
-    /**
-     * @brief Computes the union of two sets.
-     *
-     * @param other Set to union with
-     * @return binary_set containing elements present in either set
-     *
-     * @throw std::invalid_argument If the sets have different capacities
-     */
-    [[nodiscard]]
-    binary_set operator|(const binary_set &other) const {
-        validate_same_capacity(other);
-
-        binary_set result{*this};
-        for (std::size_t i = 0; i < set_.size(); ++i) {
-            result.set_[i] |= other.set_[i];
-        }
-        result.recalculate_size();
-        return result;
-    }
-
-    /**
-     * @brief Performs union in-place.
-     *
-     * @param other Set to union with
-     * @return binary_set& Reference to this set after the operation
-     *
-     * @throw std::invalid_argument If the sets have different capacities
-     */
-    binary_set &operator|=(const binary_set &other) {
-        validate_same_capacity(other);
-
-        for (std::size_t i = 0; i < set_.size(); ++i) {
-            set_[i] |= other.set_[i];
-        }
-        recalculate_size();
-        return *this;
-    }
-
-    /**
-     * @brief Computes the set difference (elements in this set but not in
-     * other).
-     *
-     * @param other Set to subtract
-     * @return binary_set containing elements in this set but not in other
-     *
-     * @throw std::invalid_argument If the sets have different capacities
-     */
-    [[nodiscard]]
-    binary_set operator-(const binary_set &other) const {
-        validate_same_capacity(other);
-
-        binary_set result{*this};
-        for (std::size_t i = 0; i < set_.size(); ++i) {
-            result.set_[i] &= ~other.set_[i];
-        }
-        result.recalculate_size();
-        return result;
-    }
-
-    /**
-     * @brief Performs set difference in-place.
-     *
-     * @param other Set to subtract
-     * @return binary_set& Reference to this set after the operation
-     *
-     * @throw std::invalid_argument If the sets have different capacities
-     */
-    binary_set &operator-=(const binary_set &other) {
-        validate_same_capacity(other);
-
-        for (std::size_t i = 0; i < set_.size(); ++i) {
-            set_[i] &= ~other.set_[i];
-        }
-        recalculate_size();
-        return *this;
-    }
-
-    /**
-     * @brief Computes the complement of the set.
-     *
-     * Returns a set containing all elements in [0, capacity-1] that are not in
-     * this set.
-     *
-     * @return binary_set The complement of this set
-     */
-    [[nodiscard]]
-    binary_set operator!() const {
-        binary_set result{capacity_};
-
-        for (std::size_t i = 0; i < set_.size(); ++i) {
-            result.set_[i] = ~set_[i];
-        }
-
-        // Mask extra bits in the last byte if needed
-        if (capacity_ % 8 != 0 && capacity_ != 0) {
-            result.set_[set_.size() - 1] &= static_cast<unsigned char>((1u << (capacity_ % 8)) - 1);
-        }
-
-        result.recalculate_size();
-        return result;
-    }
-
-    /**
-     * @brief Checks if two sets are equal.
-     *
-     * @param other Set to compare with
-     * @return true if both sets contain exactly the same elements
-     * @return false otherwise
-     *
-     * @throw std::invalid_argument If the sets have different capacities
-     */
-    [[nodiscard]]
-    bool operator==(const binary_set &other) const {
-        validate_same_capacity(other);
-        return set_ == other.set_;
-    }
-
-    /**
-     * @brief Checks if two sets are different.
-     *
-     * @param other Set to compare with
-     * @return true if the sets differ in at least one element
-     * @return false if the sets are equal
-     *
-     * @throw std::invalid_argument If the sets have different capacities
-     */
-    [[nodiscard]]
-    bool operator!=(const binary_set &other) const {
-        validate_same_capacity(other);
-        return set_ != other.set_;
-    }
-
-    /**
-     * @brief Checks if two sets have any common elements.
-     *
-     * @param other Set to check intersection with
-     * @return true if the sets have at least one element in common
-     * @return false if the sets are disjoint
-     *
-     * @throw std::invalid_argument If the sets have different capacities
-     */
-    [[nodiscard]]
-    bool intersects(const binary_set &other) const {
-        validate_same_capacity(other);
-
-        for (std::size_t i = 0; i < set_.size(); ++i) {
-            if (set_[i] & other.set_[i]) return true;
-        }
-        return false;
-    }
-
-    /**
-     * @brief Checks if another set is a subset of this set.
-     *
-     * @param other The set to check
-     * @return true if all elements in other are also in this set
-     * @return false otherwise
-     *
-     * @throw std::invalid_argument If the sets have different capacities
-     */
-    [[nodiscard]]
-    bool contains(const binary_set &other) const {
-        validate_same_capacity(other);
-
-        for (std::size_t i = 0; i < set_.size(); ++i) {
-            // If there's any bit in other that's not in this set, other is not
-            // a subset
-            if ((~set_[i] & other.set_[i]) != 0) return false;
+        for (std::size_t i = 0; i < chunks_.size(); ++i) {
+            // Bits present in other but absent in *this → not a superset
+            if ((~chunks_[i] & other.chunks_[i]) != 0) {
+                return false;
+            }
         }
         return true;
     }
 
     /**
-     * @brief Returns an iterator to the first element in the set.
+     * @brief Tests whether every element of this set is also in @p other.
      *
-     * Iterates over elements in ascending order.
+     * Equivalently, tests *this ⊆ @p other.
      *
-     * @return iterator to the first element, or end() if empty
+     * @param other  Must have the same capacity as *this.
+     * @return @c true if this set is a subset of @p other.
+     *
+     * @throw std::invalid_argument if capacities differ.
+     *
+     * @see superset_of(), intersects()
      */
-    [[nodiscard]]
-    iterator begin() const noexcept {
-        return {this, 0};
+    [[nodiscard]] auto subset_of(const BinarySet& other) const -> bool { return other.superset_of(*this); }
+
+    /**
+     * @brief Tests whether this set and @p other share at least one element.
+     *
+     * @param other  Must have the same capacity as *this.
+     * @return @c true if the intersection is non-empty.
+     *
+     * @throw std::invalid_argument if capacities differ.
+     */
+    [[nodiscard]] auto intersects(const BinarySet& other) const -> bool {
+        validate_same_capacity(other);
+        for (std::size_t i = 0; i < chunks_.size(); ++i) {
+            if ((chunks_[i] & other.chunks_[i]) != 0U) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // ───────────────────────────────────────────────────────────────────────
+    // Capacity and size
+    // ───────────────────────────────────────────────────────────────────────
+
+    /**
+     * @brief Returns the fixed universe size (maximum number of elements).
+     *
+     * Elements are integers in [0, capacity()-1].
+     */
+    [[nodiscard]] auto capacity() const noexcept -> unsigned int { return capacity_; }
+
+    /**
+     * @brief Returns the number of elements currently in the set.
+     *
+     * Maintained as an O(1) counter; no bit-scan is performed.
+     */
+    [[nodiscard]] auto size() const noexcept -> std::size_t { return size_; }
+
+    /**
+     * @brief Tests whether the set is empty (size() == 0).
+     *
+     * O(1) — uses the cached size counter.
+     */
+    [[nodiscard]] auto empty() const noexcept -> bool { return size_ == 0; }
+
+    // ───────────────────────────────────────────────────────────────────────
+    // Bulk conversion
+    // ───────────────────────────────────────────────────────────────────────
+
+    /**
+     * @brief Returns all present elements as a sorted vector.
+     *
+     * Elements are returned in strictly ascending order.
+     *
+     * @return std::vector<unsigned int> of elements in [0, capacity-1].
+     *
+     * @throw std::domain_error if capacity() == 0.
+     */
+    [[nodiscard]] auto sparse() const -> std::vector<unsigned int> {
+        if (capacity_ == 0) {
+            throw std::domain_error("This BinarySet has a capacity of 0.");
+        }
+        return {begin(), end()};
     }
 
     /**
-     * @brief Returns an iterator to one past the last element.
+     * @brief Returns a compact visual representation of the set.
      *
-     * @return iterator representing the end position
+     * Format: @c '[' followed by @c 'X' for each present element and @c '-'
+     * for each absent element, then @c ']'.
+     *
+     * @par Example
+     * A set with elements {0, 3, 5} and capacity 8:
+     * @code
+     * "[X--X-X--]"
+     * @endcode
+     *
+     * @note Use operator<< for direct streaming; this explicit conversion is
+     *       provided for contexts that require a std::string value.
      */
-    [[nodiscard]]
-    iterator end() const noexcept {
-        return {this, capacity_};
+    [[nodiscard]] explicit operator std::string() const {
+        std::string result;
+        result.reserve(static_cast<std::size_t>(capacity_) + 2);
+        result.push_back('[');
+        for (unsigned int i = 0; i < capacity_; ++i) {
+            result.push_back(test_bit_unchecked(i) ? 'X' : '-');
+        }
+        result.push_back(']');
+        return result;
     }
 
     /**
-     * @brief Forward iterator for binary_set.
+     * @brief Streams the set's string representation to @p os.
      *
-     * Iterates over elements present in the set in ascending order.
+     * @see operator std::string()
+     */
+    friend auto operator<<(std::ostream& ostr, const BinarySet& bin_set) -> std::ostream& { return ostr << static_cast<std::string>(bin_set); }
+
+    // ───────────────────────────────────────────────────────────────────────
+    // Set algebra — non-mutating
+    // ───────────────────────────────────────────────────────────────────────
+
+    /**
+     * @brief Returns the intersection of *this and @p other  (A ∩ B).
+     *
+     * The result contains every element present in **both** sets.
+     *
+     * @param other  Must have the same capacity as *this.
+     * @throw std::invalid_argument if capacities differ.
+     */
+    [[nodiscard]] auto operator&(const BinarySet& other) const -> BinarySet {
+        validate_same_capacity(other);
+        BinarySet result(capacity_);
+        for (std::size_t i = 0; i < chunks_.size(); ++i) {
+            result.chunks_[i] = chunks_[i] & other.chunks_[i];
+        }
+        result.recalculate_size();
+        return result;
+    }
+
+    /**
+     * @brief Returns the union of *this and @p other  (A ∪ B).
+     *
+     * The result contains every element present in **either** set.
+     *
+     * @param other  Must have the same capacity as *this.
+     * @throw std::invalid_argument if capacities differ.
+     */
+    [[nodiscard]] auto operator|(const BinarySet& other) const -> BinarySet {
+        validate_same_capacity(other);
+        BinarySet result(capacity_);
+        for (std::size_t i = 0; i < chunks_.size(); ++i) {
+            result.chunks_[i] = chunks_[i] | other.chunks_[i];
+        }
+        result.recalculate_size();
+        return result;
+    }
+
+    /**
+     * @brief Returns the set difference  (A \ B).
+     *
+     * The result contains elements present in *this but **not** in @p other.
+     *
+     * @param other  Must have the same capacity as *this.
+     * @throw std::invalid_argument if capacities differ.
+     */
+    [[nodiscard]] auto operator-(const BinarySet& other) const -> BinarySet {
+        validate_same_capacity(other);
+        BinarySet result(capacity_);
+        for (std::size_t i = 0; i < chunks_.size(); ++i) {
+            result.chunks_[i] = chunks_[i] & ~other.chunks_[i];
+        }
+        result.recalculate_size();
+        return result;
+    }
+
+    /**
+     * @brief Returns the symmetric difference  (A △ B).
+     *
+     * The result contains elements present in **exactly one** of the two sets.
+     * Equivalent to (A | B) - (A & B), but computed in a single pass.
+     *
+     * @param other  Must have the same capacity as *this.
+     * @throw std::invalid_argument if capacities differ.
+     */
+    [[nodiscard]] auto operator^(const BinarySet& other) const -> BinarySet {
+        validate_same_capacity(other);
+        BinarySet result(capacity_);
+        for (std::size_t i = 0; i < chunks_.size(); ++i) {
+            result.chunks_[i] = chunks_[i] ^ other.chunks_[i];
+        }
+        result.recalculate_size();
+        return result;
+    }
+
+    /**
+     * @brief Returns the complement of *this  (∁A).
+     *
+     * The result contains every element in [0, capacity-1] that is **not** in
+     * *this.
+     *
+     * @note Unary @c ! is used because unary @c ~ is not overloadable on class
+     *       types in C++.
+     */
+    [[nodiscard]] auto operator!() const -> BinarySet {
+        if (capacity_ == 0) {
+            throw std::domain_error("Cannot complement a BinarySet with capacity 0.");
+        }
+
+        BinarySet result(capacity_);
+        for (std::size_t i = 0; i < chunks_.size(); ++i) {
+            result.chunks_[i] = ~chunks_[i];
+        }
+        result.mask_last_chunk();
+        result.recalculate_size();
+        return result;
+    }
+
+    // ───────────────────────────────────────────────────────────────────────
+    // Set algebra — mutating (in-place)
+    // ───────────────────────────────────────────────────────────────────────
+
+    /**
+     * @brief In-place intersection  (*this = *this ∩ other).
+     *
+     * @param other  Must have the same capacity as *this.
+     * @throw std::invalid_argument if capacities differ.
+     */
+    auto operator&=(const BinarySet& other) -> BinarySet& {
+        validate_same_capacity(other);
+        for (std::size_t i = 0; i < chunks_.size(); ++i) {
+            chunks_[i] &= other.chunks_[i];
+        }
+        recalculate_size();
+        return *this;
+    }
+
+    /**
+     * @brief In-place union  (*this = *this ∪ other).
+     *
+     * @param other  Must have the same capacity as *this.
+     * @throw std::invalid_argument if capacities differ.
+     */
+    auto operator|=(const BinarySet& other) -> BinarySet& {
+        validate_same_capacity(other);
+        for (std::size_t i = 0; i < chunks_.size(); ++i) {
+            chunks_[i] |= other.chunks_[i];
+        }
+        recalculate_size();
+        return *this;
+    }
+
+    /**
+     * @brief In-place set difference  (*this = *this \ other).
+     *
+     * @param other  Must have the same capacity as *this.
+     * @throw std::invalid_argument if capacities differ.
+     */
+    auto operator-=(const BinarySet& other) -> BinarySet& {
+        validate_same_capacity(other);
+        for (std::size_t i = 0; i < chunks_.size(); ++i) {
+            chunks_[i] &= ~other.chunks_[i];
+        }
+        recalculate_size();
+        return *this;
+    }
+
+    /**
+     * @brief In-place symmetric difference  (*this = *this △ other).
+     *
+     * @param other  Must have the same capacity as *this.
+     * @throw std::invalid_argument if capacities differ.
+     */
+    auto operator^=(const BinarySet& other) -> BinarySet& {
+        validate_same_capacity(other);
+        for (std::size_t i = 0; i < chunks_.size(); ++i) {
+            chunks_[i] ^= other.chunks_[i];
+        }
+        recalculate_size();
+        return *this;
+    }
+
+    // ───────────────────────────────────────────────────────────────────────
+    // Equality
+    // ───────────────────────────────────────────────────────────────────────
+
+    /**
+     * @brief Tests whether *this and @p other contain exactly the same elements.
+     *
+     * @param other  Must have the same capacity as *this.
+     * @throw std::invalid_argument if capacities differ.
+     */
+    [[nodiscard]] auto operator==(const BinarySet& other) const -> bool {
+        validate_same_capacity(other);
+        return chunks_ == other.chunks_;
+    }
+
+    /**
+     * @brief Tests whether *this and @p other differ in at least one element.
+     *
+     * @param other  Must have the same capacity as *this.
+     * @throw std::invalid_argument if capacities differ.
+     */
+    [[nodiscard]] auto operator!=(const BinarySet& other) const -> bool {
+        validate_same_capacity(other);
+        return chunks_ != other.chunks_;
+    }
+
+    // ───────────────────────────────────────────────────────────────────────
+    // Iteration
+    // ───────────────────────────────────────────────────────────────────────
+
+    /**
+     * @brief Returns a forward iterator to the smallest element in the set.
+     *
+     * Iterates elements in strictly ascending order.  Invalidated by any
+     * mutation (add, remove, clear, fill, in-place operators).
+     *
+     * @return iterator pointing to the first element, or end() if the set is
+     *         empty.
+     */
+    [[nodiscard]] auto begin() const noexcept -> iterator {
+        return iterator{this, 0U};  // 2-arg begin-constructor overload
+    }
+
+    /**
+     * @brief Returns the past-the-end iterator.
+     *
+     * @return iterator representing the end position (value == capacity()).
+     */
+    [[nodiscard]] auto end() const noexcept -> iterator {
+        return iterator{this, capacity_, true};  // end_tag overload
+    }
+
+    // ───────────────────────────────────────────────────────────────────────
+    // Iterator
+    // ───────────────────────────────────────────────────────────────────────
+
+    /**
+     * @brief Forward iterator over elements present in the set.
+     *
+     * Advances word-by-word using std::countr_zero to skip absent elements in
+     * O(1) amortised per step instead of scanning bit-by-bit.
+     *
+     * @note The iterator stores a raw pointer to the parent BinarySet.  Any
+     *       mutation of the parent invalidates all outstanding iterators.
      */
     class iterator {
        public:
         using iterator_category = std::forward_iterator_tag;
         using value_type = unsigned int;
         using difference_type = std::ptrdiff_t;
-        using pointer = const value_type *;
-        using reference = const value_type &;
+        using pointer = const value_type*;
+        using reference = const value_type&;
 
-        iterator(const binary_set *bs, unsigned int pos) noexcept : bs_(bs), current_pos_(pos) {
-            // Advance to first set element if starting position is not set
-            if (current_pos_ < bs_->capacity() && !bs_->contains(current_pos_)) {
-                ++(*this);
+        // ── End sentinel constructor ───────────────────────────────────────────
+        iterator(const BinarySet* set, unsigned int /*pos — end*/, bool /*end_tag*/) noexcept
+            : bs_(set), chunk_idx_(set->chunks_.size()), current_chunk_(0), current_pos_(set->capacity_) {}
+
+        // ── Begin constructor ──────────────────────────────────────────────────
+        iterator(const BinarySet* set, unsigned int /*pos — begin*/) noexcept : bs_(set), chunk_idx_(0), current_chunk_(0), current_pos_(0) {
+            // Find the first non-empty chunk.
+            while (chunk_idx_ < bs_->chunks_.size()) {
+                current_chunk_ = bs_->chunks_[chunk_idx_];
+                if (current_chunk_ != 0) {
+                    break;
+                }
+                ++chunk_idx_;
             }
+            if (chunk_idx_ >= bs_->chunks_.size()) {
+                // Empty set — become end.
+                current_pos_ = bs_->capacity_;
+                return;
+            }
+            // The lowest set bit of current_chunk_ is the first element.
+            current_pos_ = (static_cast<unsigned int>(chunk_idx_) * detail::CHUNK_BITS) + static_cast<unsigned int>(std::countr_zero(current_chunk_));
+            // Clear that bit so the next ++ sees the remainder.
+            current_chunk_ &= current_chunk_ - 1U;
         }
 
-        iterator &operator++() {
-            do {
-                ++current_pos_;
-            } while (current_pos_ < bs_->capacity() && !bs_->contains(current_pos_));
+        auto operator++() noexcept -> iterator& {
+            // Fast path: more bits remain in the current cached chunk word.
+            if (current_chunk_ != 0) {
+                current_pos_ =
+                    (static_cast<unsigned int>(chunk_idx_) * detail::CHUNK_BITS) + static_cast<unsigned int>(std::countr_zero(current_chunk_));
+                current_chunk_ &= current_chunk_ - 1U;  // clear lowest set bit
+                return *this;
+            }
+            // Slow path: move to the next non-empty chunk.
+            ++chunk_idx_;
+            while (chunk_idx_ < bs_->chunks_.size()) {
+                current_chunk_ = bs_->chunks_[chunk_idx_];
+                if (current_chunk_ != 0) {
+                    current_pos_ =
+                        (static_cast<unsigned int>(chunk_idx_) * detail::CHUNK_BITS) + static_cast<unsigned int>(std::countr_zero(current_chunk_));
+                    current_chunk_ &= current_chunk_ - 1U;
+                    return *this;
+                }
+                ++chunk_idx_;
+            }
+            // No more chunks — become end.
+            current_pos_ = bs_->capacity_;
             return *this;
         }
 
-        iterator operator++(int) {
+        auto operator++(int) noexcept -> iterator {
             const iterator tmp{*this};
             ++(*this);
             return tmp;
         }
 
-        [[nodiscard]]
-        value_type operator*() const noexcept {
-            return current_pos_;
-        }
-
-        [[nodiscard]]
-        bool operator==(const iterator &other) const noexcept {
-            return current_pos_ == other.current_pos_;
-        }
-
-        [[nodiscard]]
-        bool operator!=(const iterator &other) const noexcept {
-            return !(*this == other);
-        }
+        [[nodiscard]] auto operator*() const noexcept -> value_type { return current_pos_; }
+        [[nodiscard]] auto operator==(const iterator& other) const noexcept -> bool { return current_pos_ == other.current_pos_; }
+        [[nodiscard]] auto operator!=(const iterator& other) const noexcept -> bool { return !(*this == other); }
 
        private:
-        const binary_set *bs_;
-        unsigned int current_pos_;
+        const BinarySet* bs_;
+        std::size_t chunk_idx_;          ///< Index of the chunk currently being consumed
+        detail::chunk_t current_chunk_;  ///< Remaining bits of chunks_[chunk_idx_], LSB-first
+        unsigned int current_pos_;       ///< Value yielded by operator*
     };
 
    private:
-    unsigned int capacity_{0};
-    std::size_t size_{0};
-    std::vector<unsigned char> set_;
+    // ───────────────────────────────────────────────────────────────────────
+    // Internal helpers
+    // ───────────────────────────────────────────────────────────────────────
 
-    // Helper methods for validation
-    void validate_element(unsigned int element) const {
+    static auto chunks_needed(unsigned int capacity) noexcept -> std::size_t {
+        return (static_cast<std::size_t>(capacity) + detail::CHUNK_BITS - 1) / detail::CHUNK_BITS;
+    }
+
+    // Low-level bit accessors — no bounds checking.
+    [[nodiscard]] auto test_bit_unchecked(unsigned int element) const noexcept -> bool {
+        return ((chunks_[element / detail::CHUNK_BITS] >> (element % detail::CHUNK_BITS)) & detail::chunk_t{1}) != 0U;
+    }
+    [[nodiscard]] auto test_bit(unsigned int element) const noexcept -> bool { return test_bit_unchecked(element); }
+    void set_bit(unsigned int element) noexcept { chunks_[element / detail::CHUNK_BITS] |= detail::chunk_t{1} << (element % detail::CHUNK_BITS); }
+    void clear_bit(unsigned int element) noexcept {
+        chunks_[element / detail::CHUNK_BITS] &= ~(detail::chunk_t{1} << (element % detail::CHUNK_BITS));
+    }
+
+    /**
+     * @brief Clears the unused high bits of the last chunk.
+     *
+     * When capacity is not a multiple of CHUNK_BITS, the final chunk has
+     * bits beyond index (capacity-1) that must remain zero.  This is called
+     * after any operation that might set those bits (fill, complement).
+     */
+    void mask_last_chunk() noexcept {
         if (capacity_ == 0) {
-            throw std::domain_error("This binary set has a capacity of 0.");
+            return;
         }
-        if (element >= capacity_) {
-            throw std::out_of_range(
-                "Specified element is outside of the possible "
-                "range for this binary_set.");
-        }
-    }
-
-    void validate_same_capacity(const binary_set &other) const {
-        if (capacity_ != other.capacity_) {
-            throw std::invalid_argument("The two binary_set don't have the same capacity.");
+        const unsigned int tail = capacity_ % detail::CHUNK_BITS;
+        if (tail != 0) {
+            // Keep only the lowest `tail` bits of the last word
+            chunks_.back() &= (detail::chunk_t{1} << tail) - 1U;
         }
     }
 
-    // Recalculates the size of the set by counting the bits.
+    /**
+     * @brief Recomputes size_ by summing std::popcount over all chunks.
+     *
+     * Called after bulk operations (&=, |=, -=, ^=, complement).
+     * std::popcount compiles to a single POPCNT instruction on modern CPUs.
+     */
     void recalculate_size() noexcept {
         size_ = 0;
-        for (unsigned char byte : set_) {
-            // Brian Kernighan's algorithm for counting set bits
-            unsigned char b = byte;
-            while (b) {
-                b &= b - 1;
-                ++size_;
-            }
+        for (detail::chunk_t chunk : chunks_) {
+            size_ += static_cast<std::size_t>(std::popcount(chunk));
         }
     }
+
+    // Validation helpers
+    void validate_element(unsigned int element) const {
+        if (capacity_ == 0) {
+            throw std::domain_error("This BinarySet has a capacity of 0.");
+        }
+        if (element >= capacity_) {
+            throw std::out_of_range("Specified element is outside the valid range [0, capacity-1].");
+        }
+    }
+
+    void validate_same_capacity(const BinarySet& other) const {
+        if (capacity_ != other.capacity_) {
+            throw std::invalid_argument("The two BinarySets do not have the same capacity.");
+        }
+    }
+
+    // ───────────────────────────────────────────────────────────────────────
+    // Data members
+    // ───────────────────────────────────────────────────────────────────────
+    unsigned int capacity_{0};
+    std::size_t size_{0};
+    std::vector<detail::chunk_t> chunks_;
 };
-
-/**
- * @brief Efficiently searches for subsets within a collection of binary sets.
- *
- * The bs_searcher uses a binary tree structure where each level corresponds to
- * an element position in the binary_set. This allows efficient lookup of all
- * stored sets that are subsets of a query set.
- *
- * Time complexity:
- * - add: O(capacity)
- * - remove: O(capacity)
- * - find_subsets: O(capacity * number_of_matching_paths)
- *
- * Example:
- * @code
- * bs_searcher searcher(10);  // Create searcher for sets of capacity 10
- * binary_set bs1(10);
- * bs1.add(1); bs1.add(3);
- * searcher.add(101, bs1);  // Associate ID 101 with bs1
- *
- * binary_set query(10);
- * query.add(1); query.add(3); query.add(5);
- * auto results = searcher.find_subsets(query);  // Returns {101}
- * @endcode
- */
-class bs_searcher {
-   private:
-    struct treenode {
-        std::vector<unsigned int> values;
-        std::unique_ptr<treenode> left;
-        std::unique_ptr<treenode> right;
-
-        treenode() = default;
-    };
-
-   public:
-    /**
-     * @brief Constructs a searcher for binary_sets with the specified capacity.
-     *
-     * @param capacity The capacity that all managed binary_sets must have
-     */
-    explicit bs_searcher(unsigned int capacity) : root_(std::make_unique<treenode>()), capacity_(capacity) {}
-
-    /**
-     * @brief Adds a binary_set to the search structure.
-     *
-     * Multiple sets with the same value or structure can be added.
-     *
-     * @param value Identifier/alias for this set (need not be unique)
-     * @param bs The binary_set to add
-     *
-     * @throw std::invalid_argument If bs has a different capacity than
-     * specified in constructor
-     */
-    void add(unsigned int value, const binary_set &bs) {
-        validate_capacity(bs);
-
-        treenode *leaf = root_.get();
-
-        // Traverse the tree according to the binary_set (present -> right,
-        // absent
-        // -> left)
-        for (unsigned int i = 0; i < capacity_; ++i) {
-            if (bs[i]) {
-                if (!leaf->right) {
-                    leaf->right = std::make_unique<treenode>();
-                }
-                leaf = leaf->right.get();
-            } else {
-                if (!leaf->left) {
-                    leaf->left = std::make_unique<treenode>();
-                }
-                leaf = leaf->left.get();
-            }
-        }
-
-        // Store the value at the leaf
-        leaf->values.push_back(value);
-    }
-
-    /**
-     * @brief Removes a binary_set from the search structure.
-     *
-     * If duplicates exist, only the first occurrence is removed.
-     *
-     * @param value The identifier of the set to remove
-     * @param bs The binary_set to remove
-     * @return true if a matching set was found and removed
-     * @return false if no matching set was found
-     *
-     * @throw std::invalid_argument If bs has a different capacity than
-     * specified in constructor
-     */
-    bool remove(unsigned int value, const binary_set &bs) {
-        validate_capacity(bs);
-
-        std::vector<treenode *> path;
-        std::vector<bool> is_right_child;
-        path.reserve(capacity_);
-        is_right_child.reserve(capacity_);
-
-        treenode *node = root_.get();
-
-        // Traverse to the leaf node containing the value
-        for (unsigned int i = 0; i < capacity_ && node; ++i) {
-            path.push_back(node);
-            is_right_child.push_back(bs[i]);
-            node = (bs[i] ? node->right.get() : node->left.get());
-        }
-
-        // If we didn't reach a node, the element wasn't in the tree
-        if (!node) return false;
-
-        // Find and remove the value using efficient swap-and-pop
-        auto it = std::find(node->values.begin(), node->values.end(), value);
-        if (it == node->values.end()) return false;
-
-        // Swap with last element and pop (more efficient than erase)
-        if (it != node->values.end() - 1) {
-            *it = node->values.back();
-        }
-        node->values.pop_back();
-
-        // Prune empty branches from leaf to root
-        if (node->values.empty() && !node->left && !node->right) {
-            for (std::size_t i = path.size(); i > 0; --i) {
-                treenode *parent = path[i - 1];
-                bool is_right = is_right_child[i - 1];
-
-                if (is_right) {
-                    parent->right.reset();
-                } else {
-                    parent->left.reset();
-                }
-
-                // Stop pruning if parent has values or other children
-                if (!parent->values.empty() || parent->left || parent->right) {
-                    break;
-                }
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * @brief Finds all stored sets that are subsets of the query set.
-     *
-     * A stored set S is a subset of query set Q if every element in S is also
-     * in Q.
-     *
-     * @param bs The query binary_set
-     * @return std::vector<unsigned int> Identifiers of all stored sets that are
-     * subsets of bs
-     *
-     * @throw std::invalid_argument If bs has a different capacity than
-     * specified in constructor
-     */
-    [[nodiscard]]
-    std::vector<unsigned int> find_subsets(const binary_set &bs) const {
-        validate_capacity(bs);
-
-        // Use two vectors for level-by-level tree traversal
-        std::vector<const treenode *> current_level;
-        std::vector<const treenode *> next_level;
-        current_level.reserve(capacity_);
-        next_level.reserve(capacity_ * 2);
-
-        if (root_) current_level.push_back(root_.get());
-
-        // Traverse the tree level by level
-        for (unsigned int i = 0; i < capacity_ && !current_level.empty(); ++i) {
-            next_level.clear();
-
-            for (const auto *node : current_level) {
-                if (bs[i]) {
-                    // If element is in query set, a subset could have it or not
-                    if (node->left) next_level.push_back(node->left.get());
-                    if (node->right) next_level.push_back(node->right.get());
-                } else {
-                    // If element is not in query set, subset must not have it
-                    // either
-                    if (node->left) next_level.push_back(node->left.get());
-                }
-            }
-
-            current_level.swap(next_level);
-        }
-
-        // Calculate total size needed for result vector
-        std::size_t total_values = 0;
-        for (const auto *node : current_level) {
-            total_values += node->values.size();
-        }
-
-        // Pre-allocate and collect all values from leaves
-        std::vector<unsigned int> result;
-        result.reserve(total_values);
-
-        for (const auto *node : current_level) {
-            result.insert(result.end(), node->values.begin(), node->values.end());
-        }
-
-        return result;
-    }
-
-   private:
-    std::unique_ptr<treenode> root_;
-    unsigned int capacity_;
-
-    void validate_capacity(const binary_set &bs) const {
-        if (capacity_ != bs.capacity()) {
-            throw std::invalid_argument("The binary_set has an unexpected capacity.");
-        }
-    }
-};
-
-#endif  // BINARY_SET_HXX
