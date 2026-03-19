@@ -76,7 +76,7 @@ void ve::add_acyclicity_constraints(hplus::instance& inst, CPXENVptr& env, CPXLP
 
         // Process all predecessors of idx
         for (unsigned int pre = 0; pre < inst.n; ++pre) {
-            if (graph[pre].find(idx) == graph[pre].end()) {
+            if (!graph[pre].contains(idx)) {
                 continue;
             }
 

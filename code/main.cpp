@@ -55,9 +55,7 @@ auto main(const int argc, const char** argv) -> int {
             hplus::read_file(exec, inst, stats);
 
             hplus::print(exec);
-            if (exec.type == hplus::exec_type::INFO) {
-                hplus::print(inst);
-            }
+            hplus::print(inst);
 
             switch (exec.type) {
                 case hplus::exec_type::INFO:

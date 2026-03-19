@@ -38,7 +38,7 @@ void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::
     int nodedepth{-1};
     CPX_HANDLE_CALL(CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODEUID, &nodeuid));
     CPX_HANDLE_CALL(CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODEDEPTH, &nodedepth));
-    static std::unordered_set<int> visited_nodes;
+    thread_local std::unordered_set<int> visited_nodes;
     // If we have our custom cutloop in place, we don't need to generate cuts from fractionary solutions in the first root node relaxation
     if (exec.custom_cutloop && nodeuid == 0) {
         return;
