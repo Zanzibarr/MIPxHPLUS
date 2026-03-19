@@ -10,6 +10,7 @@
 
 #include "execution.hpp"
 #include "lmcut.hpp"
+#include "statistics.hpp"
 #include "stats_registry.hxx"
 #include "timer.hxx"
 
@@ -29,7 +30,7 @@ void eliminated_facts_removal(hplus::instance& inst, std::vector<std::vector<uns
 
 void eliminated_actions_removal(hplus::instance& inst);
 
-inline void lmcut_landmarks_extraction(const hplus::execution& exec, hplus::instance& inst) {
+inline void lmcut_landmarks_extraction(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats) {
     LMcut lmcut(inst);
 
     std::map<char, hmax_function> hmax_functions{
@@ -42,6 +43,7 @@ inline void lmcut_landmarks_extraction(const hplus::execution& exec, hplus::inst
         for (const auto& landmark : landmarks) {
             inst.landmarks.push_back(std::move(landmark));
         }
+        stats.lower_bound = std::max(stats.lower_bound, lmcut_value);
         LOG_INFO_S("Computed a lm-cut value of: " + std::to_string(lmcut_value) + " in " + std::to_string(diff) + "s");
     }
 }
@@ -76,7 +78,7 @@ inline void prepare_optimization_helpers(hplus::instance& inst) {
     inst.eliminated_actions = BinarySet{1};
 }
 
-inline void preprocess(const hplus::execution& exec, hplus::instance& inst) {
+inline void preprocess(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats) {
     LOG_INFO_S("Preprocessing instance");
     auto _prep = make_scoped_timer<"preprocessing">(STATS);
 
@@ -94,7 +96,7 @@ inline void preprocess(const hplus::execution& exec, hplus::instance& inst) {
     prepare_optimization_helpers(inst);
 
     if (exec.prep_lmcut != "0") {
-        lmcut_landmarks_extraction(exec, inst);
+        lmcut_landmarks_extraction(exec, inst, stats);
     }
 }
 

@@ -2,10 +2,13 @@
 
 #include "bs_utils.hpp"
 #include "exact.hpp"
+#include "execution.hpp"
 #include "heuristic.hpp"
+#include "instance.hpp"
 #include "limits.hxx"
 #include "preprocessing.hpp"
 #include "timer.hxx"
+#include "utils.hpp"
 
 void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
     LOG_INFO_S("Parsing input file");
@@ -422,7 +425,7 @@ void hplus::run(execution& exec, instance& inst, statistics& stats) {
         prep::prepare_preprocessing(inst);
         if (exec.prep) {
             exec.exec_s = exec_status::PREPROCESSING;
-            prep::preprocess(exec, inst);
+            prep::preprocess(exec, inst, stats);
         } else {  // prepare_optimization_helpers is already in the preprocess function but needs to be called even if no preprocessing is done
             prep::prepare_optimization_helpers(inst);
         }
@@ -436,6 +439,14 @@ void hplus::run(execution& exec, instance& inst, statistics& stats) {
         stopcheck();
 
         if (inst.sol_s == solution_status::INFEAS) {
+            return;
+        }
+
+        // If the gap is already closed, the solution is already optimal
+        if (std::abs(stats.lower_bound - stats.heur_cost) <= HPLUS_EPSILON) {
+            exec.exec_s = exec_status::EXIT;
+            inst.sol_s = solution_status::OPT;
+            stats.status = 0;
             return;
         }
 
