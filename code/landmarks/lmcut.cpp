@@ -3,11 +3,11 @@
 #include <algorithm>
 #include <deque>
 #include <limits>
+#include <unordered_set>
 
-#include "algorithms.hpp"
 #include "bs.hxx"
 #include "bs_utils.hpp"
-#include "int_separators.hpp"
+#include "landmark_utils.hpp"
 #include "limits.hxx"
 #include "logger.hxx"
 #include "stats_registry.hxx"
@@ -215,7 +215,7 @@ auto LMcut::compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned in
 
     // Compute the pre_goal section and the cut
     std::vector<unsigned int> cut;
-    std::unordered_set<unsigned int> pre_goal_section;
+    BinarySet pre_goal_section(inst_->n);
     std::unordered_set<unsigned int> explored;
     std::deque<int> queue;
 
@@ -242,22 +242,22 @@ auto LMcut::compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned in
                     return;
                 }
 
-                if (!pre_goal_section.contains(eff) && !added_facts.contains(eff)) {
+                if (!pre_goal_section[eff] && !added_facts.contains(eff)) {
                     added_facts.insert(eff);
                 }
             }
 
             // If we didn't exit early add the effects to the pre_goal section
             for (const auto& eff : added_facts) {
-                pre_goal_section.insert(eff);
+                pre_goal_section.add(eff);
                 queue.push_back(static_cast<int>(eff));
             }
 
         } else {
             for (const auto& eff : inst_->actions[act_i].eff_sparse) {
                 ASSERT(!goal_section.contains(eff));
-                if (!pre_goal_section.contains(eff)) {
-                    pre_goal_section.insert(eff);
+                if (!pre_goal_section[eff]) {
+                    pre_goal_section.add(eff);
                     queue.push_back(static_cast<int>(eff));
                 }
             }
@@ -273,32 +273,38 @@ auto LMcut::compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned in
         queue.pop_front();
 
         for (const auto& act_i : inst_->act_with_pre[fact]) {
-            if (pcf_[act_i] != fact || explored.contains(act_i) || set_contains(pre_goal_section, inst_->actions[act_i].eff_sparse)) {
+            if (pcf_[act_i] != fact || explored.contains(act_i) || bs_contains(pre_goal_section, inst_->actions[act_i].eff_sparse)) {
                 continue;
             }
             check_update_cut_pregoal(act_i);
         }
     }
 
+    // // TODO: Remove.. just for debugging
     // auto size = cut.size();
 
     // Note that this MUST be done after the cut has been computed 'cause before the pre_goal might change...
-    int_lm_sep::landmark_minimalization_greedy(*inst_, cut, pre_goal_section);
+    lmutils::landmark_minimalization_greedy(*inst_, cut, pre_goal_section);
 
+    // // TODO: Remove.. just for debugging
     // unsigned int removed_first = size - cut.size();
 
-    // BinarySet unapplicable_actions(inst_->m);
-    // for (unsigned int act_i = 0; act_i < inst_->m; act_i++) {
-    //     if (!pre_goal_section.contains(inst_->actions[act_i].pre)) {
-    //         unapplicable_actions.add(act_i);
-    //     }
-    // }
+    std::vector<unsigned int> unapplicable_actions;
+    for (unsigned int act_i = 0; act_i < inst_->m; act_i++) {
+        if (!bs_contains(pre_goal_section, inst_->actions[act_i].pre_sparse)) {
+            unapplicable_actions.push_back(act_i);
+        }
+    }
 
-    // // Further try to minimize the landmark
-    // int_lm_sep::landmark_minimalization(*inst_, cut, unapplicable_actions, pre_goal_section);
+    // Further try to minimize the landmark
+    lmutils::landmark_minimalization(*inst_, cut, unapplicable_actions, pre_goal_section);
 
-    // LOG_DEBUG << "Removal: " << removed_first << " + " << size - cut.size() - removed_first << " = " << size - cut.size() << " actions over " <<
-    // size;
+    // // TODO: Remove.. just for debugging
+    // LOG_DEBUG << "Removal: " << std::setw(5) << removed_first << " + " << std::setw(5) << size - cut.size() - removed_first << " = " <<
+    // std::setw(5)
+    //           << size - cut.size() << " actions over " << std::setw(5) << size << " (new size: " << std::setw(5) << cut.size() << "/" <<
+    //           std::setw(5)
+    //           << size << ")";
 
     double min_reduced_cost = std::numeric_limits<double>::infinity();
     for (const auto& act_i : cut) {
@@ -336,10 +342,6 @@ auto LMcut::compute_lmcut_private(hmax_function hmax) -> std::pair<std::vector<s
             throw timelimit_exception("Reached time limit.");
         }
     }
-
-    // for (const auto& landmark : landmarks) {
-    //     LOG_DEBUG << "Size: " << landmark.size();
-    // }
 
     return {landmarks, lmcut_value};
 }

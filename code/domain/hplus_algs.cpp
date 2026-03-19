@@ -1,5 +1,7 @@
 #include "hplus_algs.hpp"
 
+#include <unordered_set>
+
 #include "bs_utils.hpp"
 #include "exact.hpp"
 #include "execution.hpp"
@@ -374,14 +376,14 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
 
 void hplus::update_sol(instance& inst, const solution& sol, statistics& stats) {
     const auto& [sol_plan, sol_cost, _]{sol};
-    BinarySet dbcheck{inst.m};
+    std::unordered_set<unsigned int> dbcheck;
     unsigned int costcheck{0};
     ASSERT(sol_plan.size() <= inst.m);  // check that there aren't more actions that there exists
     BinarySet state{inst.n};
     for (const auto& act_i : sol_plan) {
-        ASSERT(act_i < inst.m);   // check that the solution only contains existing actions
-        ASSERT(!dbcheck[act_i]);  // check that there are no duplicates
-        dbcheck.add(act_i);
+        ASSERT(act_i < inst.m);            // check that the solution only contains existing actions
+        ASSERT(!dbcheck.contains(act_i));  // check that there are no duplicates
+        dbcheck.insert(act_i);
         ASSERT(bs_contains(state, inst.actions[act_i].pre_sparse));  // check if the preconditions are respected at each step
         state |= inst.actions[act_i].eff_sparse;
         costcheck += inst.actions[act_i].cost;

@@ -2,6 +2,7 @@
 
 #include <set>
 #include <stack>
+#include <unordered_set>
 
 #include "bs_utils.hpp"
 #include "limits.hxx"
@@ -13,8 +14,9 @@
 [[nodiscard]]
 static inline auto compute_r1_r2_incremental(const hplus::instance& inst, const std::vector<double>& relax_point, std::vector<double>& r1_values,
                                              std::vector<double>& r1_act_values, std::vector<double>& r2_values, std::vector<double>& r2_act_values,
-                                             BinarySet& state, std::queue<unsigned int>& actions_queue, BinarySet& acts_in_queue,
-                                             std::stack<std::pair<unsigned int, double>>& trail) -> double {
+                                             BinarySet& state, std::queue<unsigned int>& actions_queue,
+                                             std::unordered_set<unsigned int>& acts_in_queue, std::stack<std::pair<unsigned int, double>>& trail)
+    -> double {
     // Trail keys:
     // - [0, inst.n): r1_values
     // - [inst.n, inst.n + inst.m): r1_act_values
@@ -25,7 +27,7 @@ static inline auto compute_r1_r2_incremental(const hplus::instance& inst, const 
     while (!actions_queue.empty()) {
         const auto choice{actions_queue.front()};
         actions_queue.pop();
-        acts_in_queue.remove(choice);
+        acts_in_queue.erase(choice);
 
         // Store the R1 and R2 values for this action... if we see that there's no update on these values we can skip
         double prev_r1_act_value{r1_act_values[choice]};
@@ -99,14 +101,14 @@ static inline auto compute_r1_r2_incremental(const hplus::instance& inst, const 
                 if (!bs_contains(state, inst.actions[act_i].pre_sparse)) {
                     continue;  // Skip actions that can't be applied yet
                 }
-                if (acts_in_queue[act_i]) {
+                if (acts_in_queue.contains(act_i)) {
                     continue;  // Skip actions that are already in the queue
                 }
                 if (relax_point[act_i] <= HPLUS_EPSILON) {
                     continue;  // Skip actions whose weight is 0
                 }
                 actions_queue.push(act_i);
-                acts_in_queue.add(act_i);
+                acts_in_queue.insert(act_i);
             }
         }
     }
@@ -418,7 +420,7 @@ auto fract_lm_sep::get_r3_violated_landmark(const hplus::execution& exec, const 
     std::vector<double> r2_act_values(inst.m, 0);
     std::queue<unsigned int> r1r2_actions_queue;
     BinarySet r1r2_state(inst.n);
-    BinarySet r1r2_acts_in_queue(inst.m);
+    std::unordered_set<unsigned int> r1r2_acts_in_queue;
     std::stack<std::pair<unsigned int, double>> r1r2_trail;
 
     // R3 data
@@ -432,7 +434,7 @@ auto fract_lm_sep::get_r3_violated_landmark(const hplus::execution& exec, const 
         }
         if (inst.actions[act_i].pre_sparse.empty()) {
             r1r2_actions_queue.push(act_i);
-            r1r2_acts_in_queue.add(act_i);
+            r1r2_acts_in_queue.insert(act_i);
         }
     }
 
@@ -506,7 +508,7 @@ auto fract_lm_sep::get_r3_violated_landmark(const hplus::execution& exec, const 
             relax_point[rounded_act] = 1;
             // R1 R2 preparations
             r1r2_actions_queue.push(rounded_act);
-            r1r2_acts_in_queue.add(rounded_act);
+            r1r2_acts_in_queue.insert(rounded_act);
         };
 
         auto round_next_action = [&]() {

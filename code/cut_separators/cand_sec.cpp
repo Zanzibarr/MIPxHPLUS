@@ -1,9 +1,13 @@
+#include <algorithm>
+
+#include "../utils/cycle_det.hpp"
+#include "algorithms.hpp"
 #include "cand_callback.hpp"
 #include "cycle_det.hpp"
 #include "timer.hxx"
 
 [[nodiscard]]
-static auto build_graph(const hplus::instance& inst, const BinarySet& unreachable_actions,
+static auto build_graph(const hplus::instance& inst, const std::vector<unsigned int>& unreachable_actions,
                         const std::vector<std::vector<unsigned int>>& used_first_achievers)
     -> std::tuple<std::vector<std::vector<unsigned int>>, std::unordered_map<std::pair<unsigned int, unsigned int>, unsigned int, pair_hash>> {
     std::vector<std::vector<unsigned int>> graph;
@@ -12,7 +16,7 @@ static auto build_graph(const hplus::instance& inst, const BinarySet& unreachabl
     graph = std::vector<std::vector<unsigned int>>(inst.n);
     for (unsigned int p = 0; p < inst.n; ++p) {
         for (const auto& act_i : inst.act_with_pre[p]) {
-            if (!unreachable_actions[act_i]) {
+            if (sorted_find(unreachable_actions, act_i) < unreachable_actions.size()) {
                 continue;
             }
             for (const auto& q : used_first_achievers[act_i]) {
@@ -29,7 +33,7 @@ static auto build_graph(const hplus::instance& inst, const BinarySet& unreachabl
 }
 
 [[nodiscard]]
-auto cand_cuts::add_sec_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const BinarySet& unreachable_actions,
+auto cand_cuts::add_sec_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const std::vector<unsigned int>& unreachable_actions,
                             const std::vector<std::vector<unsigned int>>& used_first_achievers) -> unsigned int {
     auto _cand_sec = make_scoped_timer<"cand_sec_separator">(STATS);
     const auto& [graph, edge_labels] = build_graph(inst, unreachable_actions, used_first_achievers);

@@ -5,7 +5,7 @@
 #include <numeric>
 #include <vector>
 
-#include "bs.hxx"
+#include "algorithms.hpp"
 #include "bs_utils.hpp"
 #include "hplus_algs.hpp"
 #include "int_separators.hpp"
@@ -13,10 +13,11 @@
 
 [[nodiscard]]
 static auto candidatepoint_info(const hplus::instance& inst, const std::vector<double>& xstar)
-    -> std::tuple<std::vector<unsigned int>, BinarySet, std::vector<unsigned int>, BinarySet, std::vector<std::vector<unsigned int>>> {
+    -> std::tuple<std::vector<unsigned int>, std::vector<unsigned int>, std::vector<unsigned int>, BinarySet,
+                  std::vector<std::vector<unsigned int>>> {
     BinarySet used_actions(inst.m);
     std::vector<unsigned int> reachable_action_sequence;
-    BinarySet unreachable_actions(inst.m);
+    std::vector<unsigned int> unreachable_actions;
     std::vector<unsigned int> unused_actions;
     BinarySet reachable_state(inst.n);
     std::vector<std::vector<unsigned int>> used_first_achievers(inst.m);
@@ -25,7 +26,7 @@ static auto candidatepoint_info(const hplus::instance& inst, const std::vector<d
         // Divide actions in used or unused
         if (xstar[act_i] > HPLUS_CPX_INT_ROUNDING) {
             used_actions.add(act_i);
-            unreachable_actions.add(act_i);
+            unreachable_actions.push_back(act_i);
 
             // Check for used first achievers
             for (unsigned int i = 0; i < inst.actions[act_i].eff_sparse.size(); i++) {
@@ -53,7 +54,7 @@ static auto candidatepoint_info(const hplus::instance& inst, const std::vector<d
         unsigned int act_i{queue.front()};
         queue.pop_front();
         reachable_action_sequence.push_back(act_i);
-        unreachable_actions.remove(act_i);
+        unreachable_actions.erase(unreachable_actions.begin() + sorted_find(unreachable_actions, act_i));
 
         // Compute new state
         if (bs_contains(reachable_state, inst.actions[act_i].eff_sparse)) {
