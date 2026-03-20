@@ -4,20 +4,28 @@
 #include <new>
 #include <tuple>
 
-#include "domain/hplus_algs.hpp"
-#include "utils/argparser.hpp"
+#include "argparser.hpp"
+#include "hplus_algs.hpp"
+#include "limits.hxx"
+#include "timer.hxx"
+#include "utils.hpp"
 
-static void signal_callback_handler([[maybe_unused]] const int _) {
-    LOG_WARNING << "---------------------------------------------------";
-    LOG_WARNING << " > Ctrl+C signal detected, terminating execution. <";
-    LOG_WARNING << "---------------------------------------------------";
-    if (CHECK_STOP()) [[unlikely]]
-        _Exit(EXIT_FAILURE);
+using std::tuple;
+
+Timer GLOBAL_TIMER;
+
+static void signal_callback_handler(const int /*signal*/) {
+    LOG_WARN_S("---------------------------------------------------");
+    LOG_WARN_S(" > Ctrl+C signal detected, terminating execution. <");
+    LOG_WARN_S("---------------------------------------------------");
+    if (CHECK_STOP()) {
+        [[unlikely]] _Exit(EXIT_FAILURE);
+    }
     GLOBAL_TERMINATE_CONDITION = 1;
 }
 
 [[nodiscard]]
-static std::tuple<hplus::execution, hplus::instance, hplus::statistics> init() {
+static auto init() -> std::tuple<hplus::execution, hplus::instance, hplus::statistics> {
     signal(SIGINT, signal_callback_handler);
     // Hide ^C from terminal
     struct termios t{};
@@ -28,51 +36,57 @@ static std::tuple<hplus::execution, hplus::instance, hplus::statistics> init() {
     hplus::init(exec);
     hplus::instance inst;
     hplus::init(inst);
-    hplus::statistics stats;
+    hplus::statistics stats{};
     hplus::init(stats);
-    return std::tuple(exec, inst, stats);
+    GLOBAL_TIMER.start();
+    return {exec, inst, stats};
 }
 
 static void close() { timelim::cancel_time_limit(); }
 
-int main(const int argc, const char** argv) {
+auto main(const int argc, const char** argv) -> int {
     try {
         auto [exec, inst, stats] = init();
-        double start_time = GET_TIME();
 
-        parse_cli(argc, argv, exec);
-        hplus::read_file(exec, inst, stats);
+        {
+            auto _total = make_scoped_timer<"total">(STATS);
 
-        if (VERBOSE_STATS()) hplus::print(exec);
-        if (exec.type == hplus::exec_type::INFO || VERBOSE_STATS()) hplus::print(inst);
+            parse_cli(argc, argv, exec);
+            hplus::read_file(exec, inst, stats);
 
-        switch (exec.type) {
-            case hplus::exec_type::INFO:
-                close();
-                return EXIT_SUCCESS;
-            case hplus::exec_type::RUN:
-                hplus::run(exec, inst, stats);
-                break;
-            default:
-                LOG_ERROR << "Unhandled execution type in main: " << static_cast<int>(exec.type);
+            hplus::print(exec);
+            hplus::print(inst);
+
+            switch (exec.type) {
+                case hplus::exec_type::INFO:
+                    close();
+                    return EXIT_SUCCESS;
+                case hplus::exec_type::RUN:
+                    hplus::run(exec, inst, stats);
+                    break;
+                default:
+                    LOG_ERROR_S("Unhandled execution type in main: " + std::to_string(static_cast<int>(exec.type)));
+            }
+
+            // NOTE: All updates to the best solution and statistics, must be done immediatelly (es. in the cand callback or at the end of a search
+            // algorithm), since however we get here, I assume that inst and stats are updated and no other operations are needed.
+
+            hplus::print_sol(inst);
+            if (inst.sol_s == hplus::solution_status::INFEAS) {
+                stats.lower_bound = INFBOUND_DBL;
+            }
+            if (inst.sol_s == hplus::solution_status::LOST) {
+                stats.status = HPLUS_STATUS_LOST;
+            }
         }
-
-        stats.total = GET_TIME() - start_time;
-
-        // NOTE: All updates to the best solution and statistics, must be done immediatelly (es. in the cand callback or at the end of a search
-        // algorithm), since however we get here, I assume that inst and stats are updated and no other operations are needed.
-
-        hplus::print_sol(inst);
-        if (inst.sol_s == hplus::solution_status::INFEAS) stats.lower_bound = 1e20;
-        if (inst.sol_s == hplus::solution_status::LOST) stats.status = HPLUS_STATUS_LOST;
-        if (VERBOSE_STATS()) hplus::print(stats);
+        hplus::print(stats);
         close();
 
     } catch (std::bad_alloc& e) {
-        LOG_ERROR << "OUT OF MEMORY";
+        LOG_ERROR_S("OUT OF MEMORY");
     }
 
-    LOG_SUCCESS << "Execution terminated";
+    LOG_SUCCESS_S("Execution terminated");
 
     return EXIT_SUCCESS;
 }

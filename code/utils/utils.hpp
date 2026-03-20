@@ -4,15 +4,15 @@
  * @author Zanella Matteo (matteozanella2@gmail.com)
  */
 
-#ifndef HPLUS_UTILS_HPP
-#define HPLUS_UTILS_HPP
+#pragma once
 
 // ##################################################################### //
 // ############################## VERSION ############################## //
 // ##################################################################### //
 
-#define VERSION "2.6.1"
-#define COMPILE_DATETIME __DATE__ + " " + __TIME__;
+#include "timer.hxx"
+#define VERSION "3.1.0"
+#define COMPILE_DATETIME __DATE__ + " " + __TIME__
 
 // ##################################################################### //
 // ############################## IMPORTS ############################## //
@@ -20,9 +20,6 @@
 
 #include <random>
 #include <vector>
-
-#include "../external/limits.hxx"
-#include "../external/logger.hxx"
 
 // ##################################################################### //
 // ############################# CLI PARSER ############################ //
@@ -53,7 +50,6 @@
 #define HPLUS_CLI_THREADS_FLAG "threads"
 #define HPLUS_CLI_MEMORYLIMIT_FLAG "mem"
 #define HPLUS_CLI_SEED_FLAG "s"
-#define HPLUS_CLI_VERBOSE_FLAG "v"
 #define HPLUS_CLI_FRACTCUTS_FLAG "fract"
 #define HPLUS_CLI_FRACTCUTS_MIN_LM_FLAG "fract-minlm"
 #define HPLUS_CLI_MINIMIZATION_BOUND_IT "minlm-it"
@@ -105,7 +101,6 @@
 #define HPLUS_DEF_TIMELIMIT 60
 #define HPLUS_DEF_THREADS 32
 #define HPLUS_DEF_MEMORYLIMIT 4050
-#define HPLUS_DEF_VERBOSE 3
 #define HPLUS_DEF_CANDCUTS "cl"
 #define HPLUS_DEF_FRACTCUTS "0"
 #define HPLUS_DEF_MIN_FRACT_LM true
@@ -156,40 +151,41 @@ inline std::mt19937 g_rng;
 
 inline void init_rng(int seed) { g_rng.seed(seed); }
 
-#define ASSERT(cond)                                                                                     \
-    {                                                                                                    \
-        if (!(cond)) [[unlikely]] {                                                                      \
-            LOG_ERROR << "Assert check failed at " << __func__ << "(): " << __FILE__ << ":" << __LINE__; \
-        }                                                                                                \
+#define ASSERT(cond)                                                                                                             \
+    {                                                                                                                            \
+        if (!(cond)) [[unlikely]] {                                                                                              \
+            LOG_ERROR_S("Assert check failed at " + std::string(__func__) + "(): " + __FILE__ + ":" + std::to_string(__LINE__)); \
+        }                                                                                                                        \
     }
 
-#define CPX_HANDLE_CALL(code)                                                                                                       \
-    {                                                                                                                               \
-        switch (code) {                                                                                                             \
-            case 1001: /*CPXERR_NO_MEMORY*/                                                                                         \
-                [[fallthrough]];                                                                                                    \
-            case 1234: /*CPXERR_THREAD_FAILED*/                                                                                     \
-                throw std::bad_alloc();                                                                                             \
-                break;                                                                                                              \
-            case 11: /*CPX_STAT_ABORT_TIME_LIM*/                                                                                    \
-                [[fallthrough]];                                                                                                    \
-            case 13: /*CPX_STAT_ABORT_USER*/                                                                                        \
-                [[fallthrough]];                                                                                                    \
-            case 0:                                                                                                                 \
-                break;                                                                                                              \
-            default:                                                                                                                \
-                LOG_ERROR << "Unhandled CPLEX error code: " << code << " at " << __func__ << "(): " << __FILE__ << ":" << __LINE__; \
-                break;                                                                                                              \
-        }                                                                                                                           \
+#define CPX_HANDLE_CALL(code)                                                                                                     \
+    {                                                                                                                             \
+        switch (code) {                                                                                                           \
+            case 1001: /*CPXERR_NO_MEMORY*/                                                                                       \
+                [[fallthrough]];                                                                                                  \
+            case 1234: /*CPXERR_THREAD_FAILED*/                                                                                   \
+                throw std::bad_alloc();                                                                                           \
+                break;                                                                                                            \
+            case 11: /*CPX_STAT_ABORT_TIME_LIM*/                                                                                  \
+                [[fallthrough]];                                                                                                  \
+            case 13: /*CPX_STAT_ABORT_USER*/                                                                                      \
+                [[fallthrough]];                                                                                                  \
+            case 0:                                                                                                               \
+                break;                                                                                                            \
+            default:                                                                                                              \
+                LOG_ERROR_S("Unhandled CPLEX error code: " + std::to_string(code) + " at " + __func__ + "(): " + __FILE__ + ":" + \
+                            std::to_string(__LINE__));                                                                            \
+                break;                                                                                                            \
+        }                                                                                                                         \
     }
 
 [[nodiscard]]
-inline std::string compile_date() {
+inline auto compile_date() -> std::string {
     return std::string("Compiled on ") + COMPILE_DATETIME;
 }
 
 [[nodiscard]]
-inline std::string today() {
+inline auto today() -> std::string {
     auto now = std::chrono::system_clock::now();
     std::time_t end_time = std::chrono::system_clock::to_time_t(now);
     std::string time_str = std::ctime(&end_time);
@@ -200,25 +196,33 @@ inline std::string today() {
 }
 
 [[nodiscard]]
-inline std::string version() {
+inline auto version() -> std::string {
     return "Version: " VERSION;
 }
 
 [[nodiscard]]
-inline bool isint(const std::string& str, const int from = std::numeric_limits<int>::min(), const int to = std::numeric_limits<int>::max()) {
+inline auto isint(const std::string& str, const int from = std::numeric_limits<int>::min(), const int to = std::numeric_limits<int>::max()) -> bool {
     // Handle empty string
-    if (str.empty()) return false;
+    if (str.empty()) {
+        return false;
+    }
 
     // Check for leading whitespace or sign
     size_t i{0};
-    if (str[i] == '+' || str[i] == '-') i++;
+    if (str[i] == '+' || str[i] == '-') {
+        i++;
+    }
 
     // Must have at least one digit
-    if (i == str.length() || !std::isdigit(str[i])) return false;
+    if (i == str.length() || (std::isdigit(str[i]) == 0)) {
+        return false;
+    }
 
     // Check remaining characters are digits
     for (; i < str.length(); i++) {
-        if (!std::isdigit(str[i])) return false;
+        if (std::isdigit(str[i]) == 0) {
+            return false;
+        }
     }
 
     try {
@@ -232,20 +236,24 @@ inline bool isint(const std::string& str, const int from = std::numeric_limits<i
 }
 
 [[nodiscard]]
-inline const std::vector<std::string> split_string(const std::string& str, const char del) {
+inline auto split_string(const std::string& str, const char del) -> std::vector<std::string> {
     std::vector<std::string> tokens;
     tokens.reserve(std::count(str.begin(), str.end(), del) + 1);
 
-    size_t start{0}, end;
+    size_t start{0};
+    size_t end{0};
 
     while ((end = str.find(del, start)) != std::string::npos) {
-        if (end > start)  // Avoid empty strings
+        if (end > start) {  // Avoid empty strings
             tokens.push_back(str.substr(start, end - start));
+        }
         start = end + 1;
     }
 
     // Add the last token if it exists
-    if (start < str.length()) tokens.push_back(str.substr(start));
+    if (start < str.length()) {
+        tokens.push_back(str.substr(start));
+    }
 
     return tokens;
 }
@@ -261,16 +269,33 @@ inline const std::vector<std::string> split_string(const std::string& str, const
  */
 template <typename T>
 [[nodiscard]]
-static inline std::string vtos(std::vector<T> v, unsigned int size = 20) {
+static inline auto vtos(std::vector<T> v, unsigned int size = 20) -> std::string {
     std::string s;
-    if (v.size() <= size)
-        for (const auto& x : v) s.append(std::to_string(x)).append(";");
-    else {
-        for (unsigned int i = 0; i < size / 2; i++) s.append(std::to_string(v[i])).append(";");
+    if (v.size() <= size) {
+        for (const auto& x : v) {
+            s.append(std::to_string(x)).append(";");
+        }
+    } else {
+        for (unsigned int i = 0; i < size / 2; i++) {
+            s.append(std::to_string(v[i])).append(";");
+        }
         s.append("...[").append(std::to_string(v.size() - size)).append("];");
-        for (unsigned int i = size / 2; i > 0; i--) s.append(std::to_string(v[v.size() - i])).append(";");
+        for (unsigned int i = size / 2; i > 0; i--) {
+            s.append(std::to_string(v[v.size() - i])).append(";");
+        }
     }
     return s;
 }
 
-#endif
+extern Timer GLOBAL_TIMER;
+
+// .elapsed returns milliseconds... need to convert it to seconds
+#define GET_TIME() (GLOBAL_TIMER.elapsed() / 1'000)
+
+/// @brief Exception thrown when a predefined time limit is exceeded.
+class timelimit_exception final : public std::runtime_error {
+   public:
+    /// @brief Constructs a timelimit_exception with a descriptive message.
+    /// @param message The message describing the exception.
+    explicit timelimit_exception(const std::string& message) : std::runtime_error(message) {}
+};

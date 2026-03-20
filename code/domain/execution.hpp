@@ -5,12 +5,12 @@
  * @author Zanella Matteo (matteozanella2@gmail.com)
  */
 
-#ifndef HPLUS_EXECUTION_HPP
-#define HPLUS_EXECUTION_HPP
+#pragma once
 
 #include <filesystem>
 
-#include "../utils/utils.hpp"
+#include "logger.hxx"
+#include "utils.hpp"
 
 namespace hplus {
 
@@ -28,7 +28,6 @@ enum class exec_status {
 enum class exec_type { INFO, RUN };
 enum class algorithm { TL = 0, VE = 1, CUTS = 2, GC = 10, GCXE = 11, GHM = 12, GHA = 13 };
 enum class warmstart { NONE = 0, GC = 1, GCXE = 2, GHM = 3, GHA = 4 };
-enum class verbose { NONE = 0, STATISTICS = 1, BASIC = 2, DEBUG = 3 };
 
 struct execution {
     // Instance file
@@ -38,7 +37,6 @@ struct execution {
     algorithm alg;
     std::string log_file;
     unsigned int threads, timelimit, memorylimit;
-    verbose verbosity;
     int seed;
     // Preprocessing
     bool prep;
@@ -78,7 +76,6 @@ inline void init(execution& exec) {
                             .threads = HPLUS_DEF_THREADS,
                             .timelimit = HPLUS_DEF_TIMELIMIT,
                             .memorylimit = HPLUS_DEF_MEMORYLIMIT,
-                            .verbosity = static_cast<verbose>(HPLUS_DEF_VERBOSE),
                             .seed = HPLUS_DEF_RANDOM_SEED,
                             .prep = HPLUS_DEF_PREP,
                             .prep_lmcut = HPLUS_DEF_PREP_LMCUT,
@@ -108,8 +105,8 @@ inline void init(execution& exec) {
 }
 
 [[nodiscard]]
-inline std::string to_string(exec_type t) {
-    switch (t) {
+inline auto to_string(exec_type type) -> std::string {
+    switch (type) {
         case exec_type::INFO:
             return HPLUS_CLI_INFO_FLAG;
         case exec_type::RUN:
@@ -119,8 +116,8 @@ inline std::string to_string(exec_type t) {
 }
 
 [[nodiscard]]
-inline std::string to_string(algorithm a) {
-    switch (a) {
+inline auto to_string(algorithm alg) -> std::string {
+    switch (alg) {
         case algorithm::TL:
             return HPLUS_CLI_ALG_FLAG_TL;
         case algorithm::VE:
@@ -140,8 +137,8 @@ inline std::string to_string(algorithm a) {
 }
 
 [[nodiscard]]
-inline std::string to_string(warmstart ws) {
-    switch (ws) {
+inline auto to_string(warmstart wst) -> std::string {
+    switch (wst) {
         case warmstart::NONE:
             return HPLUS_CLI_WS_FLAG_NONE;
         case warmstart::GC:
@@ -157,10 +154,10 @@ inline std::string to_string(warmstart ws) {
 }
 
 inline void print(const execution& exec) {
-    if (exec.verbosity < hplus::verbose::STATISTICS) return;
-    LOG << "------------------ List of parameters ------------------";
-    LOG << "Verbosity:                                             " << static_cast<int>(exec.verbosity);
-    if (exec.log_file != "0") LOG << "Log file: " << std::filesystem::absolute(exec.log_file).lexically_normal().string();
+    LOG_S("------------------ List of parameters ------------------");
+    if (exec.log_file != "0") {
+        LOG_S("Log file: " + std::filesystem::absolute(exec.log_file).lexically_normal().string());
+    }
     LOG << "Time limit:                                      " << std::setw(exec.timelimit > 0 ? 5 : 7) << exec.timelimit
         << (exec.timelimit > 0 ? " s" : "");
     LOG << "Memory limit:                              " << std::setw(exec.memorylimit > 0 ? 10 : 13) << exec.memorylimit
@@ -170,45 +167,57 @@ inline void print(const execution& exec) {
     LOG << "Execution type:                               " << std::setw(10) << to_string(exec.type);
     LOG << "Instance:  " << std::setw(45) << exec.file_name;
     if (exec.type == hplus::exec_type::INFO) {
-        LOG << "--------------------------------------------------------";
+        LOG_S("--------------------------------------------------------");
         return;
     }
-    LOG << "Preprocessing:                                         " << exec.prep;
+    LOG_S("Preprocessing:                                         " + std::to_string(static_cast<int>(exec.prep)));
     LOG << "Preprocessing (LM-cut):                       " << std::setw(10) << exec.prep_lmcut;
     LOG << "Algorithm:                                    " << std::setw(10) << to_string(exec.alg);
-    if (exec.alg < hplus::algorithm::GC) LOG << "Warm start:                                   " << std::setw(10) << to_string(exec.ws);
-    if (exec.cutoff >= 0) LOG << "Cutoff value:                                 " << std::setw(10) << exec.cutoff;
+    if (exec.alg < hplus::algorithm::GC) {
+        LOG << "Warm start:                                   " << std::setw(10) << to_string(exec.ws);
+    }
+    if (exec.cutoff >= 0) {
+        LOG << "Cutoff value:                                 " << std::setw(10) << exec.cutoff;
+    }
     if (exec.alg == hplus::algorithm::CUTS) {
-        if (!exec.cand_cuts.empty()) LOG << "Candidate cuts:                                    " << std::setw(5) << exec.cand_cuts;
+        if (!exec.cand_cuts.empty()) {
+            LOG << "Candidate cuts:                                    " << std::setw(5) << exec.cand_cuts;
+        }
 
         LOG << "Fractional cuts:                                      " << std::setw(2) << exec.fract_cuts;
-        if (exec.fract_cuts.find('m') != std::string::npos) LOG << "Minimization of fractional landmarks:                  " << exec.min_fract_lm;
+        if (exec.fract_cuts.find('m') != std::string::npos) {
+            LOG_S("Minimization of fractional landmarks:                  " + std::to_string(static_cast<int>(exec.min_fract_lm)));
+        }
         if (exec.min_fract_lm) {
             LOG << "- Upper bound on number of iterations:        " << std::setw(10) << exec.lm_min_it;
             LOG << "- Violation ratio threshold:                       " << std::fixed << std::setprecision(3) << exec.lm_min_viol;
             LOG << "- Lookahead success rate threshold:           " << std::setw(10) << exec.lm_min_lookahead;
-            LOG << "- Sorting of landmark:                                 " << exec.lm_min_sort;
-            LOG << "- Expand only better landmarks:                        " << exec.lm_min_improv;
+            LOG_S("- Sorting of landmark:                                 " + std::to_string(static_cast<int>(exec.lm_min_sort)));
+            LOG_S("- Expand only better landmarks:                        " + std::to_string(static_cast<int>(exec.lm_min_improv)));
         }
-        if (exec.fract_cuts != "0") LOG << "Fractional cuts at nodes:                              " << exec.fract_cuts_at_nodes;
-        if (exec.fract_cuts != "0") LOG << "Custom cut-loop                                        " << exec.custom_cutloop;
+        if (exec.fract_cuts != "0") {
+            LOG_S("Fractional cuts at nodes:                              " + std::to_string(static_cast<int>(exec.fract_cuts_at_nodes)));
+        }
+        if (exec.fract_cuts != "0") {
+            LOG_S("Custom cut-loop                                        " + std::to_string(static_cast<int>(exec.custom_cutloop)));
+        }
     }
     if (exec.custom_cutloop) {
-        LOG << "- Pruning                                              " << exec.cl_pruning;
+        LOG_S("- Pruning                                              " + std::to_string(static_cast<int>(exec.cl_pruning)));
         LOG << "- Gap exit condition:                             " << std::fixed << std::setprecision(4) << exec.cl_gap_stop;
         LOG << "- Minimum iterations:                              " << std::setw(5) << exec.cl_min_iter;
         LOG << "- Improvement threshold:                          " << std::fixed << std::setprecision(4) << exec.cl_improv;
         LOG << "- Past iterations comparison:                      " << std::setw(5) << exec.cl_past_iter;
-        LOG << "In-Out strategy:                                       " << exec.inout;
+        LOG_S("In-Out strategy:                                       " + std::to_string(static_cast<int>(exec.inout)));
         if (exec.inout) {
             LOG << "- Maximum iterations:                              " << std::setw(5) << exec.io_max_iter;
             LOG << "- Initial incumbent weight:                         " << std::fixed << std::setprecision(2) << exec.io_weight;
             LOG << "- Weight update:                                    " << std::fixed << std::setprecision(2) << exec.io_weight_update;
         }
     }
-    if (exec.testing) LOG << "Testing mode:                                          1";
-    LOG << "--------------------------------------------------------";
+    if (exec.testing) {
+        LOG_S("Testing mode:                                          1");
+    }
+    LOG_S("--------------------------------------------------------");
 }
 }  // namespace hplus
-
-#endif

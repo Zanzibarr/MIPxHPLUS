@@ -1,16 +1,19 @@
-#include <set>
+#include <algorithm>
 #include <tuple>
 
-#include "../external/pq.hxx"
-#include "../utils/algorithms.hpp"
+#include "algorithms.hpp"
+#include "bs_utils.hpp"
 #include "exact.hpp"
+#include "limits.hxx"
+#include "pq.hxx"
 
-void ve::add_acyclicity_constraints(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp) {
-    if (VERBOSE_BASIC()) LOG_INFO << "Adding acyclicity constraints for VE model";
+void ve::add_acyclicity_constraints(hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
+    LOG_INFO_S("Adding acyclicity constraints for VE model");
 
     const auto stopcheck = []() {
-        if (CHECK_STOP()) [[unlikely]]
+        if (CHECK_STOP()) {
             throw timelimit_exception("Reached time limit.");
+        }
     };
 
     // ====================================================== //
@@ -18,7 +21,7 @@ void ve::add_acyclicity_constraints(const hplus::execution& exec, hplus::instanc
     // ====================================================== //
 
     // Initialize data structures
-    std::vector<std::set<unsigned int>> graph(inst.n);
+    std::vector<std::unordered_set<unsigned int>> graph(inst.n);
     inst.veg_cumulative_graph.resize(inst.n);
     std::vector<std::tuple<unsigned int, unsigned int, unsigned int>> triangles_list;
     priority_queue<unsigned int> nodes_queue(2 * inst.n);
@@ -69,56 +72,56 @@ void ve::add_acyclicity_constraints(const hplus::execution& exec, hplus::instanc
         // p -> idx -> q
         // | / > |
 
-        std::set<unsigned int> new_nodes;
+        std::unordered_set<unsigned int> new_nodes;
 
         // Process all predecessors of idx
-        for (unsigned int p = 0; p < inst.n; ++p) {
-            if (graph[p].find(idx) == graph[p].end()) {
+        for (unsigned int pre = 0; pre < inst.n; ++pre) {
+            if (!graph[pre].contains(idx)) {
                 continue;
             }
 
-            // Connect p to all successors of idx
-            for (const auto& q : graph[idx]) {
-                if (p == q) [[unlikely]] {
+            // Connect pre to all successors of idx
+            for (const auto& eff : graph[idx]) {
+                if (pre == eff) [[unlikely]] {
                     continue;
                 }
 
-                // Add edge p -> q if it doesn't exist
-                if (const auto [iter, inserted] = graph[p].insert(q); inserted) {
-                    ++degree_counter[p];
-                    ++degree_counter[q];
+                // Add edge pre -> eff if it doesn't exist
+                if (const auto [iter, inserted] = graph[pre].insert(eff); inserted) {
+                    ++degree_counter[pre];
+                    ++degree_counter[eff];
                 }
 
                 // Update cumulative graph
-                insert_sorted(inst.veg_cumulative_graph[p], q);
+                insert_sorted(inst.veg_cumulative_graph[pre], eff);
             }
 
-            // Remove edge p -> idx
-            graph[p].erase(idx);
-            --degree_counter[p];
-            new_nodes.insert(p);
+            // Remove edge pre -> idx
+            graph[pre].erase(idx);
+            --degree_counter[pre];
+            new_nodes.insert(pre);
 
-            // Add triangles involving p, idx, and successors of idx
-            for (const auto& q : graph[idx]) {
-                if (p != q) [[likely]] {
-                    triangles_list.emplace_back(p, idx, q);
+            // Add triangles involving pre, idx, and successors of idx
+            for (const auto& eff : graph[idx]) {
+                if (pre != eff) [[likely]] {
+                    triangles_list.emplace_back(pre, idx, eff);
                 }
             }
         }
 
         // Remove all edges from idx and update degrees
-        for (const auto& q : graph[idx]) {
-            --degree_counter[q];
-            new_nodes.insert(q);
+        for (const auto& eff : graph[idx]) {
+            --degree_counter[eff];
+            new_nodes.insert(eff);
         }
 
         graph[idx].clear();
         degree_counter[idx] = 0;
 
         // Update priority queue for affected nodes
-        std::for_each(new_nodes.begin(), new_nodes.end(), [&](const auto& x) {
-            if (degree_counter[x] > 0 && nodes_queue.has(x)) {
-                nodes_queue.change(x, degree_counter[x]);
+        std::ranges::for_each(new_nodes, [&](const auto& node) {
+            if (degree_counter[node] > 0 && nodes_queue.has(node)) {
+                nodes_queue.change(node, degree_counter[node]);
             }
         });
 
@@ -146,7 +149,7 @@ void ve::add_acyclicity_constraints(const hplus::execution& exec, hplus::instanc
         stopcheck();
     }
 
-    stats.var_acyc = count;
+    STATS.counter_set<"n_var_acyc">(count);
 
     // ====================================================== //
     // ================== CPLEX CONSTRAINTS ================= //
@@ -163,7 +166,8 @@ void ve::add_acyclicity_constraints(const hplus::execution& exec, hplus::instanc
 
     std::vector<int> ind(3);
     std::vector<double> val(3);
-    constexpr double rhs_0{0.0}, rhs_1{1.0};
+    constexpr double rhs_0{0.0};
+    constexpr double rhs_1{1.0};
     constexpr char sense_l = 'L';
     constexpr int begin{0};
 
@@ -185,7 +189,7 @@ void ve::add_acyclicity_constraints(const hplus::execution& exec, hplus::instanc
                     continue;
                 }
                 CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind.data(), val.data(), nullptr, nullptr));
-                stats.const_acyc++;
+                STATS.counter_inc<"n_const_acyc">();
             }
             stopcheck();
         }
@@ -195,13 +199,15 @@ void ve::add_acyclicity_constraints(const hplus::execution& exec, hplus::instanc
     for (unsigned int var_i = 0; var_i < inst.n; ++var_i) {
         for (const auto& var_j : inst.veg_cumulative_graph[var_i]) {
             // if the "inverse" veg variable was eliminated, we can skip the constraint
-            if (!std::binary_search(inst.veg_cumulative_graph[var_j].begin(), inst.veg_cumulative_graph[var_j].end(), var_i)) continue;
+            if (!std::binary_search(inst.veg_cumulative_graph[var_j].begin(), inst.veg_cumulative_graph[var_j].end(), var_i)) {
+                continue;
+            }
             ind[0] = get_veg_idx(var_i, var_j);
             val[0] = 1;
             ind[1] = get_veg_idx(var_j, var_i);
             val[1] = 1;
             CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, 2, &rhs_1, &sense_l, &begin, ind.data(), val.data(), nullptr, nullptr));
-            stats.const_acyc++;
+            STATS.counter_inc<"n_const_acyc">();
             stopcheck();
         }
     }
@@ -223,15 +229,15 @@ void ve::add_acyclicity_constraints(const hplus::execution& exec, hplus::instanc
             continue;
         }
         CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, 3, &rhs_1, &sense_l, &begin, ind.data(), val.data(), nullptr, nullptr));
-        stats.const_acyc++;
+        STATS.counter_inc<"n_const_acyc">();
         stopcheck();
     }
 }
 
-void ve::post_warm_start(const hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
-    if (VERBOSE_BASIC()) LOG_INFO << "Posting warm start to VE model";
+void ve::post_warm_start(hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
+    LOG_INFO_S("Posting warm start to VE model");
 
-    binary_set state{inst.n};
+    BinarySet state{inst.n};
     const auto& warm_start{inst.sol.sequence};
 
     const unsigned int ncols{static_cast<unsigned int>(CPXgetnumcols(env, lp))};
@@ -246,7 +252,9 @@ void ve::post_warm_start(const hplus::execution& exec, hplus::instance& inst, CP
         int var_count{-1};
         for (const auto& var_i : inst.actions[act_i].eff_sparse) {
             var_count++;
-            if (state[var_i]) continue;
+            if (state[var_i]) {
+                continue;
+            }
 
             unsigned int fadd_idx = inst.m + inst.fadd_cpx_start[act_i] + var_count;
             val[fadd_idx] = 1;
@@ -258,7 +266,7 @@ void ve::post_warm_start(const hplus::execution& exec, hplus::instance& inst, CP
                 val[veg_idx] = 1;
             }
         }
-        state |= inst.actions[act_i].eff;
+        state |= inst.actions[act_i].eff_sparse;
     }
 
     CPX_HANDLE_CALL(CPXaddmipstarts(env, lp, 1, ncols, &izero, ind.data(), val.data(), &effortlevel, nullptr));

@@ -1,19 +1,14 @@
 #include "relax_callback.hpp"
 
-#include <set>
+#include <unordered_set>
+
+#include "stats_registry.hxx"
+#include "timer.hxx"
 
 [[nodiscard]]
-std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash> relax_cuts::relaxationpoint_info(const hplus::instance& inst,
-                                                                                                              std::vector<double>& relax_point) {
+auto relax_cuts::relaxationpoint_info(const hplus::instance& inst, std::vector<double>& relax_point)
+    -> std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash> {
     std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash> fadd_weights;
-    // Handle precision errors (i.e.: -1e^-06 is to be considered 0)
-    for (unsigned int idx = 0; idx < inst.m; ++idx) {
-        if (relax_point[idx] <= HPLUS_EPSILON) {
-            relax_point[idx] = 0.0;
-        } else if (relax_point[idx] >= 1 - HPLUS_EPSILON) {
-            relax_point[idx] = 1.0;
-        }
-    }
     for (unsigned int act_i = 0; act_i < inst.m; ++act_i) {
         for (unsigned int i = 0; i < inst.actions[act_i].eff_sparse.size(); ++i) {
             unsigned int idx = inst.m + inst.fadd_cpx_start[act_i] + i;
@@ -30,12 +25,12 @@ std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash> rel
     return fadd_weights;
 }
 
-void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, const hplus::instance& inst, thread_data& data) {
+void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, const hplus::instance& inst) {
     int nodeuid{-1};
     int nodedepth{-1};
     CPX_HANDLE_CALL(CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODEUID, &nodeuid));
     CPX_HANDLE_CALL(CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODEDEPTH, &nodedepth));
-    static std::set<int> visited_nodes;
+    thread_local std::unordered_set<int> visited_nodes;
     // If we have our custom cutloop in place, we don't need to generate cuts from fractionary solutions in the first root node relaxation
     if (exec.custom_cutloop && nodeuid == 0) {
         return;
@@ -50,20 +45,19 @@ void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::
     }
     visited_nodes.insert(nodeuid);
 
-    data.relax_calls++;
-
-    double start_time = GET_TIME();
+    STATS.counter_inc<"fract_calls">();
+    auto _fract_time = make_scoped_timer<"fract_callback">(STATS);
 
     std::vector<double> relax_point(inst.m + inst.nfadd);
-    double _{CPX_INFBOUND};
-    CPX_HANDLE_CALL(CPXcallbackgetrelaxationpoint(context, relax_point.data(), 0, inst.m + inst.nfadd - 1, &_));
+    double obj{CPX_INFBOUND};
+    CPX_HANDLE_CALL(CPXcallbackgetrelaxationpoint(context, relax_point.data(), 0, inst.m + inst.nfadd - 1, &obj));
 
     // Fix numerical errors
-    for (auto& x : relax_point) {
-        if (x <= HPLUS_EPSILON) {
-            x = 0;
-        } else if (x >= 1 - HPLUS_EPSILON) {
-            x = 1;
+    for (auto& val : relax_point) {
+        if (val <= HPLUS_EPSILON) {
+            val = 0;
+        } else if (val >= 1 - HPLUS_EPSILON) {
+            val = 1;
         }
     }
 
@@ -74,15 +68,14 @@ void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::
     // -> s : SEC
     try {
         if (exec.fract_cuts.find('m') != std::string::npos || (exec.fract_cuts.find('l') != std::string::npos)) {
-            data.usercuts_lm += relax_cuts::add_lm_cut(context, exec, inst, relax_point, data.acts_in_lm, data.n_lm);
+            auto fract_lm = relax_cuts::add_lm_cut(context, exec, inst, relax_point);
+            STATS.counter_inc<"fract_lm">(fract_lm);
         }
         if (exec.fract_cuts.find('s') != std::string::npos) {
-            data.usercuts_sec += relax_cuts::add_sec_cut(context, inst, fadd_weights);
+            auto fract_sec = relax_cuts::add_sec_cut(context, inst, fadd_weights);
+            STATS.counter_inc<"fract_sec">(fract_sec);
         }
     } catch (timelimit_exception& e) {
         return;
     }
-
-    // Update the candidate time
-    data.relax_time += GET_TIME() - start_time;
 }

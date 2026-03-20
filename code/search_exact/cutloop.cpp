@@ -1,7 +1,13 @@
+#include <math.h>
+
 #include <algorithm>
 
-#include "../cut_separators/relax_callback.hpp"
+#include "bs_utils.hpp"
 #include "exact.hpp"
+#include "fract_separators.hpp"
+#include "limits.hxx"
+#include "relax_callback.hpp"
+#include "timer.hxx"
 
 inline void init_cutloop(CPXENVptr& env, CPXLPptr& lp) { CPX_HANDLE_CALL(CPXchgprobtype(env, lp, CPXPROB_LP)); }
 
@@ -36,13 +42,14 @@ inline void solve_relaxation(CPXENVptr& env, CPXLPptr& lp, const hplus::executio
         case CPX_STAT_ABORT_USER:
             break;
         default:
-            LOG_ERROR << "Error in solve_relaxation: unhandled cplex status (" << status << ")";
+            LOG_ERROR_S("Error in solve_relaxation: unhandled cplex status (" + std::to_string(status) + ")");
     }
 }
 
 inline auto generate_cuts(CPXENVptr& env, CPXLPptr& lp, const std::vector<double>& relax_point, const hplus::execution& exec,
-                          const hplus::instance& inst, hplus::statistics& stats, const std::vector<double>& incumbent, double& inout_w)
-    -> unsigned int {
+                          const hplus::instance& inst, const std::vector<double>& incumbent, double& inout_w) -> unsigned int {
+    auto _fract_cb = make_scoped_timer<"fract_callback">(STATS);
+    STATS.counter_inc<"fract_calls">();
     unsigned int new_cuts{0};
 
     const auto& add_cuts = [&](std::vector<double> relax_point) {
@@ -58,7 +65,7 @@ inline auto generate_cuts(CPXENVptr& env, CPXLPptr& lp, const std::vector<double
 
         // Adding landmark as new constraint
         if (exec.fract_cuts.find('m') != std::string::npos) {
-            const auto& [found_lm, landmark]{relax_cuts::get_r3_violated_landmark(exec, inst, relax_point, stats.total_act_in_lm, stats.total_n_lm)};
+            const auto& [found_lm, landmark]{fract_lm_sep::get_r3_violated_landmark(exec, inst, relax_point)};
             if (found_lm) {
                 ind = std::vector<int>(landmark.begin(), landmark.end());
                 val = std::vector<double>(landmark.size(), 1.0);
@@ -67,13 +74,12 @@ inline auto generate_cuts(CPXENVptr& env, CPXLPptr& lp, const std::vector<double
                 begin = std::vector<int>(1, 0);
                 CPX_HANDLE_CALL(
                     CPXaddrows(env, lp, 0, 1, landmark.size(), rhs.data(), sense.data(), begin.data(), ind.data(), val.data(), nullptr, nullptr));
-                stats.cuts_lm++;
+                STATS.counter_inc<"fract_lm">();
                 new_cuts++;
             }
         }
         if (exec.fract_cuts.find('l') != std::string::npos) {
-            const auto& [found_lm,
-                         landmarks]{relax_cuts::get_lmcut_violated_landmarks(exec, inst, relax_point, stats.total_act_in_lm, stats.total_n_lm)};
+            const auto& [found_lm, landmarks]{fract_lm_sep::get_lmcut_violated_landmarks(exec, inst, relax_point)};
             if (found_lm) {
                 for (const auto& landmark : landmarks) {
                     ind = std::vector<int>(landmark.begin(), landmark.end());
@@ -83,9 +89,9 @@ inline auto generate_cuts(CPXENVptr& env, CPXLPptr& lp, const std::vector<double
                     begin = std::vector<int>(1, 0);
                     CPX_HANDLE_CALL(
                         CPXaddrows(env, lp, 0, 1, landmark.size(), rhs.data(), sense.data(), begin.data(), ind.data(), val.data(), nullptr, nullptr));
-                    stats.cuts_lm++;
                     new_cuts++;
                 }
+                STATS.counter_inc<"fract_lm">(landmarks.size());
             }
         }
 
@@ -101,14 +107,14 @@ inline auto generate_cuts(CPXENVptr& env, CPXLPptr& lp, const std::vector<double
                 for (const auto& cycle : cycles) {
                     begin.push_back(static_cast<int>(ind.size()));
                     rhs.push_back(static_cast<double>(cycle.size() - 1));
-                    std::copy(cycle.begin(), cycle.end(),
-                              std::back_inserter(ind));  // labels in the cycle are the indexes for the first adders in the cplex model
+                    std::ranges::copy(cycle,
+                                      std::back_inserter(ind));  // labels in the cycle are the indexes for the first adders in the cplex model
                     val.insert(val.end(), cycle.size(), 1.0);
-                    nnz += cycle.size();
+                    nnz += static_cast<int>(cycle.size());
                 }
                 CPX_HANDLE_CALL(
                     CPXaddrows(env, lp, 0, cycles.size(), nnz, rhs.data(), sense.data(), begin.data(), ind.data(), val.data(), nullptr, nullptr));
-                stats.cuts_sec += cycles.size();
+                STATS.counter_inc<"fract_sec">(cycles.size());
                 new_cuts += cycles.size();
             }
         }
@@ -121,12 +127,16 @@ inline auto generate_cuts(CPXENVptr& env, CPXLPptr& lp, const std::vector<double
         while (inout_it <= exec.io_max_iter && new_cuts == 0) {
             inout_it++;
             std::vector<double> inout_relax_point;
-            if (inout_it == exec.io_max_iter) w = 0;
+            if (inout_it == exec.io_max_iter) {
+                w = 0;
+            }
             for (unsigned int i = 0; i < relax_point.size(); i++) {
                 inout_relax_point.push_back((relax_point[i] * (1 - w)) + (incumbent[i] * w));
             }
             add_cuts(inout_relax_point);
-            if (new_cuts == 0) w *= exec.io_weight_update;
+            if (new_cuts == 0) {
+                w *= exec.io_weight_update;
+            }
         }
 
         // Dynamic In-Out weight adjustment
@@ -159,10 +169,9 @@ inline void pruning(CPXENVptr& env, CPXLPptr& lp, int base_constraints) {
 }
 
 void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, const hplus::instance& inst, hplus::statistics& stats) {
-    LOG_INFO << "Running custom Cut-Loop";
+    LOG_INFO_S("Running custom Cut-Loop");
+    auto _cloop = make_scoped_timer<"cutloop">(STATS);
 
-    double start_time{GET_TIME()};
-    stats.cutloop = static_cast<double>(exec.timelimit) - start_time;
     exec.exec_s = hplus::exec_status::CUTLOOP;
 
     const int base_constraints{CPXgetnumrows(env, lp)};
@@ -172,7 +181,7 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
     std::vector<double> lb_history;
 
     const auto& repeat_cutloop = [&]() {
-        double current_lb;
+        double current_lb = NAN;
         CPX_HANDLE_CALL(CPXgetobjval(env, lp, &current_lb));
         lb_history.push_back(current_lb);
 
@@ -207,7 +216,7 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
 
     init_cutloop(env, lp);
 
-    binary_set state{inst.n};
+    BinarySet state{inst.n};
     const auto& warm_start{inst.sol.sequence};
 
     const unsigned int ncols{static_cast<unsigned int>(CPXgetnumcols(env, lp))};
@@ -227,25 +236,23 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
             unsigned int var_idx = inst.m + inst.nfadd + var_i;
             incumbent[var_idx] = 1;
         }
-        state |= inst.actions[act_i].eff;
+        state |= inst.actions[act_i].eff_sparse;
     }
 
     double inout_w = exec.io_weight;
 
     solve_relaxation(env, lp, exec, stats);
-    if (VERBOSE_BASIC()) {
-        LOG_INFO << "Lower bound at start of cutloop: " << stats.lower_bound;
-    }
+    LOG_INFO_S("Lower bound at start of cutloop: " + std::to_string(stats.lower_bound));
     while (repeat_cutloop() && !CHECK_STOP()) {
         std::vector<double> relax_point(ncols);
-        CPXgetx(env, lp, relax_point.data(), 0, ncols - 1);
+        CPXgetx(env, lp, relax_point.data(), 0, static_cast<int>(ncols - 1));
 
         // Fix numerical errors
-        for (auto& x : relax_point) {
-            if (x <= HPLUS_EPSILON) {
-                x = 0;
-            } else if (x >= 1 - HPLUS_EPSILON) {
-                x = 1;
+        for (auto& val : relax_point) {
+            if (val <= HPLUS_EPSILON) {
+                val = 0;
+            } else if (val >= 1 - HPLUS_EPSILON) {
+                val = 1;
             }
         }
 
@@ -255,19 +262,14 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
         }
 
         // Generate new cuts
-        double cuts_time = GET_TIME();
-        new_cuts = generate_cuts(env, lp, relax_point, exec, inst, stats, incumbent, inout_w);
-        stats.relax_callback += GET_TIME() - cuts_time;
-        stats.relax_calls++;
+        new_cuts = generate_cuts(env, lp, relax_point, exec, inst, incumbent, inout_w);
 
         solve_relaxation(env, lp, exec, stats);
         iteration++;
-        stats.cutloop_it = iteration;
+        STATS.counter_inc<"cloop_it">();
     }
 
-    if (VERBOSE_BASIC()) {
-        LOG_INFO << "Lower bound at end of cutloop: " << stats.lower_bound;
-    }
+    LOG_INFO_S("Lower bound at end of cutloop: " + std::to_string(stats.lower_bound));
 
     // Purging of slack constraints (if we exited due to time limit, we might not have a full solution, so pruning constraints might remove more than
     // necessary)
@@ -275,11 +277,9 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
         pruning(env, lp, base_constraints);
     }
 
-    stats.const_acyc += CPXgetnumrows(env, lp) - base_constraints;
-    stats.cutloop_it = iteration;
+    STATS.counter_inc<"n_const_acyc">(CPXgetnumrows(env, lp) - base_constraints);
 
     exit_cutloop(env, lp);
-    stats.cutloop = GET_TIME() - start_time;
 
     if (CHECK_STOP()) {
         throw timelimit_exception("");

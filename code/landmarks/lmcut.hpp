@@ -4,12 +4,11 @@
  * @author Zanella Matteo (matteozanella2@gmail.com)
  */
 
-#ifndef HPLUS_LMCUT_HPP
-#define HPLUS_LMCUT_HPP
+#pragma once
 
 #include <functional>
+#include <unordered_set>
 
-#include "bs.hxx"
 #include "instance.hpp"
 #include "pq.hxx"
 
@@ -17,30 +16,22 @@ using hmax_function = std::function<std::pair<int, double>(const std::vector<uns
 
 namespace hmax {
 
-/**
- * Hmax policy with arbitrary tie-breaking (FCFS)
- */
+/// Hmax policy with arbitrary tie-breaking (FCFS)
 [[nodiscard]]
 auto hmax_arbitrary(const std::vector<unsigned int>& preconditions, const std::vector<double>& hmax_values,
                     const std::vector<double>& /*initial_hmax_values*/) -> std::pair<int, double>;
 
-/**
- * Hmax policy with inverse tie-breaking (LCFS)
- */
+/// Hmax policy with inverse tie-breaking (LCFS)
 [[nodiscard]]
 auto hmax_inverse(const std::vector<unsigned int>& preconditions, const std::vector<double>& hmax_values,
                   const std::vector<double>& /*initial_hmax_values*/) -> std::pair<int, double>;
 
-/**
- * Hmax policy with VDM tie-breaking
- */
+/// Hmax policy with VDM tie-breaking
 [[nodiscard]]
 auto hmax_value_decrease_minimization(const std::vector<unsigned int>& preconditions, const std::vector<double>& hmax_values,
                                       const std::vector<double>& initial_hmax_values) -> std::pair<int, double>;
 
-/**
- * Hmax policy with random tie-breaking
- */
+/// Hmax policy with random tie-breaking
 [[nodiscard]]
 auto hmax_random(const std::vector<unsigned int>& preconditions, const std::vector<double>& hmax_values,
                  const std::vector<double>& /*initial_hmax_values*/) -> std::pair<int, double>;
@@ -54,11 +45,10 @@ class LMcut {
     // Compute LMcut on the instance passed at construction using the specified hmax function
     auto compute_lmcut(hmax_function hmax) -> std::pair<std::vector<std::vector<unsigned int>>, double>;
     // Compute violated landmarks given an integer solution using the specified hmax function
-    auto int_separation(const std::vector<unsigned int>& used_actions, hmax_function hmax)
-        -> std::pair<std::vector<std::vector<unsigned int>>, double>;
+    auto int_separation(const std::vector<unsigned int>& used_actions, hmax_function hmax) -> std::pair<bool, std::vector<std::vector<unsigned int>>>;
     // Compute violated landmarks given a fracitonal solution using the specified hmax function (here LMcut value has no meaning, so it's not
     // returned)
-    auto fract_separation(const std::vector<double>& actions_weights, hmax_function hmax) -> std::vector<std::vector<unsigned int>>;
+    auto fract_separation(const std::vector<double>& actions_weights, hmax_function hmax) -> std::pair<bool, std::vector<std::vector<unsigned int>>>;
 
     // Check that a landmark is valid for the instance passed at construction
     void check_landmark(const std::vector<unsigned int>& landmark);
@@ -69,7 +59,7 @@ class LMcut {
     auto compute_lmcut_private(hmax_function hmax) -> std::pair<std::vector<std::vector<unsigned int>>, double>;
 
     void update_and_enqueue_effects_values(priority_queue<double>& queue, unsigned int act_i);
-    auto compute_goal_section(hmax_function hmax) -> binary_set;
+    auto compute_goal_section(hmax_function hmax) -> std::unordered_set<unsigned int>;
 
     void update_hmax_values(const std::vector<unsigned int>& changed_actions, hmax_function hmax);
     auto compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned int>, double>;
@@ -83,5 +73,3 @@ class LMcut {
     std::vector<unsigned int> goal_;
     std::vector<unsigned int> initial_actions_;
 };
-
-#endif

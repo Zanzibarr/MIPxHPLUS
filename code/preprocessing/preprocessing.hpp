@@ -4,13 +4,15 @@
  * @author Zanella Matteo (matteozanella2@gmail.com)
  */
 
-#ifndef HPLUS_PREP_HPP
-#define HPLUS_PREP_HPP
+#pragma once
 
 #include <map>
 
-#include "../domain/hplus_algs.hpp"
-#include "../lmcut/lmcut.hpp"
+#include "execution.hpp"
+#include "lmcut.hpp"
+#include "statistics.hpp"
+#include "stats_registry.hxx"
+#include "timer.hxx"
 
 namespace prep {
 
@@ -18,40 +20,39 @@ void landmark_extraction(hplus::instance& inst, std::vector<std::vector<unsigned
 
 void first_adders_extraction(hplus::instance& inst, std::vector<std::vector<unsigned int>>& landmarks);
 
-void relevance_analysis_backward(hplus::instance& inst, binary_set& relevant_variables);
+void relevance_analysis_backward(hplus::instance& inst, BinarySet& relevant_variables);
 
-void relevance_analysis_forward(hplus::instance& inst, binary_set& relevant_variables);
+void relevance_analysis_forward(hplus::instance& inst, BinarySet& relevant_variables);
 
 void dominated_actions_extraction(hplus::instance& inst, const std::vector<std::vector<unsigned int>>& landmarks);
 
-void eliminated_facts_removal(hplus::instance& inst, hplus::statistics& stats, std::vector<std::vector<unsigned int>>& landmarks);
+void eliminated_facts_removal(hplus::instance& inst, std::vector<std::vector<unsigned int>>& landmarks);
 
-void eliminated_actions_removal(hplus::instance& inst, hplus::statistics& stats);
+void eliminated_actions_removal(hplus::instance& inst);
 
-inline void lmcut_landmarks_extraction(const hplus::execution& exec, hplus::instance& inst) {
+inline void lmcut_landmarks_extraction(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats) {
     LMcut lmcut(inst);
 
     std::map<char, hmax_function> hmax_functions{
         {'a', hmax::hmax_arbitrary}, {'i', hmax::hmax_inverse}, {'v', hmax::hmax_value_decrease_minimization}, {'r', hmax::hmax_random}};
 
-    for (auto x : exec.prep_lmcut) {
+    for (auto choice : exec.prep_lmcut) {
         double start = GET_TIME();
-        const auto& [landmarks, lmcut_value] = lmcut.compute_lmcut(hmax_functions[x]);
+        const auto& [landmarks, lmcut_value] = lmcut.compute_lmcut(hmax_functions[choice]);
         double diff = GET_TIME() - start;
         for (const auto& landmark : landmarks) {
             inst.landmarks.push_back(std::move(landmark));
         }
-        if (VERBOSE_BASIC()) {
-            LOG_INFO << "Computed a lm-cut value of: " << lmcut_value << " in " << diff << "s";
-        }
+        stats.lower_bound = std::max(stats.lower_bound, lmcut_value);
+        LOG_INFO_S("Computed a lm-cut value of: " + std::to_string(lmcut_value) + " in " + std::to_string(diff) + "s");
     }
 }
 
 inline void prepare_preprocessing(hplus::instance& inst) {
-    inst.fixed_facts = binary_set{inst.n};
-    inst.fixed_actions = binary_set{inst.m};
-    inst.eliminated_facts = binary_set{inst.n};
-    inst.eliminated_actions = binary_set{inst.m};
+    inst.fixed_facts = BinarySet{inst.n};
+    inst.fixed_actions = BinarySet{inst.m};
+    inst.eliminated_facts = BinarySet{inst.n};
+    inst.eliminated_actions = BinarySet{inst.m};
 }
 
 inline void prepare_optimization_helpers(hplus::instance& inst) {
@@ -65,40 +66,38 @@ inline void prepare_optimization_helpers(hplus::instance& inst) {
     inst.act_with_pre = std::vector<std::vector<unsigned int>>(inst.n);
     inst.act_with_eff = std::vector<std::vector<unsigned int>>(inst.n);
     for (unsigned int act_i = 0; act_i < inst.m; ++act_i) {
-        for (const auto& pre_i : inst.actions[act_i].pre_sparse) inst.act_with_pre[pre_i].push_back(act_i);
-        for (const auto& eff_i : inst.actions[act_i].eff_sparse) inst.act_with_eff[eff_i].push_back(act_i);
+        for (const auto& pre_i : inst.actions[act_i].pre_sparse) {
+            inst.act_with_pre[pre_i].push_back(act_i);
+        }
+        for (const auto& eff_i : inst.actions[act_i].eff_sparse) {
+            inst.act_with_eff[eff_i].push_back(act_i);
+        }
     }
 
-    inst.eliminated_facts = binary_set{1};
-    inst.eliminated_actions = binary_set{1};
+    inst.eliminated_facts = BinarySet{1};
+    inst.eliminated_actions = BinarySet{1};
 }
 
 inline void preprocess(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats) {
-    if (VERBOSE_BASIC()) LOG_INFO << "Preprocessing instance";
-
-    double start_time = GET_TIME();
-    stats.preprocessing = static_cast<double>(exec.timelimit) - start_time;
+    LOG_INFO_S("Preprocessing instance");
+    auto _prep = make_scoped_timer<"preprocessing">(STATS);
 
     std::vector<std::vector<unsigned int>> landmarks(inst.n);
-    binary_set relevant_variables(inst.n);
+    BinarySet relevant_variables(inst.n);
 
     landmark_extraction(inst, landmarks);
     first_adders_extraction(inst, landmarks);
     relevance_analysis_backward(inst, relevant_variables);
     relevance_analysis_forward(inst, relevant_variables);
-    eliminated_facts_removal(inst, stats, landmarks);  // Done here since no more facts will be eliminated, and this could make the next steps faster
+    eliminated_facts_removal(inst, landmarks);  // Done here since no more facts will be eliminated, and this could make the next steps faster
     dominated_actions_extraction(inst, landmarks);
-    eliminated_actions_removal(inst, stats);
+    eliminated_actions_removal(inst);
 
     prepare_optimization_helpers(inst);
 
     if (exec.prep_lmcut != "0") {
-        lmcut_landmarks_extraction(exec, inst);
+        lmcut_landmarks_extraction(exec, inst, stats);
     }
-
-    stats.preprocessing = GET_TIME() - start_time;
 }
 
 }  // namespace prep
-
-#endif
