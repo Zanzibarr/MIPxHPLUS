@@ -4,6 +4,7 @@
 #include "hplus_algs.hpp"
 #include "limits.hxx"
 
+// TODO: Consider using watch preconditions here aswell
 void heur::greedy(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats,
                   std::pair<bool, unsigned int> (*greedy_choice)(const hplus::instance& inst, const std::list<unsigned int>&, const BinarySet&,
                                                                  greedychoice_userhandle&)) {

@@ -10,13 +10,10 @@
 #include <unordered_set>
 #include <vector>
 
-#include "algorithms.hpp"
 #include "bs.hxx"
 #include "bs_utils.hpp"
 #include "instance.hpp"
 #include "utils.hpp"
-
-#define WATCH_LIT 0
 
 namespace lmutils {
 
@@ -36,7 +33,6 @@ inline void landmark_minimalization_greedy(const hplus::instance& inst, std::vec
 
 inline void landmark_minimalization(const hplus::instance& inst, std::vector<unsigned int>& landmark, std::vector<unsigned int> unapplicable,
                                     BinarySet reachable_state) {
-#if WATCH_LIT
     // Watch lists
     std::vector<unsigned int> watch_pre(inst.m + 1, inst.n);  // Watch precondition of each action (as default we use a non-existant fact)
     std::vector<std::vector<unsigned int>> watching(inst.n);  // List of actions that are watching each fact
@@ -201,93 +197,6 @@ inline void landmark_minimalization(const hplus::instance& inst, std::vector<uns
 
     // Compute the landmark as the set of actions that are unused, but not in the extension
     std::erase_if(landmark, [&to_remove](const auto& elem) { return to_remove.contains(elem); });
-#else
-    BinarySet extension(inst.m);
-    const auto& goal{inst.goal};
-    for (const auto& act_i : landmark) {
-        const auto& action = inst.actions[act_i];
-        // If the effects of this action won't change the reachable state, just apply it
-        if (bs_contains(reachable_state, action.eff_sparse)) {
-            extension.add(act_i);
-            continue;
-        }
-
-        // If the action is unreachable, then it won't change the set of reachable facts -> I can add it to the extension
-        if (!bs_contains(reachable_state, action.pre_sparse)) {
-            extension.add(act_i);
-            // Add this action to the unapplicable actions, to eventually add its effects when it'd become applicable
-            insert_sorted(unapplicable, act_i);
-            continue;
-        }
-
-        // Here the action is reachable and it has new effects
-
-        // Simulate the effects of using this action
-        std::vector<unsigned int> new_facts;
-        for (const auto& eff : inst.actions[act_i].eff_sparse) {
-            if (reachable_state[eff]) {
-                continue;
-            }
-            new_facts.push_back(eff);
-            reachable_state.add(eff);
-        }
-
-        // If the effect of this action reaches the goal, we don't add it to the extension
-        if (reachable_state.superset_of(goal)) {
-            // Revert changes
-            for (const auto& fact : new_facts) {
-                reachable_state.remove(fact);
-            }
-            continue;
-        }
-
-        BinarySet new_reachable(inst.m);
-        while (true) {
-            bool skip{true};
-            for (const auto& act_j : unapplicable) {
-                if (new_reachable[act_j]) {
-                    continue;
-                }
-                // If now a (previously) unapplicable action is applicable, add its effects to the simulated state
-                if (bs_contains(reachable_state, inst.actions[act_j].pre_sparse)) {
-                    new_reachable.add(act_j);
-                    for (const auto& eff : inst.actions[act_j].eff_sparse) {
-                        if (reachable_state[eff]) {
-                            continue;
-                        }
-                        new_facts.push_back(eff);
-                        reachable_state.add(eff);
-                    }
-                    if (reachable_state.superset_of(goal)) {
-                        skip = true;
-                        break;
-                    }
-                    skip = false;
-                }
-            }
-            if (skip) {
-                break;
-            }
-        }
-
-        // If the new state doesn't contain the goal, then we can update the reachable state and remove the applicable actions from the previously
-        // unapplicable ones
-        if (!reachable_state.superset_of(goal)) {
-            extension.add(act_i);
-            const auto iter =
-                std::set_difference(unapplicable.begin(), unapplicable.end(), new_reachable.begin(), new_reachable.end(), unapplicable.begin());
-            unapplicable.resize(iter - unapplicable.begin());
-        } else {
-            // Revert changes
-            for (const auto& fact : new_facts) {
-                reachable_state.remove(fact);
-            }
-        }
-    }
-
-    // Compute the landmark as the set of actions that are unused, but not in the extension
-    std::erase_if(landmark, [&extension](const auto& elem) { return extension[elem]; });
-#endif
 }
 
 }  // namespace lmutils

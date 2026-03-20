@@ -360,7 +360,6 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
         inst.nfadd += inst.actions[i].eff_sparse.size();
     }
 
-    inst.nfadd = inst.nfadd;
     STATS.counter_set<"n_prep">(inst.n);
     STATS.counter_set<"m_prep">(inst.m);
     STATS.counter_set<"nfadd_prep">(inst.nfadd);
@@ -374,6 +373,7 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
     }
 }
 
+// TODO: Consider using watch preconditions here aswell
 void hplus::update_sol(instance& inst, const solution& sol, statistics& stats) {
     const auto& [sol_plan, sol_cost, _]{sol};
     std::unordered_set<unsigned int> dbcheck;
@@ -390,10 +390,6 @@ void hplus::update_sol(instance& inst, const solution& sol, statistics& stats) {
     }
     ASSERT(state.superset_of(inst.goal));  // check if the solution leads to the goal state
     ASSERT(costcheck == sol_cost);         // check if the cost is the declared one
-
-    if (sol_cost >= inst.sol.cost) {
-        return;
-    }
 
     {
         static std::mutex sol_mutex;

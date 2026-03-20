@@ -20,6 +20,7 @@ void prep::dominated_actions_extraction(hplus::instance& inst, const std::vector
         }
     }
 
+    // TODO: Is there a way to optimize this function?
     bs_searcher candidates{inst.n};
     std::vector<BinarySet> actions_effects(inst.m, BinarySet(inst.n));
     for (const auto& act_i : rem_act) {

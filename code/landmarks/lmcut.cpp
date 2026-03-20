@@ -223,36 +223,33 @@ auto LMcut::compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned in
         explored.insert(act_i);
 
         if (reduced_costs_[act_i] > HPLUS_EPSILON) {
-            std::unordered_set<unsigned int> added_facts;
+            // Case 1: This is the only action from the pre_goal_section that achieves a fact p not in the goal_section... actions added to
+            // the cut because of this fact are not necessary for the validity of the landmark (the current action is a landmark for p (with
+            // the current pcf) hence adding actions that generated from p (or from successive iterations generated from p) would only weaken
+            // the landmark)... now pre_goal and goal sections are not summing up to the totality of the facts, but we can consider as
+            // partition (pre_goal_section, P \ pre_goal_section) instead of (pre_goal_section, goal_section), which would still produce a
+            // valid landmark since it's a cut for a valid partition of the facts
+            //
+            // Case 2: There are other actions from the pre_goal_section (that don't cross the cut) that achieve fact p... then they are gonna
+            // add it to the pre_goal_section: the validity of the partition is preserved
+
+            // First pass: check if this action crosses the cut (has an effect in the goal section).
+            // Done as a separate pass so that if we return early, no facts are incorrectly added
+            // to pre_goal_section.
             for (const auto& eff : inst_->actions[act_i].eff_sparse) {
                 if (goal_section.contains(eff)) {
                     cut.push_back(act_i);
-                    // Early exit condition... if this action crosses the cut there's no need to add its non-goal_section effects to the
-                    // pre_goal_section
-                    //
-                    // Case 1: This is the only action from the pre_goal_section that achieves a fact p not in the goal_section... actions added to
-                    // the cut because of this fact are not necessary for the validity of the landmark (the current action is a landmark for p (with
-                    // the current pcf) hence adding actions that generated from p (or from successive iterations generated from p) would only weaken
-                    // the landmark)... now pre_goal and goal sections are not summing up to the totality of the facts, but we can consider as
-                    // partition (pre_goal_section, P \ pre_goal_section) instead of (pre_goal_section, goal_section), which would still produce a
-                    // valid landmark since it's a cut for a valid partition of the facts
-                    //
-                    // Case 2: There are other actions from the pre_goal_section (that don't cross the cut) that achieve fact p... then they are gonna
-                    // add it to the pre_goal_section: the validity of the partition is preserved
                     return;
                 }
+            }
 
-                if (!pre_goal_section[eff] && !added_facts.contains(eff)) {
-                    added_facts.insert(eff);
+            // Second pass: add effects to pre_goal_section in sorted eff_sparse order (deterministic).
+            for (const auto& eff : inst_->actions[act_i].eff_sparse) {
+                if (!pre_goal_section[eff]) {
+                    pre_goal_section.add(eff);
+                    queue.push_back(static_cast<int>(eff));
                 }
             }
-
-            // If we didn't exit early add the effects to the pre_goal section
-            for (const auto& eff : added_facts) {
-                pre_goal_section.add(eff);
-                queue.push_back(static_cast<int>(eff));
-            }
-
         } else {
             for (const auto& eff : inst_->actions[act_i].eff_sparse) {
                 ASSERT(!goal_section.contains(eff));
@@ -280,15 +277,11 @@ auto LMcut::compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned in
         }
     }
 
-    // // TODO: Remove.. just for debugging
-    // auto size = cut.size();
-
+    // TODO: CLI Parameters to choose when to call these minimization procedures
     // Note that this MUST be done after the cut has been computed 'cause before the pre_goal might change...
     lmutils::landmark_minimalization_greedy(*inst_, cut, pre_goal_section);
 
-    // // TODO: Remove.. just for debugging
-    // unsigned int removed_first = size - cut.size();
-
+    // TODO: Consider using (!)explored instead of re-computing the set of unapplicable actions
     std::vector<unsigned int> unapplicable_actions;
     for (unsigned int act_i = 0; act_i < inst_->m; act_i++) {
         if (!bs_contains(pre_goal_section, inst_->actions[act_i].pre_sparse)) {
@@ -296,15 +289,9 @@ auto LMcut::compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned in
         }
     }
 
+    // TODO: CLI Parameters to choose when to call these minimization procedures
     // Further try to minimize the landmark
     lmutils::landmark_minimalization(*inst_, cut, unapplicable_actions, pre_goal_section);
-
-    // // TODO: Remove.. just for debugging
-    // LOG_DEBUG << "Removal: " << std::setw(5) << removed_first << " + " << std::setw(5) << size - cut.size() - removed_first << " = " <<
-    // std::setw(5)
-    //           << size - cut.size() << " actions over " << std::setw(5) << size << " (new size: " << std::setw(5) << cut.size() << "/" <<
-    //           std::setw(5)
-    //           << size << ")";
 
     double min_reduced_cost = std::numeric_limits<double>::infinity();
     for (const auto& act_i : cut) {
@@ -333,7 +320,7 @@ auto LMcut::compute_lmcut_private(hmax_function hmax) -> std::pair<std::vector<s
 
     while (hmax(goal_, hmax_values_, initial_hmax_values_).second > HPLUS_EPSILON) {
         const auto& [cut, val] = compute_cut(hmax);
-        check_landmark(cut);  // This is an (expensive) integrity check... //! //FIXME don't use this in runs where performance is measured
+        // check_landmark(cut);  // This is an (expensive) integrity check...
         lmcut_value += val;
         update_hmax_values(cut, hmax);
         landmarks.push_back(std::move(cut));
@@ -388,6 +375,7 @@ auto LMcut::fract_separation(const std::vector<double>& actions_weights, hmax_fu
     return {!landmarks.empty(), landmarks};
 }
 
+// TODO: Consider using watch preconditions here aswell
 void LMcut::check_landmark(const std::vector<unsigned int>& landmark) {
     // This function is meant to be a check for debugging... it's not optimized to be used as a routine
     bool found = false;

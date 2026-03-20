@@ -26,6 +26,24 @@ HOW I DO VERSIONING:
 <!-- ### :rocket: Performance Improvements -->
 
 
+## [3.1.0] - 2026/03/20
+<!-- ### :warning: Known issues -->
+### :ballot_box_with_check: Fixed
+- Minor bug fixes and dead/no-op code removed 
+### :heavy_exclamation_mark: Changed
+- Using watch-preconditions (inspired from watch literals in sat solvers) for reachability analysis in landmark minimalization
+### :heavy_plus_sign: Added
+- Added TODOs on possible future improvements
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+### :rocket: Performance Improvements
+- Implementation improvements on landmark minimalization algorithm
+- Old LMC (just LMcut on integer solutions with minimalization (both greedy and extensive)) vs with new minimalization
+    - Solved: 2624 -> 2625
+    - Nodes: -0, -0, -0, -0%
+    - Time: -4,-0,-5,-4%
+
+
 ## [3.0.0] - 2026/03/19
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->
@@ -47,6 +65,7 @@ HOW I DO VERSIONING:
     - Solved: 2594 -> 2600
     - Nodes: -3,-0,-5,-12%
     - Time: -31,-21,-33,-14%
+- Old baselines are now outdated... need to run new benchmarks to find the best model
 
 
 ## [2.6.1] - 2026/03/10

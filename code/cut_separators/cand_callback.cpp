@@ -1,8 +1,8 @@
 #include "cand_callback.hpp"
 
-#include <algorithm>
 #include <deque>
 #include <numeric>
+#include <unordered_set>
 #include <vector>
 
 #include "algorithms.hpp"
@@ -11,6 +11,7 @@
 #include "int_separators.hpp"
 #include "timer.hxx"
 
+// TODO: Consider using watch preconditions here aswell
 [[nodiscard]]
 static auto candidatepoint_info(const hplus::instance& inst, const std::vector<double>& xstar)
     -> std::tuple<std::vector<unsigned int>, std::vector<unsigned int>, std::vector<unsigned int>, BinarySet,
@@ -42,9 +43,11 @@ static auto candidatepoint_info(const hplus::instance& inst, const std::vector<d
 
     // Only actions with no preconditions can be applied at first
     std::deque<unsigned int> queue;
+    std::unordered_set<unsigned int> act_in_queue;
     for (const auto& act_i : used_actions) {
         if (inst.actions[act_i].pre_sparse.empty()) {
             queue.push_back(act_i);
+            act_in_queue.insert(act_i);
         }
     }
 
@@ -53,6 +56,7 @@ static auto candidatepoint_info(const hplus::instance& inst, const std::vector<d
         // This actions is now applicable, store it as such
         unsigned int act_i{queue.front()};
         queue.pop_front();
+        act_in_queue.erase(act_i);
         reachable_action_sequence.push_back(act_i);
         unreachable_actions.erase(unreachable_actions.begin() + sorted_find(unreachable_actions, act_i));
 
@@ -71,8 +75,9 @@ static auto candidatepoint_info(const hplus::instance& inst, const std::vector<d
                 if (!used_actions[act_j]) {
                     continue;
                 }
-                if (bs_contains(reachable_state, inst.actions[act_j].pre_sparse) && std::ranges::find(queue, act_j) == queue.end()) {
+                if (bs_contains(reachable_state, inst.actions[act_j].pre_sparse) && !act_in_queue.contains(act_j)) {
                     queue.push_back(act_j);
+                    act_in_queue.insert(act_j);
                 }
             }
         }
@@ -91,7 +96,6 @@ static void reject_with_new_sol(CPXCALLBACKCONTEXTptr context, hplus::instance& 
 
     // Compute a better solution (we already know that we can reach the goal)
     BinarySet state{inst.n};
-    unsigned int cost{0};
     for (const auto& act_i : reachable_action_sequence) {
         if (bs_contains(state, inst.actions[act_i].eff_sparse)) {
             continue;  // If this action has no effects on this current state, we can optimize the solution by ignoring this action
@@ -109,7 +113,6 @@ static void reject_with_new_sol(CPXCALLBACKCONTEXTptr context, hplus::instance& 
             val[var_idx] = 1;
         }
         state |= inst.actions[act_i].eff_sparse;
-        cost += inst.actions[act_i].cost;
         if (state.superset_of(inst.goal)) {
             break;  // If we already reached the goal, we can exit early (ignore all other applicable actions)
         }
@@ -119,7 +122,7 @@ static void reject_with_new_sol(CPXCALLBACKCONTEXTptr context, hplus::instance& 
     hplus::update_sol(inst, sol, stats);
 
     // Give CPLEX the better solution
-    CPX_HANDLE_CALL(CPXcallbackpostheursoln(context, ncols, ind.data(), val.data(), static_cast<double>(cost), CPXCALLBACKSOLUTION_NOCHECK));
+    CPX_HANDLE_CALL(CPXcallbackpostheursoln(context, ncols, ind.data(), val.data(), static_cast<double>(sol.cost), CPXCALLBACKSOLUTION_NOCHECK));
 
     constexpr int rejind{0};
     constexpr int rejbegin{0};
@@ -174,7 +177,7 @@ void callbacks::candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::e
     if (exec.cand_cuts.find('f') != std::string::npos) {
         landmarks.push_back(int_lm_sep::get_front_violated_landmark(inst, unused_actions, reachable_state));
     }
-    unsigned int lmc_violated{0};
+    unsigned int lmc_violated{1};
     if (exec.cand_cuts.find('l') != std::string::npos) {
         const auto& [found, lmcut_landmarks] = int_lm_sep::get_lmcut_violated_landmarks(inst, xstar);
         if (found) {

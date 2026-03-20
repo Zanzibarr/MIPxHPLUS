@@ -5,6 +5,7 @@
 #include "limits.hxx"
 #include "preprocessing.hpp"
 
+// TODO: Consider using watch preconditions here aswell
 void prep::landmark_extraction(hplus::instance& inst, std::vector<std::vector<unsigned int>>& landmarks_ret) {
     // use the last bit as a flag to tell the BinarySet is full
     std::vector<BinarySet> landmarks(inst.n, BinarySet{inst.n + 1});
@@ -16,11 +17,13 @@ void prep::landmark_extraction(hplus::instance& inst, std::vector<std::vector<un
 
     // add to the queue all initial actions...
     std::deque<unsigned int> actions_queue;
+    std::unordered_set<unsigned int> acts_in_queue;
     for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
         // ... and since the initial state is empty, the initial actions are those with no preconditions (pre.empty() is O(n) while
         // pre_sparse.empty() is O(1))
         if (inst.actions[act_i].pre_sparse.empty()) {
             actions_queue.push_back(act_i);
+            acts_in_queue.insert(act_i);
         }
     }
 
@@ -33,8 +36,10 @@ void prep::landmark_extraction(hplus::instance& inst, std::vector<std::vector<un
     }
 
     while (!actions_queue.empty()) {
-        const hplus::action& act{inst.actions[actions_queue.front()]};
+        const auto act_i = actions_queue.front();
+        const hplus::action& act{inst.actions[act_i]};
         actions_queue.pop_front();
+        acts_in_queue.erase(act_i);
 
         BinarySet x_a{inst.n + 1};
         for (const auto& eff : act.eff_sparse) {
@@ -72,9 +77,9 @@ void prep::landmark_extraction(hplus::instance& inst, std::vector<std::vector<un
             }
 
             landmarks[eff] = x;
-            for (const auto& act_i : act_with_pre[eff]) {
-                if (bs_contains(s_set, inst.actions[act_i].pre_sparse) && std::ranges::find(actions_queue, act_i) == actions_queue.end()) {
-                    actions_queue.push_back(act_i);
+            for (const auto& act_j : act_with_pre[eff]) {
+                if (bs_contains(s_set, inst.actions[act_j].pre_sparse) && !acts_in_queue.contains(act_j)) {
+                    actions_queue.push_back(act_j);
                 }
             }
         }

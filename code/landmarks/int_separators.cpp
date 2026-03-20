@@ -42,6 +42,7 @@ auto int_lm_sep::get_comp_violated_landmark(const hplus::instance& inst, const s
     return landmark;
 }
 
+// TODO: Using minimalization procedures here aswell
 [[nodiscard]]
 auto int_lm_sep::get_front_violated_landmark(const hplus::instance& inst, const std::vector<unsigned int>& unused_actions,
                                              const BinarySet& reachable_state) -> std::vector<unsigned int> {

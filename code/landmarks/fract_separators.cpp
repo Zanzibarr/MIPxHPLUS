@@ -11,6 +11,7 @@
 #include "stats_registry.hxx"
 #include "timer.hxx"
 
+// TODO: Consider using watch preconditions here aswell
 [[nodiscard]]
 static inline auto compute_r1_r2_incremental(const hplus::instance& inst, const std::vector<double>& relax_point, std::vector<double>& r1_values,
                                              std::vector<double>& r1_act_values, std::vector<double>& r2_values, std::vector<double>& r2_act_values,
@@ -266,7 +267,7 @@ static inline auto compute_r3_incremental(const hplus::instance& inst, std::vect
                 graph[sink][rev_idx].c = 0;
                 double removed = flow_removal(graph, source, gfact, flow_to_remove);
 
-                ASSERT(abs(flow_to_remove - removed) <= HPLUS_EPSILON);
+                ASSERT(std::abs(flow_to_remove - removed) <= HPLUS_EPSILON);
 
                 removed_flow += removed;
             }
@@ -334,7 +335,7 @@ static inline auto compute_r3_incremental(const hplus::instance& inst, std::vect
                     double removed_ahead = flow_removal(graph, eff_node, sink, flow_to_remove);
                     double removed_before = flow_removal(graph, source, pre_node, flow_to_remove);
 
-                    ASSERT(abs(removed_ahead - removed_before) <= HPLUS_EPSILON);
+                    ASSERT(std::abs(removed_ahead - removed_before) <= HPLUS_EPSILON);
 
                     removed_flow += removed_ahead;
                 }

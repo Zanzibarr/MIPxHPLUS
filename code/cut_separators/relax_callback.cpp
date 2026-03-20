@@ -9,14 +9,6 @@
 auto relax_cuts::relaxationpoint_info(const hplus::instance& inst, std::vector<double>& relax_point)
     -> std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash> {
     std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash> fadd_weights;
-    // Handle precision errors (i.e.: -1e^-06 is to be considered 0)
-    for (unsigned int idx = 0; idx < inst.m; ++idx) {
-        if (relax_point[idx] <= HPLUS_EPSILON) {
-            relax_point[idx] = 0.0;
-        } else if (relax_point[idx] >= 1 - HPLUS_EPSILON) {
-            relax_point[idx] = 1.0;
-        }
-    }
     for (unsigned int act_i = 0; act_i < inst.m; ++act_i) {
         for (unsigned int i = 0; i < inst.actions[act_i].eff_sparse.size(); ++i) {
             unsigned int idx = inst.m + inst.fadd_cpx_start[act_i] + i;
