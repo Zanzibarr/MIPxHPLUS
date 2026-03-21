@@ -198,6 +198,8 @@ void parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp, const hplus::e
         case CPXMIP_TIME_LIM_FEAS:  // exceeded time limit, found intermediate solution
             [[fallthrough]];
         case CPXMIP_ABORT_FEAS:  // terminated by user, found solution
+            [[fallthrough]];
+        case CPXMIP_FEASIBLE:  // found a feasible solution
             inst.sol_s = hplus::solution_status::FEAS;
             break;
         case CPXMIP_MEM_LIM_INFEAS:  // exceeded memory limit, no intermediate solution found

@@ -30,6 +30,8 @@ HOW I DO VERSIONING:
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed
 - When int separator based on LMcut didn't find any solution, the callback didn't fallback to exact method
+- Logger in async mode doesn't print error or success messages being too close to code termination
+- Un-handled CPLEX solution status (CPXMIP_FEASIBLE)
 ### :heavy_exclamation_mark: Changed
 - Updated version of logger for bugfixes
 <!-- ### :heavy_plus_sign: Added -->
