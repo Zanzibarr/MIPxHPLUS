@@ -7,6 +7,7 @@
 #include "argparser.hpp"
 #include "hplus_algs.hpp"
 #include "limits.hxx"
+#include "logger.hxx"
 #include "timer.hxx"
 #include "utils.hpp"
 
@@ -84,9 +85,14 @@ auto main(const int argc, const char** argv) -> int {
 
     } catch (std::bad_alloc& e) {
         LOG_ERROR_S("OUT OF MEMORY");
+    } catch (std::exception& e) {
+        LOG_ERROR_S("Exception: " + std::string(e.what()));
+    } catch (...) {
+        LOG_ERROR_S("Unknown exception");
     }
 
     LOG_SUCCESS_S("Execution terminated");
+    default_logger().flush();
 
     return EXIT_SUCCESS;
 }
