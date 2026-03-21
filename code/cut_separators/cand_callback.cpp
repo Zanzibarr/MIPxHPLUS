@@ -180,11 +180,9 @@ void callbacks::candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::e
     unsigned int lmc_violated{1};
     if (exec.cand_cuts.find('l') != std::string::npos) {
         const auto& [found, lmcut_landmarks] = int_lm_sep::get_lmcut_violated_landmarks(inst, xstar);
+        lmc_violated = lmcut_landmarks.size();
         if (found) {
-            lmc_violated = lmcut_landmarks.size();
             landmarks.insert(landmarks.end(), lmcut_landmarks.begin(), lmcut_landmarks.end());
-            // } else {
-            //     LOG_WARN_S("Heuristic int lm separator didn't find any landmark... trying \"comp\" separator");
         }
     }
     if (exec.cand_cuts.find('c') != std::string::npos || lmc_violated == 0) {

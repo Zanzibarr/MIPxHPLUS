@@ -26,6 +26,18 @@ HOW I DO VERSIONING:
 <!-- ### :rocket: Performance Improvements -->
 
 
+## [3.1.1] - 2026/03/21
+<!-- ### :warning: Known issues -->
+### :ballot_box_with_check: Fixed
+- When int separator based on LMcut didn't find any solution, the callback didn't fallback to exact method
+### :heavy_exclamation_mark: Changed
+- Updated version of logger for bugfixes
+<!-- ### :heavy_plus_sign: Added -->
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+<!-- ### :rocket: Performance Improvements -->
+
+
 ## [3.1.0] - 2026/03/20
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed

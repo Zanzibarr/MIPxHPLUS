@@ -3,7 +3,7 @@
 /**
  * @file logger.hxx
  * @brief Thread-safe logger with synchronous and asynchronous output modes.
- * @version 1.0.0
+ * @version 1.0.1
  *
  * @details
  * `Logger` supports two operating modes selected at construction:
@@ -114,6 +114,7 @@ class Logger {
             // Terminate for ERROR even when no content was streamed — an error
             // scope exit is always fatal once the level is active.
             if (exit_on_error_ && level_ == level::ERROR) {
+                lg_.flush();  // drain queue before exiting (in async mode the error message might not get printed)
                 _Exit(EXIT_FAILURE);
             }
         }
@@ -219,6 +220,7 @@ class Logger {
     [[noreturn]]
     void error(const std::string &msg) {
         emit(msg, level::ERROR);
+        flush();  // drain queue before exiting (in async mode the error message might not get printed)
         _Exit(EXIT_FAILURE);
     }
 
