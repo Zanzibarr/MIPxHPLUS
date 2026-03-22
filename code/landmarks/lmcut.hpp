@@ -40,7 +40,7 @@ auto hmax_random(const std::vector<unsigned int>& preconditions, const std::vect
 
 class LMcut {
    public:
-    LMcut(const hplus::instance& inst);
+    LMcut(const hplus::instance& inst, bool greedy_min, bool complete_min);
 
     // Compute LMcut on the instance passed at construction using the specified hmax function
     auto compute_lmcut(hmax_function hmax) -> std::pair<std::vector<std::vector<unsigned int>>, double>;
@@ -72,4 +72,6 @@ class LMcut {
     std::vector<double> reduced_costs_;
     std::vector<unsigned int> goal_;
     std::vector<unsigned int> initial_actions_;
+    bool greedy_min_;
+    bool complete_min_;
 };

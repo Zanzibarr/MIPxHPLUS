@@ -5,6 +5,7 @@
 #include <unordered_set>
 
 #include "bs_utils.hpp"
+#include "landmark_utils.hpp"
 #include "limits.hxx"
 #include "lmcut.hpp"
 #include "max_flow.hpp"
@@ -385,7 +386,8 @@ static inline auto compute_r3_incremental(const hplus::instance& inst, std::vect
 }
 
 [[nodiscard]]
-static inline auto extract_landmark(const hplus::instance& inst, const std::vector<std::vector<network_edge>>& graph) -> std::vector<unsigned int> {
+static inline auto extract_landmark(const hplus::instance& inst, const std::vector<std::vector<network_edge>>& graph)
+    -> std::pair<std::vector<unsigned int>, BinarySet> {
     std::unordered_set<unsigned int> graph_reach{get_min_cut_lpartition(graph, inst.n)};
     BinarySet facts_reach(inst.n);
     // This needs to be done since BinarySet check for the capacity of the sets... I need to make sure this has the same capacity of the
@@ -405,7 +407,7 @@ static inline auto extract_landmark(const hplus::instance& inst, const std::vect
         }
     }
 
-    return landmark;
+    return {landmark, facts_reach};
 }
 
 [[nodiscard]]
@@ -452,9 +454,10 @@ auto fract_lm_sep::get_r3_violated_landmark(const hplus::execution& exec, const 
         return {false, {}};
     }
 
-    landmark = extract_landmark(inst, max_flow_graph);
+    auto [lm_found, reachable_state] = extract_landmark(inst, max_flow_graph);
+    landmark = std::move(lm_found);
 
-    if (exec.min_fract_lm) {
+    if (exec.fractlm_min.find('i') != std::string::npos) {
         unsigned int rounded_act_lmidx{0};
         unsigned int rounded_act{0};
         unsigned int minimization_repetitions{0};
@@ -597,7 +600,7 @@ auto fract_lm_sep::get_r3_violated_landmark(const hplus::execution& exec, const 
                 continue;
             }
 
-            const std::vector<unsigned int>& proposed_landmark = extract_landmark(inst, max_flow_graph);
+            auto [proposed_landmark, reach] = extract_landmark(inst, max_flow_graph);
             double proposed_violation{1};
             for (const auto& act : proposed_landmark) {
                 proposed_violation -= relax_point[act];  // We can use this vector (with rounded actions) and don't need the original one, because
@@ -616,22 +619,33 @@ auto fract_lm_sep::get_r3_violated_landmark(const hplus::execution& exec, const 
                 }
             }
 
-            landmark = proposed_landmark;
+            landmark = std::move(proposed_landmark);
+            reachable_state = std::move(reach);
             violation = proposed_violation;
 
             round_new_action();
         }
     }
+    if (exec.fractlm_min.find('c') != std::string::npos) {
+        std::vector<unsigned int> unapplicable_actions;
+        for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
+            if (!bs_contains(reachable_state, inst.actions[act_i].pre_sparse)) {
+                unapplicable_actions.push_back(act_i);
+            }
+        }
+        lmutils::landmark_minimalization(inst, landmark, unapplicable_actions, reachable_state);
+    }
+    // Greedy minimalization is missing because it's unnecessary by construction of the base landmark extracted
 
     STATS.gauge_record<"fract_lm_size">(landmark.size());
 
     return {true, landmark};
 }
 
-auto fract_lm_sep::get_lmcut_violated_landmarks(const hplus::execution& /*exec*/, const hplus::instance& inst, const std::vector<double>& relax_point)
+auto fract_lm_sep::get_lmcut_violated_landmarks(const hplus::execution& exec, const hplus::instance& inst, const std::vector<double>& relax_point)
     -> std::pair<bool, std::vector<std::vector<unsigned int>>> {
     auto _fract_lm = make_scoped_timer<"fract_lm_separator">(STATS);
-    LMcut lmcut(inst);
+    LMcut lmcut(inst, exec.fractlm_min.find('g') != std::string::npos, exec.fractlm_min.find('c') != std::string::npos);
     std::vector<double> actions_weights(relax_point.begin(), relax_point.begin() + inst.m);
     const auto& [found, landmarks] = lmcut.fract_separation(actions_weights, hmax::hmax_arbitrary);
 

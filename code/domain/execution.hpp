@@ -41,14 +41,17 @@ struct execution {
     // Preprocessing
     bool prep;
     std::string prep_lmcut;
+    std::string preplm_min;
     warmstart ws;
     // Cutoff
     int cutoff;
     // Integer cuts
     std::string cand_cuts;
+    std::string candlm_min;
     // Fractional cuts
     std::string fract_cuts;
     bool fract_cuts_at_nodes;
+    std::string fractlm_min;
     // Cutloop
     bool custom_cutloop, cl_pruning;
     unsigned int cl_min_iter, cl_past_iter;
@@ -58,7 +61,7 @@ struct execution {
     unsigned int io_max_iter;
     double io_weight, io_weight_update;
     // Fract LM Minimization
-    bool min_fract_lm, lm_min_sort, lm_min_improv;
+    bool lm_min_sort, lm_min_improv;
     unsigned int lm_min_it, lm_min_lookahead;
     double lm_min_viol;
     // Execution/Solution status
@@ -79,11 +82,14 @@ inline void init(execution& exec) {
                             .seed = HPLUS_DEF_RANDOM_SEED,
                             .prep = HPLUS_DEF_PREP,
                             .prep_lmcut = HPLUS_DEF_PREP_LMCUT,
+                            .preplm_min = HPLUS_DEF_PREP_LMCUT_MIN,
                             .ws = static_cast<warmstart>(HPLUS_DEF_WS),
                             .cutoff = HPLUS_DEF_CUTOFF,
                             .cand_cuts = HPLUS_DEF_CANDCUTS,
+                            .candlm_min = HPLUS_DEF_CANDLM_MIN,
                             .fract_cuts = HPLUS_DEF_FRACTCUTS,
                             .fract_cuts_at_nodes = HPLUS_DEF_FRACTCUTS_AT_NODES,
+                            .fractlm_min = HPLUS_DEF_FRACTLM_MIN,
                             .custom_cutloop = HPLUS_DEF_CUSTOM_CUTLOOP,
                             .cl_pruning = HPLUS_DEF_CL_PRUNING,
                             .cl_min_iter = HPLUS_DEF_CL_MIN_ITER,
@@ -94,7 +100,6 @@ inline void init(execution& exec) {
                             .io_max_iter = HPLUS_DEF_IO_MAX_IT,
                             .io_weight = HPLUS_DEF_IO_WEIGHT,
                             .io_weight_update = HPLUS_DEF_IO_WEIGHT_UPD,
-                            .min_fract_lm = HPLUS_DEF_MIN_FRACT_LM,
                             .lm_min_sort = HPLUS_DEF_MINIMIZATION_SORT,
                             .lm_min_improv = HPLUS_DEF_MINIMIZATION_IMPROV,
                             .lm_min_it = HPLUS_DEF_MINIMIZATION_IT,
@@ -171,7 +176,8 @@ inline void print(const execution& exec) {
         return;
     }
     LOG_S("Preprocessing:                                         " + std::to_string(static_cast<int>(exec.prep)));
-    LOG << "Preprocessing (LM-cut):                       " << std::setw(10) << exec.prep_lmcut;
+    LOG << "Preprocessing (LMcut):                        " << std::setw(10) << exec.prep_lmcut;
+    LOG << "LMcut (preprocessing) minimalization:         " << std::setw(10) << exec.preplm_min;
     LOG << "Algorithm:                                    " << std::setw(10) << to_string(exec.alg);
     if (exec.alg < hplus::algorithm::GC) {
         LOG << "Warm start:                                   " << std::setw(10) << to_string(exec.ws);
@@ -180,15 +186,17 @@ inline void print(const execution& exec) {
         LOG << "Cutoff value:                                 " << std::setw(10) << exec.cutoff;
     }
     if (exec.alg == hplus::algorithm::CUTS) {
-        if (!exec.cand_cuts.empty()) {
-            LOG << "Candidate cuts:                                    " << std::setw(5) << exec.cand_cuts;
+        LOG << "Candidate cuts:                                    " << std::setw(5) << exec.cand_cuts;
+        if (exec.cand_cuts.find('l') != std::string::npos || exec.cand_cuts.find('c') != std::string::npos ||
+            exec.cand_cuts.find('f') != std::string::npos) {
+            LOG << "Landmark minimalization in candidate cuts:         " << std::setw(5) << exec.candlm_min;
         }
 
         LOG << "Fractional cuts:                                      " << std::setw(2) << exec.fract_cuts;
-        if (exec.fract_cuts.find('m') != std::string::npos) {
-            LOG_S("Minimization of fractional landmarks:                  " + std::to_string(static_cast<int>(exec.min_fract_lm)));
+        if (exec.fract_cuts.find('l') != std::string::npos || exec.fract_cuts.find('m') != std::string::npos) {
+            LOG << "Landmark minimalization in fractional cuts:        " << std::setw(5) << exec.fractlm_min;
         }
-        if (exec.min_fract_lm) {
+        if (exec.fractlm_min.find('i') != std::string::npos) {
             LOG << "- Upper bound on number of iterations:        " << std::setw(10) << exec.lm_min_it;
             LOG << "- Violation ratio threshold:                       " << std::fixed << std::setprecision(3) << exec.lm_min_viol;
             LOG << "- Lookahead success rate threshold:           " << std::setw(10) << exec.lm_min_lookahead;

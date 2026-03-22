@@ -175,11 +175,11 @@ void callbacks::candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::e
     // -> s : SEC
     std::vector<std::vector<unsigned int>> landmarks;
     if (exec.cand_cuts.find('f') != std::string::npos) {
-        landmarks.push_back(int_lm_sep::get_front_violated_landmark(inst, unused_actions, reachable_state));
+        landmarks.push_back(int_lm_sep::get_front_violated_landmark(exec, inst, unreachable_actions, unused_actions, reachable_state));
     }
     unsigned int lmc_violated{1};
     if (exec.cand_cuts.find('l') != std::string::npos) {
-        const auto& [found, lmcut_landmarks] = int_lm_sep::get_lmcut_violated_landmarks(inst, xstar);
+        const auto& [found, lmcut_landmarks] = int_lm_sep::get_lmcut_violated_landmarks(exec, inst, xstar);
         lmc_violated = lmcut_landmarks.size();
         if (found) {
             landmarks.insert(landmarks.end(), lmcut_landmarks.begin(), lmcut_landmarks.end());
@@ -188,7 +188,7 @@ void callbacks::candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::e
     if (exec.cand_cuts.find('c') != std::string::npos || lmc_violated == 0) {
         // Since the lmcut approach is (currently) an heuristic approach, if no landmark is found we need to complement it with an exact approach when
         // needed
-        landmarks.push_back(int_lm_sep::get_comp_violated_landmark(inst, unreachable_actions, unused_actions, reachable_state));
+        landmarks.push_back(int_lm_sep::get_comp_violated_landmark(exec, inst, unreachable_actions, unused_actions, reachable_state));
     }
     STATS.counter_inc<"cand_lm">(landmarks.size());
     for (const auto& landmark : landmarks) {

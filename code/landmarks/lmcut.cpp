@@ -277,21 +277,22 @@ auto LMcut::compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned in
         }
     }
 
-    // TODO: CLI Parameters to choose when to call these minimization procedures
-    // Note that this MUST be done after the cut has been computed 'cause before the pre_goal might change...
-    lmutils::landmark_minimalization_greedy(*inst_, cut, pre_goal_section);
-
-    // TODO: Consider using (!)explored instead of re-computing the set of unapplicable actions
-    std::vector<unsigned int> unapplicable_actions;
-    for (unsigned int act_i = 0; act_i < inst_->m; act_i++) {
-        if (!bs_contains(pre_goal_section, inst_->actions[act_i].pre_sparse)) {
-            unapplicable_actions.push_back(act_i);
-        }
+    if (greedy_min_) {
+        // Note that this MUST be done after the cut has been computed 'cause before the pre_goal might still change...
+        lmutils::landmark_minimalization_greedy(*inst_, cut, pre_goal_section);
     }
 
-    // TODO: CLI Parameters to choose when to call these minimization procedures
-    // Further try to minimize the landmark
-    lmutils::landmark_minimalization(*inst_, cut, unapplicable_actions, pre_goal_section);
+    if (complete_min_) {
+        std::vector<unsigned int> unapplicable_actions;
+        for (unsigned int act_i = 0; act_i < inst_->m; act_i++) {
+            if (!bs_contains(pre_goal_section, inst_->actions[act_i].pre_sparse)) {
+                unapplicable_actions.push_back(act_i);
+            }
+        }
+
+        // Further try to minimize the landmark
+        lmutils::landmark_minimalization(*inst_, cut, unapplicable_actions, pre_goal_section);
+    }
 
     double min_reduced_cost = std::numeric_limits<double>::infinity();
     for (const auto& act_i : cut) {
@@ -308,7 +309,7 @@ auto LMcut::compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned in
     return {cut, min_reduced_cost};
 }
 
-LMcut::LMcut(const hplus::instance& inst) : inst_(&inst) {}
+LMcut::LMcut(const hplus::instance& inst, bool greedy_min, bool complete_min) : inst_(&inst), greedy_min_(greedy_min), complete_min_(complete_min) {}
 
 auto LMcut::compute_lmcut_private(hmax_function hmax) -> std::pair<std::vector<std::vector<unsigned int>>, double> {
     double lmcut_value{0};
