@@ -31,7 +31,7 @@ inline void landmark_minimalization_greedy(const hplus::instance& inst, std::vec
     std::erase_if(landmark, [&removed](const auto& elem) { return removed.contains(elem); });
 }
 
-inline void landmark_minimalization(const hplus::instance& inst, std::vector<unsigned int>& landmark, std::vector<unsigned int> unapplicable,
+inline void landmark_minimalization(const hplus::instance& inst, std::vector<unsigned int>& landmark, const std::vector<unsigned int>& unapplicable,
                                     BinarySet reachable_state) {
     // Watch lists
     std::vector<unsigned int> watch_pre(inst.m + 1, inst.n);  // Watch precondition of each action (as default we use a non-existant fact)

@@ -227,7 +227,7 @@ inline auto max_flow_graph_construction(const hplus::instance& inst) -> std::pai
 
 [[nodiscard]]
 inline auto compute_r3_incremental(const hplus::instance& inst, std::vector<std::vector<network_edge>>& graph, const std::vector<double>& relax_point,
-                                   const std::vector<unsigned int> pcf, const std::vector<unsigned int>& actions_eff, double prev_r3) -> double {
+                                   const std::vector<unsigned int>& pcf, const std::vector<unsigned int>& actions_eff, double prev_r3) -> double {
     static const unsigned int source = inst.n;
     static const unsigned int sink = inst.n + 1;
     static const unsigned int sink_action = inst.m;
