@@ -27,7 +27,7 @@ auto int_lm_sep::get_lmcut_violated_landmarks(const hplus::execution& exec, cons
     const auto& [found, landmarks] = lmcut.int_separation(used_actions, hmax::hmax_arbitrary);
 
     for (const auto& landmark : landmarks) {
-        STATS.gauge_record<"cand_lm_size">(landmark.size());
+        STATS.gauge_record<"cand_lm_size">(static_cast<double>(landmark.size()));
     }
     return {found, landmarks};
 }
@@ -43,7 +43,7 @@ auto int_lm_sep::get_comp_violated_landmark(const hplus::execution& exec, const 
         lmutils::landmark_minimalization(inst, landmark, unreachable_actions, reachable_state);
     }
 
-    STATS.gauge_record<"cand_lm_size">(landmark.size());
+    STATS.gauge_record<"cand_lm_size">(static_cast<double>(landmark.size()));
     return landmark;
 }
 
@@ -67,6 +67,6 @@ auto int_lm_sep::get_front_violated_landmark(const hplus::execution& exec, const
         lmutils::landmark_minimalization(inst, landmark, unreachable_actions, reachable_state);
     }
 
-    STATS.gauge_record<"cand_lm_size">(landmark.size());
+    STATS.gauge_record<"cand_lm_size">(static_cast<double>(landmark.size()));
     return landmark;
 }

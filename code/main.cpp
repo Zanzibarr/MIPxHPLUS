@@ -15,7 +15,8 @@ using std::tuple;
 
 Timer GLOBAL_TIMER;
 
-static void signal_callback_handler(const int /*signal*/) {
+namespace {
+void signal_callback_handler(const int /*signal*/) {
     LOG_WARN_S("---------------------------------------------------");
     LOG_WARN_S(" > Ctrl+C signal detected, terminating execution. <");
     LOG_WARN_S("---------------------------------------------------");
@@ -26,7 +27,7 @@ static void signal_callback_handler(const int /*signal*/) {
 }
 
 [[nodiscard]]
-static auto init() -> std::tuple<hplus::execution, hplus::instance, hplus::statistics> {
+auto init() -> std::tuple<hplus::execution, hplus::instance, hplus::statistics> {
     signal(SIGINT, signal_callback_handler);
     // Hide ^C from terminal
     struct termios t{};
@@ -43,7 +44,8 @@ static auto init() -> std::tuple<hplus::execution, hplus::instance, hplus::stati
     return {exec, inst, stats};
 }
 
-static void close() { timelim::cancel_time_limit(); }
+void close() { timelim::cancel_time_limit(); }
+}  // namespace
 
 auto main(const int argc, const char** argv) -> int {
     try {

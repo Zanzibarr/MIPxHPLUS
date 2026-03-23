@@ -1,14 +1,14 @@
 #include <algorithm>
 
-#include "../utils/cycle_det.hpp"
 #include "algorithms.hpp"
 #include "cand_callback.hpp"
 #include "cycle_det.hpp"
 #include "timer.hxx"
 
+namespace {
 [[nodiscard]]
-static auto build_graph(const hplus::instance& inst, const std::vector<unsigned int>& unreachable_actions,
-                        const std::vector<std::vector<unsigned int>>& used_first_achievers)
+auto build_graph(const hplus::instance& inst, const std::vector<unsigned int>& unreachable_actions,
+                 const std::vector<std::vector<unsigned int>>& used_first_achievers)
     -> std::tuple<std::vector<std::vector<unsigned int>>, std::unordered_map<std::pair<unsigned int, unsigned int>, unsigned int, pair_hash>> {
     std::vector<std::vector<unsigned int>> graph;
     std::unordered_map<std::pair<unsigned int, unsigned int>, unsigned int, pair_hash> edge_labels;
@@ -29,8 +29,9 @@ static auto build_graph(const hplus::instance& inst, const std::vector<unsigned 
         }
     }
 
-    return std::tuple(graph, edge_labels);
+    return {graph, edge_labels};
 }
+}  // namespace
 
 [[nodiscard]]
 auto cand_cuts::add_sec_cut(CPXCALLBACKCONTEXTptr context, const hplus::instance& inst, const std::vector<unsigned int>& unreachable_actions,

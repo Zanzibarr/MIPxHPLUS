@@ -1,0 +1,44 @@
+---
+# Enable broad categories of checks, then disable specific noisy/inapplicable ones
+Checks: >
+  bugprone-*,
+  clang-analyzer-*,
+  cppcoreguidelines-*,
+  misc-*,
+  modernize-*,
+  performance-*,
+  readability-*,
+  -bugprone-easily-swappable-parameters,
+  -cppcoreguidelines-avoid-magic-numbers,
+  -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+  -cppcoreguidelines-pro-bounds-constant-array-index,
+  -cppcoreguidelines-pro-bounds-pointer-arithmetic,
+  -cppcoreguidelines-pro-type-reinterpret-cast,
+  -cppcoreguidelines-pro-type-vararg,
+  -misc-non-private-member-variables-in-classes,
+  -modernize-use-trailing-return-type,
+  -readability-identifier-length,
+  -readability-magic-numbers,
+
+WarningsAsErrors: ""
+
+# Analyse headers within the project, exclude external/third-party
+HeaderFilterRegex: "^(?!.*/(external|cplex)/)"
+
+FormatStyle: file
+
+CheckOptions:
+  - key: readability-function-cognitive-complexity.Threshold
+    value: "25"
+  - key: readability-function-size.LineThreshold
+    value: "80"
+  - key: readability-function-size.StatementThreshold
+    value: "200"
+  - key: modernize-use-default-member-init.UseAssignment
+    value: "false"
+  - key: cppcoreguidelines-special-member-functions.AllowSoleDefaultDtor
+    value: "true"
+  - key: cppcoreguidelines-special-member-functions.AllowMissingMoveFunctions
+    value: "true"
+  - key: bugprone-argument-comment.StrictMode
+    value: "false"

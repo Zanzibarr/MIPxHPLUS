@@ -41,7 +41,7 @@ inline void lmcut_landmarks_extraction(const hplus::execution& exec, hplus::inst
         const auto& [landmarks, lmcut_value] = lmcut.compute_lmcut(hmax_functions[choice]);
         double diff = GET_TIME() - start;
         for (const auto& landmark : landmarks) {
-            inst.landmarks.push_back(std::move(landmark));
+            inst.landmarks.push_back(landmark);
         }
         stats.lower_bound = std::max(stats.lower_bound, lmcut_value);
         LOG_INFO_S("Computed a lm-cut value of: " + std::to_string(lmcut_value) + " in " + std::to_string(diff) + "s");

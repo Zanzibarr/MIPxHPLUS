@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include <math.h>
+
 #include <queue>
 
 #include "bs.hxx"
@@ -107,7 +109,7 @@ static inline auto max_flow_augmenting_path(std::vector<std::vector<network_edge
     level.assign(n, -1);  // Initialize all levels to -1 (unvisited)
     std::queue<int> q;
     level[s] = 0;
-    q.push(s);
+    q.push(static_cast<int>(s));
 
     while (!q.empty()) {
         const auto v{q.front()};
@@ -116,7 +118,7 @@ static inline auto max_flow_augmenting_path(std::vector<std::vector<network_edge
             // If this edge still has capacity and it hasn't been visited
             if (e.c > HPLUS_EPSILON && level[e.to] < -HPLUS_EPSILON) {
                 level[e.to] = level[v] + 1;  // Set the level of this neighbor
-                q.push(e.to);
+                q.push(static_cast<int>(e.to));
             }
         }
     }
@@ -170,7 +172,7 @@ static inline auto compute_max_flow(std::vector<std::vector<network_edge>>& grap
     // Repeat while there's an augmenting path from source to sink
     while (max_flow_augmenting_path(graph, source, sink, n, level)) {
         iter.assign(n, 0);
-        double f;
+        double f = NAN;
 
         // Keep finding blocking flows until no more paths exist in this level graph
         while ((f = max_flow_push_flow(graph, source, sink, std::numeric_limits<double>::infinity(), level, iter)) > HPLUS_EPSILON) {

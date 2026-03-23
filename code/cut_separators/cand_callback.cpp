@@ -11,9 +11,10 @@
 #include "int_separators.hpp"
 #include "timer.hxx"
 
+namespace {
 // TODO: Consider using watch preconditions here aswell
 [[nodiscard]]
-static auto candidatepoint_info(const hplus::instance& inst, const std::vector<double>& xstar)
+auto candidatepoint_info(const hplus::instance& inst, const std::vector<double>& xstar)
     -> std::tuple<std::vector<unsigned int>, std::vector<unsigned int>, std::vector<unsigned int>, BinarySet,
                   std::vector<std::vector<unsigned int>>> {
     BinarySet used_actions(inst.m);
@@ -58,7 +59,7 @@ static auto candidatepoint_info(const hplus::instance& inst, const std::vector<d
         queue.pop_front();
         act_in_queue.erase(act_i);
         reachable_action_sequence.push_back(act_i);
-        unreachable_actions.erase(unreachable_actions.begin() + sorted_find(unreachable_actions, act_i));
+        unreachable_actions.erase(unreachable_actions.begin() + static_cast<long>(sorted_find(unreachable_actions, act_i)));
 
         // Compute new state
         if (bs_contains(reachable_state, inst.actions[act_i].eff_sparse)) {
@@ -86,8 +87,8 @@ static auto candidatepoint_info(const hplus::instance& inst, const std::vector<d
     return {reachable_action_sequence, unreachable_actions, unused_actions, reachable_state, used_first_achievers};
 }
 
-static void reject_with_new_sol(CPXCALLBACKCONTEXTptr context, hplus::instance& inst, hplus::statistics& stats,
-                                const std::vector<unsigned int>& reachable_action_sequence) {
+void reject_with_new_sol(CPXCALLBACKCONTEXTptr context, hplus::instance& inst, hplus::statistics& stats,
+                         const std::vector<unsigned int>& reachable_action_sequence) {
     unsigned int ncols{inst.m + inst.nfadd + inst.n};
     std::vector<int> ind(ncols);
     std::iota(ind.begin(), ind.end(), 0);
@@ -133,6 +134,7 @@ static void reject_with_new_sol(CPXCALLBACKCONTEXTptr context, hplus::instance& 
     // Reject the current solution
     CPX_HANDLE_CALL(CPXcallbackrejectcandidate(context, 0, 0, &rejrhs, &rejsense, &rejbegin, &rejind, &rejval));
 }
+}  // namespace
 
 void callbacks::candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats) {
     auto _cand = make_scoped_timer<"cand_callback">(STATS);
@@ -190,7 +192,7 @@ void callbacks::candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::e
         // needed
         landmarks.push_back(int_lm_sep::get_comp_violated_landmark(exec, inst, unreachable_actions, unused_actions, reachable_state));
     }
-    STATS.counter_inc<"cand_lm">(landmarks.size());
+    STATS.counter_inc<"cand_lm">(static_cast<int64_t>(landmarks.size()));
     for (const auto& landmark : landmarks) {
         cand_cuts::reject_with_lm_cut(context, landmark);
     }

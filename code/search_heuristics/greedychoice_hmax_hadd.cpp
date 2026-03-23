@@ -2,8 +2,9 @@
 
 #include "heuristic.hpp"
 
+namespace {
 [[nodiscard]]
-static auto htype(const std::vector<unsigned int>& state, const std::vector<double>& values, double (*h_eqtype)(double, double)) -> double {
+inline auto htype(const std::vector<unsigned int>& state, const std::vector<double>& values, double (*h_eqtype)(double, double)) -> double {
     double hvalue{0};
     for (const auto& fact : state) {
         hvalue = h_eqtype(hvalue, values[fact]);
@@ -11,7 +12,7 @@ static auto htype(const std::vector<unsigned int>& state, const std::vector<doub
     return hvalue;
 }
 
-static void update_htype_values(const hplus::instance& inst, const std::vector<unsigned int>& new_facts, std::vector<double>& values,
+inline void update_htype_values(const hplus::instance& inst, const std::vector<unsigned int>& new_facts, std::vector<double>& values,
                                 priority_queue<double>& pq, std::stack<std::pair<unsigned int, double>>& trail, const BinarySet& used_actions,
                                 double (*h_eqtype)(double, double)) {
     BinarySet trail_flags{inst.n};
@@ -57,6 +58,7 @@ static void update_htype_values(const hplus::instance& inst, const std::vector<u
         }
     }
 }
+}  // namespace
 
 void heur::init_htype_values(const hplus::instance& inst, const std::list<unsigned int>& initial_actions, std::vector<double>& values,
                              priority_queue<double>& pq, double (*h_eqtype)(double, double)) {

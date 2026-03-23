@@ -5,6 +5,147 @@
 #include "exact.hpp"
 #include "hplus_algs.hpp"
 
+namespace {
+void parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp, const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats) {
+    LOG_INFO_S("Parsing CPLEX status");
+    std::vector<double> tmp(1);
+    switch (CPXgetx(env, lp, tmp.data(), 0, 0)) {
+        case CPXERR_NO_SOLN:  // No solution found
+            if (exec.ws == hplus::warmstart::NONE) {
+                inst.sol_s = hplus::solution_status::NOTFOUND;
+            }
+            return;
+        default:
+            break;
+    }
+
+    switch (const int status{CPXgetstat(env, lp)}) {
+        case CPXMIP_FAIL_FEAS:  // An error occurred, but a feasible solution has been found
+            [[fallthrough]];
+        case CPXMIP_MEM_LIM_FEAS:  // exceeded memory limit, found intermediate solution
+            [[fallthrough]];
+        case CPXMIP_TIME_LIM_FEAS:  // exceeded time limit, found intermediate solution
+            [[fallthrough]];
+        case CPXMIP_ABORT_FEAS:  // terminated by user, found solution
+            [[fallthrough]];
+        case CPXMIP_FEASIBLE:  // found a feasible solution
+            inst.sol_s = hplus::solution_status::FEAS;
+            break;
+        case CPXMIP_MEM_LIM_INFEAS:  // exceeded memory limit, no intermediate solution found
+            [[fallthrough]];
+        case CPXMIP_TIME_LIM_INFEAS:  // exceeded time limit, no intermediate solution found
+            [[fallthrough]];
+        case CPXMIP_ABORT_INFEAS:  // terminated by user, not found solution
+            if (exec.ws == hplus::warmstart::NONE) {
+                inst.sol_s = hplus::solution_status::NOTFOUND;
+            }
+            break;
+        case CPXMIP_INFEASIBLE:  // proven to be infeasible
+            inst.sol_s = hplus::solution_status::INFEAS;
+            break;
+        case CPXMIP_OPTIMAL_TOL:  // found optimal within the tollerance
+            [[fallthrough]];
+        case CPXMIP_OPTIMAL:  // found optimal
+            inst.sol_s = hplus::solution_status::OPT;
+            break;
+        default:  // unhandled status
+            LOG_ERROR_S("Error in parse_cpx_status: unhandled cplex status (" + std::to_string(status) + ")");
+            break;
+    }
+
+    switch (inst.sol_s) {
+        case hplus::solution_status::OPT:
+            stats.status = HPLUS_STATUS_OPT;
+            break;
+        case hplus::solution_status::INFEAS:
+            stats.status = HPLUS_STATUS_INFEAS;
+            break;
+        case hplus::solution_status::FEAS:
+            stats.status = HPLUS_STATUS_FEAS;
+            break;
+        case hplus::solution_status::NOTFOUND:
+            stats.status = HPLUS_STATUS_NOTFOUND;
+            break;
+        default:
+            LOG_ERROR_S("Unhandled solution status: " + std::to_string(static_cast<int>(inst.sol_s)));
+    }
+}
+
+void store_cplex_solution(hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, const CPXENVptr& env, const CPXLPptr& lp) {
+    std::vector<double> plan(inst.m + inst.nfadd, 0.0);
+    switch (int code = CPXgetx(env, lp, plan.data(), 0, static_cast<int>(inst.m + inst.nfadd - 1))) {
+        case CPXERR_NO_MEMORY:
+            [[fallthrough]];
+        case CPXERR_THREAD_FAILED:
+            throw std::bad_alloc();
+            break;
+        case CPXERR_NO_SOLN:
+            return;
+        case 0:
+            break;
+        default:
+            LOG_ERROR_S("Unhandled CPLEX error code: " + std::to_string(code) + " at " + __func__ + "(): " + __FILE__ + ":" +
+                        std::to_string(__LINE__));
+            break;
+    }
+
+    // fixing the solution to read the plan (some 0-cost actions are set to 1 even if they are not a first archiever of anything)
+    if (exec.alg != hplus::algorithm::CUTS) {
+        for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
+            bool set_zero{true};
+            for (unsigned int var_count = 0; var_count < inst.actions[act_i].eff_sparse.size(); var_count++) {
+                if (plan[inst.m + inst.fadd_cpx_start[act_i] + var_count] > HPLUS_CPX_INT_ROUNDING) {
+                    ASSERT(plan[act_i] > HPLUS_CPX_INT_ROUNDING);
+                    set_zero = false;
+                    break;
+                }
+            }
+            if (set_zero) {
+                plan[act_i] = 0;
+            }
+        }
+    }
+
+    // convert to a vector of int for easier parsing
+    std::vector<unsigned int> cpx_result;
+    cpx_result.reserve(inst.m);
+    for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
+        if (plan[act_i] > HPLUS_CPX_INT_ROUNDING) {
+            cpx_result.push_back(act_i);
+        }
+    }
+
+    std::vector<unsigned int> solution;
+    solution.reserve(inst.m);
+    BinarySet remaining{static_cast<unsigned int>(cpx_result.size()), true};
+    BinarySet state{inst.n};
+    unsigned int cost{0};
+
+    // TODO: Consider using watch preconditions here aswell
+    // Check we are getting ALL the actions that cplex uses
+    while (!remaining.empty()) {
+        bool intcheck{false};
+        for (const auto& idx : remaining) {
+            if (!bs_contains(state, inst.actions[cpx_result[idx]].pre_sparse)) {
+                continue;
+            }
+
+            remaining.remove(idx);
+            state |= inst.actions[cpx_result[idx]].eff_sparse;
+            solution.push_back(cpx_result[idx]);
+            intcheck = true;
+            cost += inst.actions[cpx_result[idx]].cost;
+        }
+        ASSERT(intcheck);
+    }
+
+    // store solution
+    hplus::solution sol{.sequence = solution, .cost = cost};
+    hplus::update_sol(inst, sol, stats);
+}
+
+}  // namespace
+
 void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
     LOG_INFO_S("Building base model for exact search");
 
@@ -175,144 +316,6 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, CPXE
         }
         stopcheck();
     }
-}
-
-void parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp, const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats) {
-    LOG_INFO_S("Parsing CPLEX status");
-    std::vector<double> tmp(1);
-    switch (CPXgetx(env, lp, tmp.data(), 0, 0)) {
-        case CPXERR_NO_SOLN:  // No solution found
-            if (exec.ws == hplus::warmstart::NONE) {
-                inst.sol_s = hplus::solution_status::NOTFOUND;
-            }
-            return;
-        default:
-            break;
-    }
-
-    switch (const int status{CPXgetstat(env, lp)}) {
-        case CPXMIP_FAIL_FEAS:  // An error occurred, but a feasible solution has been found
-            [[fallthrough]];
-        case CPXMIP_MEM_LIM_FEAS:  // exceeded memory limit, found intermediate solution
-            [[fallthrough]];
-        case CPXMIP_TIME_LIM_FEAS:  // exceeded time limit, found intermediate solution
-            [[fallthrough]];
-        case CPXMIP_ABORT_FEAS:  // terminated by user, found solution
-            [[fallthrough]];
-        case CPXMIP_FEASIBLE:  // found a feasible solution
-            inst.sol_s = hplus::solution_status::FEAS;
-            break;
-        case CPXMIP_MEM_LIM_INFEAS:  // exceeded memory limit, no intermediate solution found
-            [[fallthrough]];
-        case CPXMIP_TIME_LIM_INFEAS:  // exceeded time limit, no intermediate solution found
-            [[fallthrough]];
-        case CPXMIP_ABORT_INFEAS:  // terminated by user, not found solution
-            if (exec.ws == hplus::warmstart::NONE) {
-                inst.sol_s = hplus::solution_status::NOTFOUND;
-            }
-            break;
-        case CPXMIP_INFEASIBLE:  // proven to be infeasible
-            inst.sol_s = hplus::solution_status::INFEAS;
-            break;
-        case CPXMIP_OPTIMAL_TOL:  // found optimal within the tollerance
-            [[fallthrough]];
-        case CPXMIP_OPTIMAL:  // found optimal
-            inst.sol_s = hplus::solution_status::OPT;
-            break;
-        default:  // unhandled status
-            LOG_ERROR_S("Error in parse_cpx_status: unhandled cplex status (" + std::to_string(status) + ")");
-            break;
-    }
-
-    switch (inst.sol_s) {
-        case hplus::solution_status::OPT:
-            stats.status = HPLUS_STATUS_OPT;
-            break;
-        case hplus::solution_status::INFEAS:
-            stats.status = HPLUS_STATUS_INFEAS;
-            break;
-        case hplus::solution_status::FEAS:
-            stats.status = HPLUS_STATUS_FEAS;
-            break;
-        case hplus::solution_status::NOTFOUND:
-            stats.status = HPLUS_STATUS_NOTFOUND;
-            break;
-        default:
-            LOG_ERROR_S("Unhandled solution status: " + std::to_string(static_cast<int>(inst.sol_s)));
-    }
-}
-
-void store_cplex_solution(hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, const CPXENVptr& env, const CPXLPptr& lp) {
-    std::vector<double> plan(inst.m + inst.nfadd, 0.0);
-    switch (int code = CPXgetx(env, lp, plan.data(), 0, static_cast<int>(inst.m + inst.nfadd - 1))) {
-        case CPXERR_NO_MEMORY:
-            [[fallthrough]];
-        case CPXERR_THREAD_FAILED:
-            throw std::bad_alloc();
-            break;
-        case CPXERR_NO_SOLN:
-            return;
-        case 0:
-            break;
-        default:
-            LOG_ERROR_S("Unhandled CPLEX error code: " + std::to_string(code) + " at " + __func__ + "(): " + __FILE__ + ":" +
-                        std::to_string(__LINE__));
-            break;
-    }
-
-    // fixing the solution to read the plan (some 0-cost actions are set to 1 even if they are not a first archiever of anything)
-    if (exec.alg != hplus::algorithm::CUTS) {
-        for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
-            bool set_zero{true};
-            for (unsigned int var_count = 0; var_count < inst.actions[act_i].eff_sparse.size(); var_count++) {
-                if (plan[inst.m + inst.fadd_cpx_start[act_i] + var_count] > HPLUS_CPX_INT_ROUNDING) {
-                    ASSERT(plan[act_i] > HPLUS_CPX_INT_ROUNDING);
-                    set_zero = false;
-                    break;
-                }
-            }
-            if (set_zero) {
-                plan[act_i] = 0;
-            }
-        }
-    }
-
-    // convert to a vector of int for easier parsing
-    std::vector<unsigned int> cpx_result;
-    cpx_result.reserve(inst.m);
-    for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
-        if (plan[act_i] > HPLUS_CPX_INT_ROUNDING) {
-            cpx_result.push_back(act_i);
-        }
-    }
-
-    std::vector<unsigned int> solution;
-    solution.reserve(inst.m);
-    BinarySet remaining{static_cast<unsigned int>(cpx_result.size()), true};
-    BinarySet state{inst.n};
-    unsigned int cost{0};
-
-    // TODO: Consider using watch preconditions here aswell
-    // Check we are getting ALL the actions that cplex uses
-    while (!remaining.empty()) {
-        bool intcheck{false};
-        for (const auto& idx : remaining) {
-            if (!bs_contains(state, inst.actions[cpx_result[idx]].pre_sparse)) {
-                continue;
-            }
-
-            remaining.remove(idx);
-            state |= inst.actions[cpx_result[idx]].eff_sparse;
-            solution.push_back(cpx_result[idx]);
-            intcheck = true;
-            cost += inst.actions[cpx_result[idx]].cost;
-        }
-        ASSERT(intcheck);
-    }
-
-    // store solution
-    hplus::solution sol{.sequence = solution, .cost = cost};
-    hplus::update_sol(inst, sol, stats);
 }
 
 void exact::get_cplex_solution(hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, const CPXENVptr& env, const CPXLPptr& lp) {

@@ -6,12 +6,14 @@
 
 #pragma once
 
+#include <cstdint>
+
 #include "bs.hxx"
 #include "logger.hxx"
 
 namespace hplus {
 
-enum class solution_status { OPT = 0, FEAS = 1, INFEAS = 2, NOTFOUND = 404, LOST = 500 };
+enum class solution_status : std::uint16_t { OPT = 0, FEAS = 1, INFEAS = 2, NOTFOUND = 404, LOST = 500 };
 
 struct solution {
     std::vector<unsigned int> sequence;
@@ -71,8 +73,8 @@ inline void init(instance& inst) {
 inline void print(const instance& inst) {
     LOG_S("----------------- Info on the instance -----------------");
     if (!inst.actions.empty()) {
-        LOG << "Metric:                             " << std::setw(20)
-            << (inst.equal_costs ? (inst.actions[0].cost == 1 ? "unitary costs" : "constant costs") : "integer costs");
+        const std::string cost_type = inst.actions[0].cost == 1 ? "unitary costs" : "constant costs";
+        LOG << "Metric:                             " << std::setw(20) << (inst.equal_costs ? cost_type : "integer costs");
     }
     LOG << "# facts:                                      " << std::setw(10) << inst.n;
     LOG << "# actions:                                    " << std::setw(10) << inst.m;

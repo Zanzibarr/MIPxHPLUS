@@ -4,8 +4,9 @@
 #include "relax_callback.hpp"
 #include "stats_registry.hxx"
 
+namespace {
 [[nodiscard]]
-static auto build_graph(const hplus::instance& inst, const std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash>& fadd_weights)
+auto build_graph(const hplus::instance& inst, const std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash>& fadd_weights)
     -> std::tuple<std::vector<std::vector<unsigned int>>, std::unordered_map<std::pair<unsigned int, unsigned int>, unsigned int, pair_hash>,
                   std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash>> {
     std::vector<std::vector<unsigned int>> graph;
@@ -32,6 +33,7 @@ static auto build_graph(const hplus::instance& inst, const std::unordered_map<st
 
     return {graph, edge_labels, edge_weights};
 }
+}  // namespace
 
 auto relax_cuts::get_violated_sec(const hplus::instance& inst,
                                   const std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash>& fadd_weights)

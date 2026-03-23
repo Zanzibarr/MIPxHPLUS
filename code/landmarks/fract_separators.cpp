@@ -12,13 +12,13 @@
 #include "stats_registry.hxx"
 #include "timer.hxx"
 
+namespace {
 // TODO: Consider using watch preconditions here aswell
 [[nodiscard]]
-static inline auto compute_r1_r2_incremental(const hplus::instance& inst, const std::vector<double>& relax_point, std::vector<double>& r1_values,
-                                             std::vector<double>& r1_act_values, std::vector<double>& r2_values, std::vector<double>& r2_act_values,
-                                             BinarySet& state, std::queue<unsigned int>& actions_queue,
-                                             std::unordered_set<unsigned int>& acts_in_queue, std::stack<std::pair<unsigned int, double>>& trail)
-    -> double {
+inline auto compute_r1_r2_incremental(const hplus::instance& inst, const std::vector<double>& relax_point, std::vector<double>& r1_values,
+                                      std::vector<double>& r1_act_values, std::vector<double>& r2_values, std::vector<double>& r2_act_values,
+                                      BinarySet& state, std::queue<unsigned int>& actions_queue, std::unordered_set<unsigned int>& acts_in_queue,
+                                      std::stack<std::pair<unsigned int, double>>& trail) -> double {
     // Trail keys:
     // - [0, inst.n): r1_values
     // - [inst.n, inst.n + inst.m): r1_act_values
@@ -124,7 +124,7 @@ static inline auto compute_r1_r2_incremental(const hplus::instance& inst, const 
 }
 
 [[nodiscard]]
-static inline auto compute_pcf(const hplus::instance& inst, const std::vector<double>& r1_values, const std::vector<double>& r2_values)
+inline auto compute_pcf(const hplus::instance& inst, const std::vector<double>& r1_values, const std::vector<double>& r2_values)
     -> std::vector<unsigned int> {
     // Choose pcf as the precondition with the lowest R1 value
     std::vector<unsigned int> pcf(inst.m + 1, 0);  // Last spot is reserved for the dummy goal action's pcf
@@ -164,8 +164,7 @@ static inline auto compute_pcf(const hplus::instance& inst, const std::vector<do
     return pcf;
 }
 
-static inline auto max_flow_graph_construction(const hplus::instance& inst)
-    -> std::pair<std::vector<std::vector<network_edge>>, std::vector<unsigned int>> {
+inline auto max_flow_graph_construction(const hplus::instance& inst) -> std::pair<std::vector<std::vector<network_edge>>, std::vector<unsigned int>> {
     std::vector<std::vector<network_edge>> graph(inst.n + 2);
     // nodes [0 -> n - 1] => facts
     // node [n] => source
@@ -227,9 +226,8 @@ static inline auto max_flow_graph_construction(const hplus::instance& inst)
 }
 
 [[nodiscard]]
-static inline auto compute_r3_incremental(const hplus::instance& inst, std::vector<std::vector<network_edge>>& graph,
-                                          const std::vector<double>& relax_point, const std::vector<unsigned int> pcf,
-                                          const std::vector<unsigned int>& actions_eff, double prev_r3) -> double {
+inline auto compute_r3_incremental(const hplus::instance& inst, std::vector<std::vector<network_edge>>& graph, const std::vector<double>& relax_point,
+                                   const std::vector<unsigned int> pcf, const std::vector<unsigned int>& actions_eff, double prev_r3) -> double {
     static const unsigned int source = inst.n;
     static const unsigned int sink = inst.n + 1;
     static const unsigned int sink_action = inst.m;
@@ -386,7 +384,7 @@ static inline auto compute_r3_incremental(const hplus::instance& inst, std::vect
 }
 
 [[nodiscard]]
-static inline auto extract_landmark(const hplus::instance& inst, const std::vector<std::vector<network_edge>>& graph)
+inline auto extract_landmark(const hplus::instance& inst, const std::vector<std::vector<network_edge>>& graph)
     -> std::pair<std::vector<unsigned int>, BinarySet> {
     std::unordered_set<unsigned int> graph_reach{get_min_cut_lpartition(graph, inst.n)};
     BinarySet facts_reach(inst.n);
@@ -409,6 +407,7 @@ static inline auto extract_landmark(const hplus::instance& inst, const std::vect
 
     return {landmark, facts_reach};
 }
+}  // namespace
 
 [[nodiscard]]
 auto fract_lm_sep::get_r3_violated_landmark(const hplus::execution& exec, const hplus::instance& inst, std::vector<double> relax_point)
@@ -637,7 +636,7 @@ auto fract_lm_sep::get_r3_violated_landmark(const hplus::execution& exec, const 
     }
     // Greedy minimalization is missing because it's unnecessary by construction of the base landmark extracted
 
-    STATS.gauge_record<"fract_lm_size">(landmark.size());
+    STATS.gauge_record<"fract_lm_size">(static_cast<double>(landmark.size()));
 
     return {true, landmark};
 }
@@ -650,7 +649,7 @@ auto fract_lm_sep::get_lmcut_violated_landmarks(const hplus::execution& exec, co
     const auto& [found, landmarks] = lmcut.fract_separation(actions_weights, hmax::hmax_arbitrary);
 
     for (const auto& landmark : landmarks) {
-        STATS.gauge_record<"fract_lm_size">(landmark.size());
+        STATS.gauge_record<"fract_lm_size">(static_cast<double>(landmark.size()));
     }
 
     return {found, landmarks};

@@ -223,7 +223,7 @@ static inline void parse_cli(const int argc, const char** argv, hplus::execution
         std::cout << parser;
         exit(EXIT_SUCCESS);
     } catch (const args::ParseError& e) {
-        std::cerr << e.what() << std::endl;
+        std::cerr << e.what() << '\n';
         std::cerr << parser;
         exit(1);
     }
@@ -270,7 +270,7 @@ static inline void parse_cli(const int argc, const char** argv, hplus::execution
         unsigned int m{args::get(memory_limit)};
         ASSERT(m != 0);
         exec.memorylimit = m;
-        if (!memlim::set_memory_limit(m)) {
+        if (!memlim::set_memory_limit(static_cast<int>(m))) {
             LOG_ERROR_S("An error occurred while setting up memory limits");
         }
     }

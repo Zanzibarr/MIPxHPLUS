@@ -60,7 +60,7 @@ void prep::eliminated_facts_removal(hplus::instance& inst, std::vector<std::vect
     inst.fixed_facts = new_fixed_facts;
 
     inst.n -= removed;
-    STATS.counter_set<"n_prep">(inst.n - inst.fixed_facts.sparse().size());
+    STATS.counter_set<"n_prep">(static_cast<int64_t>(inst.n - inst.fixed_facts.sparse().size()));
 }
 
 void prep::eliminated_actions_removal(hplus::instance& inst) {
@@ -86,7 +86,7 @@ void prep::eliminated_actions_removal(hplus::instance& inst) {
     inst.fixed_actions = new_fixed_actions;
 
     inst.m = write_pos;
-    STATS.counter_set<"m_prep">(inst.m - inst.fixed_actions.sparse().size());
+    STATS.counter_set<"m_prep">(static_cast<int64_t>(inst.m - inst.fixed_actions.sparse().size()));
     unsigned int count{0};
     for (const auto& act : inst.actions) {
         count += act.eff_sparse.size();

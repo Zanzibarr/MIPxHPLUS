@@ -30,10 +30,10 @@ static inline void cycle_dfs(const std::vector<std::vector<unsigned int>>& graph
                              std::vector<std::vector<unsigned int>>& cycles) {
     struct stack_state {
         unsigned int vertex;
-        unsigned int neighbor_idx;
-        bool started;
+        unsigned int neighbor_idx{0};
+        bool started{false};
 
-        stack_state(unsigned int v) : vertex(v), neighbor_idx(0), started(false) {}
+        stack_state(unsigned int v) : vertex(v) {}
     };
 
     std::vector<stack_state> stack;

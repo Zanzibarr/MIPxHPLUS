@@ -9,6 +9,7 @@
 #include "relax_callback.hpp"
 #include "timer.hxx"
 
+namespace {
 inline void init_cutloop(CPXENVptr& env, CPXLPptr& lp) { CPX_HANDLE_CALL(CPXchgprobtype(env, lp, CPXPROB_LP)); }
 
 inline void exit_cutloop(CPXENVptr& env, CPXLPptr& lp) {
@@ -31,9 +32,9 @@ inline void solve_relaxation(CPXENVptr& env, CPXLPptr& lp, const hplus::executio
     CPX_HANDLE_CALL(CPXlpopt(env, lp));
 
     // Get lowerbound
+    double cl_lb = NAN;
     switch (const int status{CPXgetstat(env, lp)}) {
         case CPX_STAT_OPTIMAL:
-            double cl_lb;
             CPX_HANDLE_CALL(CPXgetobjval(env, lp, &cl_lb));
             stats.lower_bound = std::max(stats.lower_bound, cl_lb);
             break;
@@ -91,7 +92,7 @@ inline auto generate_cuts(CPXENVptr& env, CPXLPptr& lp, const std::vector<double
                         CPXaddrows(env, lp, 0, 1, landmark.size(), rhs.data(), sense.data(), begin.data(), ind.data(), val.data(), nullptr, nullptr));
                     new_cuts++;
                 }
-                STATS.counter_inc<"fract_lm">(landmarks.size());
+                STATS.counter_inc<"fract_lm">(static_cast<int64_t>(landmarks.size()));
             }
         }
 
@@ -114,7 +115,7 @@ inline auto generate_cuts(CPXENVptr& env, CPXLPptr& lp, const std::vector<double
                 }
                 CPX_HANDLE_CALL(
                     CPXaddrows(env, lp, 0, cycles.size(), nnz, rhs.data(), sense.data(), begin.data(), ind.data(), val.data(), nullptr, nullptr));
-                STATS.counter_inc<"fract_sec">(cycles.size());
+                STATS.counter_inc<"fract_sec">(static_cast<int64_t>(cycles.size()));
                 new_cuts += cycles.size();
             }
         }
@@ -126,12 +127,12 @@ inline auto generate_cuts(CPXENVptr& env, CPXLPptr& lp, const std::vector<double
     if (exec.inout) {  // In-Out
         while (inout_it <= exec.io_max_iter && new_cuts == 0) {
             inout_it++;
-            std::vector<double> inout_relax_point;
+            std::vector<double> inout_relax_point(relax_point.size());
             if (inout_it == exec.io_max_iter) {
                 w = 0;
             }
             for (unsigned int i = 0; i < relax_point.size(); i++) {
-                inout_relax_point.push_back((relax_point[i] * (1 - w)) + (incumbent[i] * w));
+                inout_relax_point[i] = (relax_point[i] * (1 - w)) + (incumbent[i] * w);
             }
             add_cuts(inout_relax_point);
             if (new_cuts == 0) {
@@ -167,6 +168,7 @@ inline void pruning(CPXENVptr& env, CPXLPptr& lp, int base_constraints) {
         CPX_HANDLE_CALL(CPXdelsetrows(env, lp, deleted.data()));
     }
 }
+}  // namespace
 
 void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, const hplus::instance& inst, hplus::statistics& stats) {
     LOG_INFO_S("Running custom Cut-Loop");

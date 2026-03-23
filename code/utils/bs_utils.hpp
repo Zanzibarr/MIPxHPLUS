@@ -7,22 +7,23 @@
 #pragma once
 
 #include <algorithm>
+#include <cstddef>
 #include <memory>
 
 #include "bs.hxx"
 
-static inline auto operator|=(BinarySet &bs, const std::vector<unsigned int> &vec) -> BinarySet & {
-    for (const auto &val : vec) {
+static inline auto operator|=(BinarySet& bs, const std::vector<unsigned int>& vec) -> BinarySet& {
+    for (const auto& val : vec) {
         bs.add(val);
     }
     return bs;
 }
 
-static inline auto bs_contains(const BinarySet &bs, const std::vector<unsigned int> &vec) -> bool {
+static inline auto bs_contains(const BinarySet& bs, const std::vector<unsigned int>& vec) -> bool {
     return std::ranges::all_of(vec, [&bs](unsigned int val) { return bs[val]; });
 }
 
-static inline auto bs_intersects(const BinarySet &bs, const std::vector<unsigned int> &vec) -> bool {
+static inline auto bs_intersects(const BinarySet& bs, const std::vector<unsigned int>& vec) -> bool {
     return std::ranges::any_of(vec, [&bs](unsigned int val) { return bs[val]; });
 }
 
@@ -55,10 +56,10 @@ class bs_searcher {
      * @throw std::invalid_argument If bs has a different capacity than
      * specified in constructor
      */
-    void add(unsigned int value, const BinarySet &bs) {
+    void add(unsigned int value, const BinarySet& bs) {
         validate_capacity(bs);
 
-        treenode *leaf = root_.get();
+        treenode* leaf = root_.get();
 
         // Traverse the tree according to the BinarySet (present -> right,
         // absent
@@ -94,15 +95,15 @@ class bs_searcher {
      * @throw std::invalid_argument If bs has a different capacity than
      * specified in constructor
      */
-    auto remove(unsigned int value, const BinarySet &bs) -> bool {
+    auto remove(unsigned int value, const BinarySet& bs) -> bool {
         validate_capacity(bs);
 
-        std::vector<treenode *> path;
+        std::vector<treenode*> path;
         std::vector<bool> is_right_child;
         path.reserve(capacity_);
         is_right_child.reserve(capacity_);
 
-        treenode *node = root_.get();
+        treenode* node = root_.get();
 
         // Traverse to the leaf node containing the value
         for (unsigned int i = 0; i < capacity_ && (node != nullptr); ++i) {
@@ -131,7 +132,7 @@ class bs_searcher {
         // Prune empty branches from leaf to root
         if (node->values.empty() && !node->left && !node->right) {
             for (std::size_t i = path.size(); i > 0; --i) {
-                treenode *parent = path[i - 1];
+                treenode* parent = path[i - 1];
                 bool is_right = is_right_child[i - 1];
 
                 if (is_right) {
@@ -164,14 +165,14 @@ class bs_searcher {
      * specified in constructor
      */
     [[nodiscard]]
-    auto find_subsets(const BinarySet &bs) const -> std::vector<unsigned int> {
+    auto find_subsets(const BinarySet& bs) const -> std::vector<unsigned int> {
         validate_capacity(bs);
 
         // Use two vectors for level-by-level tree traversal
-        std::vector<const treenode *> current_level;
-        std::vector<const treenode *> next_level;
+        std::vector<const treenode*> current_level;
+        std::vector<const treenode*> next_level;
         current_level.reserve(capacity_);
-        next_level.reserve(capacity_ * 2);
+        next_level.reserve(static_cast<size_t>(capacity_) * 2);
 
         if (root_) {
             current_level.push_back(root_.get());
@@ -181,7 +182,7 @@ class bs_searcher {
         for (unsigned int i = 0; i < capacity_ && !current_level.empty(); ++i) {
             next_level.clear();
 
-            for (const auto *node : current_level) {
+            for (const auto* node : current_level) {
                 if (bs[i]) {
                     // If element is in query set, a subset could have it or not
                     if (node->left) {
@@ -204,7 +205,7 @@ class bs_searcher {
 
         // Calculate total size needed for result vector
         std::size_t total_values = 0;
-        for (const auto *node : current_level) {
+        for (const auto* node : current_level) {
             total_values += node->values.size();
         }
 
@@ -212,7 +213,7 @@ class bs_searcher {
         std::vector<unsigned int> result;
         result.reserve(total_values);
 
-        for (const auto *node : current_level) {
+        for (const auto* node : current_level) {
             result.insert(result.end(), node->values.begin(), node->values.end());
         }
 
@@ -223,7 +224,7 @@ class bs_searcher {
     std::unique_ptr<treenode> root_;
     unsigned int capacity_;
 
-    void validate_capacity(const BinarySet &bs) const {
+    void validate_capacity(const BinarySet& bs) const {
         if (capacity_ != bs.capacity()) {
             throw std::invalid_argument("The BinarySet has an unexpected capacity.");
         }

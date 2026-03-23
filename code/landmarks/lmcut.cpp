@@ -131,7 +131,7 @@ void LMcut::update_and_enqueue_effects_values(priority_queue<double>& queue, uns
     }
 }
 
-void LMcut::update_hmax_values(const std::vector<unsigned int>& changed_actions, hmax_function hmax) {
+void LMcut::update_hmax_values(const std::vector<unsigned int>& changed_actions, const hmax_function& hmax) {
     priority_queue<double> queue{inst_->n};
 
     for (const auto& act_i : changed_actions) {
@@ -172,7 +172,7 @@ void LMcut::update_hmax_values(const std::vector<unsigned int>& changed_actions,
     }
 }
 
-auto LMcut::compute_goal_section(hmax_function hmax) -> std::unordered_set<unsigned int> {
+auto LMcut::compute_goal_section(const hmax_function& hmax) -> std::unordered_set<unsigned int> {
     std::unordered_set<unsigned int> goal_section;
     std::deque<int> queue;
 
@@ -210,7 +210,7 @@ auto LMcut::compute_goal_section(hmax_function hmax) -> std::unordered_set<unsig
     return goal_section;
 }
 
-auto LMcut::compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned int>, double> {
+auto LMcut::compute_cut(const hmax_function& hmax) -> std::pair<std::vector<unsigned int>, double> {
     const auto& goal_section = compute_goal_section(hmax);
 
     // Compute the pre_goal section and the cut
@@ -311,7 +311,7 @@ auto LMcut::compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned in
 
 LMcut::LMcut(const hplus::instance& inst, bool greedy_min, bool complete_min) : inst_(&inst), greedy_min_(greedy_min), complete_min_(complete_min) {}
 
-auto LMcut::compute_lmcut_private(hmax_function hmax) -> std::pair<std::vector<std::vector<unsigned int>>, double> {
+auto LMcut::compute_lmcut_private(const hmax_function& hmax) -> std::pair<std::vector<std::vector<unsigned int>>, double> {
     double lmcut_value{0};
     std::vector<std::vector<unsigned int>> landmarks;
 
@@ -324,7 +324,7 @@ auto LMcut::compute_lmcut_private(hmax_function hmax) -> std::pair<std::vector<s
         // check_landmark(cut);  // This is an (expensive) integrity check...
         lmcut_value += val;
         update_hmax_values(cut, hmax);
-        landmarks.push_back(std::move(cut));
+        landmarks.push_back(cut);
 
         if (CHECK_STOP()) {
             throw timelimit_exception("Reached time limit.");
@@ -334,14 +334,14 @@ auto LMcut::compute_lmcut_private(hmax_function hmax) -> std::pair<std::vector<s
     return {landmarks, lmcut_value};
 }
 
-auto LMcut::compute_lmcut(hmax_function hmax) -> std::pair<std::vector<std::vector<unsigned int>>, double> {
+auto LMcut::compute_lmcut(const hmax_function& hmax) -> std::pair<std::vector<std::vector<unsigned int>>, double> {
     auto _lmcut = make_scoped_timer<"lmcut">(STATS);
     init();
 
     return compute_lmcut_private(hmax);
 }
 
-auto LMcut::int_separation(const std::vector<unsigned int>& used_actions, hmax_function hmax)
+auto LMcut::int_separation(const std::vector<unsigned int>& used_actions, const hmax_function& hmax)
     -> std::pair<bool, std::vector<std::vector<unsigned int>>> {
     init();
 
@@ -355,7 +355,7 @@ auto LMcut::int_separation(const std::vector<unsigned int>& used_actions, hmax_f
     return {!landmarks.empty(), landmarks};
 }
 
-auto LMcut::fract_separation(const std::vector<double>& actions_weights, hmax_function hmax)
+auto LMcut::fract_separation(const std::vector<double>& actions_weights, const hmax_function& hmax)
     -> std::pair<bool, std::vector<std::vector<unsigned int>>> {
     init();
 

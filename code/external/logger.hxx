@@ -81,22 +81,22 @@ class Logger {
      */
     class log_stream {
        public:
-        log_stream(Logger &logger_obj, level lvl, bool exit_on_error = false)
+        log_stream(Logger& logger_obj, level lvl, bool exit_on_error = false)
             : lg_(logger_obj), level_(lvl), exit_on_error_(exit_on_error), active_(lvl >= logger_obj.min_level_.load(std::memory_order_relaxed)) {
             buf_ = active_ ? std::optional<std::ostringstream>{std::in_place} : std::nullopt;
         }
 
-        log_stream(log_stream &&logstr) noexcept
+        log_stream(log_stream&& logstr) noexcept
             : lg_(logstr.lg_), level_(logstr.level_), buf_(std::move(logstr.buf_)), exit_on_error_(logstr.exit_on_error_), active_(logstr.active_) {
             logstr.moved_ = true;
         }
 
-        log_stream(const log_stream &) = delete;
-        auto operator=(const log_stream &) -> log_stream & = delete;
-        auto operator=(log_stream &&) -> log_stream & = delete;
+        log_stream(const log_stream&) = delete;
+        auto operator=(const log_stream&) -> log_stream& = delete;
+        auto operator=(log_stream&&) -> log_stream& = delete;
 
         template <typename T>
-        auto operator<<(const T &val) -> log_stream & {
+        auto operator<<(const T& val) -> log_stream& {
             if (active_) {
                 *buf_ << val;  // skip the write entirely when filtered
             }
@@ -120,7 +120,7 @@ class Logger {
         }
 
        private:
-        Logger &lg_;
+        Logger& lg_;
         level level_;
         std::optional<std::ostringstream> buf_;
         bool exit_on_error_ = false;
@@ -129,10 +129,10 @@ class Logger {
     };
 
     Logger() { start_ = std::chrono::steady_clock::now(); };
-    Logger(const Logger &) = delete;
-    Logger(Logger &&) = delete;
-    auto operator=(const Logger &) -> Logger & = delete;
-    auto operator=(Logger &&) -> Logger & = delete;
+    Logger(const Logger&) = delete;
+    Logger(Logger&&) = delete;
+    auto operator=(const Logger&) -> Logger& = delete;
+    auto operator=(Logger&&) -> Logger& = delete;
 
     // ── Initialization ────────────────────────────────────────────────────────
 
@@ -211,14 +211,14 @@ class Logger {
 
     // ── String overloads ─────────────────────────────────────────────────────
 
-    void log(const std::string &msg) { emit(msg, level::BASIC); }
-    void debug(const std::string &msg) { emit(msg, level::DEBUG); }
-    void info(const std::string &msg) { emit(msg, level::INFO); }
-    void success(const std::string &msg) { emit(msg, level::SUCCESS); }
-    void warning(const std::string &msg) { emit(msg, level::WARNING); }
+    void log(const std::string& msg) { emit(msg, level::BASIC); }
+    void debug(const std::string& msg) { emit(msg, level::DEBUG); }
+    void info(const std::string& msg) { emit(msg, level::INFO); }
+    void success(const std::string& msg) { emit(msg, level::SUCCESS); }
+    void warning(const std::string& msg) { emit(msg, level::WARNING); }
 
     [[noreturn]]
-    void error(const std::string &msg) {
+    void error(const std::string& msg) {
         emit(msg, level::ERROR);
         flush();  // drain queue before exiting (in async mode the error message might not get printed)
         _Exit(EXIT_FAILURE);
@@ -260,8 +260,8 @@ class Logger {
     // ── Level metadata helpers ────────────────────────────────────────────────
 
     struct level_meta {
-        const char *label;  // fixed-width, 7 chars
-        const char *color;
+        const char* label;  // fixed-width, 7 chars
+        const char* color;
         bool use_err;  // route to stderr?
     };
 
@@ -315,7 +315,7 @@ class Logger {
     }
 
     // ── Thread ID formatting ──────────────────────────────────────────────────
-    static auto current_thread_id() -> const std::string & {
+    static auto current_thread_id() -> const std::string& {
         thread_local std::string idx = []() -> std::string {
             std::ostringstream oss;
             oss << std::this_thread::get_id();
@@ -330,9 +330,9 @@ class Logger {
 
     // ── Core write (called with mutex held) ───────────────────────────────────
 
-    void write_record(const record &rec) {
+    void write_record(const record& rec) {
         const auto [label, color, use_err] = meta_of(rec.lvl);
-        std::ostream &ostr = use_err ? std::cerr : std::cout;
+        std::ostream& ostr = use_err ? std::cerr : std::cout;
 
         // Plain-text prefix (used for both file and no-color console)
         std::string time_tag = rec.lvl == level::BASIC ? "" : "[" + format_time(rec.elapsed) + "] ";
@@ -356,7 +356,7 @@ class Logger {
 
     // ── Emit (public entry point, acquires lock in sync mode) ─────────────────
 
-    void emit(const std::string &message, level lvl) {
+    void emit(const std::string& message, level lvl) {
         // Fast path: skip below-threshold messages without locking
         if (lvl < min_level_.load(std::memory_order_relaxed)) {
             return;
@@ -445,7 +445,7 @@ class Logger {
     std::chrono::steady_clock::time_point start_;
 };
 
-inline auto default_logger() -> Logger & {
+inline auto default_logger() -> Logger& {
     static Logger instance;
     return instance;
 }
@@ -456,7 +456,7 @@ inline auto default_logger() -> Logger & {
 inline void log_init() { default_logger().initialize(); }
 
 /// Initialize with file output.
-inline void log_init_file(const std::string &path) { default_logger().initialize(true, path); }
+inline void log_init_file(const std::string& path) { default_logger().initialize(true, path); }
 
 /// Initialize in async (non-blocking) mode.
 inline void log_init_async() { default_logger().initialize(false, "", true, true, true); }
@@ -472,27 +472,27 @@ inline void log_init_async() { default_logger().initialize(false, "", true, true
 
 // Direct string logging functions (avoid constructing a log_stream)
 template <typename T>
-inline void LOG_S(const T &msg) {
+inline void LOG_S(const T& msg) {
     default_logger().log(std::string(msg));
 }
 template <typename T>
-inline void LOG_DEBUG_S(const T &msg) {
+inline void LOG_DEBUG_S(const T& msg) {
     default_logger().debug(std::string(msg));
 }
 template <typename T>
-inline void LOG_INFO_S(const T &msg) {
+inline void LOG_INFO_S(const T& msg) {
     default_logger().info(std::string(msg));
 }
 template <typename T>
-inline void LOG_SUCCESS_S(const T &msg) {
+inline void LOG_SUCCESS_S(const T& msg) {
     default_logger().success(std::string(msg));
 }
 template <typename T>
-inline void LOG_WARN_S(const T &msg) {
+inline void LOG_WARN_S(const T& msg) {
     default_logger().warning(std::string(msg));
 }
 template <typename T>
-inline void LOG_ERROR_S(const T &msg) {
+inline void LOG_ERROR_S(const T& msg) {
     default_logger().error(std::string(msg));
 }
 

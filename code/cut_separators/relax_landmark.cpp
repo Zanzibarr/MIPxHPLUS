@@ -8,7 +8,7 @@ auto relax_cuts::add_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::executio
     if (exec.fract_cuts.find('m') != std::string::npos) {
         const auto& [found, landmark] = fract_lm_sep::get_r3_violated_landmark(exec, inst, relax_point);
         if (found) {
-            landmarks.push_back(std::move(landmark));
+            landmarks.push_back(landmark);
         }
     }
     if (exec.fract_cuts.find('l') != std::string::npos) {

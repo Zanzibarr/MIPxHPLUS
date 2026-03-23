@@ -43,12 +43,14 @@ class LMcut {
     LMcut(const hplus::instance& inst, bool greedy_min, bool complete_min);
 
     // Compute LMcut on the instance passed at construction using the specified hmax function
-    auto compute_lmcut(hmax_function hmax) -> std::pair<std::vector<std::vector<unsigned int>>, double>;
+    auto compute_lmcut(const hmax_function& hmax) -> std::pair<std::vector<std::vector<unsigned int>>, double>;
     // Compute violated landmarks given an integer solution using the specified hmax function
-    auto int_separation(const std::vector<unsigned int>& used_actions, hmax_function hmax) -> std::pair<bool, std::vector<std::vector<unsigned int>>>;
+    auto int_separation(const std::vector<unsigned int>& used_actions, const hmax_function& hmax)
+        -> std::pair<bool, std::vector<std::vector<unsigned int>>>;
     // Compute violated landmarks given a fracitonal solution using the specified hmax function (here LMcut value has no meaning, so it's not
     // returned)
-    auto fract_separation(const std::vector<double>& actions_weights, hmax_function hmax) -> std::pair<bool, std::vector<std::vector<unsigned int>>>;
+    auto fract_separation(const std::vector<double>& actions_weights, const hmax_function& hmax)
+        -> std::pair<bool, std::vector<std::vector<unsigned int>>>;
 
     // Check that a landmark is valid for the instance passed at construction
     void check_landmark(const std::vector<unsigned int>& landmark);
@@ -56,13 +58,13 @@ class LMcut {
    private:
     void init();
 
-    auto compute_lmcut_private(hmax_function hmax) -> std::pair<std::vector<std::vector<unsigned int>>, double>;
+    auto compute_lmcut_private(const hmax_function& hmax) -> std::pair<std::vector<std::vector<unsigned int>>, double>;
 
     void update_and_enqueue_effects_values(priority_queue<double>& queue, unsigned int act_i);
-    auto compute_goal_section(hmax_function hmax) -> std::unordered_set<unsigned int>;
+    auto compute_goal_section(const hmax_function& hmax) -> std::unordered_set<unsigned int>;
 
-    void update_hmax_values(const std::vector<unsigned int>& changed_actions, hmax_function hmax);
-    auto compute_cut(hmax_function hmax) -> std::pair<std::vector<unsigned int>, double>;
+    void update_hmax_values(const std::vector<unsigned int>& changed_actions, const hmax_function& hmax);
+    auto compute_cut(const hmax_function& hmax) -> std::pair<std::vector<unsigned int>, double>;
 
     const hplus::instance* inst_;
     std::vector<int> pcf_;

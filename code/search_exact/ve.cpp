@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <cstddef>
 #include <tuple>
 
 #include "algorithms.hpp"
@@ -24,7 +25,7 @@ void ve::add_acyclicity_constraints(hplus::instance& inst, CPXENVptr& env, CPXLP
     std::vector<std::unordered_set<unsigned int>> graph(inst.n);
     inst.veg_cumulative_graph.resize(inst.n);
     std::vector<std::tuple<unsigned int, unsigned int, unsigned int>> triangles_list;
-    priority_queue<unsigned int> nodes_queue(2 * inst.n);
+    priority_queue<unsigned int> nodes_queue(static_cast<size_t>(2 * inst.n));
     std::vector<unsigned int> degree_counter(inst.n, 0);
 
     // Build initial graph G_0
