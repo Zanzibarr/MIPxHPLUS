@@ -4,7 +4,6 @@
 #include "limits.hxx"
 #include "preprocessing.hpp"
 
-// TODO: Consider using watch preconditions here aswell
 void prep::landmark_extraction(hplus::instance& inst, std::vector<std::vector<unsigned int>>& landmarks_ret) {
     // use the last bit as a flag to tell the BinarySet is full
     std::vector<BinarySet> landmarks(inst.n, BinarySet{inst.n + 1});

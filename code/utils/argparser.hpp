@@ -458,17 +458,25 @@ static inline void parse_cli(const int argc, const char** argv, hplus::execution
     if (cand_cuts) {
         exec.cand_cuts = "";
         std::string s{args::get(cand_cuts)};
-        if (s.find('f') != std::string::npos) {
-            exec.cand_cuts += "f";
-        }
-        if (s.find('c') != std::string::npos) {
-            exec.cand_cuts += "c";
-        }
-        if (s.find('l') != std::string::npos) {
-            exec.cand_cuts += "l";
-        }
-        if (s.find('s') != std::string::npos) {
-            exec.cand_cuts += "s";
+        if (s != "0") {
+            if (s.find('f') != std::string::npos) {
+                exec.cand_cuts += "f";
+            }
+            if (s.find('c') != std::string::npos) {
+                exec.cand_cuts += "c";
+            }
+            if (s.find('l') != std::string::npos) {
+                exec.cand_cuts += "l";
+            }
+            if (s.find('s') != std::string::npos) {
+                exec.cand_cuts += "s";
+            }
+            if (exec.cand_cuts.empty()) {
+                LOG_WARN_S("Wrong parameter for " + std::string(HPLUS_CLI_CANDCUTS_FLAG) + "; using default value: " + HPLUS_DEF_CANDCUTS);
+                exec.cand_cuts = HPLUS_DEF_CANDCUTS;
+            }
+        } else {
+            exec.cand_cuts = s;
         }
     }
     if (candlm_min) {
@@ -570,14 +578,13 @@ static inline void parse_cli(const int argc, const char** argv, hplus::execution
     if (info && run) {
         LOG_ERROR_S("You need to specify only one functionality among " + std::string(HPLUS_CLI_INFO_FLAG) + " and " + HPLUS_CLI_RUN_FLAG);
     }
-    if (!exec.prep && exec.prep_lmcut != "0") {
-        LOG_WARN_S("Preprocessing has been disabled bu LM-cut is selected: disabling LM-cut");
+
+    // Preprocessing
+    if (!exec.prep) {
         exec.prep_lmcut = "0";
     }
-    if (exec.alg >= hplus::algorithm::GC && exec.ws != hplus::warmstart::NONE) {
-        LOG_WARN_S("With the specified algororithm there's no need for a warm start: disabling warm start option");
-        exec.ws = hplus::warmstart::NONE;
-    }
+
+    // Warm start
     if (exec.alg >= hplus::algorithm::GC) {
         switch (exec.alg) {
             case hplus::algorithm::GC:
@@ -596,50 +603,48 @@ static inline void parse_cli(const int argc, const char** argv, hplus::execution
                 LOG_ERROR_S("Unhandled algorithm in parse_cli: " + std::to_string(static_cast<int>(exec.alg)));
         }
     }
-    if (exec.alg == hplus::algorithm::CUTS && exec.cand_cuts.empty()) {
-        LOG_ERROR_S("You can't disable all three candidate cuts from the " + std::string(HPLUS_CLI_ALG_FLAG_CUTS) + " algorithm");
-    }
-    if (exec.alg != hplus::algorithm::CUTS && exec.fract_cuts != "0") {
-        LOG_WARN_S("Cuts on the fractional solutions aren't needed with this algorithm: disabling fractional cuts");
+
+    // Ensure correct parameters for each model
+    if (exec.alg != hplus::algorithm::CUTS) {
+        exec.cand_cuts = "0";
         exec.fract_cuts = "0";
-    }
-    if (exec.fract_cuts == "0" && exec.fract_cuts_at_nodes) {
-        exec.fract_cuts_at_nodes = false;
-    }
-    if (exec.fract_cuts == "0" && exec.custom_cutloop) {
-        LOG_WARN_S("If you want to use the custom cutloop, please specify a fractional solution separator: disabling custom cutloop");
         exec.custom_cutloop = false;
-    }
-    if (exec.alg != hplus::algorithm::CUTS && !exec.cand_cuts.empty()) {
-        LOG_WARN_S("Cuts on the candidate solutions aren't needed with this algorithm: disabling candidate cuts");
-        exec.cand_cuts = "";
-    }
-    if (exec.alg != hplus::algorithm::CUTS && exec.custom_cutloop) {
-        LOG_WARN_S("Custom cutloop isn't needed with this algorithm: disabling custom cutloop");
-        exec.custom_cutloop = false;
-    }
-    if (exec.custom_cutloop && exec.ws == hplus::warmstart::NONE && exec.inout) {
-        LOG_WARN_S("Warmstart disabled: disabling In-Out strategy");
-        exec.inout = false;
-    }
-    if (exec.candlm_min.find('g') != std::string::npos && exec.cand_cuts.find('l') == std::string::npos) {
-        LOG_WARN_S(
-            "Greedy minimalization procedure is implicit in the landmark construction of Fronteer ('f') and Complementary ('c') cand separators: "
-            "disabling greedy "
-            "minimalization procedure");
-        std::erase_if(exec.candlm_min, [](const auto val) { return val == 'g'; });
-    }
-    if (exec.fractlm_min.find('i') != std::string::npos && exec.fract_cuts.find('m') == std::string::npos) {
-        LOG_WARN_S(
-            "Iterative ('i') minimalization procedure is used only for Max-Flow-based ('m') fractional separato: disabling iterative minimalization "
-            "procedure");
-        std::erase_if(exec.fractlm_min, [](const auto val) { return val == 'i'; });
-    }
-    if (exec.fract_cuts.find('l') != std::string::npos && exec.fract_cuts.find('l') == std::string::npos &&
-        exec.fractlm_min.find('g') != std::string::npos) {
-        LOG_WARN_S(
-            "Greedy minimalization procedure is implicit in the landmark construction of Max-Flow-based ('m') fractional separator: disabling "
-            "greedy minimalization procedure");
-        std::erase_if(exec.fractlm_min, [](const auto val) { return val == 'g'; });
+    } else {
+        if (exec.cand_cuts.empty()) {
+            LOG_ERROR_S("You can't disable all three candidate cuts from the " + std::string(HPLUS_CLI_ALG_FLAG_CUTS) + " algorithm");
+        }
+        if (exec.fract_cuts == "0") {
+            if (exec.custom_cutloop) {
+                LOG_WARN_S("If you want to use the custom cutloop, please specify a fractional solution separator: disabling custom cutloop");
+            }
+            exec.fract_cuts_at_nodes = false;
+            exec.fractlm_min = "0";
+            exec.custom_cutloop = false;
+        }
+        if (exec.custom_cutloop && exec.ws == hplus::warmstart::NONE && exec.inout) {
+            LOG_WARN_S("Warmstart disabled: disabling In-Out strategy");
+            exec.inout = false;
+        }
+        if (exec.candlm_min.find('g') != std::string::npos && exec.cand_cuts.find('l') == std::string::npos) {
+            LOG_WARN_S(
+                "Greedy minimalization procedure is implicit in the landmark construction of Fronteer ('f') and Complementary ('c') cand separators: "
+                "disabling greedy "
+                "minimalization procedure");
+            std::erase_if(exec.candlm_min, [](const auto val) { return val == 'g'; });
+        }
+        if (exec.fractlm_min.find('i') != std::string::npos && exec.fract_cuts.find('m') == std::string::npos) {
+            LOG_WARN_S(
+                "Iterative ('i') minimalization procedure is used only for Max-Flow-based ('m') fractional separato: disabling iterative "
+                "minimalization "
+                "procedure");
+            std::erase_if(exec.fractlm_min, [](const auto val) { return val == 'i'; });
+        }
+        if (exec.fract_cuts.find('l') != std::string::npos && exec.fract_cuts.find('l') == std::string::npos &&
+            exec.fractlm_min.find('g') != std::string::npos) {
+            LOG_WARN_S(
+                "Greedy minimalization procedure is implicit in the landmark construction of Max-Flow-based ('m') fractional separator: disabling "
+                "greedy minimalization procedure");
+            std::erase_if(exec.fractlm_min, [](const auto val) { return val == 'g'; });
+        }
     }
 }

@@ -373,7 +373,6 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
     }
 }
 
-// TODO: Consider using watch preconditions here aswell
 void hplus::update_sol(instance& inst, const solution& sol, statistics& stats) {
     const auto& [sol_plan, sol_cost, _]{sol};
     std::unordered_set<unsigned int> dbcheck;

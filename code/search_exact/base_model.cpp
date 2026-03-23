@@ -121,7 +121,6 @@ void store_cplex_solution(hplus::execution& exec, hplus::instance& inst, hplus::
     BinarySet state{inst.n};
     unsigned int cost{0};
 
-    // TODO: Consider using watch preconditions here aswell
     // Check we are getting ALL the actions that cplex uses
     while (!remaining.empty()) {
         bool intcheck{false};

@@ -376,7 +376,6 @@ auto LMcut::fract_separation(const std::vector<double>& actions_weights, const h
     return {!landmarks.empty(), landmarks};
 }
 
-// TODO: Consider using watch preconditions here aswell
 void LMcut::check_landmark(const std::vector<unsigned int>& landmark) {
     // This function is meant to be a check for debugging... it's not optimized to be used as a routine
     bool found = false;
