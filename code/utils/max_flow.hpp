@@ -6,8 +6,7 @@
 
 #pragma once
 
-#include <math.h>
-
+#include <limits>
 #include <queue>
 
 #include "bs.hxx"
@@ -112,7 +111,7 @@ static inline auto max_flow_augmenting_path(std::vector<std::vector<network_edge
     q.push(static_cast<int>(s));
 
     while (!q.empty()) {
-        const auto v{q.front()};
+        const auto v = static_cast<size_t>(q.front());
         q.pop();
         for (const auto& e : graph[v]) {
             // If this edge still has capacity and it hasn't been visited
@@ -136,7 +135,7 @@ static inline auto max_flow_push_flow(std::vector<std::vector<network_edge>>& gr
 
     // iter[v] remembers which edge to start from (optimization to avoid revisiting dead ends)
     for (int& i = iter[v]; i < static_cast<int>(graph[v].size()); i++) {
-        auto& e = graph[v][i];
+        auto& e = graph[v][static_cast<size_t>(i)];
 
         // Only use edges with capacity that go to next level
         if (e.c > HPLUS_EPSILON && level[v] < level[e.to]) {
@@ -172,7 +171,7 @@ static inline auto compute_max_flow(std::vector<std::vector<network_edge>>& grap
     // Repeat while there's an augmenting path from source to sink
     while (max_flow_augmenting_path(graph, source, sink, n, level)) {
         iter.assign(n, 0);
-        double f = NAN;
+        double f = std::numeric_limits<double>::quiet_NaN();
 
         // Keep finding blocking flows until no more paths exist in this level graph
         while ((f = max_flow_push_flow(graph, source, sink, std::numeric_limits<double>::infinity(), level, iter)) > HPLUS_EPSILON) {
@@ -283,7 +282,7 @@ static inline auto flow_removal(std::vector<std::vector<network_edge>>& graph, u
     // Pre-allocate structures to avoid repeated allocations
     std::vector<size_t> parent_edge(graph.size());
     std::vector<unsigned int> parent_node(graph.size());
-    BinarySet visited(graph.size());
+    BinarySet visited(static_cast<unsigned int>(graph.size()));
 
     double remaining = flow_to_remove;
 

@@ -1634,7 +1634,7 @@ pipesworld-tankage-p16-net2-b14-g6-t80,True,19.0
 pipesworld-tankage-p17-net2-b16-g5-t20,True,13.0
 pipesworld-tankage-p18-net2-b16-g7-t60,True,18.0
 pipesworld-tankage-p19-net2-b18-g6-t60,True,20.0
-pipesworld-tankage-p20-net2-b18-g8-t90,False,23.0
+pipesworld-tankage-p20-net2-b18-g8-t90,True,23.0
 pipesworld-tankage-p21-net3-b12-g2-t60,True,9.0
 pipesworld-tankage-p22-net3-b12-g4-t60,True,19.0
 pipesworld-tankage-p23-net3-b14-g3-t60,True,15.0
@@ -1644,7 +1644,7 @@ pipesworld-tankage-p26-net3-b16-g7-t70,True,24.0
 pipesworld-tankage-p27-net3-b18-g6-t70,True,19.0
 pipesworld-tankage-p28-net3-b18-g7-t70,True,26.0
 pipesworld-tankage-p29-net3-b20-g6-t70,True,21.0
-pipesworld-tankage-p30-net3-b20-g8-t70,False,30.0
+pipesworld-tankage-p30-net3-b20-g8-t70,True,30.0
 pipesworld-tankage-p31-net4-b14-g3-t20,True,19.0
 pipesworld-tankage-p32-net4-b14-g5-t30,True,20.0
 pipesworld-tankage-p33-net4-b16-g5-t60,True,19.0
@@ -1652,7 +1652,7 @@ pipesworld-tankage-p34-net4-b16-g6-t60,False,25.0
 pipesworld-tankage-p35-net4-b18-g4-t90,False,17.0
 pipesworld-tankage-p36-net4-b18-g6-t90,False,19.0
 pipesworld-tankage-p37-net4-b20-g5-t60,True,14.0
-pipesworld-tankage-p38-net4-b20-g7-t60,False,20.0
+pipesworld-tankage-p38-net4-b20-g7-t60,True,18.0
 pipesworld-tankage-p39-net4-b22-g7-t50,False,21.0
 pipesworld-tankage-p40-net4-b22-g8-t50,False,22.0
 pipesworld-tankage-p41-net5-b22-g2-t20,True,8.0
@@ -2024,7 +2024,7 @@ snake-opt18-strips-p10,True,9.0
 snake-opt18-strips-p11,True,12.0
 snake-opt18-strips-p12,True,10.0
 snake-opt18-strips-p13,True,11.0
-snake-opt18-strips-p14,False,16.0
+snake-opt18-strips-p14,True,16.0
 snake-opt18-strips-p15,True,7.0
 snake-opt18-strips-p16,True,13.0
 snake-opt18-strips-p17,True,13.0
@@ -2037,13 +2037,13 @@ snake-sat18-strips-p03,True,12.0
 snake-sat18-strips-p04,True,12.0
 snake-sat18-strips-p05,True,11.0
 snake-sat18-strips-p06,False,17.0
-snake-sat18-strips-p07,False,15.0
+snake-sat18-strips-p07,True,14.0
 snake-sat18-strips-p08,True,11.0
-snake-sat18-strips-p09,False,12.0
+snake-sat18-strips-p09,True,12.0
 snake-sat18-strips-p10,False,16.0
 snake-sat18-strips-p11,False,13.0
-snake-sat18-strips-p12,False,13.0
-snake-sat18-strips-p13,False,13.0
+snake-sat18-strips-p12,True,13.0
+snake-sat18-strips-p13,True,13.0
 snake-sat18-strips-p14,False,13.0
 snake-sat18-strips-p15,False,16.0
 snake-sat18-strips-p16,False,16.0
@@ -2335,7 +2335,7 @@ thoughtful-sat14-strips-target-typed-22,False,101.0
 thoughtful-sat14-strips-target-typed-23,True,85.0
 thoughtful-sat14-strips-target-typed-24,False,82.0
 thoughtful-sat14-strips-target-typed-25,False,84.0
-thoughtful-sat14-strips-target-typed-26,False,98.0
+thoughtful-sat14-strips-target-typed-26,False,91.0
 thoughtful-sat14-strips-target-typed-27,False,81.0
 thoughtful-sat14-strips-target-typed-28,False,84.0
 tidybot-opt11-strips-p01,True,4.0
@@ -2393,7 +2393,7 @@ tidybot-sat11-strips-p12,True,21.0
 tidybot-sat11-strips-p13,True,26.0
 tidybot-sat11-strips-p14,True,26.0
 tidybot-sat11-strips-p15,True,28.0
-tidybot-sat11-strips-p16,False,28.0
+tidybot-sat11-strips-p16,True,28.0
 tidybot-sat11-strips-p17,False,27.0
 tidybot-sat11-strips-p18,True,25.0
 tidybot-sat11-strips-p19,False,58.0

@@ -142,7 +142,7 @@ void LMcut::update_hmax_values(const std::vector<unsigned int>& changed_actions,
         const auto fact{static_cast<int>(queue.top())};
         queue.pop();
 
-        for (const auto& act_i : inst_->act_with_pre[fact]) {
+        for (const auto& act_i : inst_->act_with_pre[static_cast<size_t>(fact)]) {
             // If this action's pcf is not 'fact', than since we are lowering the hmax values, the hmax won't change for this action... skip
             if (pcf_[act_i] != -1 && pcf_[act_i] != fact) {
                 continue;
@@ -178,7 +178,7 @@ auto LMcut::compute_goal_section(const hmax_function& hmax) -> std::unordered_se
 
     // Simulate a 0-cost action with precondition the goal state -> set its pcf as starting goal_section
     int goal_pcf{hmax(goal_, hmax_values_, initial_hmax_values_).first};
-    goal_section.insert(goal_pcf);
+    goal_section.insert(static_cast<unsigned int>(goal_pcf));
     queue.push_back(goal_pcf);
 
     std::unordered_set<unsigned int> explored;
@@ -188,7 +188,7 @@ auto LMcut::compute_goal_section(const hmax_function& hmax) -> std::unordered_se
         const auto fact{queue.front()};
         queue.pop_front();
 
-        for (const auto& act_i : inst_->act_with_eff[fact]) {
+        for (const auto& act_i : inst_->act_with_eff[static_cast<size_t>(fact)]) {
             // If I already explored this action or if it has no pcf, skip...
             if (explored.contains(act_i) || pcf_[act_i] == -1) {
                 continue;
@@ -199,8 +199,8 @@ auto LMcut::compute_goal_section(const hmax_function& hmax) -> std::unordered_se
             // If it is a 0 reduced-cost (non-initial) action, than its pcf is also in the goal zone
             // non-initial check: I cannot add to the queue the source node, since no action could ever achieve it
             if (reduced_costs_[act_i] <= HPLUS_EPSILON && pcf_[act_i] != static_cast<int>(inst_->n)) {
-                if (!goal_section.contains(pcf_[act_i])) {
-                    goal_section.insert(pcf_[act_i]);
+                if (!goal_section.contains(static_cast<unsigned int>(pcf_[act_i]))) {
+                    goal_section.insert(static_cast<unsigned int>(pcf_[act_i]));
                     queue.push_back(pcf_[act_i]);
                 }
             }
@@ -269,7 +269,7 @@ auto LMcut::compute_cut(const hmax_function& hmax) -> std::pair<std::vector<unsi
         const auto fact{queue.front()};
         queue.pop_front();
 
-        for (const auto& act_i : inst_->act_with_pre[fact]) {
+        for (const auto& act_i : inst_->act_with_pre[static_cast<unsigned int>(fact)]) {
             if (pcf_[act_i] != fact || explored.contains(act_i) || bs_contains(pre_goal_section, inst_->actions[act_i].eff_sparse)) {
                 continue;
             }
@@ -387,7 +387,7 @@ void LMcut::check_landmark(const std::vector<unsigned int>& landmark) {
 
     while (!found) {
         auto state_before = state;
-        for (const auto& act_i : remaining_actions) {
+        for (const auto act_i : remaining_actions) {
             const auto& act = inst_->actions[act_i];
             if (bs_contains(state, act.pre_sparse)) {
                 remaining_actions.remove(act_i);
@@ -403,7 +403,7 @@ void LMcut::check_landmark(const std::vector<unsigned int>& landmark) {
     }
 
     if (found) {  // If this was a valid landmark we wouldn't be able to find a valid plan to the goal
-        LOG_WARN_S(vtos(landmark, landmark.size()));
+        LOG_WARN_S(vtos(landmark, static_cast<unsigned int>(landmark.size())));
         LOG_WARN_S("inst_->m: " + std::to_string(inst_->m));
         LOG_WARN_S("GOAL:" + std::string(inst_->goal));
         for (const auto& act_i : landmark) {

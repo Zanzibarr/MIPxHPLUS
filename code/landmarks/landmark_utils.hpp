@@ -61,7 +61,10 @@ inline void landmark_minimalization(const hplus::instance& inst, std::vector<uns
             // ... remembering to remove previous occurrences of this action in the previous watching list
             if (!init /*&& watch_pre[act_i] != previous -- this is commented due to the check at the beginning of the function*/) {
                 ASSERT(std::ranges::find(watching[previous], act_i) != watching[previous].end());
-                watching[previous].erase(std::ranges::find(watching[previous], act_i));
+                const auto pos = static_cast<unsigned int>(std::ranges::find(watching[previous], act_i) - watching[previous].begin());
+                const auto size = static_cast<unsigned int>(watching[previous].size());
+                watching[previous][pos] = watching[previous][size - 1];
+                watching[previous].resize(size - 1);
             }
             break;
         }

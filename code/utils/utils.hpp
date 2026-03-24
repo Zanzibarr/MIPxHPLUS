@@ -170,7 +170,7 @@
 // Random number generator
 inline std::mt19937 g_rng;
 
-inline void init_rng(int seed) { g_rng.seed(seed); }
+inline void init_rng(unsigned int seed) { g_rng.seed(seed); }
 
 #define ASSERT(cond)                                                                                                             \
     {                                                                                                                            \
@@ -259,7 +259,7 @@ inline auto isint(const std::string& str, const int from = std::numeric_limits<i
 [[nodiscard]]
 inline auto split_string(const std::string& str, const char del) -> std::vector<std::string> {
     std::vector<std::string> tokens;
-    tokens.reserve(std::count(str.begin(), str.end(), del) + 1);
+    tokens.reserve(static_cast<size_t>(std::count(str.begin(), str.end(), del)) + 1);
 
     size_t start{0};
     size_t end{0};

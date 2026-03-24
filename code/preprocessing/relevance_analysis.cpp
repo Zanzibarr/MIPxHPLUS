@@ -37,7 +37,7 @@ void prep::relevance_analysis_backward(hplus::instance& inst, BinarySet& relevan
         }
         const auto it{std::set_difference(cand_actions_sparse.begin(), cand_actions_sparse.end(), new_relevant_actions.begin(),
                                           new_relevant_actions.end(), cand_actions_sparse.begin())};
-        cand_actions_sparse.resize(it - cand_actions_sparse.begin());
+        cand_actions_sparse.resize(static_cast<unsigned int>(it - cand_actions_sparse.begin()));
         if (CHECK_STOP()) {
             [[unlikely]] throw timelimit_exception("Reached time limit.");
         }

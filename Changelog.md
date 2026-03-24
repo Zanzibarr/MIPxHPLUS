@@ -27,7 +27,8 @@ HOW I DO VERSIONING:
 
 
 ## [3.1.1] - 2026/03/21
-<!-- ### :warning: Known issues -->
+### :warning: Known issues
+- Execution on MacOS is (sometimes) non-deterministic
 ### :ballot_box_with_check: Fixed
 - When int separator based on LMcut didn't find any solution, the callback didn't fallback to exact method
 - Logger in async mode doesn't print error or success messages being too close to code termination

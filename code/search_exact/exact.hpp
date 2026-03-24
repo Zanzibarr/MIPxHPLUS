@@ -43,7 +43,7 @@ inline void init_cplex(hplus::execution& exec, CPXENVptr& env, CPXLPptr& lp) {
     lp = CPXcreateprob(env, &cpxerror, exec.file_name.c_str());
     CPX_HANDLE_CALL(cpxerror);
     // threads
-    CPX_HANDLE_CALL(CPXsetintparam(env, CPXPARAM_Threads, exec.threads));
+    CPX_HANDLE_CALL(CPXsetintparam(env, CPXPARAM_Threads, static_cast<CPXINT>(exec.threads)));
     CPX_HANDLE_CALL(CPXsetintparam(env, CPXPARAM_Parallel, CPX_PARALLEL_DETERMINISTIC));
     // log file
     CPX_HANDLE_CALL(CPXsetintparam(env, CPXPARAM_ScreenOutput, HPLUS_DEF_CPX_SCREENOUTPUT));

@@ -1,6 +1,7 @@
 #include <math.h>
 
 #include <algorithm>
+#include <limits>
 
 #include "bs_utils.hpp"
 #include "exact.hpp"
@@ -16,8 +17,8 @@ inline void exit_cutloop(CPXENVptr& env, CPXLPptr& lp) {
     // Set back the problem to being a MIP
     CPX_HANDLE_CALL(CPXchgprobtype(env, lp, CPXPROB_MILP));
     int ncols{CPXgetnumcols(env, lp)};
-    std::vector<int> ind(ncols);
-    std::vector<char> types(ncols, 'B');
+    std::vector<int> ind(static_cast<unsigned int>(ncols));
+    std::vector<char> types(static_cast<unsigned int>(ncols), 'B');
     std::iota(ind.begin(), ind.end(), 0);
     CPX_HANDLE_CALL(CPXchgctype(env, lp, ncols, ind.data(), types.data()));
 }
@@ -32,7 +33,7 @@ inline void solve_relaxation(CPXENVptr& env, CPXLPptr& lp, const hplus::executio
     CPX_HANDLE_CALL(CPXlpopt(env, lp));
 
     // Get lowerbound
-    double cl_lb = NAN;
+    double cl_lb = std::numeric_limits<double>::quiet_NaN();
     switch (const int status{CPXgetstat(env, lp)}) {
         case CPX_STAT_OPTIMAL:
             CPX_HANDLE_CALL(CPXgetobjval(env, lp, &cl_lb));
@@ -73,8 +74,8 @@ inline auto generate_cuts(CPXENVptr& env, CPXLPptr& lp, const std::vector<double
                 rhs = std::vector<double>(1, 1);
                 sense = std::vector<char>(1, 'G');
                 begin = std::vector<int>(1, 0);
-                CPX_HANDLE_CALL(
-                    CPXaddrows(env, lp, 0, 1, landmark.size(), rhs.data(), sense.data(), begin.data(), ind.data(), val.data(), nullptr, nullptr));
+                CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, static_cast<int>(landmark.size()), rhs.data(), sense.data(), begin.data(), ind.data(),
+                                           val.data(), nullptr, nullptr));
                 STATS.counter_inc<"fract_lm">();
                 new_cuts++;
             }
@@ -88,8 +89,8 @@ inline auto generate_cuts(CPXENVptr& env, CPXLPptr& lp, const std::vector<double
                     rhs = std::vector<double>(1, 1);
                     sense = std::vector<char>(1, 'G');
                     begin = std::vector<int>(1, 0);
-                    CPX_HANDLE_CALL(
-                        CPXaddrows(env, lp, 0, 1, landmark.size(), rhs.data(), sense.data(), begin.data(), ind.data(), val.data(), nullptr, nullptr));
+                    CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, static_cast<int>(landmark.size()), rhs.data(), sense.data(), begin.data(), ind.data(),
+                                               val.data(), nullptr, nullptr));
                     new_cuts++;
                 }
                 STATS.counter_inc<"fract_lm">(static_cast<int64_t>(landmarks.size()));
@@ -113,8 +114,8 @@ inline auto generate_cuts(CPXENVptr& env, CPXLPptr& lp, const std::vector<double
                     val.insert(val.end(), cycle.size(), 1.0);
                     nnz += static_cast<int>(cycle.size());
                 }
-                CPX_HANDLE_CALL(
-                    CPXaddrows(env, lp, 0, cycles.size(), nnz, rhs.data(), sense.data(), begin.data(), ind.data(), val.data(), nullptr, nullptr));
+                CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, static_cast<int>(cycles.size()), nnz, rhs.data(), sense.data(), begin.data(), ind.data(),
+                                           val.data(), nullptr, nullptr));
                 STATS.counter_inc<"fract_sec">(static_cast<int64_t>(cycles.size()));
                 new_cuts += cycles.size();
             }
@@ -157,12 +158,14 @@ inline auto generate_cuts(CPXENVptr& env, CPXLPptr& lp, const std::vector<double
 inline void pruning(CPXENVptr& env, CPXLPptr& lp, int base_constraints) {
     const int nrows{CPXgetnumrows(env, lp)};
     if (nrows != base_constraints) {
-        std::vector<double> slack(nrows - base_constraints);  // We don't remove base constraints... only those added in the cutloop
-        std::vector<int> deleted(nrows, 0);
+        std::vector<double> slack(
+            static_cast<unsigned int>(nrows - base_constraints));  // We don't remove base constraints... only those added in the cutloop
+        std::vector<int> deleted(static_cast<unsigned int>(nrows), 0);
         CPX_HANDLE_CALL(CPXgetslack(env, lp, slack.data(), base_constraints, nrows - 1));
         for (unsigned int i = 0; i < slack.size(); ++i) {
             if (abs(slack[i]) > HPLUS_EPSILON) {
-                deleted[base_constraints + i] = 1;  // If the slack value for row i is not 0, mark that row as to be deleted
+                deleted[static_cast<unsigned int>(base_constraints) + i] =
+                    1;  // If the slack value for row i is not 0, mark that row as to be deleted
             }
         }
         CPX_HANDLE_CALL(CPXdelsetrows(env, lp, deleted.data()));
@@ -183,7 +186,7 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
     std::vector<double> lb_history;
 
     const auto& repeat_cutloop = [&]() {
-        double current_lb = NAN;
+        double current_lb = std::numeric_limits<double>::quiet_NaN();
         CPX_HANDLE_CALL(CPXgetobjval(env, lp, &current_lb));
         lb_history.push_back(current_lb);
 
@@ -233,7 +236,7 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
                 continue;
             }
 
-            unsigned int fadd_idx = inst.m + inst.fadd_cpx_start[act_i] + var_count;
+            unsigned int fadd_idx = inst.m + inst.fadd_cpx_start[act_i] + static_cast<unsigned int>(var_count);
             incumbent[fadd_idx] = 1;
             unsigned int var_idx = inst.m + inst.nfadd + var_i;
             incumbent[var_idx] = 1;

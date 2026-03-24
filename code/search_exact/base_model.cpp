@@ -124,7 +124,7 @@ void store_cplex_solution(hplus::execution& exec, hplus::instance& inst, hplus::
     // Check we are getting ALL the actions that cplex uses
     while (!remaining.empty()) {
         bool intcheck{false};
-        for (const auto& idx : remaining) {
+        for (const auto idx : remaining) {
             if (!bs_contains(state, inst.actions[cpx_result[idx]].pre_sparse)) {
                 continue;
             }
@@ -174,7 +174,7 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, CPXE
 
     curr_col += count;
 
-    CPX_HANDLE_CALL(CPXnewcols(env, lp, count, objs.data(), lbs.data(), ubs.data(), types.data(), nullptr));
+    CPX_HANDLE_CALL(CPXnewcols(env, lp, static_cast<int>(count), objs.data(), lbs.data(), ubs.data(), types.data(), nullptr));
     stopcheck();
 
     objs.clear();
@@ -190,7 +190,8 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, CPXE
     const unsigned int fa_start{curr_col};
     for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
         curr_col += inst.actions[act_i].eff_sparse.size();
-        CPX_HANDLE_CALL(CPXnewcols(env, lp, inst.actions[act_i].eff_sparse.size(), objs.data(), lbs.data(), ubs.data(), types.data(), nullptr));
+        CPX_HANDLE_CALL(
+            CPXnewcols(env, lp, static_cast<int>(inst.actions[act_i].eff_sparse.size()), objs.data(), lbs.data(), ubs.data(), types.data(), nullptr));
         stopcheck();
     }
 
@@ -202,7 +203,7 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, CPXE
     }
     curr_col += count;
 
-    CPX_HANDLE_CALL(CPXnewcols(env, lp, count, objs.data(), lbs.data(), ubs.data(), types.data(), nullptr));
+    CPX_HANDLE_CALL(CPXnewcols(env, lp, static_cast<int>(count), objs.data(), lbs.data(), ubs.data(), types.data(), nullptr));
     stopcheck();
 
     STATS.counter_set<"n_var_base">(inst.n + inst.m + inst.nfadd);
@@ -220,7 +221,7 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, CPXE
 
     std::vector<int> ind(inst.m + 1);
     std::vector<double> val(inst.m + 1);
-    int nnz{0};
+    unsigned int nnz{0};
     constexpr char sense_e{'E'};
     constexpr char sense_l{'L'};
     constexpr char sense_g{'G'};
@@ -231,14 +232,12 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, CPXE
     for (unsigned int var_i = 0; var_i < inst.n; var_i++) {
         nnz = 0;
         ind[nnz] = get_var_idx(var_i);
-        val[nnz++] = 1;
+        val[(nnz++)] = 1;
 
         for (const auto& act_i : inst.act_with_eff[var_i]) {
-            unsigned int var_count =
-                static_cast<unsigned int>(std::find(inst.actions[act_i].eff_sparse.begin(), inst.actions[act_i].eff_sparse.end(), var_i) -
-                                          inst.actions[act_i].eff_sparse.begin());
+            unsigned int var_count = sorted_find(inst.actions[act_i].eff_sparse, var_i);
             ind[nnz] = get_fa_idx(act_i, var_count);
-            val[nnz++] = -1;
+            val[(nnz++)] = -1;
         }
 
         // if nnz == 1, then we'd have p = 0, meaning we could simply fix this variable to 0
@@ -247,7 +246,7 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, CPXE
             CPX_HANDLE_CALL(CPXchgbds(env, lp, 1, ind.data(), &fix, &rhs_0));
         } else {
             STATS.counter_inc<"n_const_base">();
-            CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, nnz, &rhs_0, &sense_e, &begin, ind.data(), val.data(), nullptr, nullptr));
+            CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, static_cast<int>(nnz), &rhs_0, &sense_e, &begin, ind.data(), val.data(), nullptr, nullptr));
         }
         stopcheck();
     }
@@ -256,21 +255,19 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, CPXE
         for (unsigned int fact_q = 0; fact_q < inst.n; fact_q++) {
             nnz = 0;
             ind[nnz] = get_var_idx(fact_q);
-            val[nnz++] = -1;
+            val[(nnz++)] = -1;
             for (const auto& act_i : inst.act_with_eff[fact_p]) {
                 if (!sorted_contains(inst.actions[act_i].pre_sparse, fact_q)) {
                     continue;
                 }
-                unsigned int var_count =
-                    static_cast<unsigned int>(std::find(inst.actions[act_i].eff_sparse.begin(), inst.actions[act_i].eff_sparse.end(), fact_p) -
-                                              inst.actions[act_i].eff_sparse.begin());
+                unsigned int var_count = sorted_find(inst.actions[act_i].eff_sparse, fact_p);
                 ind[nnz] = get_fa_idx(act_i, var_count);
-                val[nnz++] = 1;
+                val[(nnz++)] = 1;
             }
             // if nnz == 1 than we have -fact_p <= 0, hence it's always true, we can ignore this constraint
             if (nnz != 1) {
                 STATS.counter_inc<"n_const_base">();
-                CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, nnz, &rhs_0, &sense_l, &begin, ind.data(), val.data(), nullptr, nullptr));
+                CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, static_cast<int>(nnz), &rhs_0, &sense_l, &begin, ind.data(), val.data(), nullptr, nullptr));
             }
             stopcheck();
         }
@@ -308,13 +305,15 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, CPXE
             nnz = 0;
             for (const auto& act_i : landmark) {
                 ind[nnz] = static_cast<int>(act_i);
-                val[nnz++] = 1;
+                val[(nnz++)] = 1;
             }
             STATS.counter_inc<"n_const_acyc">();
-            CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, nnz, &rhs_1, &sense_g, &begin, ind.data(), val.data(), nullptr, nullptr));
+            CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, static_cast<int>(nnz), &rhs_1, &sense_g, &begin, ind.data(), val.data(), nullptr, nullptr));
         }
         stopcheck();
     }
+
+    CPXwriteprob(env, lp, "../../logs/cpxout/lp/test.lp", "LP");
 }
 
 void exact::get_cplex_solution(hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, const CPXENVptr& env, const CPXLPptr& lp) {

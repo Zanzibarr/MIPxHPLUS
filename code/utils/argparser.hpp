@@ -241,7 +241,7 @@ static inline void parse_cli(const int argc, const char** argv, hplus::execution
         exec.seed = args::get(seed);
     }
 
-    init_rng(exec.seed);
+    init_rng(static_cast<unsigned int>(exec.seed));
 
     if (log) {
         exec.log_file = HPLUS_LOG_DIR "/" + args::get(log);

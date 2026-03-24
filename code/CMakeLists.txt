@@ -19,18 +19,42 @@ if(NOT CMAKE_BUILD_TYPE)
 endif()
 
 # Build flags - with sanitizer support for debug builds
-set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -fsanitize=address -fno-omit-frame-pointer")
+set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 
 # Compiler flags with option for customization
-option(ENABLE_WARNINGS "Enable compiler warnings" OFF)
 option(TREAT_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
 
-if(ENABLE_WARNINGS)
-    add_compile_options(-Wall -Wextra -pedantic)
-    if(TREAT_WARNINGS_AS_ERRORS)
-        add_compile_options(-Werror)
-    endif()
+# Warnings always enabled in debug builds
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    add_compile_options(
+        # Core
+        -Wall
+        -Wextra
+        -Wpedantic
+        # Uninitialized / UB (most relevant for non-determinism)
+        -Wuninitialized
+        -Wstrict-overflow=5
+        # Correctness
+        -Wshadow
+        -Wnon-virtual-dtor
+        -Woverloaded-virtual
+        -Wnull-dereference
+        -Wcast-align
+        -Wcast-qual
+        # Implicit conversions (silent data loss)
+        -Wconversion
+        -Wsign-conversion
+        -Wdouble-promotion
+        -Wfloat-conversion
+        # Format / misc
+        -Wformat=2
+        -Wunused
+    )
+endif()
+
+if(TREAT_WARNINGS_AS_ERRORS)
+    add_compile_options(-Werror)
 endif()
 
 if(NOT DEFINED CPLEX_PATH)
@@ -89,9 +113,12 @@ endforeach()
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-# Include directories
-include_directories(
+# Include directories (external and third-party as SYSTEM to suppress their warnings)
+include_directories(SYSTEM
     external
+    ${CPLEX_INCLUDE}
+)
+include_directories(
     utils
     domain
     preprocessing
@@ -99,7 +126,6 @@ include_directories(
     search_heuristics
     cut_separators
     search_exact
-    ${CPLEX_INCLUDE}
 )
 
 # Generate libraries

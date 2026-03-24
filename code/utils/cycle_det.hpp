@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <queue>
 #include <unordered_map>
 
@@ -72,8 +73,8 @@ static inline void cycle_dfs(const std::vector<std::vector<unsigned int>>& graph
             // If we reached an element that was already in the stack, we found a cycle
             if (in_stack[neighbor]) {
                 // Found a back edge -> cycle detected
-                auto cycle_start_it = std::find(current_path.begin(), current_path.end(), neighbor);
-                unsigned int start_index = std::distance(current_path.begin(), cycle_start_it);
+                auto cycle_start_it = std::ranges::find(current_path, neighbor);
+                auto start_index = static_cast<unsigned int>(std::distance(current_path.begin(), cycle_start_it));
 
                 std::vector<unsigned int> cycle_labels;
                 std::vector<std::pair<unsigned int, unsigned int>> cycle_edges;
@@ -185,7 +186,7 @@ static inline std::pair<std::vector<std::pair<unsigned int, unsigned int>>, std:
     const std::vector<std::vector<unsigned int>>& graph,
     const std::unordered_map<std::pair<unsigned int, unsigned int>, double, pair_hash>& edge_weights, unsigned int source, unsigned int destination,
     const std::vector<std::vector<bool>>& removed_edges, double max_edge_weight) {
-    const unsigned int n = graph.size();
+    const auto n = static_cast<unsigned int>(graph.size());
 
     // Keep the shortest distance from source to any node
     std::vector<double> distance(n, std::numeric_limits<double>::infinity());

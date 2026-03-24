@@ -22,9 +22,7 @@ auto build_graph(const hplus::instance& inst, const std::vector<unsigned int>& u
             for (const auto& q : used_first_achievers[act_i]) {
                 graph[p].push_back(q);
                 // There are few enough items in eff_sparse so that a linear search is the fastest option
-                edge_labels[{p, q}] = inst.m + inst.fadd_cpx_start[act_i] +
-                                      std::distance(inst.actions[act_i].eff_sparse.begin(),
-                                                    std::find(inst.actions[act_i].eff_sparse.begin(), inst.actions[act_i].eff_sparse.end(), q));
+                edge_labels[{p, q}] = inst.m + inst.fadd_cpx_start[act_i] + sorted_find(inst.actions[act_i].eff_sparse, q);
             }
         }
     }

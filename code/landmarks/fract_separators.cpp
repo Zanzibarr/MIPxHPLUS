@@ -116,7 +116,7 @@ inline auto compute_r1_r2_incremental(const hplus::instance& inst, const std::ve
     }
 
     double min_r1{1};
-    for (const auto& gfact : inst.goal) {
+    for (const auto gfact : inst.goal) {
         min_r1 = std::min(min_r1, r1_values[gfact]);
     }
 
@@ -157,7 +157,7 @@ inline auto compute_pcf(const hplus::instance& inst, const std::vector<double>& 
     // Compute the pcf for the dummy goal action
     double min_r1{2};
     double min_r2{2};
-    for (const auto& gfact : inst.goal) {
+    for (const auto gfact : inst.goal) {
         check_and_update_pcf(sink_action, gfact, min_r1, min_r2);
     }
 
@@ -180,8 +180,8 @@ inline auto max_flow_graph_construction(const hplus::instance& inst) -> std::pai
     static const unsigned int sink_action{inst.m};
 
     auto add_edge = [&](unsigned int node_a, unsigned int node_b, double capacity) {
-        const unsigned int edge_ba_idx = graph[node_b].size();
-        const unsigned int edge_ab_idx = graph[node_a].size();
+        const auto edge_ba_idx = static_cast<unsigned int>(graph[node_b].size());
+        const auto edge_ab_idx = static_cast<unsigned int>(graph[node_a].size());
         graph[node_a].emplace_back(node_b, edge_ba_idx, capacity, false);  // Forward (residual) edge
         graph[node_b].emplace_back(node_a, edge_ab_idx, 0, true);          // Reverse (used flow) edge
     };
@@ -189,7 +189,7 @@ inline auto max_flow_graph_construction(const hplus::instance& inst) -> std::pai
     for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
         // Find this action's effect
         // To prevent duplicates in the adjacency lists always create a dummy node so that we have: pcf -> dummy -> effect(s)
-        unsigned int eff_node = graph.size();
+        auto eff_node = static_cast<unsigned int>(graph.size());
         graph.emplace_back();
 
         actions_effect[act_i] = eff_node;
@@ -217,7 +217,7 @@ inline auto max_flow_graph_construction(const hplus::instance& inst) -> std::pai
     }
 
     // Adding the edges linking the sink with the rest of the graph
-    for (const auto& gfact : inst.goal) {
+    for (const auto gfact : inst.goal) {
         add_edge(gfact, sink, 0);  // This must be adjusted according the selected pcf
     }
     actions_effect[sink_action] = sink;
@@ -235,7 +235,7 @@ inline auto compute_r3_incremental(const hplus::instance& inst, std::vector<std:
     double removed_flow = 0;
 
     // Fix goal's pcf
-    for (const auto& gfact : inst.goal) {
+    for (const auto gfact : inst.goal) {
         unsigned int to_idx = 0;
         for (unsigned int i = 0; i < graph[gfact].size(); i++) {
             if (graph[gfact][i].to == sink) {
@@ -506,7 +506,7 @@ auto fract_lm_sep::get_r3_violated_landmark(const hplus::execution& exec, const 
         // =========== Minimization procedure helpers =========== //
         // ====================================================== //
         auto round_action = [&](int act_idx) {
-            rounded_act = landmark[act_idx];
+            rounded_act = landmark[static_cast<size_t>(act_idx)];
             prev_act_val = relax_point[rounded_act];
             relax_point[rounded_act] = 1;
             // R1 R2 preparations
@@ -549,7 +549,7 @@ auto fract_lm_sep::get_r3_violated_landmark(const hplus::execution& exec, const 
         };
 
         auto terminate_condition = [&]() {
-            if (CHECK_STOP()) {
+            if (CHECK_STOP()) {  // This has a meaning only inside the cutloop, but it's not a problem because inside of CPLEX it's his job to stop
                 return true;
             }
 

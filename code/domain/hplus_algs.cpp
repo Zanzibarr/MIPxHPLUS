@@ -59,7 +59,7 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
     if (!isint(line, 0)) {
         LOG_ERROR_S("Corrupted file");
     }
-    unsigned int num_variables = stoi(line);
+    auto num_variables = static_cast<unsigned int>(stoi(line));
     std::vector<int> var_ranges = std::vector<int>(num_variables);
     for (unsigned int var_i = 0; var_i < num_variables; var_i++) {
         // process each variable
@@ -169,7 +169,7 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
     if (!isint(line, 0)) {
         LOG_ERROR_S("Corrupted file");
     }
-    inst.m = stoi(line);
+    inst.m = static_cast<unsigned int>(stoi(line));
     inst.actions = std::vector<action>(inst.m);
     inst.actions_names = std::vector<std::string>(inst.m);
     std::vector<std::vector<std::pair<unsigned int, unsigned int>>> tmp_act_pre(inst.m);
@@ -246,7 +246,7 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
         }
         unsigned int cost{1};
         if (!inst.equal_costs) {
-            cost = stoi(line);
+            cost = static_cast<unsigned int>(stoi(line));
             if (checkcosts == -1) {
                 checkcosts = static_cast<int>(cost);
             } else if (static_cast<unsigned int>(checkcosts) != cost) {
@@ -291,18 +291,18 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
     // ====================================================== //
 
     LOG_INFO_S("Performing binary expansion");
-    size_t n_exp{0};
-    std::vector<size_t> offsets(num_variables);
+    unsigned int n_exp{0};
+    std::vector<unsigned int> offsets(num_variables);
     for (size_t i = 0; i < num_variables; i++) {
         offsets[i] = n_exp;
-        n_exp += var_ranges[i];
+        n_exp += static_cast<size_t>(var_ranges[i]);
     }
     BinarySet istate = BinarySet(n_exp);
     inst.goal = BinarySet(n_exp);
     for (size_t i = 0; i < num_variables; i++) {
-        istate.add(offsets[i] + tmp_istate[i]);
+        istate.add(offsets[i] + static_cast<unsigned int>(tmp_istate[i]));
         if (tmp_goal[i] >= 0) {
-            inst.goal.add(offsets[i] + tmp_goal[i]);
+            inst.goal.add(offsets[i] + static_cast<unsigned int>(tmp_goal[i]));
         }
     }
     inst.n = n_exp;
@@ -310,10 +310,10 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
         std::vector<unsigned int> act_pre;
         std::vector<unsigned int> act_eff;
         for (const auto& [var, val] : tmp_act_pre[i]) {
-            act_pre.push_back(offsets[var] + val);
+            act_pre.push_back(offsets[var] + static_cast<unsigned int>(val));
         }
         for (const auto& [var, val] : tmp_act_eff[i]) {
-            act_eff.push_back(offsets[var] + val);
+            act_eff.push_back(offsets[var] + static_cast<unsigned int>(val));
         }
         inst.actions[i].pre_sparse = act_pre;
         inst.actions[i].eff_sparse = act_eff;
@@ -326,18 +326,18 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
     LOG_INFO_S("Removing initial state variables");
     std::vector<size_t> istate_offsets(inst.n);
     size_t n_opt{inst.n};
-    for (size_t i = 0, counter = 0; i < inst.n; i++) {
+    for (unsigned int i = 0, counter = 0; i < inst.n; i++) {
         if (istate[i]) {
             counter++;
             n_opt--;
         }
         istate_offsets[i] = counter;
     }
-    inst.n = n_opt;
+    inst.n = static_cast<unsigned int>(n_opt);
     BinarySet goal_opt{inst.n};
-    for (const auto& var : inst.goal) {
+    for (const auto var : inst.goal) {
         if (!istate[var]) {
-            goal_opt.add(var - istate_offsets[var]);
+            goal_opt.add(static_cast<unsigned int>(var - istate_offsets[var]));
         }
     }
     inst.goal = goal_opt;
@@ -347,12 +347,12 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
         std::vector<unsigned int> act_eff;
         for (const auto& var : inst.actions[i].pre_sparse) {
             if (!istate[var]) {
-                act_pre.push_back(var - istate_offsets[var]);
+                act_pre.push_back(static_cast<unsigned int>(var - istate_offsets[var]));
             }
         }
         for (const auto& var : inst.actions[i].eff_sparse) {
             if (!istate[var]) {
-                act_eff.push_back(var - istate_offsets[var]);
+                act_eff.push_back(static_cast<unsigned int>(var - istate_offsets[var]));
             }
         }
         inst.actions[i].pre_sparse = act_pre;

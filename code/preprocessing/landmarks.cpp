@@ -103,7 +103,7 @@ void prep::landmark_extraction(hplus::instance& inst, std::vector<std::vector<un
         }
     }
 
-    for (const auto& g_fact : inst.goal) {
+    for (const auto g_fact : inst.goal) {
         for (const auto& g_factlm : landmarks_ret[g_fact]) {
             if (inst.fixed_facts[g_factlm]) {
                 continue;

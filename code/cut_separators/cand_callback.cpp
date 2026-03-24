@@ -45,7 +45,7 @@ auto candidatepoint_info(const hplus::instance& inst, const std::vector<double>&
     // Only actions with no preconditions can be applied at first
     std::deque<unsigned int> queue;
     std::unordered_set<unsigned int> act_in_queue;
-    for (const auto& act_i : used_actions) {
+    for (const auto act_i : used_actions) {
         if (inst.actions[act_i].pre_sparse.empty()) {
             queue.push_back(act_i);
             act_in_queue.insert(act_i);
@@ -59,7 +59,7 @@ auto candidatepoint_info(const hplus::instance& inst, const std::vector<double>&
         queue.pop_front();
         act_in_queue.erase(act_i);
         reachable_action_sequence.push_back(act_i);
-        unreachable_actions.erase(unreachable_actions.begin() + static_cast<long>(sorted_find(unreachable_actions, act_i)));
+        unreachable_actions.erase(unreachable_actions.begin() + sorted_find(unreachable_actions, act_i));
 
         // Compute new state
         if (bs_contains(reachable_state, inst.actions[act_i].eff_sparse)) {
@@ -123,7 +123,8 @@ void reject_with_new_sol(CPXCALLBACKCONTEXTptr context, hplus::instance& inst, h
     hplus::update_sol(inst, sol, stats);
 
     // Give CPLEX the better solution
-    CPX_HANDLE_CALL(CPXcallbackpostheursoln(context, ncols, ind.data(), val.data(), static_cast<double>(sol.cost), CPXCALLBACKSOLUTION_NOCHECK));
+    CPX_HANDLE_CALL(CPXcallbackpostheursoln(context, static_cast<int>(ncols), ind.data(), val.data(), static_cast<double>(sol.cost),
+                                            CPXCALLBACKSOLUTION_NOCHECK));
 
     constexpr int rejind{0};
     constexpr int rejbegin{0};
@@ -142,7 +143,7 @@ void callbacks::candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::e
 
     std::vector<double> xstar(inst.m + inst.nfadd);
     double cost{CPX_INFBOUND};
-    CPX_HANDLE_CALL(CPXcallbackgetcandidatepoint(context, xstar.data(), 0, inst.m + inst.nfadd - 1, &cost));
+    CPX_HANDLE_CALL(CPXcallbackgetcandidatepoint(context, xstar.data(), 0, static_cast<int>(inst.m + inst.nfadd - 1), &cost));
 
     const auto& [reachable_action_sequence, unreachable_actions, unused_actions, reachable_state, used_first_achievers] =
         candidatepoint_info(inst, xstar);
@@ -150,12 +151,10 @@ void callbacks::candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::e
     // If the solution is feasible, we don't have to cut it
     if (unreachable_actions.empty()) {
         ASSERT(reachable_state.superset_of(inst.goal));
-        unsigned int cost{0};
-        for (const auto& act_i : reachable_action_sequence) {
-            cost += inst.actions[act_i].cost;
-        }
         // Check wether this is a better solution than the one we already have
-        hplus::update_sol(inst, hplus::solution{.sequence = reachable_action_sequence, .cost = cost, .updating = false}, stats);
+        hplus::update_sol(
+            inst, hplus::solution{.sequence = reachable_action_sequence, .cost = static_cast<unsigned int>(std::llround(cost)), .updating = false},
+            stats);
         return;
     }
 
@@ -182,7 +181,7 @@ void callbacks::candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::e
     unsigned int lmc_violated{1};
     if (exec.cand_cuts.find('l') != std::string::npos) {
         const auto& [found, lmcut_landmarks] = int_lm_sep::get_lmcut_violated_landmarks(exec, inst, xstar);
-        lmc_violated = lmcut_landmarks.size();
+        lmc_violated = static_cast<unsigned int>(lmcut_landmarks.size());
         if (found) {
             landmarks.insert(landmarks.end(), lmcut_landmarks.begin(), lmcut_landmarks.end());
         }

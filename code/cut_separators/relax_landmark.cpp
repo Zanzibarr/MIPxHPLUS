@@ -21,7 +21,7 @@ auto relax_cuts::add_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::executio
     }
     for (const auto& landmark : landmarks) {
         std::vector<int> ind(landmark.size());
-        int nnz{0};
+        unsigned int nnz{0};
         for (const auto& act_i : landmark) {
             ind[nnz++] = static_cast<int>(act_i);
         }
@@ -31,7 +31,7 @@ auto relax_cuts::add_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::executio
         constexpr int begin{0};
         constexpr int purgeable{CPX_USECUT_FORCE};
         constexpr int local{0};
-        CPX_HANDLE_CALL(CPXcallbackaddusercuts(context, 1, nnz, &rhs, &sense, &begin, ind.data(), val.data(), &purgeable, &local));
+        CPX_HANDLE_CALL(CPXcallbackaddusercuts(context, 1, static_cast<int>(nnz), &rhs, &sense, &begin, ind.data(), val.data(), &purgeable, &local));
     }
-    return landmarks.size();
+    return static_cast<unsigned int>(landmarks.size());
 }

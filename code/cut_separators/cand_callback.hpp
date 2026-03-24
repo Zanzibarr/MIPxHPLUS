@@ -25,7 +25,7 @@ inline void reject_with_lm_cut(CPXCALLBACKCONTEXTptr context, const std::vector<
     constexpr double rhs{1.0};
     constexpr char sense{'G'};
     constexpr int begin{0};
-    CPX_HANDLE_CALL(CPXcallbackrejectcandidate(context, 1, landmark.size(), &rhs, &sense, &begin, ind.data(), val.data()));
+    CPX_HANDLE_CALL(CPXcallbackrejectcandidate(context, 1, static_cast<int>(landmark.size()), &rhs, &sense, &begin, ind.data(), val.data()));
 }
 
 /// Reject the current candidate point with a Subtour Elimination Constraint
@@ -42,7 +42,7 @@ inline void reject_with_sec_cut(CPXCALLBACKCONTEXTptr context, const std::vector
                           std::back_inserter(ind));  // labels in the cycle are the indexes for the first adders in the cplex model
         val.insert(val.end(), cycle.size(), 1.0);
     }
-    CPX_HANDLE_CALL(CPXcallbackrejectcandidate(context, cycles.size(), static_cast<int>(ind.size()), rhs.data(), sense.data(), begin.data(),
+    CPX_HANDLE_CALL(CPXcallbackrejectcandidate(context, static_cast<int>(cycles.size()), static_cast<int>(ind.size()), rhs.data(), sense.data(), begin.data(),
                                                ind.data(), val.data()));
 }
 

@@ -32,7 +32,7 @@ auto init() -> std::tuple<hplus::execution, hplus::instance, hplus::statistics> 
     // Hide ^C from terminal
     struct termios t{};
     tcgetattr(STDIN_FILENO, &t);
-    t.c_lflag &= ~ECHOCTL;
+    t.c_lflag &= static_cast<tcflag_t>(~ECHOCTL);
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &t);
     hplus::execution exec;
     hplus::init(exec);

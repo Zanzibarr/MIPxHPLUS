@@ -1,3 +1,5 @@
+#include <algorithm>
+
 #include "bs.hxx"
 #include "bs_utils.hpp"
 #include "heuristic.hpp"
@@ -55,8 +57,7 @@ void heur::greedy(const hplus::execution& exec, hplus::instance& inst, hplus::st
 
         for (const auto& eff : new_eff) {
             for (const auto& act_i : inst.act_with_pre[eff]) {
-                if (bs_contains(state, inst.actions[act_i].pre_sparse) &&
-                    std::find(candidates.begin(), candidates.end(), act_i) == candidates.end()) {
+                if (bs_contains(state, inst.actions[act_i].pre_sparse) && std::ranges::find(candidates, act_i) == candidates.end()) {
                     candidates.push_back(act_i);
                 }
             }

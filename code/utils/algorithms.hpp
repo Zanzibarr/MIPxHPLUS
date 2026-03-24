@@ -24,12 +24,12 @@ static inline void insert_sorted(std::vector<T>& vec, T value) {
 
 template <typename T>
 [[nodiscard]]
-static inline auto sorted_find(const std::vector<T>& vec, T value) -> size_t {
+static inline auto sorted_find(const std::vector<T>& vec, T value) -> unsigned int {
     auto iter = std::lower_bound(vec.begin(), vec.end(), value);
     if (iter != vec.end() && *iter == value) {
-        return static_cast<size_t>(iter - vec.begin());
+        return static_cast<unsigned int>(iter - vec.begin());
     }
-    return static_cast<size_t>(-1);  // Not found
+    return static_cast<unsigned int>(-1);  // Not found
 }
 
 template <typename T>

@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cstddef>
+#include <string>
 #include <tuple>
 
 #include "algorithms.hpp"
@@ -65,7 +66,7 @@ void ve::add_acyclicity_constraints(hplus::instance& inst, CPXENVptr& env, CPXLP
             break;
         }
 
-        const unsigned int idx = nodes_queue.top();
+        const auto idx = static_cast<unsigned int>(nodes_queue.top());
         nodes_queue.pop();
 
         // Graph structure:
@@ -145,7 +146,8 @@ void ve::add_acyclicity_constraints(hplus::instance& inst, CPXENVptr& env, CPXLP
     unsigned int count{0};
     for (unsigned int var_i = 0; var_i < inst.n; var_i++) {
         inst.veg_starts[var_i] = count;
-        CPX_HANDLE_CALL(CPXnewcols(env, lp, inst.veg_cumulative_graph[var_i].size(), objs.data(), lbs.data(), ubs.data(), types.data(), nullptr));
+        CPX_HANDLE_CALL(CPXnewcols(env, lp, static_cast<int>(inst.veg_cumulative_graph[var_i].size()), objs.data(), lbs.data(), ubs.data(),
+                                   types.data(), nullptr));
         count += inst.veg_cumulative_graph[var_i].size();
         stopcheck();
     }
@@ -161,8 +163,8 @@ void ve::add_acyclicity_constraints(hplus::instance& inst, CPXENVptr& env, CPXLP
     const auto get_fa_idx = [&inst, &fa_start](unsigned int act_idx, unsigned int var_count) {
         return static_cast<int>(fa_start + inst.fadd_cpx_start[act_idx] + var_count);
     };
-    const auto get_veg_idx = [&inst, &veg_start](unsigned int var_i, unsigned int var_j) {
-        return static_cast<int>(veg_start + inst.veg_starts[var_i] + static_cast<unsigned int>(sorted_find(inst.veg_cumulative_graph[var_i], var_j)));
+    const auto get_veg_idx = [&inst, &veg_start](unsigned int var_a, unsigned int var_b) {
+        return static_cast<int>(veg_start + inst.veg_starts[var_a] + sorted_find(inst.veg_cumulative_graph[var_a], var_b));
     };
 
     std::vector<int> ind(3);
@@ -180,7 +182,7 @@ void ve::add_acyclicity_constraints(hplus::instance& inst, CPXENVptr& env, CPXLP
                 var_count++;
                 ind[0] = get_veg_idx(var_i, var_j);
                 val[0] = -1;
-                ind[1] = get_fa_idx(act_i, var_count);
+                ind[1] = get_fa_idx(act_i, static_cast<unsigned int>(var_count));
                 val[1] = 1;
                 // if the VEG variable was eliminated, we can directly eliminate the first adder too
                 if (!std::binary_search(inst.veg_cumulative_graph[var_i].begin(), inst.veg_cumulative_graph[var_i].end(), var_j)) {
@@ -257,18 +259,18 @@ void ve::post_warm_start(hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
                 continue;
             }
 
-            unsigned int fadd_idx = inst.m + inst.fadd_cpx_start[act_i] + var_count;
+            unsigned int fadd_idx = inst.m + inst.fadd_cpx_start[act_i] + static_cast<unsigned int>(var_count);
             val[fadd_idx] = 1;
             unsigned int var_idx = inst.m + inst.nfadd + var_i;
             val[var_idx] = 1;
             for (const auto& var_j : inst.actions[act_i].pre_sparse) {
-                unsigned int veg_idx =
-                    inst.m + inst.nfadd + inst.n + static_cast<int>(inst.veg_starts[var_j] + sorted_find(inst.veg_cumulative_graph[var_j], var_i));
+                auto loc = static_cast<unsigned int>(inst.veg_starts[var_j] + sorted_find(inst.veg_cumulative_graph[var_j], var_i));
+                unsigned int veg_idx = inst.m + inst.nfadd + inst.n + loc;
                 val[veg_idx] = 1;
             }
         }
         state |= inst.actions[act_i].eff_sparse;
     }
 
-    CPX_HANDLE_CALL(CPXaddmipstarts(env, lp, 1, ncols, &izero, ind.data(), val.data(), &effortlevel, nullptr));
+    CPX_HANDLE_CALL(CPXaddmipstarts(env, lp, 1, static_cast<int>(ncols), &izero, ind.data(), val.data(), &effortlevel, nullptr));
 }

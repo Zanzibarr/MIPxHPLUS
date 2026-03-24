@@ -50,7 +50,7 @@ void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::
 
     std::vector<double> relax_point(inst.m + inst.nfadd);
     double obj{CPX_INFBOUND};
-    CPX_HANDLE_CALL(CPXcallbackgetrelaxationpoint(context, relax_point.data(), 0, inst.m + inst.nfadd - 1, &obj));
+    CPX_HANDLE_CALL(CPXcallbackgetrelaxationpoint(context, relax_point.data(), 0, static_cast<int>(inst.m + inst.nfadd - 1), &obj));
 
     // Fix numerical errors
     for (auto& val : relax_point) {
