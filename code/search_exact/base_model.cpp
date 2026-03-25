@@ -312,8 +312,6 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, CPXE
         }
         stopcheck();
     }
-
-    CPXwriteprob(env, lp, "../../logs/cpxout/lp/test.lp", "LP");
 }
 
 void exact::get_cplex_solution(hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, const CPXENVptr& env, const CPXLPptr& lp) {

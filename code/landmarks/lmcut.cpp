@@ -403,7 +403,7 @@ void LMcut::check_landmark(const std::vector<unsigned int>& landmark) {
     }
 
     if (found) {  // If this was a valid landmark we wouldn't be able to find a valid plan to the goal
-        LOG_WARN_S(vtos(landmark, static_cast<unsigned int>(landmark.size())));
+        LOG_WARN_S(vtos(landmark));
         LOG_WARN_S("inst_->m: " + std::to_string(inst_->m));
         LOG_WARN_S("GOAL:" + std::string(inst_->goal));
         for (const auto& act_i : landmark) {

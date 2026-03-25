@@ -11,8 +11,6 @@
 #include "timer.hxx"
 #include "utils.hpp"
 
-using std::tuple;
-
 Timer GLOBAL_TIMER;
 
 namespace {
