@@ -292,19 +292,19 @@ template <typename T>
 [[nodiscard]]
 static inline auto vtos(std::vector<T> v, int size = -1) -> std::string {
     if (size == -1) {
-        size = v.size();
+        size = static_cast<int>(v.size());
     }
     std::string s;
-    if (v.size() <= size) {
+    if (v.size() <= static_cast<unsigned int>(size)) {
         for (const auto& x : v) {
             s.append(std::to_string(x)).append(";");
         }
     } else {
-        for (unsigned int i = 0; i < size / 2; i++) {
+        for (unsigned int i = 0; i < static_cast<unsigned int>(size) / 2; i++) {
             s.append(std::to_string(v[i])).append(";");
         }
-        s.append("...[").append(std::to_string(v.size() - size)).append("];");
-        for (unsigned int i = size / 2; i > 0; i--) {
+        s.append("...[").append(std::to_string(v.size() - static_cast<unsigned int>(size))).append("];");
+        for (unsigned int i = static_cast<unsigned int>(size) / 2; i > 0; i--) {
             s.append(std::to_string(v[v.size() - i])).append(";");
         }
     }
