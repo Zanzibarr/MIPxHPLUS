@@ -39,8 +39,7 @@ make
 ### Build options (CMake parameters)
 
 - **-DCPLEX_PATH=**\<path_to_cplex>: (absolute path), specify a custom path to the CPLEX installation (see the CMakeLists.txt to see which are the default ones (CPLEX_POSSIBLE_PATHS) or append your to that list to avoid specifying it every time)
-- **-DCMAKE_BUILD_TYPE=**Debug/Release: Build type (default is Debug)
-- **-DENABLE_WARNINGS=**1: enable all types of compile warnings (default is 0)
+- **-DCMAKE_BUILD_TYPE=**Debug/Release: Build type (default is Debug), Debug mode enables warnings
 
 ### Run options
 

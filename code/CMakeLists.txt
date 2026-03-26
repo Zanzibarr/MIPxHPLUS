@@ -22,9 +22,6 @@ endif()
 set(CMAKE_CXX_FLAGS_DEBUG "-g -O0 -fsanitize=address,undefined -fno-omit-frame-pointer -fno-sanitize-recover=all")
 set(CMAKE_CXX_FLAGS_RELEASE "-O3 -DNDEBUG")
 
-# Compiler flags with option for customization
-option(TREAT_WARNINGS_AS_ERRORS "Treat warnings as errors" OFF)
-
 # Warnings always enabled in debug builds
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     add_compile_options(
@@ -51,10 +48,6 @@ if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         -Wformat=2
         -Wunused
     )
-endif()
-
-if(TREAT_WARNINGS_AS_ERRORS)
-    add_compile_options(-Werror)
 endif()
 
 if(NOT DEFINED CPLEX_PATH)
