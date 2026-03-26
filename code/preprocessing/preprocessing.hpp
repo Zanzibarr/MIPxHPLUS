@@ -31,6 +31,7 @@ void eliminated_facts_removal(hplus::instance& inst, std::vector<std::vector<uns
 void eliminated_actions_removal(hplus::instance& inst);
 
 inline void lmcut_landmarks_extraction(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats) {
+    auto _lmcut = make_scoped_timer<"lmcut">(STATS);
     LMcut lmcut(inst, exec.preplm_min.find('g') != std::string::npos, exec.preplm_min.find('c') != std::string::npos);
 
     std::map<char, hmax_function> hmax_functions{

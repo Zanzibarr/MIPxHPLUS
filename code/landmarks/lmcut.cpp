@@ -335,7 +335,6 @@ auto LMcut::compute_lmcut_private(const hmax_function& hmax) -> std::pair<std::v
 }
 
 auto LMcut::compute_lmcut(const hmax_function& hmax) -> std::pair<std::vector<std::vector<unsigned int>>, double> {
-    auto _lmcut = make_scoped_timer<"lmcut">(STATS);
     init();
 
     return compute_lmcut_private(hmax);

@@ -14,7 +14,7 @@
 
 void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
     LOG_INFO_S("Parsing input file");
-    auto _parsing = make_scoped_timer<"parsing">(STATS);
+    auto _parsing = make_scoped_timer<"parsing.file">(STATS);
 
     std::ifstream file(exec.file.c_str(), std::ifstream::in);
     if (!file.good()) {
@@ -406,6 +406,8 @@ void hplus::update_sol(instance& inst, const solution& sol, statistics& stats) {
 }
 
 void hplus::run(execution& exec, instance& inst, statistics& stats) {
+    auto _total = make_scoped_timer<"total">(STATS);
+
     if (inst.sol_s == solution_status::INFEAS) {
         return;
     }

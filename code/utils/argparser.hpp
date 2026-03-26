@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <csignal>
 #include <iostream>
+#include <stats_registry.hxx>
 
 #include "args.hxx"
 #include "execution.hpp"
@@ -19,6 +20,8 @@
 #include "logger.hxx"
 
 static inline void parse_cli(const int argc, const char** argv, hplus::execution& exec) {
+    auto _parsing = make_scoped_timer<"parsing.cli">(STATS);
+
     args::ArgumentParser parser(
         "Find a solution / the optimal solution to the deletefree relaxation of a SAS+ planning task\nVersion: " + std::string(VERSION),
         "Copyright 2025 Matteo Zanella, Domenico Salvagnin");

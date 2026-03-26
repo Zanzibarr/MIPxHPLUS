@@ -26,6 +26,18 @@ HOW I DO VERSIONING:
 <!-- ### :rocket: Performance Improvements -->
 
 
+## [3.1.2] - 2026/03/26
+### :warning: Known issues
+- Execution on MacOS is (sometimes) non-deterministic (this is a CPLEX bug for ARM MacOS)
+### :ballot_box_with_check: Fixed
+- Wrong time measurements mess up results for fastest runs
+<!-- ### :heavy_exclamation_mark: Changed -->
+<!-- ### :heavy_plus_sign: Added -->
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+<!-- ### :rocket: Performance Improvements -->
+
+
 ## [3.1.1] - 2026/03/21
 ### :warning: Known issues
 - Execution on MacOS is (sometimes) non-deterministic

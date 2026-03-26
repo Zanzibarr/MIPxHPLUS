@@ -49,37 +49,34 @@ auto main(const int argc, const char** argv) -> int {
     try {
         auto [exec, inst, stats] = init();
 
-        {
-            auto _total = make_scoped_timer<"total">(STATS);
+        parse_cli(argc, argv, exec);
+        hplus::read_file(exec, inst, stats);
 
-            parse_cli(argc, argv, exec);
-            hplus::read_file(exec, inst, stats);
+        hplus::print(exec);
+        hplus::print(inst);
 
-            hplus::print(exec);
-            hplus::print(inst);
-
-            switch (exec.type) {
-                case hplus::exec_type::INFO:
-                    close();
-                    return EXIT_SUCCESS;
-                case hplus::exec_type::RUN:
-                    hplus::run(exec, inst, stats);
-                    break;
-                default:
-                    LOG_ERROR_S("Unhandled execution type in main: " + std::to_string(static_cast<int>(exec.type)));
-            }
-
-            // NOTE: All updates to the best solution and statistics, must be done immediatelly (es. in the cand callback or at the end of a search
-            // algorithm), since however we get here, I assume that inst and stats are updated and no other operations are needed.
-
-            hplus::print_sol(inst);
-            if (inst.sol_s == hplus::solution_status::INFEAS) {
-                stats.lower_bound = INFBOUND_DBL;
-            }
-            if (inst.sol_s == hplus::solution_status::LOST) {
-                stats.status = HPLUS_STATUS_LOST;
-            }
+        switch (exec.type) {
+            case hplus::exec_type::INFO:
+                close();
+                return EXIT_SUCCESS;
+            case hplus::exec_type::RUN:
+                hplus::run(exec, inst, stats);
+                break;
+            default:
+                LOG_ERROR_S("Unhandled execution type in main: " + std::to_string(static_cast<int>(exec.type)));
         }
+
+        // NOTE: All updates to the best solution and statistics, must be done immediatelly (es. in the cand callback or at the end of a search
+        // algorithm), since however we get here, I assume that inst and stats are updated and no other operations are needed.
+
+        hplus::print_sol(inst);
+        if (inst.sol_s == hplus::solution_status::INFEAS) {
+            stats.lower_bound = INFBOUND_DBL;
+        }
+        if (inst.sol_s == hplus::solution_status::LOST) {
+            stats.status = HPLUS_STATUS_LOST;
+        }
+
         hplus::print(stats);
         close();
 
