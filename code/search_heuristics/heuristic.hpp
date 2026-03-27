@@ -29,11 +29,17 @@ constexpr auto hadd(double fact_a, double fact_b) -> double {
 }
 
 struct greedychoice_userhandle {
-    std::vector<double> values;                         // hmax/hadd values for each proposition
-    std::vector<unsigned int> goal_sparse;              // sparse representation of the goal
-    std::stack<std::pair<unsigned int, double>> trail;  // trail for hmax/hadd updates
-    priority_queue<double> pq;                          // priority queue for hmax/hadd updates
+    std::vector<double> values;                                // hmax/hadd values for each proposition
+    std::vector<unsigned int> goal_sparse;                     // sparse representation of the goal
+    std::stack<std::pair<unsigned int, double>> trail;         // trail for fact value changes
+    std::stack<std::pair<unsigned int, double>> action_trail;  // trail for action-level changes (hadd_pre / pcf_val)
+    priority_queue<double> pq;                                 // priority queue for hmax/hadd updates
     BinarySet used_actions;
+    // hadd optimization: incremental precondition sums
+    std::vector<double> hadd_pre;  // hadd_pre[i] = sum of values[pre] for all pre of action i
+    // hmax optimization: PCF tracking, mirrors lmcut.cpp
+    std::vector<int> pcf;         // argmax precondition index per action (-1 = unset)
+    std::vector<double> pcf_val;  // values[pcf[i]]
 };
 
 void greedy(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats,
