@@ -6,9 +6,10 @@ _To see info about this project, please refer to the [Readme](Readme.md)._
 
 <!--
 HOW I DO VERSIONING:
-- Increase x.. whenever I have a groundbreaking update to the code
-- Increase .x. whenever a new feature has been properly tested
-- Increase ..x for testing or developing new features / fixing bugs
+- Increase x... for a groundbreaking update to the code (e.g. refactoring of some kind)
+- Increase .x.. for updated/new feature (that change what the code does, eg different algorithm)
+- Increase ..x. for new implementations (that doesn't change fundamentaly what the code does)
+- Increase ...x for bug fixes
 
 - Increasing a digit implies the reset of all following ones to 0 
 -->
@@ -30,8 +31,8 @@ HOW I DO VERSIONING:
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->
 ### :heavy_exclamation_mark: Changed
-- Optimized preprocessing
-- Optimized parsing
+- Optimized parsing implementation
+- Optimized preprocessing implementation
 <!-- ### :heavy_plus_sign: Added -->
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
@@ -40,12 +41,10 @@ HOW I DO VERSIONING:
 
 ## [3.1.3] - 2026/03/27
 <!-- ### :warning: Known issues -->
-### :ballot_box_with_check: Fixed
-- [3.1.3.1 - 2026/03/28] Bug in fact landmarks extraction
-- [3.1.3.1 - 2026/03/28] Bug in timelimit handling
+<!-- ### :ballot_box_with_check: Fixed -->
 ### :heavy_exclamation_mark: Changed
-- Optimized hmax/hadd greedy choice
-- Using watch preconditions in greedy algorithm
+- Updated greedy implementation
+- Updated hmax/hadd greedy choice implementation
 <!-- ### :heavy_plus_sign: Added -->
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
