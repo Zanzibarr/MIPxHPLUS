@@ -1,6 +1,5 @@
 #include <deque>
 
-#include "bs_utils.hpp"
 #include "limits.hxx"
 #include "preprocessing.hpp"
 
@@ -13,15 +12,13 @@ void prep::landmark_extraction(hplus::instance& inst, std::vector<std::vector<un
 
     BinarySet s_set{inst.n};
 
-    // add to the queue all initial actions...
+    // add to the queue all initial actions (those with no preconditions)
     std::deque<unsigned int> actions_queue;
-    std::unordered_set<unsigned int> acts_in_queue;
+    BinarySet acts_in_queue{inst.m};
     for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
-        // ... and since the initial state is empty, the initial actions are those with no preconditions (pre.empty() is O(n) while
-        // pre_sparse.empty() is O(1))
         if (inst.actions[act_i].pre_sparse.empty()) {
             actions_queue.push_back(act_i);
-            acts_in_queue.insert(act_i);
+            acts_in_queue.add(act_i);
         }
     }
 
@@ -33,51 +30,97 @@ void prep::landmark_extraction(hplus::instance& inst, std::vector<std::vector<un
         }
     }
 
+    // Watch preconditions for O(1) applicability checks against s_set.
+    // watch_s[act] = one precondition of act not yet in s_set (inst.n = sentinel: action is applicable)
+    // watching_s[fact] = actions that are currently watching 'fact'
+    // applicable[act] = true once all preconditions of act are in s_set
+    std::vector<unsigned int> watch_s(inst.m, inst.n);
+    std::vector<std::vector<unsigned int>> watching_s(inst.n);
+    BinarySet applicable{inst.m};
+    for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
+        if (inst.actions[act_i].pre_sparse.empty()) {
+            applicable.add(act_i);
+        } else {
+            // s_set is empty at init — first precondition is always unsatisfied
+            const unsigned int watched = inst.actions[act_i].pre_sparse[0];
+            watch_s[act_i] = watched;
+            watching_s[watched].push_back(act_i);
+        }
+    }
+
     while (!actions_queue.empty()) {
         const auto act_i = actions_queue.front();
-        const hplus::action& act{inst.actions[act_i]};
+        const auto& act = inst.actions[act_i];
         actions_queue.pop_front();
-        acts_in_queue.erase(act_i);
+        acts_in_queue.remove(act_i);
 
         BinarySet x_a{inst.n + 1};
         for (const auto& eff : act.eff_sparse) {
             x_a.add(eff);
         }
+
+        // Compute the union of precondition landmarks once for all effects of this action.
+        BinarySet x_union{x_a};
+        bool x_union_full = false;
+        for (const auto& pre : act.pre_sparse) {
+            // if variable pre has the "full" flag then the union generates a "full" bitfield
+            if (landmarks[pre][inst.n]) {
+                x_union_full = true;
+                break;
+            }
+            x_union |= landmarks[pre];
+        }
+
         for (const auto& eff : act.eff_sparse) {
             s_set.add(eff);
 
-            BinarySet x{x_a};
-            for (const auto& pre : act.pre_sparse) {
-                // if variable eff' has the "full" flag then the unification generates a "full" bitfield -> no need to unificate, just set the flag
-                if (landmarks[pre][inst.n]) {
-                    x.add(inst.n);
-                    // if x is now full we can exit, since all further unions won't change x
-                    break;
+            // Update watch preconditions for actions watching this newly reached fact.
+            // Swap-erase pattern: we always remove act_j from watching_s[eff] since eff is
+            // now in s_set and should never be watched again.
+            for (size_t wi = 0; wi < watching_s[eff].size();) {
+                const unsigned int act_j = watching_s[eff][wi];
+                bool moved = false;
+                for (const auto& pre : inst.actions[act_j].pre_sparse) {
+                    if (!s_set[pre]) {
+                        watch_s[act_j] = pre;
+                        watching_s[pre].push_back(act_j);
+                        moved = true;
+                        break;
+                    }
                 }
-                x |= landmarks[pre];
+                watching_s[eff][wi] = watching_s[eff].back();
+                watching_s[eff].pop_back();
+                if (!moved) {
+                    applicable.add(act_j);
+                    watch_s[act_j] = inst.n;  // sentinel: no unsatisfied precondition
+                }
             }
 
-            // we then check if L[eff] != X, and if they are the same we skip... since X will be the intersection between L[eff] and (the current) x,
-            // if x is full, then X = L[P], so we can already skip
-            if (x[inst.n]) {
+            // if x_union is already full, intersection with landmarks[eff] cannot shrink it —
+            // no useful landmark update is possible for this effect
+            if (x_union_full) {
                 continue;
             }
 
-            // if the set for variable eff is the full set of variables, the intersection generates back x -> we can skip the intersection
+            BinarySet lm_new{x_union};
+
+            // if the set for variable eff is the full set of variables, the intersection
+            // generates back lm_new -> we can skip the intersection
             if (!landmarks[eff][inst.n]) {
-                x &= landmarks[eff];
+                lm_new &= landmarks[eff];
             }
 
-            // we already know that x is not the full set now, so if the set for variable eff is the full set, we know that x is not equal to the
-            // set for variable eff -> we can skip the check
-            if (!landmarks[eff][inst.n] && x == landmarks[eff]) {
+            // we already know that lm_new is not the full set now, so if the set for variable
+            // eff is the full set, we know that lm_new is not equal to the set for variable eff
+            if (!landmarks[eff][inst.n] && lm_new == landmarks[eff]) {
                 continue;
             }
 
-            landmarks[eff] = x;
+            landmarks[eff] = lm_new;
             for (const auto& act_j : act_with_pre[eff]) {
-                if (bs_contains(s_set, inst.actions[act_j].pre_sparse) && !acts_in_queue.contains(act_j)) {
+                if (applicable[act_j] && !acts_in_queue[act_j]) {
                     actions_queue.push_back(act_j);
+                    acts_in_queue.add(act_j);
                 }
             }
         }

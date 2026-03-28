@@ -1,11 +1,10 @@
 /**
  * @file limits.hxx
  * @brief Utilities about setting memory/time limits
- * @version 1.0.0
+ * @version 1.0.1
  *
  * @author Matteo Zanella <matteozanella2@gmail.com>
  * Copyright 2025 Matteo Zanella
- * @see https://github.com/Zanzibarr/limits
  *
  * SPDX-License-Identifier: MIT
  */
@@ -25,10 +24,8 @@ inline int GLOBAL_TERMINATE_CONDITION = 0;
 
 namespace timelim {
 
-namespace {
-bool stop_flag = false;
-std::thread time_thread;
-}  // namespace
+inline bool stop_flag = false;
+inline std::thread time_thread;
 
 inline void set_time_limit(unsigned int seconds) {
     stop_flag = false;

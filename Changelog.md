@@ -26,9 +26,23 @@ HOW I DO VERSIONING:
 <!-- ### :rocket: Performance Improvements -->
 
 
-## [3.1.3] - 2026/03/27
+## [3.1.4] - 2026/03/28
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->
+### :heavy_exclamation_mark: Changed
+- Optimized preprocessing
+- Optimized parsing
+<!-- ### :heavy_plus_sign: Added -->
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+<!-- ### :rocket: Performance Improvements -->
+
+
+## [3.1.3] - 2026/03/27
+<!-- ### :warning: Known issues -->
+### :ballot_box_with_check: Fixed
+- [3.1.3.1 - 2026/03/28] Bug in fact landmarks extraction
+- [3.1.3.1 - 2026/03/28] Bug in timelimit handling
 ### :heavy_exclamation_mark: Changed
 - Optimized hmax/hadd greedy choice
 - Using watch preconditions in greedy algorithm

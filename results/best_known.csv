@@ -1267,14 +1267,14 @@ organic-synthesis-split-opt18-strips-p09,True,47.0
 organic-synthesis-split-opt18-strips-p10,True,47.0
 organic-synthesis-split-opt18-strips-p11,True,73.0
 organic-synthesis-split-opt18-strips-p12,True,39.0
-organic-synthesis-split-opt18-strips-p13,False,274.0
+organic-synthesis-split-opt18-strips-p13,False,261.0
 organic-synthesis-split-opt18-strips-p14,True,55.0
 organic-synthesis-split-opt18-strips-p15,False,245.0
 organic-synthesis-split-opt18-strips-p16,True,103.0
 organic-synthesis-split-opt18-strips-p17,False,479.0
 organic-synthesis-split-opt18-strips-p18,False,637.0
 organic-synthesis-split-opt18-strips-p19,True,155.0
-organic-synthesis-split-opt18-strips-p20,False,448.0
+organic-synthesis-split-opt18-strips-p20,False,435.0
 organic-synthesis-split-sat18-strips-p01,True,216.0
 organic-synthesis-split-sat18-strips-p02,True,247.0
 organic-synthesis-split-sat18-strips-p03,True,246.0
@@ -1820,7 +1820,7 @@ scanalyzer-08-strips-p26,True,26.0
 scanalyzer-08-strips-p27,True,28.0
 scanalyzer-08-strips-p28,True,36.0
 scanalyzer-08-strips-p29,True,40.0
-scanalyzer-08-strips-p30,False,52.0
+scanalyzer-08-strips-p30,False,48.0
 scanalyzer-opt11-strips-p01,True,12.0
 scanalyzer-opt11-strips-p02,True,20.0
 scanalyzer-opt11-strips-p03,True,22.0
@@ -1860,7 +1860,7 @@ scanalyzer-sat11-strips-p16,True,62.0
 scanalyzer-sat11-strips-p17,True,70.0
 scanalyzer-sat11-strips-p18,True,36.0
 scanalyzer-sat11-strips-p19,True,40.0
-scanalyzer-sat11-strips-p20,False,49.0
+scanalyzer-sat11-strips-p20,False,48.0
 schedule-probschedule-10-0,True,10.0
 schedule-probschedule-10-1,True,8.0
 schedule-probschedule-10-2,True,10.0

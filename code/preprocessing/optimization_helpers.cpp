@@ -1,32 +1,37 @@
-#include "algorithms.hpp"
 #include "preprocessing.hpp"
 
 void prep::eliminated_facts_removal(hplus::instance& inst, std::vector<std::vector<unsigned int>>& landmarks) {
-    // Remove eliminated facts from preconditions and effects
     unsigned int removed{static_cast<unsigned int>(inst.eliminated_facts.sparse().size())};
+
     std::vector<unsigned int> removed_offsets(inst.n, 0);
+    unsigned int current_removed = 0;
+    for (unsigned int i = 0; i < inst.n; i++) {
+        removed_offsets[i] = current_removed;
+        if (inst.eliminated_facts[i]) {
+            ++current_removed;
+        }
+    }
+
     for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
         std::vector<unsigned int> new_pre;
         std::vector<unsigned int> new_eff;
-        unsigned int current_removed{0};
-        for (unsigned int i = 0; i < inst.n; i++) {
-            removed_offsets[i] = current_removed;
-            if (!inst.eliminated_facts[i]) {
-                if (sorted_contains(inst.actions[act_i].pre_sparse, i)) {
-                    new_pre.push_back(i - current_removed);
-                }
-                if (sorted_contains(inst.actions[act_i].eff_sparse, i)) {
-                    new_eff.push_back(i - current_removed);
-                }
-            } else {
-                current_removed++;
+        new_pre.reserve(inst.actions[act_i].pre_sparse.size());
+        new_eff.reserve(inst.actions[act_i].eff_sparse.size());
+        for (const auto& pre : inst.actions[act_i].pre_sparse) {
+            if (!inst.eliminated_facts[pre]) {
+                new_pre.push_back(pre - removed_offsets[pre]);
             }
         }
-        inst.actions[act_i].pre_sparse = new_pre;
-        inst.actions[act_i].eff_sparse = new_eff;
+        for (const auto& eff : inst.actions[act_i].eff_sparse) {
+            if (!inst.eliminated_facts[eff]) {
+                new_eff.push_back(eff - removed_offsets[eff]);
+            }
+        }
+        inst.actions[act_i].pre_sparse = std::move(new_pre);
+        inst.actions[act_i].eff_sparse = std::move(new_eff);
     }
 
-    // Adjust positions of facts in the goal
+    // Adjust goal
     BinarySet new_goal(inst.n - removed);
     for (const auto p : inst.goal) {
         if (!inst.eliminated_facts[p]) {
@@ -35,7 +40,7 @@ void prep::eliminated_facts_removal(hplus::instance& inst, std::vector<std::vect
     }
     inst.goal = new_goal;
 
-    // Adjust positions of facts in landmarks
+    // Adjust landmarks
     unsigned int counter{0};
     for (const auto fact : !inst.eliminated_facts) {
         std::vector<unsigned int> copy(landmarks[fact]);
@@ -50,7 +55,7 @@ void prep::eliminated_facts_removal(hplus::instance& inst, std::vector<std::vect
     }
     landmarks.resize(counter);
 
-    // Adjust positions of facts in fixed_facts
+    // Adjust fixed_facts
     BinarySet new_fixed_facts(inst.n - removed);
     for (const auto fact : inst.fixed_facts) {
         if (!inst.eliminated_facts[fact]) {

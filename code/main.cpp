@@ -38,7 +38,6 @@ auto init() -> std::tuple<hplus::execution, hplus::instance, hplus::statistics> 
     hplus::init(inst);
     hplus::statistics stats{};
     hplus::init(stats);
-    GLOBAL_TIMER.start();
     return {exec, inst, stats};
 }
 
@@ -57,7 +56,6 @@ auto main(const int argc, const char** argv) -> int {
 
         switch (exec.type) {
             case hplus::exec_type::INFO:
-                close();
                 return EXIT_SUCCESS;
             case hplus::exec_type::RUN:
                 hplus::run(exec, inst, stats);

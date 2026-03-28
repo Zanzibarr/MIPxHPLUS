@@ -1,7 +1,6 @@
 #include "hplus_algs.hpp"
 
-#include <unordered_set>
-
+#include "algorithms.hpp"
 #include "bs_utils.hpp"
 #include "exact.hpp"
 #include "execution.hpp"
@@ -174,23 +173,32 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
     inst.actions_names = std::vector<std::string>(inst.m);
     std::vector<std::vector<std::pair<unsigned int, unsigned int>>> tmp_act_pre(inst.m);
     std::vector<std::vector<std::pair<unsigned int, unsigned int>>> tmp_act_eff(inst.m);
+
+    // Allocated once and reset per action to avoid repeated allocation of size num_variables
+    std::vector<int> act_pre(num_variables, -1);
+    std::vector<int> act_eff(num_variables, -1);
+    std::vector<unsigned int> pre_touched;
+    std::vector<unsigned int> eff_touched;
+    std::vector<std::string> tokens;
+
     for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
         // process each action
+        pre_touched.clear();
+        eff_touched.clear();
         std::getline(file, line);  // begin_operator
         if (line != "begin_operator") {
             LOG_ERROR_S("Corrupted file");
         }
         std::getline(file, line);  // symbolic action name
-        std::string name{line};
-        std::vector<int> act_pre(num_variables, -1);
+        std::string name{std::move(line)};
         std::getline(file, line);  // number of prevail conditions
         if (!isint(line, 0, static_cast<int>(num_variables))) {
             LOG_ERROR_S("Corrupted file");
         }
         const unsigned int n_pre{static_cast<unsigned int>(stoi(line))};
+        tmp_act_pre[act_i].reserve(n_pre);
         for (unsigned int pre_i = 0; pre_i < n_pre; pre_i++) {
             // parsing each prevail condition
-            std::vector<std::string> tokens;
             std::getline(file, line);  // pair 'variable value'
             tokens = split_string(line, ' ');
             if (tokens.size() != 2) {
@@ -205,17 +213,17 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
             }
             const int value{stoi(tokens[1])};
             act_pre[var] = value;
+            insert_sorted(pre_touched, var);
         }
         std::getline(file, line);  // number of effects
         if (!isint(line, 0)) {
             LOG_ERROR_S("Corrupted file");
         }
         const unsigned int n_eff{static_cast<unsigned int>(stoi(line))};
-        std::vector<int> act_eff(num_variables, -1);
+        tmp_act_eff[act_i].reserve(n_eff);
         for (unsigned int eff_i = 0; eff_i < n_eff; eff_i++) {
             // parsing each effect
             std::getline(file, line);  // effect line
-            std::vector<std::string> tokens;
             tokens = split_string(line, ' ');
             if (tokens.size() != 4) {
                 LOG_ERROR_S("This program won't handle effect conditions");  // not expecting effect conditions
@@ -236,9 +244,11 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
             }
             const int eff_val{stoi(tokens[3])};
             if (pre_val >= 0) {
+                insert_sorted(pre_touched, var);  // insert_sorted deduplicates, so no need to check act_pre[var]
                 act_pre[var] = pre_val;
             }
             act_eff[var] = eff_val;
+            insert_sorted(eff_touched, var);
         }
         std::getline(file, line);  // action cost
         if (!isint(line, 0)) {
@@ -258,15 +268,16 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
             LOG_ERROR_S("Corrupted file");
         }
         inst.actions[act_i] = action{.pre_sparse = std::vector<unsigned int>(), .eff_sparse = std::vector<unsigned int>(), .cost = cost};
-        inst.actions_names[act_i] = name;
+        inst.actions_names[act_i] = std::move(name);
 
-        for (unsigned int i = 0; i < num_variables; i++) {
-            if (act_pre[i] >= 0) {
-                tmp_act_pre[act_i].emplace_back(i, act_pre[i]);
-            }
-            if (act_eff[i] >= 0) {
-                tmp_act_eff[act_i].emplace_back(i, act_eff[i]);
-            }
+        // Build sparse from touched indices only — O(n_pre + n_eff) instead of O(num_variables)
+        for (const unsigned int var : pre_touched) {
+            tmp_act_pre[act_i].emplace_back(var, static_cast<unsigned int>(act_pre[var]));
+            act_pre[var] = -1;  // reset for next action
+        }
+        for (const unsigned int var : eff_touched) {
+            tmp_act_eff[act_i].emplace_back(var, static_cast<unsigned int>(act_eff[var]));
+            act_eff[var] = -1;  // reset for next action
         }
     }
     inst.equal_costs = equalcosts_check;
@@ -307,16 +318,18 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
     }
     inst.n = n_exp;
     for (size_t i = 0; i < inst.m; i++) {
-        std::vector<unsigned int> act_pre;
-        std::vector<unsigned int> act_eff;
+        std::vector<unsigned int> act_pre_exp;
+        std::vector<unsigned int> act_eff_exp;
+        act_pre_exp.reserve(tmp_act_pre[i].size());
+        act_eff_exp.reserve(tmp_act_eff[i].size());
         for (const auto& [var, val] : tmp_act_pre[i]) {
-            act_pre.push_back(offsets[var] + static_cast<unsigned int>(val));
+            act_pre_exp.push_back(offsets[var] + static_cast<unsigned int>(val));
         }
         for (const auto& [var, val] : tmp_act_eff[i]) {
-            act_eff.push_back(offsets[var] + static_cast<unsigned int>(val));
+            act_eff_exp.push_back(offsets[var] + static_cast<unsigned int>(val));
         }
-        inst.actions[i].pre_sparse = act_pre;
-        inst.actions[i].eff_sparse = act_eff;
+        inst.actions[i].pre_sparse = std::move(act_pre_exp);
+        inst.actions[i].eff_sparse = std::move(act_eff_exp);
     }
 
     // ====================================================== //
@@ -343,20 +356,22 @@ void hplus::read_file(execution& exec, instance& inst, statistics& stats) {
     inst.goal = goal_opt;
     inst.nfadd = 0;
     for (size_t i = 0; i < inst.m; i++) {
-        std::vector<unsigned int> act_pre;
-        std::vector<unsigned int> act_eff;
+        std::vector<unsigned int> act_pre_irem;
+        std::vector<unsigned int> act_eff_irem;
+        act_pre_irem.reserve(inst.actions[i].pre_sparse.size());
+        act_eff_irem.reserve(inst.actions[i].eff_sparse.size());
         for (const auto& var : inst.actions[i].pre_sparse) {
             if (!istate[var]) {
-                act_pre.push_back(static_cast<unsigned int>(var - istate_offsets[var]));
+                act_pre_irem.push_back(static_cast<unsigned int>(var - istate_offsets[var]));
             }
         }
         for (const auto& var : inst.actions[i].eff_sparse) {
             if (!istate[var]) {
-                act_eff.push_back(static_cast<unsigned int>(var - istate_offsets[var]));
+                act_eff_irem.push_back(static_cast<unsigned int>(var - istate_offsets[var]));
             }
         }
-        inst.actions[i].pre_sparse = act_pre;
-        inst.actions[i].eff_sparse = act_eff;
+        inst.actions[i].pre_sparse = std::move(act_pre_irem);
+        inst.actions[i].eff_sparse = std::move(act_eff_irem);
         inst.nfadd += inst.actions[i].eff_sparse.size();
     }
 
@@ -406,6 +421,11 @@ void hplus::update_sol(instance& inst, const solution& sol, statistics& stats) {
 }
 
 void hplus::run(execution& exec, instance& inst, statistics& stats) {
+    GLOBAL_TIMER.start();
+    if (exec.timelimit > 0) {
+        timelim::set_time_limit(exec.timelimit);
+    }
+
     auto _total = make_scoped_timer<"total">(STATS);
 
     if (inst.sol_s == solution_status::INFEAS) {

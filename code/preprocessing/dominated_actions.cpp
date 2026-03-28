@@ -7,8 +7,6 @@ void prep::dominated_actions_extraction(hplus::instance& inst, const std::vector
     const auto& rem_act{(!inst.eliminated_actions).sparse()};
 
     std::vector<BinarySet> act_flm(inst.m, BinarySet(inst.n));
-
-    // compute the landmarks for each action remaining
     for (const auto& act_i : rem_act) {
         for (const auto& var_i : inst.actions[act_i].pre_sparse) {
             for (const auto& fact : landmarks[var_i]) {
@@ -34,7 +32,6 @@ void prep::dominated_actions_extraction(hplus::instance& inst, const std::vector
 
     BinarySet dominated_actions{inst.m};
 
-    // find all dominated actions and eliminate them
     for (const auto& dominant_act : rem_act) {
         if (dominated_actions[dominant_act]) {
             continue;
@@ -43,13 +40,14 @@ void prep::dominated_actions_extraction(hplus::instance& inst, const std::vector
         for (const auto& dominated_act : candidates.find_subsets(actions_effects[dominant_act])) {
             if (dominant_act == dominated_act || inst.actions[dominant_act].cost > inst.actions[dominated_act].cost ||
                 !bs_contains(act_flm[dominated_act], inst.actions[dominant_act].pre_sparse)) {
-                [[likely]] continue;
+                continue;
             }
 
             dominated_actions.add(dominated_act);
             inst.eliminated_actions.add(dominated_act);
             candidates.remove(dominated_act, actions_effects[dominated_act]);
         }
+
         if (CHECK_STOP()) {
             [[unlikely]] throw timelimit_exception("Reached time limit.");
         }

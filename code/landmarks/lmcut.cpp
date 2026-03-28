@@ -10,8 +10,6 @@
 #include "landmark_utils.hpp"
 #include "limits.hxx"
 #include "logger.hxx"
-#include "stats_registry.hxx"
-#include "timer.hxx"
 #include "utils.hpp"
 
 auto hmax::hmax_arbitrary(const std::vector<unsigned int>& preconditions, const std::vector<double>& hmax_values,

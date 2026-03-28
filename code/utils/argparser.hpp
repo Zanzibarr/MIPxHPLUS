@@ -263,11 +263,7 @@ static inline void parse_cli(const int argc, const char** argv, hplus::execution
 
     // Setup limits
     if (time_limit) {
-        unsigned int t{args::get(time_limit)};
-        exec.timelimit = t;
-        if (t > 0) {
-            timelim::set_time_limit(t);
-        }
+        exec.timelimit = args::get(time_limit);
     }
     if (memory_limit) {
         unsigned int m{args::get(memory_limit)};
