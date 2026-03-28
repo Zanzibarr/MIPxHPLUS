@@ -1,7 +1,7 @@
 /**
  * @file limits.hxx
  * @brief Utilities about setting memory/time limits
- * @version 1.0.1
+ * @version 1.0.2
  *
  * @author Matteo Zanella <matteozanella2@gmail.com>
  * Copyright 2025 Matteo Zanella
@@ -14,9 +14,11 @@
 
 #include <sys/resource.h>
 
-#include <chrono>    // std::chrono
-#include <iostream>  // std::cerr
-#include <thread>    // std::thread
+#include <chrono>              // std::chrono
+#include <condition_variable>  // std::condition_variable
+#include <iostream>            // std::cerr
+#include <mutex>               // std::mutex
+#include <thread>              // std::thread
 
 inline int GLOBAL_TERMINATE_CONDITION = 0;
 
@@ -26,18 +28,20 @@ namespace timelim {
 
 inline bool stop_flag = false;
 inline std::thread time_thread;
+inline std::mutex cv_mutex;
+inline std::condition_variable stop_cv;
 
 inline void set_time_limit(unsigned int seconds) {
-    stop_flag = false;
-    GLOBAL_TERMINATE_CONDITION = 0;
-    auto start = std::chrono::steady_clock::now();
-    auto end = start + std::chrono::seconds(seconds);
+    {
+        std::lock_guard<std::mutex> lock(cv_mutex);
+        stop_flag = false;
+        GLOBAL_TERMINATE_CONDITION = 0;
+    }
+    auto end = std::chrono::steady_clock::now() + std::chrono::seconds(seconds);
 
     time_thread = std::thread([end]() {
-        while (std::chrono::steady_clock::now() <= end) {
-            if (stop_flag) return;
-            std::this_thread::sleep_for(std::chrono::milliseconds(100));
-        }
+        std::unique_lock<std::mutex> lock(cv_mutex);
+        stop_cv.wait_until(lock, end, [] { return stop_flag; });
         if (!stop_flag) {
             GLOBAL_TERMINATE_CONDITION = 1;
         }
@@ -45,7 +49,11 @@ inline void set_time_limit(unsigned int seconds) {
 }
 
 inline void cancel_time_limit() {
-    stop_flag = true;
+    {
+        std::lock_guard<std::mutex> lock(cv_mutex);
+        stop_flag = true;
+    }
+    stop_cv.notify_all();
     if (time_thread.joinable()) {
         time_thread.join();
     }

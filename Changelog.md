@@ -29,7 +29,8 @@ HOW I DO VERSIONING:
 
 ## [3.1.4] - 2026/03/28
 <!-- ### :warning: Known issues -->
-<!-- ### :ballot_box_with_check: Fixed -->
+### :ballot_box_with_check: Fixed
+- [3.1.4.1] Timelimit implementation slowed down fast instances
 ### :heavy_exclamation_mark: Changed
 - Optimized parsing implementation
 - Optimized preprocessing implementation
