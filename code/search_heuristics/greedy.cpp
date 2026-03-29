@@ -42,22 +42,13 @@ void heur::greedy(const hplus::execution& exec, hplus::instance& inst, hplus::st
         userhandle.values.resize(inst.n, std::numeric_limits<double>::infinity());
         userhandle.goal_sparse = inst.goal.sparse();
         userhandle.trail = std::stack<std::pair<unsigned int, double>>{};
-        userhandle.action_trail = std::stack<std::pair<unsigned int, double>>{};
+        userhandle.action_trail = std::stack<std::tuple<unsigned int, int, double>>{};
         userhandle.pq = priority_queue<double>{inst.n};
         userhandle.used_actions = BinarySet(inst.m);
+        userhandle.trail_flags = BinarySet(inst.n);
         heur::init_htype_values(inst, candidates, userhandle.values, userhandle.pq, exec.ws == hplus::warmstart::GHM ? heur::hmax : heur::hadd);
 
-        if (exec.ws == hplus::warmstart::GHA) {
-            // hadd optimization: initialize incremental precondition sums
-            userhandle.hadd_pre.resize(inst.m, 0.0);
-            for (unsigned int act_i = 0; act_i < inst.m; ++act_i) {
-                double sum = 0;
-                for (const auto& pre : inst.actions[act_i].pre_sparse) {
-                    sum += userhandle.values[pre];
-                }
-                userhandle.hadd_pre[act_i] = sum;
-            }
-        } else {
+        if (exec.ws == hplus::warmstart::GHM) {
             // hmax optimization: initialize PCF (argmax precondition) per action
             userhandle.pcf.assign(inst.m, -1);
             userhandle.pcf_val.resize(inst.m, 0.0);
@@ -71,6 +62,7 @@ void heur::greedy(const hplus::execution& exec, hplus::instance& inst, hplus::st
                 }
                 userhandle.pcf_val[act_i] = (max_val >= 0) ? max_val : 0.0;
             }
+            userhandle.action_trail_flags = BinarySet(inst.m);
         }
     }
 

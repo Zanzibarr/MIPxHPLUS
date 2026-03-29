@@ -8,6 +8,7 @@
 
 #include <list>
 #include <stack>
+#include <tuple>
 
 #include "bs.hxx"
 #include "execution.hpp"
@@ -29,15 +30,15 @@ constexpr auto hadd(double fact_a, double fact_b) -> double {
 }
 
 struct greedychoice_userhandle {
-    std::vector<double> values;                                // hmax/hadd values for each proposition
-    std::vector<unsigned int> goal_sparse;                     // sparse representation of the goal
-    std::stack<std::pair<unsigned int, double>> trail;         // trail for fact value changes
-    std::stack<std::pair<unsigned int, double>> action_trail;  // trail for action-level changes (hadd_pre / pcf_val)
-    priority_queue<double> pq;                                 // priority queue for hmax/hadd updates
+    std::vector<double> values;                                                 // hmax/hadd values for each proposition
+    std::vector<unsigned int> goal_sparse;                                      // sparse representation of the goal
+    std::stack<std::pair<unsigned int, double>> trail;                          // trail for fact value changes
+    std::stack<std::tuple<unsigned int, int, double>> action_trail;             // trail for hmax: (act, old_pcf, old_pcf_val)
+    priority_queue<double> pq;                                                  // priority queue for hmax/hadd updates
     BinarySet used_actions;
-    // hadd optimization: incremental precondition sums
-    std::vector<double> hadd_pre;  // hadd_pre[i] = sum of values[pre] for all pre of action i
-    // hmax optimization: PCF tracking, mirrors lmcut.cpp
+    BinarySet trail_flags;                                                      // tracks which facts are in trail (avoids duplicates)
+    BinarySet action_trail_flags;                                               // tracks which actions are in action_trail (hmax only)
+    // hmax optimization: PCF tracking
     std::vector<int> pcf;         // argmax precondition index per action (-1 = unset)
     std::vector<double> pcf_val;  // values[pcf[i]]
 };
