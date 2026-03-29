@@ -35,7 +35,12 @@ HOW I DO VERSIONING:
 <!-- ### :heavy_plus_sign: Added -->
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
-<!-- ### :rocket: Performance Improvements -->
+### :rocket: Performance Improvements
+- 3.1.4.1 vs 3.1.5 on compC_lmcutC_hadd:
+    - Heuristic Time: -39,-27,-21,-28%
+    - Solved: 2566 -> 2566
+    - Nodes: -0, -0, -0, -0%
+    - Time: -2,-4,-5,-2%
 
 
 ## [3.1.4] - 2026/03/28
@@ -48,7 +53,13 @@ HOW I DO VERSIONING:
 <!-- ### :heavy_plus_sign: Added -->
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
-<!-- ### :rocket: Performance Improvements -->
+### :rocket: Performance Improvements
+- 3.1.3 vs 3.1.4.1 on compC_lmcutC_hadd:
+    - File Parsing Time: -18,-20,-18,-24%
+    - Preprocessing Time: -33,-28,-17,-11%
+    - Solved: 2566 -> 2566
+    - Nodes: -0, -0, -0, -0%
+    - Time: -17,-16,-4,-0%
 
 
 ## [3.1.3] - 2026/03/27
@@ -382,9 +393,6 @@ This is the Master Thesis version (results of this version shown in my Master's 
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
 
-Here are shown the improvements achieved with the In-Out, Purging and Exit strategy in the custom cutloop
-<img src="results/plots/2.2.2_cloopv1_vs_cloopv2.svg" width="300"/>
-
 
 ## [2.2.2] - 2025/07/15
 <!-- ### :warning: Known issues -->
@@ -426,11 +434,6 @@ Here are shown the improvements achieved with the In-Out, Purging and Exit strat
 <!-- ### :heavy_plus_sign: Added -->
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
-
-Here are shown the improvements achieved by the refactoring (001* before, 002* after):  
-<img src="results/plots/2.2.0_refactoring_effects_tl.svg" width="300"/>
-<img src="results/plots/2.2.0_refactoring_effects_ve.svg" width="300"/>
-<img src="results/plots/2.2.0_refactoring_effects_lms.svg" width="300"/>
 
 
 ## [2.1.2] - 2025/06/01
