@@ -57,7 +57,7 @@ auto relax_cuts::add_sec_cut(CPXCALLBACKCONTEXTptr context, const hplus::instanc
     std::vector<double> val;
     std::vector<double> rhs;
     std::vector<char> sense(cycles.size(), 'L');
-    std::vector<int> purgeable(cycles.size(), CPX_USECUT_FORCE);
+    std::vector<int> purgeable(cycles.size(), CPX_USECUT_FILTER);
     std::vector<int> local(cycles.size(), 0);
     for (const auto& cycle : cycles) {
         begin.push_back(static_cast<int>(ind.size()));
@@ -66,7 +66,7 @@ auto relax_cuts::add_sec_cut(CPXCALLBACKCONTEXTptr context, const hplus::instanc
                           std::back_inserter(ind));  // labels in the cycle are the indexes for the first adders in the cplex model
         val.insert(val.end(), cycle.size(), 1.0);
     }
-    CPX_HANDLE_CALL(CPXcallbackaddusercuts(context, static_cast<int>(cycles.size()), static_cast<int>(ind.size()), rhs.data(), sense.data(), begin.data(), ind.data(),
-                                           val.data(), purgeable.data(), local.data()));
+    CPX_HANDLE_CALL(CPXcallbackaddusercuts(context, static_cast<int>(cycles.size()), static_cast<int>(ind.size()), rhs.data(), sense.data(),
+                                           begin.data(), ind.data(), val.data(), purgeable.data(), local.data()));
     return static_cast<unsigned int>(cycles.size());
 }

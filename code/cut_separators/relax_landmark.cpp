@@ -29,7 +29,7 @@ auto relax_cuts::add_lm_cut(CPXCALLBACKCONTEXTptr context, const hplus::executio
         constexpr double rhs{1};
         constexpr char sense{'G'};
         constexpr int begin{0};
-        constexpr int purgeable{CPX_USECUT_FORCE};
+        constexpr int purgeable{CPX_USECUT_FILTER};
         constexpr int local{0};
         CPX_HANDLE_CALL(CPXcallbackaddusercuts(context, 1, static_cast<int>(nnz), &rhs, &sense, &begin, ind.data(), val.data(), &purgeable, &local));
     }

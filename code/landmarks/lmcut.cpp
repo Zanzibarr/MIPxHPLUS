@@ -367,7 +367,7 @@ auto LMcut::fract_separation(const std::vector<double>& actions_weights, const h
         for (const auto& act_i : landmark) {
             sum += actions_weights[act_i];
         }
-        return sum >= 1;
+        return sum >= 1 - HPLUS_FRACT_LM_VIOLATION_EPSILON;
     });
 
     return {!landmarks.empty(), landmarks};

@@ -10,7 +10,7 @@
 // ############################## VERSION ############################## //
 // ##################################################################### //
 
-#define VERSION "3.1.5"
+#define VERSION "3.1.5.1"
 #define COMPILE_DATETIME __DATE__ + " " + __TIME__
 
 // ##################################################################### //
@@ -111,7 +111,7 @@
 #define HPLUS_DEF_PREP true
 #define HPLUS_DEF_PREP_LMCUT "aiv"
 #define HPLUS_ALL_LMCUT_PCF "aivr"
-#define HPLUS_DEF_PREP_LMCUT_MIN "gc"
+#define HPLUS_DEF_PREP_LMCUT_MIN "c"
 
 #define HPLUS_DEF_LOG "0"
 #define HPLUS_DEF_TIMELIMIT 60
@@ -119,7 +119,7 @@
 #define HPLUS_DEF_MEMORYLIMIT 4050
 
 #define HPLUS_DEF_CANDCUTS "l"
-#define HPLUS_DEF_CANDLM_MIN "gc"
+#define HPLUS_DEF_CANDLM_MIN "c"
 
 #define HPLUS_DEF_FRACTCUTS "l"
 #define HPLUS_DEF_FRACTCUTS_AT_NODES true
@@ -148,6 +148,7 @@
 
 #define HPLUS_CPX_INT_ROUNDING 0.5
 #define HPLUS_EPSILON 1e-6
+#define HPLUS_FRACT_LM_VIOLATION_EPSILON 1e-1
 
 #define HPLUS_DEF_CPX_SCREENOUTPUT CPX_OFF
 #define HPLUS_DEF_CPX_CLONELOG -1

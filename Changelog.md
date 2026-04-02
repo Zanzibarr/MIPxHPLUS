@@ -29,7 +29,9 @@ HOW I DO VERSIONING:
 
 ## [3.1.5] - 2026/03/29
 <!-- ### :warning: Known issues -->
-<!-- ### :ballot_box_with_check: Fixed -->
+### :ballot_box_with_check: Fixed
+- [3.1.5.1] Missing epsilon in fractional landmark violation check
+- [3.1.5.1] Using CPX_USECUT_FILTER in relaxation callback
 ### :heavy_exclamation_mark: Changed
 - Updated greedy implementation
 <!-- ### :heavy_plus_sign: Added -->
