@@ -1,9 +1,11 @@
 #include "relax_callback.hpp"
 
+#include <limits.hxx>
 #include <unordered_set>
 
 #include "stats_registry.hxx"
 #include "timer.hxx"
+#include "utils.hpp"
 
 [[nodiscard]]
 auto relax_cuts::relaxationpoint_info(const hplus::instance& inst, std::vector<double>& relax_point)
@@ -26,6 +28,14 @@ auto relax_cuts::relaxationpoint_info(const hplus::instance& inst, std::vector<d
 }
 
 void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, const hplus::instance& inst) {
+    // If the lower bound (CPLEX) and the best solution (ours) match, we already have the optimal solution -> exit
+    double best_lb{-1};
+    CPX_HANDLE_CALL(CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_BND, &best_lb));
+    if (best_lb >= inst.sol.cost - HPLUS_EPSILON) {
+        GLOBAL_TERMINATE_CONDITION = 1;  // This will stop CPLEX execution
+        return;
+    }
+
     int nodeuid{-1};
     int nodedepth{-1};
     CPX_HANDLE_CALL(CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODEUID, &nodeuid));

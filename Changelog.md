@@ -29,18 +29,19 @@ HOW I DO VERSIONING:
 
 ## [3.1.6] - 2026/04/09
 <!-- ### :warning: Known issues -->
-<!-- ### :ballot_box_with_check: Fixed -->
+### :ballot_box_with_check: Fixed
+- [3.1.6.1] Patch applied to candidate callback: sometimes CPLEX takes too much to realize that a posted solution is the optimal one... if we figure it out before it, we terminate the execution
 ### :heavy_exclamation_mark: Changed
 - Updated defaults for new best model
 <!-- ### :heavy_plus_sign: Added -->
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
 ### :rocket: Performance Improvements
-- lmcC_flmcG_lmcC_hadd with vs without cutloop:
+- lmcC_flmcG_lmcC_hadd with vs without cutloop (3.1.5.1):
     - Solved: 2646 -> 2646
     - Nodes: +19,-34,-38,-44%
     - Time: -5,-10,-0,+4%
-- lmcC_lmcC_hadd vs lmcC_flmcG_lmcC_hadd with no cutloop:
+- lmcC_lmcC_hadd vs lmcC_flmcG_lmcC_hadd with no cutloop (3.1.5.1):
     - Solved: 2619 -> 2648
     - Nodes: -33,-72,-80,-97%
     - Time: -0,-1,-10,-40%

@@ -478,7 +478,6 @@ void hplus::run(execution& exec, instance& inst, statistics& stats) {
 
         exec.exec_s = exec_status::CPX_EXEC;
         exact::exact(exec, inst, stats);
-        stopcheck();
 
     } catch (timelimit_exception& e) {
         LOG_WARN_S("OUT OF TIME");

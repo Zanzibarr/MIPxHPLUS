@@ -1,6 +1,7 @@
 #include "cand_callback.hpp"
 
 #include <deque>
+#include <limits.hxx>
 #include <numeric>
 #include <unordered_set>
 #include <vector>
@@ -138,6 +139,14 @@ void reject_with_new_sol(CPXCALLBACKCONTEXTptr context, hplus::instance& inst, h
 }  // namespace
 
 void callbacks::candidate_callback(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats) {
+    // If the lower bound (CPLEX) and the best solution (ours) match, we already have the optimal solution -> exit
+    double best_lb{-1};
+    CPX_HANDLE_CALL(CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_BND, &best_lb));
+    if (best_lb >= inst.sol.cost - HPLUS_EPSILON) {
+        GLOBAL_TERMINATE_CONDITION = 1;  // This will stop CPLEX execution
+        return;
+    }
+
     auto _cand = make_scoped_timer<"cand_callback">(STATS);
     STATS.counter_inc<"cand_calls">();
 

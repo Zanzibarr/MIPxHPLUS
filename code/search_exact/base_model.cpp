@@ -4,6 +4,7 @@
 #include "bs_utils.hpp"
 #include "exact.hpp"
 #include "hplus_algs.hpp"
+#include "utils.hpp"
 
 namespace {
 void parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp, const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats) {
@@ -103,6 +104,13 @@ void store_cplex_solution(hplus::execution& exec, hplus::instance& inst, hplus::
             if (set_zero) {
                 plan[act_i] = 0;
             }
+        }
+    } else {
+        // If the solution we have is the same/better than the one returned by cplex, we can skip the rest of this function
+        double obj{-1};
+        CPX_HANDLE_CALL(CPXgetobjval(env, lp, &obj));
+        if (obj >= inst.sol.cost - HPLUS_EPSILON) {
+            return;
         }
     }
 
@@ -325,6 +333,15 @@ void exact::get_cplex_solution(hplus::execution& exec, hplus::instance& inst, hp
 
     CPX_HANDLE_CALL(CPXgetbestobjval(env, lp, &stats.lower_bound));
     stats.lower_bound = std::max<double>(stats.lower_bound, 0);
+
+    // This is needed due to the patch applied to the beginning of the candidate/relaxation callback: if the lower and upper bounds match, we have the
+    // optimal. This is needed because CPLEX might return without having evaluated our posted optimal solution, so the status he has is FEAS, not OPT
+    // (even though the lower bound he gave use matches our best solution)
+    if (stats.lower_bound >= stats.cost - HPLUS_EPSILON) {
+        stats.lower_bound = static_cast<double>(stats.cost);  // Fix possible precision errors
+        stats.status = HPLUS_STATUS_OPT;
+        inst.sol_s = hplus::solution_status::OPT;
+    }
 
     LOG_INFO_S("Reading CPLEX solution");
     store_cplex_solution(exec, inst, stats, env, lp);
