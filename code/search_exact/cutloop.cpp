@@ -1,6 +1,5 @@
-#include <math.h>
-
 #include <algorithm>
+#include <cstdlib>
 #include <limits>
 
 #include "bs_utils.hpp"
@@ -9,6 +8,7 @@
 #include "limits.hxx"
 #include "relax_callback.hpp"
 #include "timer.hxx"
+#include "utils.hpp"
 
 namespace {
 inline void init_cutloop(CPXENVptr& env, CPXLPptr& lp) { CPX_HANDLE_CALL(CPXchgprobtype(env, lp, CPXPROB_LP)); }
@@ -157,19 +157,19 @@ inline auto generate_cuts(CPXENVptr& env, CPXLPptr& lp, const std::vector<double
 
 inline void pruning(CPXENVptr& env, CPXLPptr& lp, int base_constraints) {
     const int nrows{CPXgetnumrows(env, lp)};
-    if (nrows != base_constraints) {
-        std::vector<double> slack(
-            static_cast<unsigned int>(nrows - base_constraints));  // We don't remove base constraints... only those added in the cutloop
-        std::vector<int> deleted(static_cast<unsigned int>(nrows), 0);
-        CPX_HANDLE_CALL(CPXgetslack(env, lp, slack.data(), base_constraints, nrows - 1));
-        for (unsigned int i = 0; i < slack.size(); ++i) {
-            if (abs(slack[i]) > HPLUS_EPSILON) {
-                deleted[static_cast<unsigned int>(base_constraints) + i] =
-                    1;  // If the slack value for row i is not 0, mark that row as to be deleted
-            }
-        }
-        CPX_HANDLE_CALL(CPXdelsetrows(env, lp, deleted.data()));
+    if (nrows == base_constraints) {
+        return;
     }
+    std::vector<double> slack(
+        static_cast<unsigned int>(nrows - base_constraints));  // We don't remove base constraints... only those added in the cutloop
+    std::vector<int> deleted(static_cast<unsigned int>(nrows), 0);
+    CPX_HANDLE_CALL(CPXgetslack(env, lp, slack.data(), base_constraints, nrows - 1));
+    for (unsigned int i = 0; i < slack.size(); ++i) {
+        if (std::abs(slack[i]) > HPLUS_EPSILON) {
+            deleted[static_cast<unsigned int>(base_constraints) + i] = 1;  // If the slack value for row i is not 0, mark that row as to be deleted
+        }
+    }
+    CPX_HANDLE_CALL(CPXdelsetrows(env, lp, deleted.data()));
 }
 }  // namespace
 
@@ -250,7 +250,7 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
     LOG_INFO_S("Lower bound at start of cutloop: " + std::to_string(stats.lower_bound));
     while (repeat_cutloop() && !CHECK_STOP()) {
         std::vector<double> relax_point(ncols);
-        CPXgetx(env, lp, relax_point.data(), 0, static_cast<int>(ncols - 1));
+        CPX_HANDLE_CALL(CPXgetx(env, lp, relax_point.data(), 0, static_cast<int>(ncols - 1)));
 
         // Fix numerical errors
         for (auto& val : relax_point) {

@@ -32,6 +32,8 @@ HOW I DO VERSIONING:
 ### :ballot_box_with_check: Fixed
 - [3.1.5.1] Missing epsilon in fractional landmark violation check
 - [3.1.5.1] Using CPX_USECUT_FILTER in relaxation callback
+- [3.1.5.2] Wrong imports in cutloop functions
+- [3.1.5.2] Missing error checks in cutloop functions
 ### :heavy_exclamation_mark: Changed
 - Updated greedy implementation
 <!-- ### :heavy_plus_sign: Added -->
