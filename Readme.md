@@ -1,7 +1,7 @@
 # MIP formulations for Deletefree AI Planning
 ![C++](https://img.shields.io/badge/C%2B%2B-00599C?style=for-the-badge&logo=c%2B%2B&logoColor=white)
 
-### Version: 3.1.5  
+### Version: 3.1.6  
 _Refer to the [Changelog](Changelog.md) for info about versions._  
 
 
@@ -61,7 +61,7 @@ Here's a few examples:
 ./hplus problem.sas --a=cuts \
     --ws=0 \          # Don't use the primal heuristic as warm start
     --fract-minlm=0 \ # Don't use the LM minimalization procedure in relax callback
-    --cloop=0         # Don't use custom cutloop
+    --cloop=1         # Use custom cutloop
 ```
 
 ## Publications and Presentations

@@ -10,7 +10,7 @@
 // ############################## VERSION ############################## //
 // ##################################################################### //
 
-#define VERSION "3.1.5.2"
+#define VERSION "3.1.6"
 #define COMPILE_DATETIME __DATE__ + " " + __TIME__
 
 // ##################################################################### //
@@ -131,7 +131,7 @@
 #define HPLUS_DEF_MINIMIZATION_IMPROV true
 #define HPLUS_DEF_MINIMIZATION_VIOL 0
 
-#define HPLUS_DEF_CUSTOM_CUTLOOP true
+#define HPLUS_DEF_CUSTOM_CUTLOOP false
 #define HPLUS_DEF_CL_PRUNING true
 #define HPLUS_DEF_CL_MIN_ITER 20
 #define HPLUS_DEF_CL_IMPROV 0.005

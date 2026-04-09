@@ -27,6 +27,26 @@ HOW I DO VERSIONING:
 <!-- ### :rocket: Performance Improvements -->
 
 
+## [3.1.6] - 2026/04/09
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+### :heavy_exclamation_mark: Changed
+- Updated defaults for new best model
+<!-- ### :heavy_plus_sign: Added -->
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+### :rocket: Performance Improvements
+- lmcC_flmcG_lmcC_hadd with vs without cutloop:
+    - Solved: 2646 -> 2646
+    - Nodes: +19,-34,-38,-44%
+    - Time: -5,-10,-0,+4%
+- lmcC_lmcC_hadd vs lmcC_flmcG_lmcC_hadd with no cutloop:
+    - Solved: 2619 -> 2648
+    - Nodes: -33,-72,-80,-97%
+    - Time: -0,-1,-10,-40%
+- New best model is lmcC_flmcG_lmcC_hadd with no cutloop (default values have been updated)
+
+
 ## [3.1.5] - 2026/03/29
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed

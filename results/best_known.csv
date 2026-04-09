@@ -297,7 +297,7 @@ data-network-sat18-strips-p16,True,518.0
 data-network-sat18-strips-p17,True,589.0
 data-network-sat18-strips-p18,False,472.0
 data-network-sat18-strips-p19,True,1224.0
-data-network-sat18-strips-p20,False,682.0
+data-network-sat18-strips-p20,False,673.0
 depot-p01,True,10.0
 depot-p02,True,14.0
 depot-p03,True,22.0
@@ -338,7 +338,7 @@ driverlog-p15,True,30.0
 driverlog-p16,True,51.0
 driverlog-p17,True,57.0
 driverlog-p18,True,62.0
-driverlog-p19,False,85.0
+driverlog-p19,True,85.0
 driverlog-p20,True,79.0
 elevators-opt08-strips-p01,True,32.0
 elevators-opt08-strips-p02,True,26.0
@@ -1650,7 +1650,7 @@ pipesworld-tankage-p32-net4-b14-g5-t30,True,20.0
 pipesworld-tankage-p33-net4-b16-g5-t60,True,19.0
 pipesworld-tankage-p34-net4-b16-g6-t60,False,25.0
 pipesworld-tankage-p35-net4-b18-g4-t90,False,17.0
-pipesworld-tankage-p36-net4-b18-g6-t90,False,19.0
+pipesworld-tankage-p36-net4-b18-g6-t90,True,18.0
 pipesworld-tankage-p37-net4-b20-g5-t60,True,14.0
 pipesworld-tankage-p38-net4-b20-g7-t60,True,18.0
 pipesworld-tankage-p39-net4-b22-g7-t50,False,21.0
@@ -2331,11 +2331,11 @@ thoughtful-sat14-strips-p13_7_79-typed,False,82.0
 thoughtful-sat14-strips-p13_7_86-typed,False,82.0
 thoughtful-sat14-strips-target-typed-20,False,86.0
 thoughtful-sat14-strips-target-typed-21,False,96.0
-thoughtful-sat14-strips-target-typed-22,False,101.0
+thoughtful-sat14-strips-target-typed-22,False,100.0
 thoughtful-sat14-strips-target-typed-23,True,85.0
-thoughtful-sat14-strips-target-typed-24,False,82.0
+thoughtful-sat14-strips-target-typed-24,True,82.0
 thoughtful-sat14-strips-target-typed-25,False,84.0
-thoughtful-sat14-strips-target-typed-26,False,91.0
+thoughtful-sat14-strips-target-typed-26,False,90.0
 thoughtful-sat14-strips-target-typed-27,False,81.0
 thoughtful-sat14-strips-target-typed-28,False,84.0
 tidybot-opt11-strips-p01,True,4.0
@@ -2513,7 +2513,7 @@ transport-sat08-strips-p12,True,258.0
 transport-sat08-strips-p13,True,370.0
 transport-sat08-strips-p14,True,493.0
 transport-sat08-strips-p15,True,517.0
-transport-sat08-strips-p16,False,585.0
+transport-sat08-strips-p16,True,585.0
 transport-sat08-strips-p17,True,682.0
 transport-sat08-strips-p18,True,638.0
 transport-sat08-strips-p19,False,754.0
@@ -2525,13 +2525,13 @@ transport-sat08-strips-p24,True,638.0
 transport-sat08-strips-p25,True,680.0
 transport-sat08-strips-p26,True,631.0
 transport-sat08-strips-p27,False,824.0
-transport-sat08-strips-p28,False,846.0
+transport-sat08-strips-p28,False,837.0
 transport-sat08-strips-p29,False,958.0
 transport-sat08-strips-p30,False,1144.0
 transport-sat11-strips-p01,True,339.0
 transport-sat11-strips-p02,False,406.0
 transport-sat11-strips-p03,False,958.0
-transport-sat11-strips-p04,False,585.0
+transport-sat11-strips-p04,True,585.0
 transport-sat11-strips-p05,True,682.0
 transport-sat11-strips-p06,True,638.0
 transport-sat11-strips-p07,False,754.0
