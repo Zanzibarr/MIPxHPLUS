@@ -163,9 +163,10 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
         // Save to file the mps model
         {
             std::string instance_name = exec.file_name.substr(0, exec.file_name.find_last_of('.'));
-            std::string mps_file_path = std::format("{}/{}.mps", HPLUS_LOG_DIR, instance_name);
-            CPX_HANDLE_CALL(CPXwriteprob(env, lp, mps_file_path.c_str(), "MPS"));
+            std::string mps_file_path = std::format("{}/{}.sav", HPLUS_LOG_DIR, instance_name);
+            CPX_HANDLE_CALL(CPXwriteprob(env, lp, mps_file_path.c_str(), nullptr));
         }
+        exit(0);  // I care only about the mps and mst files
 
         run_cplex(env, lp, exec, stats);
 

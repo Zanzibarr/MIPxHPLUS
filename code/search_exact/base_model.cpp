@@ -17,6 +17,8 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplu
     std::vector<double> lbs(inst.m);
     std::vector<double> ubs(inst.m, 1.0);
     std::vector<char> types(inst.m, 'B');
+    std::vector<std::string> names(inst.m);
+    std::vector<char*> c_names;
 
     // -------- actions ------- //
     const unsigned int act_start{curr_col};
@@ -24,11 +26,13 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplu
     for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
         objs[count] = static_cast<double>(inst.actions[act_i].cost);
         lbs[count++] = (inst.fixed_actions[act_i] ? 1 : 0);
+        names[act_i] = std::format("act{}", act_i);
+        c_names.push_back(names[act_i].data());
     }
 
     curr_col += count;
 
-    CPX_HANDLE_CALL(CPXnewcols(env, lp, count, objs.data(), lbs.data(), ubs.data(), types.data(), nullptr));
+    CPX_HANDLE_CALL(CPXnewcols(env, lp, count, objs.data(), lbs.data(), ubs.data(), types.data(), c_names.data()));
     stopcheck();
 
     objs.clear();
@@ -39,24 +43,36 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplu
     ubs.resize(inst.n, 1.0);
     types.clear();
     types.resize(inst.n, 'B');
+    names.clear();
+    names.resize(inst.n);
 
     // --- first archievers --- //
     const unsigned int fa_start{curr_col};
     for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
+        c_names.clear();
+        for (unsigned int i = 0; i < inst.actions[act_i].eff_sparse.size(); i++) {
+            names[i] = std::format("fadd{}x{}", act_i, i);
+            c_names.push_back(names[i].data());
+        }
         curr_col += inst.actions[act_i].eff_sparse.size();
-        CPX_HANDLE_CALL(CPXnewcols(env, lp, inst.actions[act_i].eff_sparse.size(), objs.data(), lbs.data(), ubs.data(), types.data(), nullptr));
+        CPX_HANDLE_CALL(
+            CPXnewcols(env, lp, inst.actions[act_i].eff_sparse.size(), objs.data(), lbs.data(), ubs.data(), types.data(), c_names.data()));
         stopcheck();
     }
+
+    c_names.clear();
 
     // ------- variables ------ //
     const unsigned int var_start{curr_col};
     count = 0;
     for (unsigned int var_i = 0; var_i < inst.n; var_i++) {
         lbs[count++] = (inst.fixed_facts[var_i] || inst.goal[var_i]) ? 1 : 0;
+        names[var_i] = std::format("var{}", var_i);
+        c_names.push_back(names[var_i].data());
     }
     curr_col += count;
 
-    CPX_HANDLE_CALL(CPXnewcols(env, lp, count, objs.data(), lbs.data(), ubs.data(), types.data(), nullptr));
+    CPX_HANDLE_CALL(CPXnewcols(env, lp, count, objs.data(), lbs.data(), ubs.data(), types.data(), c_names.data()));
     stopcheck();
 
     stats.var_base = inst.n + inst.m + inst.nfadd;

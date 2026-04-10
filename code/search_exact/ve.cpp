@@ -136,13 +136,21 @@ void ve::add_acyclicity_constraints(const hplus::execution& exec, hplus::instanc
     std::vector<double> lbs(inst.n, 0.0);
     std::vector<double> ubs(inst.n, 1.0);
     std::vector<char> types(inst.n, 'B');
+    std::vector<std::string> names(inst.n);
+    std::vector<char*> c_names;
 
     inst.veg_starts.resize(inst.n);
 
     unsigned int count{0};
     for (unsigned int var_i = 0; var_i < inst.n; var_i++) {
         inst.veg_starts[var_i] = count;
-        CPX_HANDLE_CALL(CPXnewcols(env, lp, inst.veg_cumulative_graph[var_i].size(), objs.data(), lbs.data(), ubs.data(), types.data(), nullptr));
+        c_names.clear();
+        for (int i = 0; i < inst.n; i++) {
+            names[i] = std::format("veg{}{}", var_i, i);
+            c_names.push_back(names[i].data());
+        }
+        CPX_HANDLE_CALL(
+            CPXnewcols(env, lp, inst.veg_cumulative_graph[var_i].size(), objs.data(), lbs.data(), ubs.data(), types.data(), c_names.data()));
         count += inst.veg_cumulative_graph[var_i].size();
         stopcheck();
     }
@@ -241,6 +249,7 @@ void ve::post_warm_start(const hplus::execution& exec, hplus::instance& inst, CP
     std::vector<double> val(ncols, 0.0);
     constexpr int izero{0};
     constexpr int effortlevel{CPX_MIPSTART_NOCHECK};
+    std::vector<std::string> names;
 
     for (const auto& act_i : warm_start) {
         val[act_i] = 1;
@@ -264,13 +273,24 @@ void ve::post_warm_start(const hplus::execution& exec, hplus::instance& inst, CP
 
     // Save to file the mst warm start
     {
+        for (int i = 0; i < inst.m; i++) {
+            names.push_back(std::format("act{}", i));
+        }
+        for (int i = 0; i < inst.m; i++) {
+            for (int j = 0; j < inst.actions[i].eff_sparse.size(); j++) {
+                names.push_back(std::format("fadd{}x{}", i, j));
+            }
+        }
+        for (int i = 0; i < inst.n; i++) {
+            names.push_back(std::format("var{}", i));
+        }
         std::string instance_name = exec.file_name.substr(0, exec.file_name.find_last_of('.'));
         std::string mst_file_path = std::format("{}/{}.mst", HPLUS_LOG_DIR, instance_name);
         std::ofstream writer(mst_file_path);
         ASSERT(writer.is_open());
         writer << "# MIP start\n";
         for (unsigned int i = 0; i < ncols; i++) {
-            writer << std::format("x{} {}", i + 1, static_cast<unsigned int>(val[i])) << "\n";
+            writer << std::format("{} {}", names[i], static_cast<unsigned int>(val[i])) << "\n";
         }
     }
 
