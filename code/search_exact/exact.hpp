@@ -9,10 +9,12 @@
 
 #include <cplex.h>
 
+#include <format>
 #include <new>
 #include <numeric>
 
 #include "../cut_separators/callbacks.hpp"
+#include "utils.hpp"
 
 namespace tl {
 void add_acyclicity_constraints(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp);
@@ -157,6 +159,13 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
             callbacks::set_cplex_callbacks(exec, callback_userhandle, env, lp);
         }
         if (exec.ws != hplus::warmstart::NONE) post_warm_start(exec, inst, env, lp);
+
+        // Save to file the mps model
+        {
+            std::string instance_name = exec.file_name.substr(0, exec.file_name.find_last_of('.'));
+            std::string mps_file_path = std::format("{}/{}.mps", HPLUS_LOG_DIR, instance_name);
+            CPX_HANDLE_CALL(CPXwriteprob(env, lp, mps_file_path.c_str(), "MPS"));
+        }
 
         run_cplex(env, lp, exec, stats);
 

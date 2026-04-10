@@ -1,3 +1,4 @@
+#include <fstream>
 #include <set>
 #include <tuple>
 
@@ -259,6 +260,18 @@ void ve::post_warm_start(const hplus::execution& exec, hplus::instance& inst, CP
             }
         }
         state |= inst.actions[act_i].eff;
+    }
+
+    // Save to file the mst warm start
+    {
+        std::string instance_name = exec.file_name.substr(0, exec.file_name.find_last_of('.'));
+        std::string mst_file_path = std::format("{}/{}.mst", HPLUS_LOG_DIR, instance_name);
+        std::ofstream writer(mst_file_path);
+        ASSERT(writer.is_open());
+        writer << "# MIP start\n";
+        for (unsigned int i = 0; i < ncols; i++) {
+            writer << std::format("x{} {}", i + 1, static_cast<unsigned int>(val[i])) << "\n";
+        }
     }
 
     CPX_HANDLE_CALL(CPXaddmipstarts(env, lp, 1, ncols, &izero, ind.data(), val.data(), &effortlevel, nullptr));
