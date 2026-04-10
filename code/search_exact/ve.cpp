@@ -284,6 +284,11 @@ void ve::post_warm_start(const hplus::execution& exec, hplus::instance& inst, CP
         for (int i = 0; i < inst.n; i++) {
             names.push_back(std::format("var{}", i));
         }
+        for (int i = 0; i < inst.n; i++) {
+            for (int j = 0; j < (int)inst.veg_cumulative_graph[i].size(); j++) {
+                names.push_back(std::format("veg{}{}", i, j));
+            }
+        }
         std::string instance_name = exec.file_name.substr(0, exec.file_name.find_last_of('.'));
         std::string mst_file_path = std::format("{}/{}.mst", HPLUS_LOG_DIR, instance_name);
         std::ofstream writer(mst_file_path);
