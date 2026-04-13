@@ -65,6 +65,7 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplu
     const unsigned int var_start{curr_col};
     count = 0;
     for (unsigned int var_i = 0; var_i < inst.n; var_i++) {
+        count++;
         names[var_i] = std::format("var{}", var_i);
         c_names.push_back(names[var_i].data());
     }

@@ -188,9 +188,8 @@ void ve::add_acyclicity_constraints(const hplus::execution& exec, hplus::instanc
                 val[1] = 1;
                 // if the VEG variable was eliminated, we can directly eliminate the first adder too
                 if (!std::binary_search(inst.veg_cumulative_graph[var_i].begin(), inst.veg_cumulative_graph[var_i].end(), var_j)) {
-                    const char fix = 'B';
-                    const double zero = 0;
-                    CPX_HANDLE_CALL(CPXchgbds(env, lp, 1, &(ind[1]), &fix, &zero));
+                    stats.const_acyc++;
+                    CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, 1, &rhs_0, &sense_l, &begin, &(ind[1]), &(val[1]), nullptr, nullptr));
                     continue;
                 }
                 CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind.data(), val.data(), nullptr, nullptr));
@@ -215,9 +214,6 @@ void ve::add_acyclicity_constraints(const hplus::execution& exec, hplus::instanc
         }
     }
 
-    const std::vector<char> tmpfix(2, 'B');
-    const std::vector<double> tmpzero(2, 0.0);
-
     // Constraint C8
     for (const auto& [a, b, c] : triangles_list) {
         ind[0] = get_veg_idx(a, b);
@@ -226,9 +222,12 @@ void ve::add_acyclicity_constraints(const hplus::execution& exec, hplus::instanc
         val[1] = 1;
         ind[2] = get_veg_idx(a, c);
         val[2] = -1;
-        // if veg(a, c) is eliminated, we can simply eliminate the other two VEG varliables
+        // if veg(a, c) is eliminated, we can simply eliminate the other two VEG variables
         if (!std::binary_search(inst.veg_cumulative_graph[a].begin(), inst.veg_cumulative_graph[a].end(), c)) {
-            CPX_HANDLE_CALL(CPXchgbds(env, lp, 2, ind.data(), tmpfix.data(), tmpzero.data()));
+            stats.const_acyc++;
+            CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, 1, &rhs_0, &sense_l, &begin, ind.data(), val.data(), nullptr, nullptr));
+            stats.const_acyc++;
+            CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, 1, &rhs_0, &sense_l, &begin, &(ind[1]), &(val[1]), nullptr, nullptr));
             continue;
         }
         CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, 3, &rhs_1, &sense_l, &begin, ind.data(), val.data(), nullptr, nullptr));
