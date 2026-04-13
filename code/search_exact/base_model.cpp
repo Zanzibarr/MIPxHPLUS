@@ -14,7 +14,7 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplu
 
     unsigned int curr_col{0};
     std::vector<double> objs(inst.m);
-    std::vector<double> lbs(inst.m);
+    std::vector<double> lbs(inst.m, 0.0);
     std::vector<double> ubs(inst.m, 1.0);
     std::vector<char> types(inst.m, 'B');
     std::vector<std::string> names(inst.m);
@@ -24,8 +24,7 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplu
     const unsigned int act_start{curr_col};
     unsigned int count{0};
     for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
-        objs[count] = static_cast<double>(inst.actions[act_i].cost);
-        lbs[count++] = (inst.fixed_actions[act_i] ? 1 : 0);
+        objs[count++] = static_cast<double>(inst.actions[act_i].cost);
         names[act_i] = std::format("act{}", act_i);
         c_names.push_back(names[act_i].data());
     }
@@ -66,7 +65,6 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplu
     const unsigned int var_start{curr_col};
     count = 0;
     for (unsigned int var_i = 0; var_i < inst.n; var_i++) {
-        lbs[count++] = (inst.fixed_facts[var_i] || inst.goal[var_i]) ? 1 : 0;
         names[var_i] = std::format("var{}", var_i);
         c_names.push_back(names[var_i].data());
     }
@@ -95,6 +93,27 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplu
     constexpr double rhs_0{0}, rhs_1{1};
     constexpr int begin{0};
 
+    // Fixed actions (lb was set to 0 to avoid MPS bound issues): enforce via >= 1 constraint
+    ind.resize(1);
+    val.assign(1, 1.0);
+    for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
+        if (!inst.fixed_actions[act_i]) continue;
+        ind[0] = get_act_idx(act_i);
+        stats.const_base++;
+        CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, 1, &rhs_1, &sense_g, &begin, ind.data(), val.data(), nullptr, nullptr));
+    }
+
+    // Fixed facts / goal facts (lb was set to 0 to avoid MPS bound issues): enforce via >= 1 constraint
+    for (unsigned int var_i = 0; var_i < inst.n; var_i++) {
+        if (!inst.fixed_facts[var_i] && !inst.goal[var_i]) continue;
+        ind[0] = get_var_idx(var_i);
+        stats.const_base++;
+        CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, 1, &rhs_1, &sense_g, &begin, ind.data(), val.data(), nullptr, nullptr));
+    }
+
+    ind.resize(inst.m + 1);
+    val.resize(inst.m + 1);
+
     for (unsigned int var_i = 0; var_i < inst.n; var_i++) {
         nnz = 0;
         ind[nnz] = get_var_idx(var_i);
@@ -110,8 +129,8 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplu
 
         // if nnz == 1, then we'd have p = 0, meaning we could simply fix this variable to 0
         if (nnz == 1) {
-            const char fix = 'B';
-            CPX_HANDLE_CALL(CPXchgbds(env, lp, 1, ind.data(), &fix, &rhs_0));
+            stats.const_base++;
+            CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, 1, &rhs_0, &sense_l, &begin, ind.data(), val.data(), nullptr, nullptr));
         } else {
             stats.const_base++;
             CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, nnz, &rhs_0, &sense_e, &begin, ind.data(), val.data(), nullptr, nullptr));
@@ -162,9 +181,10 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplu
             // If the landmark is composed of only one action, that that action has to be used -> fix it instead of creating a landmark (CPLEX
             // preprocessing would fix it anyways)
             if (landmark.size() == 1) {
-                const char fix = 'B';
                 ind[0] = static_cast<int>(landmark[0]);
-                CPX_HANDLE_CALL(CPXchgbds(env, lp, 1, ind.data(), &fix, &rhs_1));
+                val[0] = 1;
+                stats.const_acyc++;
+                CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, 1, &rhs_1, &sense_g, &begin, ind.data(), val.data(), nullptr, nullptr));
                 continue;
             }
             nnz = 0;
