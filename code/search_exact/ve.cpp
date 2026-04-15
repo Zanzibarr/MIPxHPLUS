@@ -146,7 +146,7 @@ void ve::add_acyclicity_constraints(const hplus::execution& exec, hplus::instanc
         inst.veg_starts[var_i] = count;
         c_names.clear();
         for (int i = 0; i < inst.n; i++) {
-            names[i] = std::format("veg{}{}", var_i, i);
+            names[i] = std::format("veg{}x{}", var_i, i);
             c_names.push_back(names[i].data());
         }
         CPX_HANDLE_CALL(
@@ -285,7 +285,7 @@ void ve::post_warm_start(const hplus::execution& exec, hplus::instance& inst, CP
         }
         for (int i = 0; i < inst.n; i++) {
             for (int j = 0; j < (int)inst.veg_cumulative_graph[i].size(); j++) {
-                names.push_back(std::format("veg{}{}", i, j));
+                names.push_back(std::format("veg{}x{}", i, j));
             }
         }
         std::string instance_name = exec.file_name.substr(0, exec.file_name.find_last_of('.'));
