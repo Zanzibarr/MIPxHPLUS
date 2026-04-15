@@ -250,6 +250,9 @@ void ve::post_warm_start(hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
     constexpr int izero{0};
     constexpr int effortlevel{CPX_MIPSTART_NOCHECK};
 
+    std::vector<unsigned int> first_time(inst.n, UINT_MAX);
+    unsigned int step{0};
+
     for (const auto& act_i : warm_start) {
         val[act_i] = 1;
         int var_count{-1};
@@ -263,13 +266,23 @@ void ve::post_warm_start(hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
             val[fadd_idx] = 1;
             unsigned int var_idx = inst.m + inst.nfadd + var_i;
             val[var_idx] = 1;
-            for (const auto& var_j : inst.actions[act_i].pre_sparse) {
-                auto loc = static_cast<unsigned int>(inst.veg_starts[var_j] + sorted_find(inst.veg_cumulative_graph[var_j], var_i));
-                unsigned int veg_idx = inst.m + inst.nfadd + inst.n + loc;
-                val[veg_idx] = 1;
-            }
+            first_time[var_i] = step;
         }
         state |= inst.actions[act_i].eff_sparse;
+        ++step;
+    }
+
+    // Set veg(i, j) = 1 iff first_time[i] < first_time[j].
+    //   C6: when fa(act,eff)=1, pre was in state before eff → first_time[pre] < first_time[eff]
+    //   C7: antisymmetry holds because < is strict
+    //   C8: transitivity holds because < is transitive
+    for (unsigned int var_i = 0; var_i < inst.n; ++var_i) {
+        for (unsigned int k = 0; k < inst.veg_cumulative_graph[var_i].size(); ++k) {
+            const unsigned int var_j = inst.veg_cumulative_graph[var_i][k];
+            if (first_time[var_i] < first_time[var_j]) {
+                val[inst.m + inst.nfadd + inst.n + inst.veg_starts[var_i] + k] = 1.0;
+            }
+        }
     }
 
     CPX_HANDLE_CALL(CPXaddmipstarts(env, lp, 1, static_cast<int>(ncols), &izero, ind.data(), val.data(), &effortlevel, nullptr));

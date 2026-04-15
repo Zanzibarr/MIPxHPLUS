@@ -31,6 +31,7 @@ HOW I DO VERSIONING:
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed
 - [3.1.6.1] Patch applied to candidate callback: sometimes CPLEX takes too much to realize that a posted solution is the optimal one... if we figure it out before it, we terminate the execution
+- [3.1.6.2] Patch applied to vertex elimination model: warm start posted was infeasible (unchecked, so still accepted) due to a wrong construction of vertex elimination graph variables
 ### :heavy_exclamation_mark: Changed
 - Updated defaults for new best model
 <!-- ### :heavy_plus_sign: Added -->
