@@ -247,8 +247,13 @@ void ve::post_warm_start(const hplus::execution& exec, hplus::instance& inst, CP
     std::iota(ind.begin(), ind.end(), 0);
     std::vector<double> val(ncols, 0.0);
     constexpr int izero{0};
-    constexpr int effortlevel{CPX_MIPSTART_NOCHECK};
+    constexpr int effortlevel{CPX_MIPSTART_CHECKFEAS};
     std::vector<std::string> names;
+
+    // Track the step at which each variable is first added; used below to assign veg values
+    // via a total order satisfying C6, C7, and C8 (transitivity) simultaneously.
+    std::vector<unsigned int> first_time(inst.n, UINT_MAX);
+    unsigned int step{0};
 
     for (const auto& act_i : warm_start) {
         val[act_i] = 1;
@@ -261,13 +266,23 @@ void ve::post_warm_start(const hplus::execution& exec, hplus::instance& inst, CP
             val[fadd_idx] = 1;
             unsigned int var_idx = inst.m + inst.nfadd + var_i;
             val[var_idx] = 1;
-            for (const auto& var_j : inst.actions[act_i].pre_sparse) {
-                unsigned int veg_idx =
-                    inst.m + inst.nfadd + inst.n + static_cast<int>(inst.veg_starts[var_j] + sorted_find(inst.veg_cumulative_graph[var_j], var_i));
-                val[veg_idx] = 1;
-            }
+            first_time[var_i] = step;
         }
         state |= inst.actions[act_i].eff;
+        ++step;
+    }
+
+    // Set veg(i, j) = 1 iff first_time[i] < first_time[j].
+    //   C6: when fa(act,eff)=1, pre was in state before eff → first_time[pre] < first_time[eff] ✓
+    //   C7: antisymmetry holds because < is strict ✓
+    //   C8: transitivity holds because < is transitive ✓
+    for (unsigned int var_i = 0; var_i < inst.n; ++var_i) {
+        for (unsigned int k = 0; k < inst.veg_cumulative_graph[var_i].size(); ++k) {
+            const unsigned int var_j = inst.veg_cumulative_graph[var_i][k];
+            if (first_time[var_i] < first_time[var_j]) {
+                val[inst.m + inst.nfadd + inst.n + inst.veg_starts[var_i] + k] = 1.0;
+            }
+        }
     }
 
     // Save to file the mst warm start
