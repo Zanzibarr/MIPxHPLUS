@@ -14,6 +14,7 @@
 
 #include "../domain/execution.hpp"
 #include "../external/args.hxx"
+#include "hplus_algs.hpp"
 
 static void parse_cli(const int argc, const char** argv, hplus::execution& exec) {
     args::ArgumentParser parser(
@@ -29,7 +30,7 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
             " (timestamps)," + std::string(HPLUS_CLI_ALG_FLAG_VE) + " (vertex elimination graphs)," + std::string(HPLUS_CLI_ALG_FLAG_CUTS) +
             " (dynamic)," + std::string(HPLUS_CLI_ALG_FLAG_GREEDYCOST) + " (greedy cost)," + std::string(HPLUS_CLI_ALG_FLAG_GREEDYCXE) +
             " (greedy cost x effect)," + std::string(HPLUS_CLI_ALG_FLAG_GREEDYHMAX) + " (lookahead hmax)," +
-            std::string(HPLUS_CLI_ALG_FLAG_GREEDYHADD) + " (lookahead hadd)])",
+            std::string(HPLUS_CLI_ALG_FLAG_GREEDYHADD) + " (lookahead hadd)," + std::string(HPLUS_CLI_ALG_FLAG_TS) + " (timestep)])",
         {HPLUS_CLI_ALG_FLAG}, HPLUS_DEF_ALG_STRING);
     args::ValueFlag<std::string> warm_start(parser, "string",
                                             "Select an option for warm start (default: " + std::string(HPLUS_DEF_WS_STRING) + ", options: [" +
@@ -234,6 +235,8 @@ static void parse_cli(const int argc, const char** argv, hplus::execution& exec)
             exec.alg = hplus::algorithm::GHM;
         else if (a == HPLUS_CLI_ALG_FLAG_GREEDYHADD)
             exec.alg = hplus::algorithm::GHA;
+        else if (a == HPLUS_CLI_ALG_FLAG_TS)
+            exec.alg = hplus::algorithm::TS;
         else
             LOG_ERROR << "Algorithm '" << a << "' is not in the list of possible algorithms";
     }

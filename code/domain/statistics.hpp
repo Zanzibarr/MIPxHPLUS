@@ -7,7 +7,11 @@
 #ifndef HPLUS_STATS_HPP
 #define HPLUS_STATS_HPP
 
+#include <iomanip>
+#include <logger.hxx>
 #include <string>
+
+#include "instance.hpp"
 
 namespace hplus {
 

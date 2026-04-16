@@ -26,7 +26,7 @@ enum class exec_status {
 };
 
 enum class exec_type { INFO, RUN };
-enum class algorithm { TL = 0, VE = 1, CUTS = 2, GC = 10, GCXE = 11, GHM = 12, GHA = 13 };
+enum class algorithm { TL = 0, VE = 1, CUTS = 2, TS = 3, GC = 10, GCXE = 11, GHM = 12, GHA = 13 };
 enum class warmstart { NONE = 0, GC = 1, GCXE = 2, GHM = 3, GHA = 4 };
 enum class verbose { NONE = 0, STATISTICS = 1, BASIC = 2, DEBUG = 3 };
 
@@ -107,6 +107,8 @@ inline std::string to_string(algorithm a) {
             return HPLUS_CLI_ALG_FLAG_VE;
         case algorithm::CUTS:
             return HPLUS_CLI_ALG_FLAG_CUTS;
+        case algorithm::TS:
+            return HPLUS_CLI_ALG_FLAG_TS;
         case algorithm::GC:
             return HPLUS_CLI_ALG_FLAG_GREEDYCOST;
         case algorithm::GCXE:

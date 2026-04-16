@@ -1,4 +1,6 @@
+#include <format>
 #include <fstream>
+#include <logger.hxx>
 #include <set>
 #include <tuple>
 
@@ -215,7 +217,9 @@ void ve::add_acyclicity_constraints(const hplus::execution& exec, hplus::instanc
     }
 
     // Constraint C8
+    int counter = 0;
     for (const auto& [a, b, c] : triangles_list) {
+        ++counter;
         ind[0] = get_veg_idx(a, b);
         val[0] = 1;
         ind[1] = get_veg_idx(b, c);
@@ -234,6 +238,8 @@ void ve::add_acyclicity_constraints(const hplus::execution& exec, hplus::instanc
         stats.const_acyc++;
         stopcheck();
     }
+
+    LOG_WARNING << std::format("N triangles: {}", counter);
 }
 
 void ve::post_warm_start(const hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {

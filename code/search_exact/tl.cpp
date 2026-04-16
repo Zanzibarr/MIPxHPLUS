@@ -1,3 +1,5 @@
+#include <logger.hxx>
+
 #include "exact.hpp"
 
 void tl::add_acyclicity_constraints(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp) {

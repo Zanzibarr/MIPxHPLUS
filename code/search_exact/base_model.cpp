@@ -1,3 +1,5 @@
+#include <logger.hxx>
+
 #include "exact.hpp"
 
 void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp) {
@@ -94,13 +96,14 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplu
     constexpr double rhs_0{0}, rhs_1{1};
     constexpr int begin{0};
 
+    int skipped = 0;
+
     // Fixed actions (lb was set to 0 to avoid MPS bound issues): enforce via >= 1 constraint
     ind.resize(1);
     val.assign(1, 1.0);
     for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
         if (!inst.fixed_actions[act_i]) continue;
         ind[0] = get_act_idx(act_i);
-        stats.const_base++;
         CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, 1, &rhs_1, &sense_g, &begin, ind.data(), val.data(), nullptr, nullptr));
     }
 
@@ -108,7 +111,6 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplu
     for (unsigned int var_i = 0; var_i < inst.n; var_i++) {
         if (!inst.fixed_facts[var_i] && !inst.goal[var_i]) continue;
         ind[0] = get_var_idx(var_i);
-        stats.const_base++;
         CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, 1, &rhs_1, &sense_g, &begin, ind.data(), val.data(), nullptr, nullptr));
     }
 
@@ -156,7 +158,8 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplu
             if (nnz != 1) {
                 stats.const_base++;
                 CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, nnz, &rhs_0, &sense_l, &begin, ind.data(), val.data(), nullptr, nullptr));
-            }
+            } else
+                ++skipped;
             stopcheck();
         }
     }
@@ -174,6 +177,8 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, hplu
         }
         stopcheck();
     }
+
+    LOG_WARNING << std::format("Skipped: {}", skipped);
 
     // If preprocessing is used, there might be Disjunctive Action Landmarks to add as constraints... those must be counted as acyclicity constraints,
     // since those are not needed for the base model correctness
@@ -277,7 +282,7 @@ void store_cplex_solution(hplus::execution& exec, hplus::instance& inst, hplus::
     }
 
     // fixing the solution to read the plan (some 0-cost actions are set to 1 even if they are not a first archiever of anything)
-    if (exec.alg != hplus::algorithm::CUTS) {
+    if (exec.alg != hplus::algorithm::CUTS && exec.alg != hplus::algorithm::TS) {
         for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
             bool set_zero{true};
             for (unsigned int var_count = 0; var_count < inst.actions[act_i].eff_sparse.size(); var_count++) {

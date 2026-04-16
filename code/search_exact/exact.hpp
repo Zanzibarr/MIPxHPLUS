@@ -30,6 +30,11 @@ namespace cuts {
 void post_warm_start(const hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp);
 }  // namespace cuts
 
+namespace ts {
+void build_model(hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp);
+void post_warm_start(const hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp);
+}  // namespace ts
+
 namespace cutloop {
 void cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, const hplus::instance& inst, hplus::statistics& stats);
 }
@@ -89,6 +94,9 @@ inline void post_warm_start(const hplus::execution& exec, hplus::instance& inst,
         case hplus::algorithm::CUTS:
             cuts::post_warm_start(exec, inst, env, lp);
             break;
+        case hplus::algorithm::TS:
+            ts::post_warm_start(exec, inst, env, lp);
+            break;
         default:
             LOG_ERROR << "Unhandled algorithm for acyclicity constraints: " << static_cast<int>(exec.alg);
     }
@@ -141,8 +149,12 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
     init_cplex(exec, env, lp);
 
     // ~~~~ BASE MODEL + ACYC. CONSTRAINTS ~~~ //
-    build_base_model(exec, inst, stats, env, lp);
-    if (exec.alg != hplus::algorithm::CUTS) add_acyclicity_constraints(exec, inst, stats, env, lp);
+    if (exec.alg == hplus::algorithm::TS) {
+        ts::build_model(exec, inst, stats, env, lp);
+    } else {
+        build_base_model(exec, inst, stats, env, lp);
+        if (exec.alg != hplus::algorithm::CUTS) add_acyclicity_constraints(exec, inst, stats, env, lp);
+    }
 
     stats.build = GET_TIME() - start_time;
 
@@ -161,12 +173,11 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
         if (exec.ws != hplus::warmstart::NONE) post_warm_start(exec, inst, env, lp);
 
         // Save to file the mps model
-        {
-            std::string instance_name = exec.file_name.substr(0, exec.file_name.find_last_of('.'));
-            std::string mps_file_path = std::format("{}/{}.mps", HPLUS_LOG_DIR, instance_name);
-            CPX_HANDLE_CALL(CPXwriteprob(env, lp, mps_file_path.c_str(), nullptr));
-        }
-        exit(0);  // I care only about the mps and mst files
+        // {
+        //     std::string instance_name = exec.file_name.substr(0, exec.file_name.find_last_of('.'));
+        //     std::string mps_file_path = std::format("{}/{}.mps", HPLUS_LOG_DIR, instance_name);
+        //     CPX_HANDLE_CALL(CPXwriteprob(env, lp, mps_file_path.c_str(), nullptr));
+        // }
 
         run_cplex(env, lp, exec, stats);
 
