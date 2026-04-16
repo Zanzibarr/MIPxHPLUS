@@ -36,6 +36,8 @@ void tl::add_acyclicity_constraints(const hplus::execution& exec, hplus::instanc
     const double rhs{max_steps - 1};
     constexpr int begin{0};
 
+    // TODO: Try strenghtening this constraint (use sum of a:p->q)
+
     for (unsigned int act_i = 0; act_i < inst.m; ++act_i) {
         unsigned int var_count{0};
         for (const auto& q : inst.actions[act_i].eff_sparse) {
