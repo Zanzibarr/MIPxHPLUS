@@ -175,6 +175,11 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
     double inout_w = exec.io_weight;
 
     solve_relaxation(env, lp, exec);
+
+    double cl_lb;
+    CPX_HANDLE_CALL(CPXgetobjval(env, lp, &cl_lb));
+    if (exec.verbosity >= hplus::verbose::BASIC) LOG_INFO << "Lower bound before cutloop : " << cl_lb;
+
     while (repeat_cutloop() && !CHECK_STOP()) {
         std::vector<double> relax_point(ncols);
         CPXgetx(env, lp, relax_point.data(), 0, ncols - 1);
@@ -200,12 +205,10 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
         iteration++;
 
         // Obtain and store the current lower bound
-        double cl_lb;
         CPX_HANDLE_CALL(CPXgetobjval(env, lp, &cl_lb));
         if (stats.lower_bound < cl_lb) stats.lower_bound = cl_lb;
     }
 
-    double cl_lb;
     CPX_HANDLE_CALL(CPXgetobjval(env, lp, &cl_lb));
     if (exec.verbosity >= hplus::verbose::BASIC) LOG_INFO << "Lower bound after cutloop : " << cl_lb;
 

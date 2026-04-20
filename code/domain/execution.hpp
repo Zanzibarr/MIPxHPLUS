@@ -159,15 +159,15 @@ inline void print(const execution& exec) {
     LOG << "Preprocessing (LM-cut):                       " << std::setw(10) << exec.prep_lmcut;
     LOG << "Algorithm:                                    " << std::setw(10) << to_string(exec.alg);
     if (exec.alg < hplus::algorithm::GC) LOG << "Warm start:                                   " << std::setw(10) << to_string(exec.ws);
-    if (exec.alg == hplus::algorithm::CUTS) {
-        if (!exec.cand_cuts.empty()) LOG << "Candidate cuts:                                    " << std::setw(5) << exec.cand_cuts;
+    // if (exec.alg == hplus::algorithm::CUTS) {
+    if (!exec.cand_cuts.empty()) LOG << "Candidate cuts:                                    " << std::setw(5) << exec.cand_cuts;
 
-        LOG << "Fractional cuts:                                      " << std::setw(2) << exec.fract_cuts;
-        if (exec.fract_cuts != "0") {
-            LOG << "Fractional cuts at nodes:                              " << exec.fract_cuts_at_nodes;
-            LOG << "Custom cut-loop                                        " << exec.custom_cutloop;
-        }
+    LOG << "Fractional cuts:                                      " << std::setw(2) << exec.fract_cuts;
+    if (exec.fract_cuts != "0") {
+        LOG << "Fractional cuts at nodes:                              " << exec.fract_cuts_at_nodes;
+        LOG << "Custom cut-loop                                        " << exec.custom_cutloop;
     }
+    // }
     if (exec.custom_cutloop) {
         LOG << "Custom cutloop pruning                                 " << exec.cl_pruning;
         LOG << "Custom cutloop gap exit condition:                " << std::fixed << std::setprecision(4) << exec.cl_gap_stop;

@@ -179,6 +179,9 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
         //     CPX_HANDLE_CALL(CPXwriteprob(env, lp, mps_file_path.c_str(), nullptr));
         // }
 
+        cutloop::cutloop(env, lp, exec, inst, stats);
+        throw timelimit_exception("Exiting after cutloop");
+
         run_cplex(env, lp, exec, stats);
 
     } catch (std::bad_alloc& e) {
