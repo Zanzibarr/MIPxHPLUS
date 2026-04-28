@@ -605,12 +605,12 @@ static inline void parse_cli(const int argc, const char** argv, hplus::execution
 
     // Ensure correct parameters for each model
     if (exec.alg != hplus::algorithm::CUTS) {
+        // Only CUTS is an incomplete model... candidate callbacks in complete models are useless (fractional callbacks can still improve the lower
+        // bound though)
         exec.cand_cuts = "0";
-        exec.fract_cuts = "0";
-        exec.custom_cutloop = false;
     } else {
-        if (exec.cand_cuts.empty()) {
-            LOG_ERROR_S("You can't disable all three candidate cuts from the " + std::string(HPLUS_CLI_ALG_FLAG_CUTS) + " algorithm");
+        if (exec.cand_cuts == "0") {
+            LOG_ERROR_S("You can't disable all candidate cuts from the " + std::string(HPLUS_CLI_ALG_FLAG_CUTS) + " algorithm");
         }
         if (exec.fract_cuts == "0") {
             if (exec.custom_cutloop) {
@@ -627,15 +627,13 @@ static inline void parse_cli(const int argc, const char** argv, hplus::execution
         if (exec.candlm_min.find('g') != std::string::npos && exec.cand_cuts.find('l') == std::string::npos) {
             LOG_WARN_S(
                 "Greedy minimalization procedure is implicit in the landmark construction of Fronteer ('f') and Complementary ('c') cand separators: "
-                "disabling greedy "
-                "minimalization procedure");
+                "disabling greedy minimalization procedure");
             std::erase_if(exec.candlm_min, [](const auto val) { return val == 'g'; });
         }
         if (exec.fractlm_min.find('i') != std::string::npos && exec.fract_cuts.find('m') == std::string::npos) {
             LOG_WARN_S(
                 "Iterative ('i') minimalization procedure is used only for Max-Flow-based ('m') fractional separato: disabling iterative "
-                "minimalization "
-                "procedure");
+                "minimalization procedure");
             std::erase_if(exec.fractlm_min, [](const auto val) { return val == 'i'; });
         }
         if (exec.fract_cuts.find('l') != std::string::npos && exec.fract_cuts.find('l') == std::string::npos &&

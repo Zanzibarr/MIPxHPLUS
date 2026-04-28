@@ -156,10 +156,10 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
 
     // Run cplex
     try {
-        if (exec.alg == hplus::algorithm::CUTS) {
-            if (exec.custom_cutloop) {
-                cutloop::cutloop(env, lp, exec, inst, stats);
-            }
+        if (exec.custom_cutloop) {
+            cutloop::cutloop(env, lp, exec, inst, stats);
+        }
+        if (exec.cand_cuts != "0" || (exec.fract_cuts != "0" && (!exec.custom_cutloop || exec.fract_cuts_at_nodes))) {
             callbacks::set_cplex_callbacks(exec, callback_userhandle, env, lp);
         }
         if (exec.ws != hplus::warmstart::NONE) {

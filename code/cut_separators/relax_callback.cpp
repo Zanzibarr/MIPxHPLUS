@@ -1,5 +1,6 @@
 #include "relax_callback.hpp"
 
+#include <atomic>
 #include <limits.hxx>
 #include <unordered_set>
 
@@ -54,6 +55,15 @@ void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::
         return;
     }
     visited_nodes.insert(nodeuid);
+
+    // Store the actual root lower bound, regardless of using or not the custom cutloop
+    if (nodeuid != 0) {
+        static std::atomic_bool exited_root = false;
+        bool expected = false;
+        if (exited_root.compare_exchange_strong(expected, true, std::memory_order_relaxed)) {
+            STATS.gauge_record<"lb_rootnode">(best_lb);
+        }
+    }
 
     STATS.counter_inc<"fract_calls">();
     auto _fract_time = make_scoped_timer<"fract_callback">(STATS);

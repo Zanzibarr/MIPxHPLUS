@@ -190,41 +190,38 @@ inline void print(const execution& exec) {
     if (exec.cutoff >= 0) {
         LOG << "Cutoff value:                                 " << std::setw(10) << exec.cutoff;
     }
-    if (exec.alg == hplus::algorithm::CUTS) {
-        LOG << "Candidate cuts:                                    " << std::setw(5) << exec.cand_cuts;
-        if (exec.cand_cuts.find('l') != std::string::npos || exec.cand_cuts.find('c') != std::string::npos ||
-            exec.cand_cuts.find('f') != std::string::npos) {
-            LOG << "Landmark minimalization in candidate cuts:         " << std::setw(5) << exec.candlm_min;
+    LOG_S("Custom cut-loop                                        " + std::to_string(static_cast<int>(exec.custom_cutloop)));
+    if (exec.custom_cutloop) {
+        LOG_S("- Pruning                                              " + std::to_string(static_cast<int>(exec.cl_pruning)));
+        LOG << "- Gap exit condition:                             " << std::fixed << std::setprecision(4) << exec.cl_gap_stop;
+        LOG << "- Minimum iterations:                              " << std::setw(5) << exec.cl_min_iter;
+        LOG << "- Improvement threshold:                          " << std::fixed << std::setprecision(4) << exec.cl_improv;
+        LOG << "- Past iterations comparison:                      " << std::setw(5) << exec.cl_past_iter;
+        LOG_S("In-Out strategy:                                       " + std::to_string(static_cast<int>(exec.inout)));
+        if (exec.inout) {
+            LOG << "- Maximum iterations:                              " << std::setw(5) << exec.io_max_iter;
+            LOG << "- Initial incumbent weight:                         " << std::fixed << std::setprecision(2) << exec.io_weight;
+            LOG << "- Weight update:                                    " << std::fixed << std::setprecision(2) << exec.io_weight_update;
         }
-
-        LOG << "Fractional cuts:                                      " << std::setw(2) << exec.fract_cuts;
-        if (exec.fract_cuts != "0") {
-            if (exec.fract_cuts.find('l') != std::string::npos || exec.fract_cuts.find('m') != std::string::npos) {
-                LOG << "Landmark minimalization in fractional cuts:        " << std::setw(5) << exec.fractlm_min;
-            }
-            if (exec.fractlm_min.find('i') != std::string::npos) {
-                LOG << "- Upper bound on number of iterations:        " << std::setw(10) << exec.lm_min_it;
-                LOG << "- Violation ratio threshold:                       " << std::fixed << std::setprecision(3) << exec.lm_min_viol;
-                LOG << "- Lookahead success rate threshold:           " << std::setw(10) << exec.lm_min_lookahead;
-                LOG_S("- Sorting of landmark:                                 " + std::to_string(static_cast<int>(exec.lm_min_sort)));
-                LOG_S("- Expand only better landmarks:                        " + std::to_string(static_cast<int>(exec.lm_min_improv)));
-            }
-            LOG_S("Fractional cuts at nodes:                              " + std::to_string(static_cast<int>(exec.fract_cuts_at_nodes)));
-            LOG_S("Custom cut-loop                                        " + std::to_string(static_cast<int>(exec.custom_cutloop)));
-            if (exec.custom_cutloop) {
-                LOG_S("- Pruning                                              " + std::to_string(static_cast<int>(exec.cl_pruning)));
-                LOG << "- Gap exit condition:                             " << std::fixed << std::setprecision(4) << exec.cl_gap_stop;
-                LOG << "- Minimum iterations:                              " << std::setw(5) << exec.cl_min_iter;
-                LOG << "- Improvement threshold:                          " << std::fixed << std::setprecision(4) << exec.cl_improv;
-                LOG << "- Past iterations comparison:                      " << std::setw(5) << exec.cl_past_iter;
-                LOG_S("In-Out strategy:                                       " + std::to_string(static_cast<int>(exec.inout)));
-                if (exec.inout) {
-                    LOG << "- Maximum iterations:                              " << std::setw(5) << exec.io_max_iter;
-                    LOG << "- Initial incumbent weight:                         " << std::fixed << std::setprecision(2) << exec.io_weight;
-                    LOG << "- Weight update:                                    " << std::fixed << std::setprecision(2) << exec.io_weight_update;
-                }
-            }
+    }
+    LOG << "Candidate cuts:                                    " << std::setw(5) << exec.cand_cuts;
+    if (exec.cand_cuts.find('l') != std::string::npos || exec.cand_cuts.find('c') != std::string::npos ||
+        exec.cand_cuts.find('f') != std::string::npos) {
+        LOG << "Landmark minimalization in candidate cuts:         " << std::setw(5) << exec.candlm_min;
+    }
+    LOG << "Fractional cuts:                                      " << std::setw(2) << exec.fract_cuts;
+    if (exec.fract_cuts != "0") {
+        if (exec.fract_cuts.find('l') != std::string::npos || exec.fract_cuts.find('m') != std::string::npos) {
+            LOG << "Landmark minimalization in fractional cuts:        " << std::setw(5) << exec.fractlm_min;
         }
+        if (exec.fractlm_min.find('i') != std::string::npos) {
+            LOG << "- Upper bound on number of iterations:        " << std::setw(10) << exec.lm_min_it;
+            LOG << "- Violation ratio threshold:                       " << std::fixed << std::setprecision(3) << exec.lm_min_viol;
+            LOG << "- Lookahead success rate threshold:           " << std::setw(10) << exec.lm_min_lookahead;
+            LOG_S("- Sorting of landmark:                                 " + std::to_string(static_cast<int>(exec.lm_min_sort)));
+            LOG_S("- Expand only better landmarks:                        " + std::to_string(static_cast<int>(exec.lm_min_improv)));
+        }
+        LOG_S("Fractional cuts at nodes:                              " + std::to_string(static_cast<int>(exec.fract_cuts_at_nodes)));
     }
     if (exec.testing) {
         LOG_S("Testing mode:                                          1");

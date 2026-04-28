@@ -27,6 +27,17 @@ HOW I DO VERSIONING:
 <!-- ### :rocket: Performance Improvements -->
 
 
+## [3.1.7] - 2026/04/28
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+<!-- ### :heavy_exclamation_mark: Changed -->
+### :heavy_plus_sign: Added
+- Added option to add fractional callbacks to complete (TL and VE) models (aswell as custom cutloop)
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+<!-- ### :rocket: Performance Improvements -->
+
+
 ## [3.1.6] - 2026/04/09
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed
