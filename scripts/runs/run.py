@@ -61,7 +61,7 @@ SLURM_RUN_ALL_TEMPLATE = textwrap.dedent(
     from pathlib import Path
 
     def submit(job):
-        r = subprocess.run(['sbatch', str(job)], capture_output=True, text=True)
+        r = subprocess.run(['sbatch', str(job)], stdout=subprocess.PIPE, stderr=subprocess.PIPE, universal_newlines=True)
         match = re.search(r'Submitted batch job (\\d+)', r.stdout)
         return match.group(1) if match else None
 
