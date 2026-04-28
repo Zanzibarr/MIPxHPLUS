@@ -35,6 +35,10 @@ static inline void parse_cli(const int argc, const char** argv, hplus::execution
         parser, "string",
         "Write on stdout / file (def: " + std::string(HPLUS_DEF_LOG) + "; options: 0 (stdout), <file_path> (absolute path to the file to write to))",
         {HPLUS_CLI_LOG_FLAG}, HPLUS_DEF_LOG);
+    args::ValueFlag<std::string> cpxlog(parser, "string",
+                                        "Path to CPLEX's log (def: " + std::string(HPLUS_DEF_CPXLOG) +
+                                            "; options: 0 (stdout), <file_path> (absolute path to the file for CPLEX to write to))",
+                                        {HPLUS_CLI_CPXLOG_FLAG}, HPLUS_DEF_CPXLOG);
 
     // ~~~~~~~~~~~~~~~~ LIMITS ~~~~~~~~~~~~~~~ //
     args::ValueFlag<unsigned int> time_limit(parser, "non-negative int, [0,+inf)",
@@ -257,6 +261,10 @@ static inline void parse_cli(const int argc, const char** argv, hplus::execution
         }
     } else {
         default_logger().initialize(false, "", true, (exec.threads > 1), true);
+    }
+
+    if (cpxlog) {
+        exec.cplex_log = args::get(cpxlog);
     }
 
     LOG_INFO_S(compile_date());

@@ -37,6 +37,7 @@ struct execution {
     exec_type type;
     algorithm alg;
     std::string log_file;
+    std::string cplex_log;
     unsigned int threads, timelimit, memorylimit;
     int seed;
     // Preprocessing
@@ -77,6 +78,7 @@ inline void init(execution& exec) {
                             .type = exec_type::RUN,
                             .alg = static_cast<algorithm>(HPLUS_DEF_ALG),
                             .log_file = HPLUS_DEF_LOG,
+                            .cplex_log = HPLUS_DEF_CPXLOG,
                             .threads = HPLUS_DEF_THREADS,
                             .timelimit = HPLUS_DEF_TIMELIMIT,
                             .memorylimit = HPLUS_DEF_MEMORYLIMIT,
@@ -163,6 +165,7 @@ inline void print(const execution& exec) {
     LOG_S("------------------ List of parameters ------------------");
     if (exec.log_file != "0") {
         LOG_S("Log file: " + std::filesystem::absolute(exec.log_file).lexically_normal().string());
+        LOG_S("CPLEX Log file: " + std::filesystem::absolute(exec.cplex_log).lexically_normal().string());
     }
     LOG << "Time limit:                                      " << std::setw(exec.timelimit > 0 ? 5 : 7) << exec.timelimit
         << (exec.timelimit > 0 ? " s" : "");

@@ -47,7 +47,7 @@ inline void init_cplex(hplus::execution& exec, CPXENVptr& env, CPXLPptr& lp) {
     CPX_HANDLE_CALL(CPXsetintparam(env, CPXPARAM_Parallel, CPX_PARALLEL_DETERMINISTIC));
     // log file
     CPX_HANDLE_CALL(CPXsetintparam(env, CPXPARAM_ScreenOutput, HPLUS_DEF_CPX_SCREENOUTPUT));
-    CPX_HANDLE_CALL(CPXsetlogfilename(env, (HPLUS_CPLEX_OUTPUT_DIR "/log/" + exec.file_name + ".log").c_str(), "w"));
+    CPX_HANDLE_CALL(CPXsetlogfilename(env, (exec.cplex_log).c_str(), "w"));
     CPX_HANDLE_CALL(CPXsetintparam(env, CPX_PARAM_CLONELOG, HPLUS_DEF_CPX_CLONELOG));
     CPX_HANDLE_CALL(CPXsetintparam(env, CPXPARAM_MIP_Display, HPLUS_DEF_CPX_MIP_DISPLAY));
     // tolerance

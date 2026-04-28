@@ -52,6 +52,7 @@
 #define HPLUS_CLI_PREP_LMCUT_MIN_FLAG "prep-lm-min"
 
 #define HPLUS_CLI_LOG_FLAG "log"
+#define HPLUS_CLI_CPXLOG_FLAG "cpxlog"
 #define HPLUS_CLI_TIMELIMIT_FLAG "t"
 #define HPLUS_CLI_THREADS_FLAG "threads"
 #define HPLUS_CLI_MEMORYLIMIT_FLAG "mem"
@@ -114,6 +115,7 @@
 #define HPLUS_DEF_PREP_LMCUT_MIN "c"
 
 #define HPLUS_DEF_LOG "0"
+#define HPLUS_DEF_CPXLOG "cplex.log"
 #define HPLUS_DEF_TIMELIMIT 60
 #define HPLUS_DEF_THREADS 32
 #define HPLUS_DEF_MEMORYLIMIT 4050

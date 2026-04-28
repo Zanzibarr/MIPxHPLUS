@@ -182,12 +182,15 @@ def write_bash_scripts(args, rundir):
     logsdir = Path(rundir) / "logs"
     logsdir.mkdir()
 
+    cpxlogsdir = Path(rundir) / "cpxlogs"
+    cpxlogsdir.mkdir()
+
     job_paths = []
     for inst in instances(args):
         instance = Path(inst).stem
         job = jobsdir / f"{instance}.sh"
         job.write_text(
-            f"#!/bin/bash\n{command} --log={logsdir}/{instance}.log {inst}\n"
+            f"#!/bin/bash\n{command} --log={logsdir}/{instance}.log {inst} --cpxlog={cpxlogsdir}/{instance}.log\n"
         )
         job.chmod(0o755)
         job_paths.append(job)
@@ -213,6 +216,9 @@ def write_slurm_scripts(args, rundir):
     logsdir = Path(rundir) / "logs"
     logsdir.mkdir()
 
+    cpxlogsdir = Path(rundir) / "cpxlogs"
+    cpxlogsdir.mkdir()
+
     output_dir = Path(rundir) / "jobs_output"
     output_dir.mkdir()
 
@@ -229,7 +235,7 @@ def write_slurm_scripts(args, rundir):
                 time=SLURM_TIME,
                 wckey=SLURM_WCKEY,
                 output_dir=output_dir,
-                command=f"{command} --log={logsdir}/{instance}.log {inst}",
+                command=f"{command} --log={logsdir}/{instance}.log --cpxlog={cpxlogsdir}/{instance}.log{inst}",
             )
         )
         job.chmod(0o755)
