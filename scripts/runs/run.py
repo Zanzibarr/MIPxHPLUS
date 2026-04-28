@@ -13,7 +13,7 @@ TIME_LIMIT = 900
 THREADS = 4
 SEED = 2122187
 
-ROOT = Path(__file__).parent.parent.parent
+ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_RUNS_DIR = Path.home() / "jobs"
 EXE_LOCATION = ROOT / "code" / "build"
 HPLUS = EXE_LOCATION / "hplus"
