@@ -29,7 +29,8 @@ HOW I DO VERSIONING:
 
 ## [3.1.7] - 2026/04/28
 <!-- ### :warning: Known issues -->
-<!-- ### :ballot_box_with_check: Fixed -->
+### :ballot_box_with_check: Fixed
+- [3.1.7.1] Uncaught exception in lmcut computation
 <!-- ### :heavy_exclamation_mark: Changed -->
 ### :heavy_plus_sign: Added
 - Added option to add fractional callbacks to complete (TL and VE) models (aswell as custom cutloop)

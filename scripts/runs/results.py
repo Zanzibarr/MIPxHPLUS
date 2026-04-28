@@ -10,7 +10,7 @@ ROOT = SCRIPT_FOLDER.parent.parent
 SCRIPTS_LOCATION = ROOT / "scripts"
 
 # ---------------------------------------------------------------------------
-# Log format reference (as of hplus v3.1.7)
+# Log format reference (hplus v3.1.7 -> v3.1.7.1)
 #
 # The log is structured in four output blocks, each delimited by a header line:
 #

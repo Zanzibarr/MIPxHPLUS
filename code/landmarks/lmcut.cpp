@@ -325,7 +325,7 @@ auto LMcut::compute_lmcut_private(const hmax_function& hmax) -> std::pair<std::v
         landmarks.push_back(cut);
 
         if (CHECK_STOP()) {
-            throw timelimit_exception("Reached time limit.");
+            return {{}, 0};  // This gets called from a multithreaded environment... throwing an exception here means it likely won't get caught...
         }
     }
 

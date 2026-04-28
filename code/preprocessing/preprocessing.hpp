@@ -45,7 +45,9 @@ inline void lmcut_landmarks_extraction(const hplus::execution& exec, hplus::inst
             inst.landmarks.push_back(landmark);
         }
         stats.lower_bound = std::max(stats.lower_bound, lmcut_value);
-        LOG_INFO_S("Computed a lm-cut value of: " + std::to_string(lmcut_value) + " in " + std::to_string(diff) + "s");
+        if (!landmarks.empty()) {
+            LOG_INFO_S("Computed a lm-cut value of: " + std::to_string(lmcut_value) + " in " + std::to_string(diff) + "s");
+        }
     }
 }
 
