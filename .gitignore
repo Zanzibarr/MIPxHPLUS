@@ -10,7 +10,10 @@ code/build/
 code/test/
 local/
 logs/
+**/.venv
 
 # files
+scripts/**/*.pdf
 
 # other
+**/__pycache__

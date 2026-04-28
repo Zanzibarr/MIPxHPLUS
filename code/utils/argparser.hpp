@@ -247,10 +247,12 @@ static inline void parse_cli(const int argc, const char** argv, hplus::execution
     init_rng(static_cast<unsigned int>(exec.seed));
 
     if (log) {
-        exec.log_file = HPLUS_LOG_DIR "/" + args::get(log);
-        if (exec.log_file == "0") {
+        std::string log_val = args::get(log);
+        if (log_val == "0") {
             default_logger().initialize(false, "", true, (exec.threads > 1), true);
         } else {
+            std::filesystem::path log_path(log_val);
+            exec.log_file = log_path.is_absolute() ? log_val : (std::string(HPLUS_LOG_DIR) + "/" + log_val);
             default_logger().initialize(true, exec.log_file, true, (exec.threads > 1), true);
         }
     } else {
@@ -277,7 +279,7 @@ static inline void parse_cli(const int argc, const char** argv, hplus::execution
     // Get parsed info
     if (input_file) {
         exec.file = args::get(input_file);
-        exec.file_name = std::filesystem::path(exec.file).filename().string();
+        exec.file_name = std::filesystem::path(exec.file).stem().filename().string();
     } else {
         LOG_ERROR_S("Missing input file");
     }
