@@ -40,6 +40,9 @@ def main() -> None:
         "--domain", default="", help="Filter instances by domain substring"
     )
     parser.add_argument(
+        "--solved", action="store_true", help="Keep only instances solved by all runs"
+    )
+    parser.add_argument(
         "--no-sig", action="store_true", help="Disable significance tests"
     )
     parser.add_argument(
@@ -53,18 +56,23 @@ def main() -> None:
 
     if args.metric:
         data = prepare_data(
-            args.files, aliases, domain=args.domain, extra_cols=[args.metric]
+            args.files, aliases, domain=args.domain, extra_cols=[args.metric],
+            solved_only=args.solved,
         )
         result = compute_stats(
             data, metrics=(args.metric, "Time"), models=aliases, test_significance=False
         )
     elif args.by_family:
-        data = prepare_data(args.files, aliases, domain=args.domain)
+        data = prepare_data(
+            args.files, aliases, domain=args.domain, solved_only=args.solved
+        )
         result = compute_problem_stats(
             data, models=aliases, test_significance=not args.no_sig
         )
     else:
-        data = prepare_data(args.files, aliases, domain=args.domain)
+        data = prepare_data(
+            args.files, aliases, domain=args.domain, solved_only=args.solved
+        )
         result = compute_stats(data, models=aliases, test_significance=not args.no_sig)
 
     print_table(result)

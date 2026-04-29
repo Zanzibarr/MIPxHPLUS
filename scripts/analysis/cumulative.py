@@ -24,12 +24,15 @@ def main() -> None:
         "--domain", default="", help="Filter instances by domain substring"
     )
     parser.add_argument(
+        "--solved", action="store_true", help="Keep only instances solved by all runs"
+    )
+    parser.add_argument(
         "--out", default="cumulative.pdf", help="Output file (default: cumulative.pdf)"
     )
     args = parser.parse_args()
 
     aliases = resolve_aliases(args.files, args.aliases)
-    data = prepare_data(args.files, aliases, domain=args.domain)
+    data = prepare_data(args.files, aliases, domain=args.domain, solved_only=args.solved)
 
     plot = cumulative_plot(
         data,

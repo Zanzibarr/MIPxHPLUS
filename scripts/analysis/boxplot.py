@@ -47,6 +47,9 @@ def main() -> None:
         "--points", action="store_true", help="Overlay individual data points"
     )
     parser.add_argument(
+        "--solved", action="store_true", help="Keep only instances solved by all runs"
+    )
+    parser.add_argument(
         "--out", default="boxplot.pdf", help="Output file (default: boxplot.pdf)"
     )
     args = parser.parse_args()
@@ -58,7 +61,8 @@ def main() -> None:
 
     if args.gap:
         data = prepare_data(
-            args.files, aliases, domain=args.domain, extra_cols=args.gap
+            args.files, aliases, domain=args.domain, extra_cols=args.gap,
+            solved_only=args.solved,
         )
         data = compute_gaps(data, args.gap, args.best_known)
         plot = boxplot(
@@ -76,7 +80,10 @@ def main() -> None:
         width = max(8, len(args.gap) * 1.5 * len(aliases))
     else:
         extra = [args.metric] if args.metric not in ("Time", "Nodes") else None
-        data = prepare_data(args.files, aliases, domain=args.domain, extra_cols=extra)
+        data = prepare_data(
+            args.files, aliases, domain=args.domain, extra_cols=extra,
+            solved_only=args.solved,
+        )
         plot = boxplot(
             data,
             group_col="Model",

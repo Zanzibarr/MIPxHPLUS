@@ -27,6 +27,9 @@ def main() -> None:
         "--domain", default="", help="Highlight instances matching domain substring"
     )
     parser.add_argument(
+        "--solved", action="store_true", help="Keep only instances solved by all runs"
+    )
+    parser.add_argument(
         "--out", default="scatter.pdf", help="Output file (default: scatter.pdf)"
     )
     args = parser.parse_args()
@@ -35,9 +38,11 @@ def main() -> None:
         parser.error("At least two files required (baseline + one comparison).")
 
     aliases = resolve_aliases(args.files, args.aliases)
-    full_data = prepare_data(args.files, aliases)
+    full_data = prepare_data(args.files, aliases, solved_only=args.solved)
     highlight = (
-        prepare_data(args.files, aliases, domain=args.domain) if args.domain else None
+        prepare_data(args.files, aliases, domain=args.domain, solved_only=args.solved)
+        if args.domain
+        else None
     )
 
     plot = scatter_comparison_plot(

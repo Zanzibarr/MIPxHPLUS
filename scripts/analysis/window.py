@@ -36,12 +36,15 @@ def main() -> None:
         "--facet", action="store_true", help="Faceted layout (one panel per model)"
     )
     parser.add_argument(
+        "--solved", action="store_true", help="Keep only instances solved by all runs"
+    )
+    parser.add_argument(
         "--out", default="window.pdf", help="Output file (default: window.pdf)"
     )
     args = parser.parse_args()
 
     aliases = resolve_aliases(args.files, args.aliases)
-    data = prepare_data(args.files, aliases, domain=args.domain)
+    data = prepare_data(args.files, aliases, domain=args.domain, solved_only=args.solved)
 
     fn = window_facet_plot if args.facet else window_plot
     plot = fn(

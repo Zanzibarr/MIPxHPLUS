@@ -157,11 +157,14 @@ def prepare_data(
     aliases: list[str] | None = None,
     domain: str = "",
     extra_cols: list[str] | None = None,
+    solved_only: bool = False,
 ) -> pl.DataFrame:
     """Load, intersect, and categorize runs. Optionally filter by domain substring."""
     df = _add_categories(load_runs(files, aliases, extra_cols))
     if domain:
         df = df.filter(pl.col("Problem").str.contains(domain))
+    if solved_only:
+        df = df.filter(pl.col("Category") == "all-solvable")
     return df
 
 
