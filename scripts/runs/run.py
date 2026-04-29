@@ -1,15 +1,16 @@
 import argparse
 import csv
 import os
+import random
 import subprocess
 import sys
 import textwrap
 from pathlib import Path
 
-
 # --- Config ---
 
 TIME_LIMIT = 900
+MEMORY_LIMIT = 16000
 THREADS = 4
 SEED = 2122187
 
@@ -18,7 +19,16 @@ DEFAULT_RUNS_DIR = Path.home() / "jobs"
 EXE_LOCATION = ROOT / "code" / "build"
 HPLUS = EXE_LOCATION / "hplus"
 
-COMMAND_DEFAULTS = f"{HPLUS} --run --t={TIME_LIMIT} --threads={THREADS} --s={SEED}"
+
+def build_command(args):
+    timelimit = args.timelimit if args.timelimit is not None else TIME_LIMIT
+    memorylimit = args.memorylimit if args.memorylimit is not None else MEMORY_LIMIT
+    threads = args.threads if args.threads is not None else THREADS
+    seed = args.seed if args.seed is not None else SEED
+    base = f"{HPLUS} --run --t={timelimit} --mem={memorylimit} --threads={threads} --s={seed}"
+    if args.commands is not None:
+        return f"{base} {args.commands}"
+    return base
 
 
 # --- Slurm config ---
@@ -32,8 +42,7 @@ SLURM_WCKEY = "rop"
 
 # --- Templates ---
 
-BASH_RUN_ALL_TEMPLATE = textwrap.dedent(
-    """\
+BASH_RUN_ALL_TEMPLATE = textwrap.dedent("""\
     #!/usr/bin/env python3
     import subprocess, sys
     from pathlib import Path
@@ -51,11 +60,9 @@ BASH_RUN_ALL_TEMPLATE = textwrap.dedent(
     if failed:
         print(f'Failed: {failed}', file=sys.stderr)
         sys.exit(1)
-"""
-)
+""")
 
-SLURM_RUN_ALL_TEMPLATE = textwrap.dedent(
-    """\
+SLURM_RUN_ALL_TEMPLATE = textwrap.dedent("""\
     #!/usr/bin/env python3
     import subprocess, sys, time, re
     from pathlib import Path
@@ -91,11 +98,9 @@ SLURM_RUN_ALL_TEMPLATE = textwrap.dedent(
                 still_failed.append(job)
             time.sleep(0.1)
         failed = still_failed
-"""
-)
+""")
 
-SLURM_JOB_TEMPLATE = textwrap.dedent(
-    """\
+SLURM_JOB_TEMPLATE = textwrap.dedent("""\
     #!/bin/bash
     #SBATCH --job-name={instance}
     #SBATCH --partition={partition}
@@ -118,8 +123,7 @@ SLURM_JOB_TEMPLATE = textwrap.dedent(
     {command}
 
     sudo cpupower frequency-set -g powersave
-"""
-)
+""")
 
 
 # --- Argument parsing ---
@@ -138,6 +142,43 @@ def parse():
         help="base directory for run folders (default: ~/jobs)",
     )
     parser.add_argument("--instances", type=str)
+    parser.add_argument(
+        "--n",
+        type=int,
+        default=None,
+        help="randomly sample n instances (omit to use all)",
+    )
+    parser.add_argument(
+        "--sample-seed",
+        type=int,
+        default=0,
+        dest="sample_seed",
+        help="random seed for --n instance sampling (default: 0)",
+    )
+    parser.add_argument(
+        "--timelimit",
+        type=int,
+        default=TIME_LIMIT,
+        help=f"solver time limit in seconds (default: {TIME_LIMIT})",
+    )
+    parser.add_argument(
+        "--memorylimit",
+        type=int,
+        default=MEMORY_LIMIT,
+        help=f"solver memory limit in MB (default: {MEMORY_LIMIT})",
+    )
+    parser.add_argument(
+        "--threads",
+        type=int,
+        default=THREADS,
+        help=f"number of solver threads (default: {THREADS})",
+    )
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=SEED,
+        help=f"solver random seed (default: {SEED})",
+    )
     parser.add_argument("--slurm", action="store_true")
     parser.add_argument(
         "--mode",
@@ -159,10 +200,19 @@ def instances(args):
 
     if Path(args.instances).is_file():
         with open(args.instances, "r") as f:
-            return f.read().splitlines()
+            result = f.read().splitlines()
     else:
         folder = Path(args.instances).absolute()
-        return [str(folder / f) for f in os.listdir(args.instances)]
+        result = [str(folder / f) for f in os.listdir(args.instances)]
+
+    if args.n is not None:
+        assert args.n <= len(
+            result
+        ), f"--n={args.n} exceeds available instances ({len(result)})"
+        rng = random.Random(args.sample_seed)
+        result = rng.sample(result, args.n)
+
+    return result
 
 
 # --- Script writing ---
@@ -171,10 +221,7 @@ def instances(args):
 def write_bash_scripts(args, rundir):
     assert HPLUS.exists(), f"executable not found: {HPLUS}"
 
-    if args.commands is not None:
-        command = f"{COMMAND_DEFAULTS} {args.commands}"
-    else:
-        command = f"{COMMAND_DEFAULTS}"
+    command = build_command(args)
 
     jobsdir = Path(rundir) / "jobs"
     jobsdir.mkdir()
@@ -205,10 +252,7 @@ def write_bash_scripts(args, rundir):
 def write_slurm_scripts(args, rundir):
     assert HPLUS.exists(), f"executable not found: {HPLUS}"
 
-    if args.commands is not None:
-        command = f"{COMMAND_DEFAULTS} {args.commands}"
-    else:
-        command = f"{COMMAND_DEFAULTS}"
+    command = build_command(args)
 
     jobsdir = Path(rundir) / "jobs"
     jobsdir.mkdir()
@@ -301,7 +345,9 @@ def execute_scripts(rundir):
     run_all = Path(rundir) / "run_all.py"
     assert run_all.exists(), f"run_all.py not found in {rundir}"
 
-    subprocess.run(["python3", str(run_all)], check=True)
+    r = subprocess.run(["python3", str(run_all)])
+    if r.returncode != 0:
+        sys.exit(r.returncode)
 
 
 # --- Entry point ---
