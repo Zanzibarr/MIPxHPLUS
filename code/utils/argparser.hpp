@@ -622,36 +622,36 @@ static inline void parse_cli(const int argc, const char** argv, hplus::execution
         if (exec.cand_cuts == "0") {
             LOG_ERROR_S("You can't disable all candidate cuts from the " + std::string(HPLUS_CLI_ALG_FLAG_CUTS) + " algorithm");
         }
-        if (exec.fract_cuts == "0") {
-            if (exec.custom_cutloop) {
-                LOG_WARN_S("If you want to use the custom cutloop, please specify a fractional solution separator: disabling custom cutloop");
-            }
-            exec.fract_cuts_at_nodes = false;
-            exec.fractlm_min = "0";
-            exec.custom_cutloop = false;
-        }
-        if (exec.custom_cutloop && exec.ws == hplus::warmstart::NONE && exec.inout) {
-            LOG_WARN_S("Warmstart disabled: disabling In-Out strategy");
-            exec.inout = false;
-        }
         if (exec.candlm_min.find('g') != std::string::npos && exec.cand_cuts.find('l') == std::string::npos) {
             LOG_WARN_S(
                 "Greedy minimalization procedure is implicit in the landmark construction of Fronteer ('f') and Complementary ('c') cand separators: "
                 "disabling greedy minimalization procedure");
             std::erase_if(exec.candlm_min, [](const auto val) { return val == 'g'; });
         }
-        if (exec.fractlm_min.find('i') != std::string::npos && exec.fract_cuts.find('m') == std::string::npos) {
-            LOG_WARN_S(
-                "Iterative ('i') minimalization procedure is used only for Max-Flow-based ('m') fractional separato: disabling iterative "
-                "minimalization procedure");
-            std::erase_if(exec.fractlm_min, [](const auto val) { return val == 'i'; });
+    }
+    if (exec.fract_cuts == "0") {
+        if (exec.custom_cutloop) {
+            LOG_WARN_S("If you want to use the custom cutloop, please specify a fractional solution separator: disabling custom cutloop");
         }
-        if (exec.fract_cuts.find('l') != std::string::npos && exec.fract_cuts.find('l') == std::string::npos &&
-            exec.fractlm_min.find('g') != std::string::npos) {
-            LOG_WARN_S(
-                "Greedy minimalization procedure is implicit in the landmark construction of Max-Flow-based ('m') fractional separator: disabling "
-                "greedy minimalization procedure");
-            std::erase_if(exec.fractlm_min, [](const auto val) { return val == 'g'; });
-        }
+        exec.fract_cuts_at_nodes = false;
+        exec.fractlm_min = "0";
+        exec.custom_cutloop = false;
+    }
+    if (exec.custom_cutloop && exec.ws == hplus::warmstart::NONE && exec.inout) {
+        LOG_WARN_S("Warmstart disabled: disabling In-Out strategy");
+        exec.inout = false;
+    }
+    if (exec.fractlm_min.find('i') != std::string::npos && exec.fract_cuts.find('m') == std::string::npos) {
+        LOG_WARN_S(
+            "Iterative ('i') minimalization procedure is used only for Max-Flow-based ('m') fractional separato: disabling iterative "
+            "minimalization procedure");
+        std::erase_if(exec.fractlm_min, [](const auto val) { return val == 'i'; });
+    }
+    if (exec.fract_cuts.find('l') != std::string::npos && exec.fract_cuts.find('l') == std::string::npos &&
+        exec.fractlm_min.find('g') != std::string::npos) {
+        LOG_WARN_S(
+            "Greedy minimalization procedure is implicit in the landmark construction of Max-Flow-based ('m') fractional separator: disabling "
+            "greedy minimalization procedure");
+        std::erase_if(exec.fractlm_min, [](const auto val) { return val == 'g'; });
     }
 }
