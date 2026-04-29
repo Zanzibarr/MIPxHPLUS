@@ -15,7 +15,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from data import (
     prepare_data,
     resolve_aliases,
-    compute_optimality_gap,
+    compute_gaps,
     _DEFAULT_BEST_KNOWN,
 )
 from plots import boxplot, save
@@ -30,9 +30,10 @@ def main() -> None:
     )
     parser.add_argument(
         "--gap",
-        metavar="LB_COL",
+        nargs="+",
+        metavar="COL",
         default=None,
-        help="Plot optimality gap (%%) for the given lower-bound column (e.g. Relax_LB, Root_LB)",
+        help="Compare gaps vs optimal across bound columns (e.g. --gap Relax_LB Root_LB Final_LB Initial_UB)",
     )
     parser.add_argument(
         "--best-known",
@@ -57,30 +58,38 @@ def main() -> None:
 
     if args.gap:
         data = prepare_data(
-            args.files, aliases, domain=args.domain, extra_cols=[args.gap]
+            args.files, aliases, domain=args.domain, extra_cols=args.gap
         )
-        data = compute_optimality_gap(data, args.gap, args.best_known)
-        value_col = "Gap"
-        title = f"Optimality Gap — {args.gap} (%)"
-        y_label = "Gap to optimal (%)"
+        data = compute_gaps(data, args.gap, args.best_known)
+        plot = boxplot(
+            data,
+            group_col="Phase",
+            value_col="Gap",
+            fill_col="Model",
+            title="Optimality Gap by Phase",
+            x_label="Phase",
+            y_label="Gap to optimal (%)",
+            show_points=args.points,
+            group_order=args.gap,
+            fill_order=aliases,
+        )
+        width = max(8, len(args.gap) * 1.5 * len(aliases))
     else:
         extra = [args.metric] if args.metric not in ("Time", "Nodes") else None
         data = prepare_data(args.files, aliases, domain=args.domain, extra_cols=extra)
-        value_col = args.metric
-        title = f"{args.metric} Distribution"
-        y_label = args.metric
+        plot = boxplot(
+            data,
+            group_col="Model",
+            value_col=args.metric,
+            title=f"{args.metric} Distribution",
+            x_label="Run",
+            y_label=args.metric,
+            show_points=args.points,
+            group_order=aliases,
+        )
+        width = max(6, len(aliases) * 1.5)
 
-    plot = boxplot(
-        data,
-        group_col="Model",
-        value_col=value_col,
-        title=title,
-        x_label="Run",
-        y_label=y_label,
-        show_points=args.points,
-        group_order=aliases,
-    )
-    save(plot, args.out, width=max(6, len(aliases) * 1.5), height=5)
+    save(plot, args.out, width=width, height=5)
     print(f"Saved: {args.out}")
 
 

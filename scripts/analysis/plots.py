@@ -107,13 +107,20 @@ def boxplot(
     df: pl.DataFrame,
     group_col: str,
     value_col: str = "Value",
+    fill_col: str | None = None,
     title: str = "",
     x_label: str = "",
     y_label: str = "",
     show_points: bool = False,
     group_order: list[str] | None = None,
+    fill_order: list[str] | None = None,
 ) -> ggplot:
-    df = df.select([group_col, value_col])
+    actual_fill = fill_col or group_col
+    cols = [group_col, value_col] + (
+        [fill_col] if fill_col and fill_col != group_col else []
+    )
+    df = df.select(cols)
+
     if group_order is not None:
         df = df.with_columns(
             pl.col(group_col).cast(pl.String).cast(pl.Enum(group_order))
@@ -121,10 +128,24 @@ def boxplot(
     else:
         df = df.with_columns(pl.col(group_col).cast(pl.String))
 
+    if fill_col is not None and fill_col != group_col:
+        if fill_order is not None:
+            df = df.with_columns(
+                pl.col(fill_col).cast(pl.String).cast(pl.Enum(fill_order))
+            )
+        else:
+            df = df.with_columns(pl.col(fill_col).cast(pl.String))
+
     n_groups = df[group_col].n_unique()
     plot = (
-        ggplot(df, aes(x=group_col, y=value_col, fill=group_col))
-        + geom_boxplot(outlier_shape="o", outlier_size=1.5, width=0.5, alpha=0.85)
+        ggplot(df, aes(x=group_col, y=value_col, fill=actual_fill))
+        + geom_boxplot(
+            outlier_shape="o",
+            outlier_size=1.5,
+            width=0.5,
+            alpha=0.85,
+            position="dodge",
+        )
         + scale_fill_brewer(type="qual", palette="Set2")
         + labs(title=title, x=x_label or group_col, y=y_label or value_col)
         + theme_minimal()
@@ -132,7 +153,7 @@ def boxplot(
             figure_size=(max(6, n_groups * 0.9), 5),
             axis_text_x=element_text(angle=45, hjust=1, size=9),
             axis_line=element_line(color="#cccccc"),
-            legend_position="none",
+            legend_position="right" if fill_col else "none",
             plot_title=element_text(size=12, face="bold"),
         )
     )

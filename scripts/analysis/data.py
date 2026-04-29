@@ -170,6 +170,22 @@ def prepare_data(
 # ---------------------------------------------------------------------------
 
 
+def _require_complete(df: pl.DataFrame, cols: list[str]) -> pl.DataFrame:
+    """Drop problems where any run has a null in any of cols; warn if any removed."""
+    present = [c for c in cols if c in df.columns]
+    if not present:
+        return df
+    has_null = pl.any_horizontal([pl.col(c).is_null() for c in present])
+    bad = df.filter(has_null).select("Problem").unique()
+    if bad.height > 0:
+        print(
+            f"WARNING: dropped {bad.height} problem(s) with missing values "
+            f"in {present} (excluded from all runs for fair comparison)."
+        )
+        df = df.filter(~pl.col("Problem").is_in(bad["Problem"]))
+    return df
+
+
 def _sgm(arr: np.ndarray, shift: float = float(SHIFT)) -> float:
     a = np.asarray(arr, dtype=float)
     return float(np.exp(np.mean(np.log(a + shift))) - shift)
@@ -233,6 +249,7 @@ def compute_stats(
     """Category/bracket comparison table. Significant differences prefixed with '*'."""
     if models is None:
         models = data["Model"].unique().to_list()
+    data = _require_complete(data, list(metrics))
 
     present_brackets = set(data["Time_Bracket"].unique().to_list())
     bracket_order = [b for b in _GROUP_ORDER[3:] if b in present_brackets]
@@ -262,6 +279,7 @@ def compute_problem_stats(
     """Per-problem-family stats (row per family prefix before the first '-')."""
     if models is None:
         models = data["Model"].unique().to_list()
+    data = _require_complete(data, list(metrics))
 
     data = data.with_columns(
         pl.col("Problem").str.split("-").list.first().alias("ProbFamily")
@@ -287,6 +305,7 @@ def compare_data(
     models: list[str],
 ) -> pl.DataFrame:
     """SGM and SGM ratios vs baseline for each group and model."""
+    data = _require_complete(data, [metric])
     base = models[0]
     present_brackets = set(data["Time_Bracket"].unique().to_list())
 
@@ -356,13 +375,15 @@ _DEFAULT_BEST_KNOWN = str(
 
 def compute_optimality_gap(
     data: pl.DataFrame,
-    lb_col: str,
+    col: str,
     best_known_file: str = _DEFAULT_BEST_KNOWN,
 ) -> pl.DataFrame:
-    """Replace lb_col with Gap = (Incumbent - lb_col) / Incumbent * 100.
+    """Replace col with Gap = |col - Incumbent| / max(col, Incumbent) * 100.
 
+    Standard MIP gap formula; result is always in [0, 100].
+    Works for both lower bounds (col ≤ optimal) and upper bounds (col ≥ optimal).
     Joins on Problem; keeps only instances with Optimal=True in best_known.
-    Drops the lb_col and Incumbent columns, adds Gap (float, %).
+    Drops col and Incumbent, adds Gap (float, %).
     """
     if not Path(best_known_file).is_file():
         print(f"ERROR: best_known file not found: {best_known_file}")
@@ -376,9 +397,40 @@ def compute_optimality_gap(
 
     result = data.join(bk, on="Problem", how="inner")
     result = result.with_columns(
-        ((pl.col("Incumbent") - pl.col(lb_col).cast(pl.Float64)) / pl.col("Incumbent") * 100).alias("Gap")
-    ).drop([lb_col, "Incumbent"])
+        (
+            (pl.col(col).cast(pl.Float64) - pl.col("Incumbent")).abs()
+            / pl.max_horizontal(pl.col(col).cast(pl.Float64), pl.col("Incumbent"))
+            * 100
+        ).alias("Gap")
+    ).drop([col, "Incumbent"])
     return result
+
+
+def compute_gaps(
+    data: pl.DataFrame,
+    cols: list[str],
+    best_known_file: str = _DEFAULT_BEST_KNOWN,
+) -> pl.DataFrame:
+    """Gap (%) vs optimal for multiple bound columns, in long format.
+
+    Returns: Problem, Model, Phase, Gap.
+    Works for both lower and upper bounds (detected by value, not name).
+    Only keeps instances with Optimal=True in best_known.
+    """
+    data = _require_complete(data, cols)
+    frames: list[pl.DataFrame] = []
+    for c in cols:
+        if c not in data.columns:
+            print(f"WARNING: column {c!r} not found in data, skipping.")
+            continue
+        gap_df = compute_optimality_gap(data, c, best_known_file)
+        frames.append(
+            gap_df.select(["Problem", "Model", pl.lit(c).alias("Phase"), "Gap"])
+        )
+
+    if not frames:
+        return pl.DataFrame({"Problem": [], "Model": [], "Phase": [], "Gap": []})
+    return pl.concat(frames)
 
 
 # ---------------------------------------------------------------------------
