@@ -40,7 +40,9 @@ def main() -> None:
         parser.error("At least two files required (baseline + one comparison).")
 
     aliases = resolve_aliases(args.files, args.aliases)
-    data = prepare_data(args.files, aliases, domain=args.domain, solved_only=args.solved)
+    data = prepare_data(
+        args.files, aliases, domain=args.domain, solved_only=args.solved
+    )
 
     plot = bar_comparison_plot(data, aliases, metric=args.metric)
     save(plot, args.out, width=10, height=5)

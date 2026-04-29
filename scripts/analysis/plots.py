@@ -41,9 +41,12 @@ from data import compare_data, _GROUP_ORDER, _sgm
 # ---------------------------------------------------------------------------
 
 
-def save(plot, path: str = "plot.pdf", width: float = 6, height: float = 6) -> None:
+def save(
+    plot, path: str = "plot.pdf", width: float | None = 6, height: float | None = 6
+) -> None:
     fig = plot.draw()
-    fig.set_size_inches(width, height)
+    if width is not None and height is not None:
+        fig.set_size_inches(width, height)
     fig.savefig(path, bbox_inches="tight")
     plt.close(fig)
 
@@ -160,7 +163,10 @@ def boxplot(
     )
     if show_points:
         plot += geom_jitter(
-            width=0.1, size=1.2, alpha=0.5, color="#444444",
+            width=0.1,
+            size=1.2,
+            alpha=0.5,
+            color="#444444",
             position=position_dodge(width=0.9),
         )
     return plot
@@ -226,6 +232,8 @@ def scatter_comparison_plot(
     Reference lines: y=x (black), y=2x / y=0.5x (orange), y=10x / y=0.1x (red).
     If highlight is given, full data shown as grey; highlight in colour.
     """
+    n_comp = len(models) - 1
+    panel_size = 5.0
     base = models[0]
     base_col = data.filter(pl.col("Model") == base).select(
         ["Problem", pl.col(metric).alias("_base")]
@@ -266,6 +274,7 @@ def scatter_comparison_plot(
         + theme_minimal()
         + theme(
             aspect_ratio=1,
+            figure_size=(panel_size * n_comp + 1.5, panel_size + 1.0),
             strip_text=element_text(size=10, weight="bold"),
             plot_title=element_text(size=14, weight="bold"),
             axis_title=element_text(size=11),

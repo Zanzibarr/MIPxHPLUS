@@ -61,7 +61,10 @@ def main() -> None:
 
     if args.gap:
         data = prepare_data(
-            args.files, aliases, domain=args.domain, extra_cols=args.gap,
+            args.files,
+            aliases,
+            domain=args.domain,
+            extra_cols=args.gap,
             solved_only=args.solved,
         )
         data = compute_gaps(data, args.gap, args.best_known)
@@ -81,7 +84,10 @@ def main() -> None:
     else:
         extra = [args.metric] if args.metric not in ("Time", "Nodes") else None
         data = prepare_data(
-            args.files, aliases, domain=args.domain, extra_cols=extra,
+            args.files,
+            aliases,
+            domain=args.domain,
+            extra_cols=extra,
             solved_only=args.solved,
         )
         plot = boxplot(

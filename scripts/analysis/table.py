@@ -56,7 +56,10 @@ def main() -> None:
 
     if args.metric:
         data = prepare_data(
-            args.files, aliases, domain=args.domain, extra_cols=[args.metric],
+            args.files,
+            aliases,
+            domain=args.domain,
+            extra_cols=[args.metric],
             solved_only=args.solved,
         )
         result = compute_stats(

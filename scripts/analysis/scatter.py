@@ -48,8 +48,7 @@ def main() -> None:
     plot = scatter_comparison_plot(
         full_data, aliases, metric=args.metric, highlight=highlight
     )
-    n_comp = len(aliases) - 1
-    save(plot, args.out, width=6 * n_comp, height=6)
+    save(plot, args.out)
     print(f"Saved: {args.out}")
 
 

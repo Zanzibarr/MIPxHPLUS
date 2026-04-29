@@ -32,7 +32,9 @@ def main() -> None:
     args = parser.parse_args()
 
     aliases = resolve_aliases(args.files, args.aliases)
-    data = prepare_data(args.files, aliases, domain=args.domain, solved_only=args.solved)
+    data = prepare_data(
+        args.files, aliases, domain=args.domain, solved_only=args.solved
+    )
 
     plot = cumulative_plot(
         data,
