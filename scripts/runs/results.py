@@ -342,7 +342,7 @@ def parse_log(filepath):
     # Lower bound stats
     row["Relax_LB"] = gauges.get("lb_relaxation", None)
     row["Cutloop_LB"] = gauges.get("lb_cutloop", None)
-    row["Root_LB"] = gauges.get("lb_root", None)
+    row["Root_LB"] = gauges.get("lb_rootnode", None)
 
     # --- Timers (Timer table, converted to seconds) ---
     row["Pars_CLI_Time"] = t("parsing.cli")
