@@ -13,9 +13,9 @@ from plotnine import (
     geom_bar,
     geom_boxplot,
     geom_hline,
-    geom_jitter,
-    position_dodge,
     geom_point,
+    position_dodge,
+    position_jitterdodge,
     geom_rect,
     geom_step,
     scale_color_brewer,
@@ -162,12 +162,11 @@ def boxplot(
         )
     )
     if show_points:
-        plot += geom_jitter(
-            width=0.1,
+        plot += geom_point(
             size=1.2,
             alpha=0.5,
             color="#444444",
-            position=position_dodge(width=0.9),
+            position=position_jitterdodge(jitter_width=0.1, dodge_width=0.9),
         )
     return plot
 

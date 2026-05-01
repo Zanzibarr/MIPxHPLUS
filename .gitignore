@@ -14,6 +14,8 @@ logs/
 
 # files
 scripts/**/*.pdf
+scripts/analysis/results
+scripts/analysis/scpfile
 
 # other
 **/__pycache__
