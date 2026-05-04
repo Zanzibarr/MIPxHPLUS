@@ -187,6 +187,7 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
 
     const auto& repeat_cutloop = [&]() {
         double current_lb = std::numeric_limits<double>::quiet_NaN();
+        // TODO: handle CPXERR_NO_SOLN (1217) — see issue #2
         CPX_HANDLE_CALL(CPXgetobjval(env, lp, &current_lb));
         lb_history.push_back(current_lb);
 
@@ -247,6 +248,7 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
     double inout_w = exec.io_weight;
 
     solve_relaxation(env, lp, exec, stats);
+    // TODO: If the cutloop isn't called this statistic is never gathered...
     STATS.gauge_record<"lb_relaxation">(stats.lower_bound);
 
     while (repeat_cutloop() && !CHECK_STOP()) {

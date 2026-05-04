@@ -34,7 +34,7 @@ void cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, const hplus::
 
 namespace exact {
 
-inline void init_cplex(hplus::execution& exec, CPXENVptr& env, CPXLPptr& lp) {
+inline void init_cplex(const hplus::execution& exec, CPXENVptr& env, CPXLPptr& lp) {
     LOG_INFO_S("Initializing CPLEX environment");
 
     int cpxerror = 0;
@@ -62,7 +62,7 @@ inline void init_cplex(hplus::execution& exec, CPXENVptr& env, CPXLPptr& lp) {
     CPX_HANDLE_CALL(CPXsetintparam(env, CPXPARAM_RandomSeed, exec.seed));
 }
 
-void build_base_model(hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp);
+void build_base_model(const hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp);
 
 inline void add_acyclicity_constraints(const hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
     switch (exec.alg) {
@@ -98,9 +98,9 @@ inline void post_warm_start(const hplus::execution& exec, hplus::instance& inst,
     }
 }
 
-void get_cplex_solution(hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, const CPXENVptr& env, const CPXLPptr& lp);
+void get_cplex_solution(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, const CPXENVptr& env, const CPXLPptr& lp);
 
-inline void set_cplex_timelimit(hplus::execution& exec, const CPXENVptr& env) {
+inline void set_cplex_timelimit(const hplus::execution& exec, const CPXENVptr& env) {
     if (exec.timelimit > 0 && static_cast<double>(exec.timelimit) > GET_TIME()) {
         CPX_HANDLE_CALL(CPXsetdblparam(env, CPXPARAM_TimeLimit, static_cast<double>(exec.timelimit) - GET_TIME()));
     } else {

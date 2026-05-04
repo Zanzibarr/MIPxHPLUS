@@ -57,6 +57,7 @@ void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::
     visited_nodes.insert(nodeuid);
 
     // Store the actual root lower bound, regardless of using or not the custom cutloop
+    // TODO: I don't like this way of getting this statistic... too unreliable (and possibly wrong)... find another way
     if (nodeuid != 0) {
         static std::atomic_bool exited_root = false;
         bool expected = false;
@@ -84,8 +85,9 @@ void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::
     const auto& fadd_weights = relax_cuts::relaxationpoint_info(inst, relax_point);
 
     // exec.fract_cuts is a string containing one letter per type of cut to be applied
-    // -> l : landmark cuts
-    // -> s : SEC
+    // -> m : Max-Flow landmark cuts
+    // -> l : LMcut landmark cuts
+    // -> s : SEC cuts
     try {
         if (exec.fract_cuts.find('m') != std::string::npos || (exec.fract_cuts.find('l') != std::string::npos)) {
             auto fract_lm = relax_cuts::add_lm_cut(context, exec, inst, relax_point);

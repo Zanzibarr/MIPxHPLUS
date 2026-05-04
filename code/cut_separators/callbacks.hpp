@@ -44,7 +44,7 @@ static auto CPXPUBLIC callback_hub(CPXCALLBACKCONTEXTptr context, CPXLONG contex
 }
 
 /// Set the chosen callback context for CPLEX
-inline void set_cplex_callbacks(hplus::execution& exec, callback_userhandle& userhandle, CPXENVptr& env, CPXLPptr& lp) {
+inline void set_cplex_callbacks(const hplus::execution& exec, callback_userhandle& userhandle, CPXENVptr& env, CPXLPptr& lp) {
     LOG_INFO_S("Setting up CPLEX callbacks");
 
     // Setting up callbacks

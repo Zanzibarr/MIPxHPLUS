@@ -72,7 +72,7 @@ void parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp, const hplus::e
     }
 }
 
-void store_cplex_solution(hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, const CPXENVptr& env, const CPXLPptr& lp) {
+void store_cplex_solution(hplus::instance& inst, hplus::statistics& stats, const CPXENVptr& env, const CPXLPptr& lp) {
     std::vector<double> plan(inst.m + inst.nfadd, 0.0);
     switch (int code = CPXgetx(env, lp, plan.data(), 0, static_cast<int>(inst.m + inst.nfadd - 1))) {
         case CPXERR_NO_MEMORY:
@@ -91,27 +91,25 @@ void store_cplex_solution(hplus::execution& exec, hplus::instance& inst, hplus::
     }
 
     // fixing the solution to read the plan (some 0-cost actions are set to 1 even if they are not a first archiever of anything)
-    if (exec.alg != hplus::algorithm::CUTS) {
-        for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
-            bool set_zero{true};
-            for (unsigned int var_count = 0; var_count < inst.actions[act_i].eff_sparse.size(); var_count++) {
-                if (plan[inst.m + inst.fadd_cpx_start[act_i] + var_count] > HPLUS_CPX_INT_ROUNDING) {
-                    ASSERT(plan[act_i] > HPLUS_CPX_INT_ROUNDING);
-                    set_zero = false;
-                    break;
-                }
-            }
-            if (set_zero) {
-                plan[act_i] = 0;
+    for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
+        bool set_zero{true};
+        for (unsigned int var_count = 0; var_count < inst.actions[act_i].eff_sparse.size(); var_count++) {
+            if (plan[inst.m + inst.fadd_cpx_start[act_i] + var_count] > HPLUS_CPX_INT_ROUNDING) {
+                ASSERT(plan[act_i] > HPLUS_CPX_INT_ROUNDING);
+                set_zero = false;
+                break;
             }
         }
-    } else {
-        // If the solution we have is the same/better than the one returned by cplex, we can skip the rest of this function
-        double obj{-1};
-        CPX_HANDLE_CALL(CPXgetobjval(env, lp, &obj));
-        if (obj >= inst.sol.cost - HPLUS_EPSILON) {
-            return;
+        if (set_zero) {
+            plan[act_i] = 0;
         }
+    }
+
+    // If the solution we have is the same/better than the one returned by cplex, we can skip the rest of this function
+    double obj{-1};
+    CPX_HANDLE_CALL(CPXgetobjval(env, lp, &obj));
+    if (obj >= inst.sol.cost - HPLUS_EPSILON) {
+        return;
     }
 
     // convert to a vector of int for easier parsing
@@ -143,6 +141,7 @@ void store_cplex_solution(hplus::execution& exec, hplus::instance& inst, hplus::
             intcheck = true;
             cost += inst.actions[cpx_result[idx]].cost;
         }
+        // TODO: CPLEX solution not serializable — see issue #3
         ASSERT(intcheck);
     }
 
@@ -153,7 +152,7 @@ void store_cplex_solution(hplus::execution& exec, hplus::instance& inst, hplus::
 
 }  // namespace
 
-void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
+void exact::build_base_model(const hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp) {
     LOG_INFO_S("Building base model for exact search");
 
     auto stopcheck = []() {
@@ -322,7 +321,8 @@ void exact::build_base_model(hplus::execution& exec, hplus::instance& inst, CPXE
     }
 }
 
-void exact::get_cplex_solution(hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, const CPXENVptr& env, const CPXLPptr& lp) {
+void exact::get_cplex_solution(const hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, const CPXENVptr& env,
+                               const CPXLPptr& lp) {
     parse_cplex_status(env, lp, exec, inst, stats);
 
     STATS.counter_set<"nodes">(CPXgetnodecnt(env, lp));
@@ -331,12 +331,14 @@ void exact::get_cplex_solution(hplus::execution& exec, hplus::instance& inst, hp
         return;
     }
 
+    // TODO: handle CPXERR_NOT_MIP (3003) — see issue #1
     CPX_HANDLE_CALL(CPXgetbestobjval(env, lp, &stats.lower_bound));
     stats.lower_bound = std::max<double>(stats.lower_bound, 0);
 
     // This is needed due to the patch applied to the beginning of the candidate/relaxation callback: if the lower and upper bounds match, we have the
     // optimal. This is needed because CPLEX might return without having evaluated our posted optimal solution, so the status he has is FEAS, not OPT
-    // (even though the lower bound he gave use matches our best solution)
+    // (even though the lower bound he gave use matches our best solution).
+    // Moreover, this is a nice check to be made, to prevent possible missing status updates...
     if (stats.lower_bound >= stats.cost - HPLUS_EPSILON) {
         stats.lower_bound = static_cast<double>(stats.cost);  // Fix possible precision errors
         stats.status = HPLUS_STATUS_OPT;
@@ -344,10 +346,12 @@ void exact::get_cplex_solution(hplus::execution& exec, hplus::instance& inst, hp
     }
 
     // If we never exited the root node we need to store the lower bound for statistics
+    // TODO: I don't like this way of getting this statistic... too unreliable (and possibly wrong)... find another way (continuation of same TODO in
+    // relax_callback.cpp)
     if (STATS.counter_get<"nodes">() == 0) {
         STATS.gauge_record<"lb_rootnode">(stats.lower_bound);
     }
 
     LOG_INFO_S("Reading CPLEX solution");
-    store_cplex_solution(exec, inst, stats, env, lp);
+    store_cplex_solution(inst, stats, env, lp);
 }

@@ -34,6 +34,7 @@ HOW I DO VERSIONING:
 <!-- ### :heavy_exclamation_mark: Changed -->
 ### :heavy_plus_sign: Added
 - Added option to add fractional callbacks to complete (TL and VE) models (aswell as custom cutloop)
+- [3.1.7.2] Added integrity check in reading CPLEX solution
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
 <!-- ### :rocket: Performance Improvements -->
