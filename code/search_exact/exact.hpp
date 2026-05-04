@@ -152,10 +152,9 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
     // =================== CPLEX EXECUTION ================== //
     // ====================================================== //
 
-    set_cplex_timelimit(exec, env);
-
     // Run cplex
     try {
+        // Note: Cutloop throws a time_limit exception, so everything after this point in that case doesn't get executed
         if (exec.custom_cutloop) {
             cutloop::cutloop(env, lp, exec, inst, stats);
         }
@@ -165,6 +164,9 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
         if (exec.ws != hplus::warmstart::NONE) {
             post_warm_start(exec, inst, env, lp);
         }
+
+        // Fix[Issue#4] : Up to this point the timelimit thread still works, so it can be used in the cut loop
+        set_cplex_timelimit(exec, env);
 
         run_cplex(env, lp, exec);
 
@@ -176,8 +178,10 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
     // =============== GATHER INFO AND CLOSING ============== //
     // ====================================================== //
 
-    // There are info to gather or resources to free only if we used the CUTS algorithm
-    get_cplex_solution(exec, inst, stats, env, lp);
+    // Fix[Issue#1] : If cutloop throws a bad_alloc due to memory limit, the cutloop never re-converts back to MIP
+    if (exec.exec_s == hplus::exec_status::CPX_EXEC) {
+        get_cplex_solution(exec, inst, stats, env, lp);
+    }
     close_cplex(env, lp);
 }
 

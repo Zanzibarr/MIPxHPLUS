@@ -186,10 +186,9 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
     std::vector<double> lb_history;
 
     const auto& repeat_cutloop = [&]() {
-        double current_lb = std::numeric_limits<double>::quiet_NaN();
-        // TODO: handle CPXERR_NO_SOLN (1217) — see issue #2
-        CPX_HANDLE_CALL(CPXgetobjval(env, lp, &current_lb));
-        lb_history.push_back(current_lb);
+        // Fix[Issue#2] : Use stats.lower_bound (already parsed in solve_relaxation and already handles the time limit case) instead or getting the
+        // lower bound from CPLEX
+        lb_history.push_back(stats.lower_bound);
 
         // No more cuts
         if (new_cuts == 0) {
@@ -197,7 +196,7 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
         }
 
         // Check gap with incumbent
-        if (1 - current_lb / static_cast<double>(inst.sol.cost == 0 ? 1 : inst.sol.cost) <= exec.cl_gap_stop + HPLUS_EPSILON) {
+        if (1 - stats.lower_bound / static_cast<double>(inst.sol.cost == 0 ? 1 : inst.sol.cost) <= exec.cl_gap_stop + HPLUS_EPSILON) {
             return false;
         }
 
@@ -209,11 +208,11 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
         // Absolute gap with past iteration (only if old_lb is 0 -> we cannot compute the relative gap if it is 0)
         double old_lb = lb_history[lb_history.size() - exec.cl_past_iter - 1];
         if (old_lb <= HPLUS_EPSILON) {
-            return current_lb - old_lb >= HPLUS_EPSILON;
+            return stats.lower_bound - old_lb >= HPLUS_EPSILON;
         }
 
         // Relative gap with past iteration
-        double improvement = (current_lb / old_lb) - 1;
+        double improvement = (stats.lower_bound / old_lb) - 1;
         if (improvement < HPLUS_EPSILON) {
             improvement = 0;  // Set to 0 for precision issues
         }
@@ -290,6 +289,6 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
     exit_cutloop(env, lp);
 
     if (CHECK_STOP()) {
-        throw timelimit_exception("");
+        throw timelimit_exception("Reached time limit.");
     }
 }

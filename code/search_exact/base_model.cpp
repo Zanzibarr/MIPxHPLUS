@@ -331,7 +331,6 @@ void exact::get_cplex_solution(const hplus::execution& exec, hplus::instance& in
         return;
     }
 
-    // TODO: handle CPXERR_NOT_MIP (3003) — see issue #1
     CPX_HANDLE_CALL(CPXgetbestobjval(env, lp, &stats.lower_bound));
     stats.lower_bound = std::max<double>(stats.lower_bound, 0);
 
