@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cstddef>
+#include <set>
 #include <string>
 #include <tuple>
 
@@ -23,7 +24,9 @@ void ve::add_acyclicity_constraints(hplus::instance& inst, CPXENVptr& env, CPXLP
     // ====================================================== //
 
     // Initialize data structures
-    std::vector<std::unordered_set<unsigned int>> graph(inst.n);
+    // This needs to not be an unordered_set because it gets iterated upon to create triangles_list, which is directly used to add constraints to
+    // CPLEX (order sensitive)
+    std::vector<std::set<unsigned int>> graph(inst.n);
     inst.veg_cumulative_graph.resize(inst.n);
     std::vector<std::tuple<unsigned int, unsigned int, unsigned int>> triangles_list;
     priority_queue<unsigned int> nodes_queue(static_cast<size_t>(2 * inst.n));
@@ -74,7 +77,8 @@ void ve::add_acyclicity_constraints(hplus::instance& inst, CPXENVptr& env, CPXLP
         // p -> idx -> q
         // | / > |
 
-        std::unordered_set<unsigned int> new_nodes;
+        // This cannot be an unordered set because it gets iterated upon for updating the nodes_queue (heap re-ordering is order sensitive)
+        std::set<unsigned int> new_nodes;
 
         // Process all predecessors of idx
         for (unsigned int pre = 0; pre < inst.n; ++pre) {

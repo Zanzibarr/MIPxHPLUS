@@ -32,6 +32,7 @@ HOW I DO VERSIONING:
 ### :ballot_box_with_check: Fixed
 - [3.1.7.1] Uncaught exception in lmcut computation
 - [3.1.7.3] Fixed issues #1,#2 and #4
+- [3.1.7.4] Swapped unordered set, which were iterated upon, for a set (determinism across platforms where possible)
 <!-- ### :heavy_exclamation_mark: Changed -->
 ### :heavy_plus_sign: Added
 - Added option to add fractional callbacks to complete (TL and VE) models (aswell as custom cutloop)
