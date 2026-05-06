@@ -344,13 +344,6 @@ void exact::get_cplex_solution(const hplus::execution& exec, hplus::instance& in
         inst.sol_s = hplus::solution_status::OPT;
     }
 
-    // If we never exited the root node we need to store the lower bound for statistics
-    // TODO: I don't like this way of getting this statistic... too unreliable (and possibly wrong)... find another way (continuation of same TODO in
-    // relax_callback.cpp)
-    if (STATS.counter_get<"nodes">() == 0) {
-        STATS.gauge_record<"lb_rootnode">(stats.lower_bound);
-    }
-
     LOG_INFO_S("Reading CPLEX solution");
     store_cplex_solution(inst, stats, env, lp);
 }

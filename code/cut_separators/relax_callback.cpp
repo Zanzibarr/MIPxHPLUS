@@ -1,6 +1,5 @@
 #include "relax_callback.hpp"
 
-#include <atomic>
 #include <limits.hxx>
 #include <unordered_set>
 
@@ -29,14 +28,6 @@ auto relax_cuts::relaxationpoint_info(const hplus::instance& inst, std::vector<d
 }
 
 void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, const hplus::instance& inst) {
-    // If the lower bound (CPLEX) and the best solution (ours) match, we already have the optimal solution -> exit
-    double best_lb{-1};
-    CPX_HANDLE_CALL(CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_BND, &best_lb));
-    if (best_lb >= inst.sol.cost - HPLUS_EPSILON) {
-        GLOBAL_TERMINATE_CONDITION = 1;  // This will stop CPLEX execution
-        return;
-    }
-
     int nodeuid{-1};
     int nodedepth{-1};
     CPX_HANDLE_CALL(CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODEUID, &nodeuid));
@@ -55,16 +46,6 @@ void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::
         return;
     }
     visited_nodes.insert(nodeuid);
-
-    // Store the actual root lower bound, regardless of using or not the custom cutloop
-    // TODO: I don't like this way of getting this statistic... too unreliable (and possibly wrong)... find another way
-    if (nodeuid != 0) {
-        static std::atomic_bool exited_root = false;
-        bool expected = false;
-        if (exited_root.compare_exchange_strong(expected, true, std::memory_order_relaxed)) {
-            STATS.gauge_record<"lb_rootnode">(best_lb);
-        }
-    }
 
     STATS.counter_inc<"fract_calls">();
     auto _fract_time = make_scoped_timer<"fract_callback">(STATS);

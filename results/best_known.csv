@@ -2299,7 +2299,7 @@ tetris-sat14-strips-p038,true,33.0
 tetris-sat14-strips-p039,true,41.0
 tetris-sat14-strips-p040,true,39.0
 thoughtful-mco14-strips-p11_6_65-typed,false,70.0
-thoughtful-mco14-strips-p11_6_74-typed,false,74.0
+thoughtful-mco14-strips-p11_6_74-typed,false,73.0
 thoughtful-mco14-strips-p11_6_75-typed,false,75.0
 thoughtful-mco14-strips-p11_6_78-typed,false,69.0
 thoughtful-mco14-strips-p11_6_88-typed,false,76.0
@@ -2309,7 +2309,7 @@ thoughtful-mco14-strips-p11_6_99-typed,true,70.0
 thoughtful-mco14-strips-p13_7_55-typed,false,80.0
 thoughtful-mco14-strips-p13_7_56-typed,false,83.0
 thoughtful-mco14-strips-p13_7_58-typed,false,85.0
-thoughtful-mco14-strips-p13_7_61-typed,false,91.0
+thoughtful-mco14-strips-p13_7_61-typed,false,89.0
 thoughtful-mco14-strips-p13_7_62-typed,false,86.0
 thoughtful-mco14-strips-p13_7_64-typed,false,88.0
 thoughtful-mco14-strips-p13_7_68-typed,false,101.0
@@ -2326,11 +2326,11 @@ thoughtful-sat14-strips-bootstrap-typed-05,true,29.0
 thoughtful-sat14-strips-p11_6_53-typed,false,73.0
 thoughtful-sat14-strips-p11_6_59-typed,false,70.0
 thoughtful-sat14-strips-p11_6_62-typed,false,68.0
-thoughtful-sat14-strips-p13_7_78-typed,false,89.0
+thoughtful-sat14-strips-p13_7_78-typed,false,87.0
 thoughtful-sat14-strips-p13_7_79-typed,false,81.0
 thoughtful-sat14-strips-p13_7_86-typed,false,82.0
 thoughtful-sat14-strips-target-typed-20,false,85.0
-thoughtful-sat14-strips-target-typed-21,false,92.0
+thoughtful-sat14-strips-target-typed-21,false,91.0
 thoughtful-sat14-strips-target-typed-22,false,89.0
 thoughtful-sat14-strips-target-typed-23,true,85.0
 thoughtful-sat14-strips-target-typed-24,true,82.0
@@ -2526,11 +2526,11 @@ transport-sat08-strips-p25,true,680.0
 transport-sat08-strips-p26,true,631.0
 transport-sat08-strips-p27,false,824.0
 transport-sat08-strips-p28,false,837.0
-transport-sat08-strips-p29,false,958.0
+transport-sat08-strips-p29,false,938.0
 transport-sat08-strips-p30,false,1144.0
 transport-sat11-strips-p01,true,339.0
 transport-sat11-strips-p02,false,406.0
-transport-sat11-strips-p03,false,958.0
+transport-sat11-strips-p03,false,938.0
 transport-sat11-strips-p04,true,585.0
 transport-sat11-strips-p05,true,682.0
 transport-sat11-strips-p06,true,638.0
@@ -2541,9 +2541,9 @@ transport-sat11-strips-p10,false,1144.0
 transport-sat11-strips-p11,false,462.0
 transport-sat11-strips-p12,false,507.0
 transport-sat11-strips-p13,false,529.0
-transport-sat11-strips-p14,false,955.0
+transport-sat11-strips-p14,false,945.0
 transport-sat11-strips-p15,false,976.0
-transport-sat11-strips-p16,false,953.0
+transport-sat11-strips-p16,false,947.0
 transport-sat11-strips-p17,false,1294.0
 transport-sat11-strips-p18,false,1175.0
 transport-sat11-strips-p19,false,1265.0
@@ -2557,7 +2557,7 @@ transport-sat14-strips-p06,false,1122.0
 transport-sat14-strips-p07,false,1380.0
 transport-sat14-strips-p08,false,1468.0
 transport-sat14-strips-p09,false,1380.0
-transport-sat14-strips-p10,false,1429.0
+transport-sat14-strips-p10,false,1425.0
 transport-sat14-strips-p11,false,575.0
 transport-sat14-strips-p12,false,618.0
 transport-sat14-strips-p13,false,556.0

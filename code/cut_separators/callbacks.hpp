@@ -1,7 +1,7 @@
 /**
  * Methods for CPLEX generic callbacks
- * Extends to cand_callback.hpp for the methods used for CPLEX's candidate callback, and relax_callback.hpp for the methods used for CPLEX's
- * relaxation callback
+ * Extends to cand_callback.hpp for the methods used for CPLEX's candidate callback, relax_callback.hpp for the methods used for CPLEX's
+ * relaxation callback and progress_callback.hpp for global progress stats gathering
  *
  * @author Zanella Matteo (matteozanella2@gmail.com)
  */
@@ -12,6 +12,7 @@
 
 #include "cand_callback.hpp"
 #include "execution.hpp"
+#include "progress_callback.hpp"
 #include "relax_callback.hpp"
 #include "utils.hpp"
 
@@ -30,6 +31,9 @@ static auto CPXPUBLIC callback_hub(CPXCALLBACKCONTEXTptr context, CPXLONG contex
     CPX_HANDLE_CALL(CPXcallbackgetinfoint(context, CPXCALLBACKINFO_THREADID, &thread_id));
 
     switch (contextid) {
+        case CPX_CALLBACKCONTEXT_GLOBAL_PROGRESS:
+            progress_callback(context, exec, inst);
+            break;
         case CPX_CALLBACKCONTEXT_RELAXATION:
             relaxation_callback(context, exec, inst);
             break;
@@ -48,7 +52,8 @@ inline void set_cplex_callbacks(const hplus::execution& exec, callback_userhandl
     LOG_INFO_S("Setting up CPLEX callbacks");
 
     // Setting up callbacks
-    CPXLONG callback_context = 0;
+    // Fix[Issue#3] : Use global progress callback to gather global info about the solution process
+    CPXLONG callback_context = CPX_CALLBACKCONTEXT_GLOBAL_PROGRESS;
 
     // This function is used not only for the CUTS algorithm now, so if TL or VE wants to strenghten the lb with fractional cuts it can
     if (exec.cand_cuts != "0") {

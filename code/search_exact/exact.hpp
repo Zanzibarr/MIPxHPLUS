@@ -158,13 +158,12 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
         if (exec.custom_cutloop) {
             cutloop::cutloop(env, lp, exec, inst, stats);
         }
-        if (exec.cand_cuts != "0" || (exec.fract_cuts != "0" && (!exec.custom_cutloop || exec.fract_cuts_at_nodes))) {
-            callbacks::set_cplex_callbacks(exec, callback_userhandle, env, lp);
-        }
         if (exec.ws != hplus::warmstart::NONE) {
             post_warm_start(exec, inst, env, lp);
         }
 
+        // Global progress callback is always enabled
+        callbacks::set_cplex_callbacks(exec, callback_userhandle, env, lp);
         // Fix[Issue#4] : Up to this point the timelimit thread still works, so it can be used in the cut loop
         set_cplex_timelimit(exec, env);
 
