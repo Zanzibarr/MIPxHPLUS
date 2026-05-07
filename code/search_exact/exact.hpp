@@ -8,11 +8,18 @@
 
 #include <cplex.h>
 
+#include <algorithm>
 #include <new>
+#include <numeric>
+#include <vector>
 
 #include "callbacks.hpp"
+#include "execution.hpp"
+#include "instance.hpp"
 #include "limits.hxx"
+#include "scope_guard.hxx"
 #include "timer.hxx"
+#include "utils.hpp"
 
 namespace tl {
 void add_acyclicity_constraints(hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp);
@@ -114,13 +121,90 @@ inline void close_cplex(CPXENVptr& env, CPXLPptr& lp) {
     CPX_HANDLE_CALL(CPXcloseCPLEX(&env));
 }
 
-inline void run_cplex(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec) {
-    exec.exec_s = hplus::exec_status::CPX_EXEC;
+// Solves the LP relaxation and updates stats.lower_bound
+inline void solve_lp_relaxation(const hplus::execution& exec, CPXENVptr& env, CPXLPptr& lp, hplus::statistics& stats) {
+    if (exec.timelimit > 0 && static_cast<double>(exec.timelimit) > GET_TIME()) {
+        CPX_HANDLE_CALL(CPXsetdblparam(env, CPXPARAM_TimeLimit, static_cast<double>(exec.timelimit) - GET_TIME()));
+    } else {
+        throw timelimit_exception("Reached time limit.");
+    }
+
+    CPX_HANDLE_CALL(CPXlpopt(env, lp));
+
+    double lb = 0;
+    switch (const int status{CPXgetstat(env, lp)}) {
+        case CPX_STAT_OPTIMAL:
+            CPX_HANDLE_CALL(CPXgetobjval(env, lp, &lb));
+            stats.lower_bound = std::max(stats.lower_bound, lb);
+            break;
+        case CPX_STAT_ABORT_TIME_LIM:
+            [[fallthrough]];
+        case CPX_STAT_ABORT_USER:
+            break;
+        default:
+            LOG_ERROR_S("Unhandled CPLEX status in solve_lp_relaxation: " + std::to_string(status));
+    }
+}
+
+// Restores the problem type from LP back to MILP (all variables binary)
+inline void restore_milp(CPXENVptr& env, CPXLPptr& lp) {
+    CPX_HANDLE_CALL(CPXchgprobtype(env, lp, CPXPROB_MILP));
+    const int ncols = CPXgetnumcols(env, lp);
+    std::vector<int> ind(static_cast<unsigned int>(ncols));
+    std::vector<char> types(static_cast<unsigned int>(ncols), 'B');
+    std::iota(ind.begin(), ind.end(), 0);
+    CPX_HANDLE_CALL(CPXchgctype(env, lp, ncols, ind.data(), types.data()));
+}
+
+inline void run_cplex(hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats, CPXENVptr& env, CPXLPptr& lp,
+                      callbacks::callback_userhandle& callback_userhandle) {
     auto _cpx_exec = make_scoped_timer<"cpx_execution">(STATS);
+    exec.exec_s = hplus::exec_status::CPX_EXEC;
+
+    if (exec.custom_cutloop) {
+        try {
+            cutloop::cutloop(env, lp, exec, inst, stats);
+        } catch (timelimit_exception&) {
+            callbacks::ensure_lb_rootnode(stats.lower_bound);
+            throw;
+        }
+    }
+
+    if (stats.lower_bound >= stats.cost - HPLUS_EPSILON) {
+        stats.lower_bound = static_cast<double>(stats.cost);  // Fix possible precision errors
+        stats.status = HPLUS_STATUS_OPT;
+        inst.sol_s = hplus::solution_status::OPT;
+        if (!exec.custom_cutloop) {
+            STATS.gauge_record<"lb_relaxation">(stats.lower_bound);
+        }
+        callbacks::ensure_lb_rootnode(stats.lower_bound);
+        return;
+    }
+
+    // ~~~ Full MIP ~~~
+
+    callbacks::set_cplex_callbacks(exec, callback_userhandle, env, lp);
+    try {
+        set_cplex_timelimit(exec, env);
+        // ! IMPORTANT : From this point onward, CHECK_STOP() and GLOBAL_TERMINATE_CONDITION are always returning true... the timelimit check is
+        // completely handled by CPLEX, so avoid using them as timelimit-breaching checks
+    } catch (timelimit_exception&) {
+        if (!exec.custom_cutloop) {
+            STATS.gauge_record<"lb_relaxation">(stats.lower_bound);
+        }
+        callbacks::ensure_lb_rootnode(stats.lower_bound);
+        throw;
+    }
 
     LOG_INFO_S("Running CPLEX MIP");
-
     CPX_HANDLE_CALL(CPXmipopt(env, lp));
+
+    get_cplex_solution(exec, inst, stats, env, lp);
+
+    // CHECK_STOP() might have fired
+    if (GET_TIME() > exec.timelimit) {
+        throw timelimit_exception("Reached time limit.");
+    }
 }
 
 inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statistics& stats) {
@@ -134,6 +218,7 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
 
     CPXENVptr env = nullptr;
     CPXLPptr lp = nullptr;
+    auto _build_cleanup = on_scope_exit([&] { close_cplex(env, lp); });
     callbacks::callback_userhandle callback_userhandle{.exec = exec, .inst = inst, .stats = stats};
 
     exec.exec_s = hplus::exec_status::MODEL_BUILD;
@@ -152,36 +237,19 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
     // =================== CPLEX EXECUTION ================== //
     // ====================================================== //
 
+    // Post warm start before root node solve so CPLEX can use the known upper bound as a cutoff during root processing
+    if (exec.ws != hplus::warmstart::NONE) {
+        post_warm_start(exec, inst, env, lp);
+    }
+
     // Run cplex
     try {
-        // Note: Cutloop throws a time_limit exception, so everything after this point in that case doesn't get executed
-        if (exec.custom_cutloop) {
-            cutloop::cutloop(env, lp, exec, inst, stats);
-        }
-        if (exec.ws != hplus::warmstart::NONE) {
-            post_warm_start(exec, inst, env, lp);
-        }
-
-        // Global progress callback is always enabled
-        callbacks::set_cplex_callbacks(exec, callback_userhandle, env, lp);
-        // Fix[Issue#4] : Up to this point the timelimit thread still works, so it can be used in the cut loop
-        set_cplex_timelimit(exec, env);
-
-        run_cplex(env, lp, exec);
-
-    } catch (std::bad_alloc& e) {
+        run_cplex(exec, inst, stats, env, lp, callback_userhandle);
+    } catch (std::bad_alloc&) {
         LOG_WARN_S("OUT OF MEMORY");
+    } catch (timelimit_exception&) {
+        LOG_WARN_S("OUT OF TIME");
     }
-
-    // ====================================================== //
-    // =============== GATHER INFO AND CLOSING ============== //
-    // ====================================================== //
-
-    // Fix[Issue#1] : If cutloop throws a bad_alloc due to memory limit, the cutloop never re-converts back to MIP
-    if (exec.exec_s == hplus::exec_status::CPX_EXEC) {
-        get_cplex_solution(exec, inst, stats, env, lp);
-    }
-    close_cplex(env, lp);
 }
 
 }  // namespace exact

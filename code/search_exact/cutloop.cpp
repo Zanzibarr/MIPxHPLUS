@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <cstdlib>
-#include <limits>
 
 #include "bs_utils.hpp"
 #include "exact.hpp"
@@ -11,43 +10,6 @@
 #include "utils.hpp"
 
 namespace {
-inline void init_cutloop(CPXENVptr& env, CPXLPptr& lp) { CPX_HANDLE_CALL(CPXchgprobtype(env, lp, CPXPROB_LP)); }
-
-inline void exit_cutloop(CPXENVptr& env, CPXLPptr& lp) {
-    // Set back the problem to being a MIP
-    CPX_HANDLE_CALL(CPXchgprobtype(env, lp, CPXPROB_MILP));
-    int ncols{CPXgetnumcols(env, lp)};
-    std::vector<int> ind(static_cast<unsigned int>(ncols));
-    std::vector<char> types(static_cast<unsigned int>(ncols), 'B');
-    std::iota(ind.begin(), ind.end(), 0);
-    CPX_HANDLE_CALL(CPXchgctype(env, lp, ncols, ind.data(), types.data()));
-}
-
-inline void solve_relaxation(CPXENVptr& env, CPXLPptr& lp, const hplus::execution& exec, hplus::statistics& stats) {
-    if (exec.timelimit > 0 && static_cast<double>(exec.timelimit) > GET_TIME()) {
-        CPX_HANDLE_CALL(CPXsetdblparam(env, CPXPARAM_TimeLimit, static_cast<double>(exec.timelimit) - GET_TIME()));
-    } else {
-        throw timelimit_exception("Reached time limit.");
-    }
-
-    CPX_HANDLE_CALL(CPXlpopt(env, lp));
-
-    // Get lowerbound
-    double cl_lb = std::numeric_limits<double>::quiet_NaN();
-    switch (const int status{CPXgetstat(env, lp)}) {
-        case CPX_STAT_OPTIMAL:
-            CPX_HANDLE_CALL(CPXgetobjval(env, lp, &cl_lb));
-            stats.lower_bound = std::max(stats.lower_bound, cl_lb);
-            break;
-        case CPX_STAT_ABORT_TIME_LIM:
-            [[fallthrough]];
-        case CPX_STAT_ABORT_USER:
-            break;
-        default:
-            LOG_ERROR_S("Error in solve_relaxation: unhandled cplex status (" + std::to_string(status) + ")");
-    }
-}
-
 inline auto generate_cuts(CPXENVptr& env, CPXLPptr& lp, const std::vector<double>& relax_point, const hplus::execution& exec,
                           const hplus::instance& inst, const std::vector<double>& incumbent, double& inout_w) -> unsigned int {
     auto _fract_cb = make_scoped_timer<"fract_callback">(STATS);
@@ -219,7 +181,8 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
         return improvement >= exec.cl_improv;
     };
 
-    init_cutloop(env, lp);
+    CPX_HANDLE_CALL(CPXchgprobtype(env, lp, CPXPROB_LP));
+    auto _restore = on_scope_exit([&] { exact::restore_milp(env, lp); });
 
     BinarySet state{inst.n};
     const auto& warm_start{inst.sol.sequence};
@@ -246,7 +209,13 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
 
     double inout_w = exec.io_weight;
 
-    solve_relaxation(env, lp, exec, stats);
+    try {
+        exact::solve_lp_relaxation(exec, env, lp, stats);
+    } catch (timelimit_exception&) {
+        STATS.gauge_record<"lb_relaxation">(stats.lower_bound);
+        STATS.gauge_record<"lb_cutloop">(stats.lower_bound);
+        throw;
+    }
 
     STATS.gauge_record<"lb_relaxation">(stats.lower_bound);
 
@@ -271,7 +240,12 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
         // Generate new cuts
         new_cuts = generate_cuts(env, lp, relax_point, exec, inst, incumbent, inout_w);
 
-        solve_relaxation(env, lp, exec, stats);
+        try {
+            exact::solve_lp_relaxation(exec, env, lp, stats);
+        } catch (timelimit_exception&) {
+            STATS.gauge_record<"lb_cutloop">(stats.lower_bound);
+            throw;
+        }
         iteration++;
         STATS.counter_inc<"cloop_it">();
     }
@@ -285,8 +259,6 @@ void cutloop::cutloop(CPXENVptr& env, CPXLPptr& lp, hplus::execution& exec, cons
     }
 
     STATS.counter_inc<"n_const_acyc">(CPXgetnumrows(env, lp) - base_constraints);
-
-    exit_cutloop(env, lp);
 
     if (CHECK_STOP()) {
         throw timelimit_exception("Reached time limit.");

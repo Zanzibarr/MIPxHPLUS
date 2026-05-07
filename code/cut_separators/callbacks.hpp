@@ -60,13 +60,8 @@ inline void set_cplex_callbacks(const hplus::execution& exec, callback_userhandl
         callback_context |= CPX_CALLBACKCONTEXT_CANDIDATE;
     }
 
-    // If we have no cust to add -> no callback
-    // If we have cuts and we have no cutloop, we need to add the callback, since cuts at root must be done somewhere (wether cuts must be done at
-    // nodes or not) -> yes callback
-    // If we have cuts and we have cuts at nodes -> yes callback
-    if (exec.fract_cuts != "0" && (exec.fract_cuts_at_nodes || !exec.custom_cutloop)) {
-        callback_context |= CPX_CALLBACKCONTEXT_RELAXATION;
-    }
+    // The relaxation callback is used to gather info about the lb relaxation, so it's always enabled
+    callback_context |= CPX_CALLBACKCONTEXT_RELAXATION;
 
     CPX_HANDLE_CALL(CPXcallbacksetfunc(env, lp, callback_context, callback_hub, &userhandle));
 }

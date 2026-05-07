@@ -427,6 +427,7 @@ void hplus::run(execution& exec, instance& inst, statistics& stats) {
     }
 
     auto _total = make_scoped_timer<"total">(STATS);
+    auto _exit = on_scope_exit([&] { exec.exec_s = exec_status::EXIT; });
 
     if (inst.sol_s == solution_status::INFEAS) {
         return;
@@ -463,14 +464,19 @@ void hplus::run(execution& exec, instance& inst, statistics& stats) {
 
         // If the gap is already closed, the solution is already optimal
         if (std::abs(stats.lower_bound - stats.heur_cost) <= HPLUS_EPSILON) {
-            exec.exec_s = exec_status::EXIT;
+            stats.lower_bound = static_cast<double>(stats.cost);  // Fix possible precision errors
+            stats.status = HPLUS_STATUS_OPT;
             inst.sol_s = solution_status::OPT;
-            stats.status = 0;
+            STATS.gauge_record<"lb_relaxation">(stats.lower_bound);
+            if (exec.custom_cutloop) {
+                STATS.gauge_record<"lb_cutloop">(stats.lower_bound);
+            }
+            STATS.gauge_record<"lb_rootnode">(stats.lower_bound);
+            STATS.counter_set<"nodes">(0);
             return;
         }
 
         if (exec.alg >= algorithm::GC) {
-            exec.exec_s = exec_status::EXIT;
             return;
         }
 
@@ -479,11 +485,9 @@ void hplus::run(execution& exec, instance& inst, statistics& stats) {
         exec.exec_s = exec_status::CPX_EXEC;
         exact::exact(exec, inst, stats);
 
-    } catch (timelimit_exception& e) {
+    } catch (timelimit_exception&) {
         LOG_WARN_S("OUT OF TIME");
-    } catch (std::bad_alloc& e) {
+    } catch (std::bad_alloc&) {
         LOG_WARN_S("OUT OF MEMORY");
     }
-
-    exec.exec_s = exec_status::EXIT;
 }

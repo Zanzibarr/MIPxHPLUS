@@ -1,11 +1,25 @@
 #include "relax_callback.hpp"
 
+#include <atomic>
 #include <limits.hxx>
+#include <mutex>
 #include <unordered_set>
 
 #include "stats_registry.hxx"
 #include "timer.hxx"
 #include "utils.hpp"
+
+namespace {
+std::atomic<bool> lb_rootnode_recorded{false};
+std::atomic<double> last_root_lb{-1.0};
+}  // namespace
+
+void callbacks::ensure_lb_rootnode(double best_lb) {
+    bool expected = false;
+    if (lb_rootnode_recorded.compare_exchange_strong(expected, true)) {
+        STATS.gauge_record<"lb_rootnode">(best_lb);
+    }
+}
 
 [[nodiscard]]
 auto relax_cuts::relaxationpoint_info(const hplus::instance& inst, std::vector<double>& relax_point)
@@ -28,10 +42,37 @@ auto relax_cuts::relaxationpoint_info(const hplus::instance& inst, std::vector<d
 }
 
 void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, const hplus::instance& inst) {
+    // If the cutloop is enabled, the first relaxation has already been stored
+    if (!exec.custom_cutloop) {
+        static std::once_flag lb_once;
+        std::call_once(lb_once, [&] {
+            double best_lb{-1};
+            CPX_HANDLE_CALL(CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_BND, &best_lb));
+            STATS.gauge_record<"lb_relaxation">(best_lb);
+        });
+    }
+
     int nodeuid{-1};
     int nodedepth{-1};
     CPX_HANDLE_CALL(CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODEUID, &nodeuid));
     CPX_HANDLE_CALL(CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODEDEPTH, &nodedepth));
+
+    // Track the highest LB seen at the root; record it on first transition to depth > 0
+    if (nodedepth == 0) {
+        double best_lb{-1};
+        CPX_HANDLE_CALL(CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_BND, &best_lb));
+        double current = last_root_lb.load();
+        while (best_lb > current && !last_root_lb.compare_exchange_weak(current, best_lb)) {
+        }
+    } else {
+        ensure_lb_rootnode(last_root_lb.load());
+    }
+
+    // If we don't want fractional cuts or we used the custom cutloop and don't want cuts at nodes we can exit
+    if (exec.fract_cuts == "0" || (!exec.fract_cuts_at_nodes && exec.custom_cutloop)) {
+        return;
+    }
+
     thread_local static std::unordered_set<int> visited_nodes;
     // If we have our custom cutloop in place, we don't need to generate cuts from fractionary solutions in the first root node relaxation
     if (exec.custom_cutloop && nodeuid == 0) {
@@ -78,7 +119,7 @@ void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::
             auto fract_sec = relax_cuts::add_sec_cut(context, inst, fadd_weights);
             STATS.counter_inc<"fract_sec">(fract_sec);
         }
-    } catch (timelimit_exception& e) {
+    } catch (timelimit_exception&) {
         return;
     }
 }

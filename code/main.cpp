@@ -78,7 +78,7 @@ auto main(const int argc, const char** argv) -> int {
         hplus::print(stats);
         close();
 
-    } catch (std::bad_alloc& e) {
+    } catch (std::bad_alloc&) {
         LOG_ERROR_S("OUT OF MEMORY");
     } catch (std::exception& e) {
         LOG_ERROR_S("Exception: " + std::string(e.what()));

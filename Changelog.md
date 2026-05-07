@@ -27,6 +27,18 @@ HOW I DO VERSIONING:
 <!-- ### :rocket: Performance Improvements -->
 
 
+## [3.1.8] - 2026/05/07
+<!-- ### :warning: Known issues -->
+### :ballot_box_with_check: Fixed
+- Better time/memory limit handling
+<!-- ### :heavy_exclamation_mark: Changed -->
+### :heavy_plus_sign: Added
+- Gathering LP bounds (Issue #5) with consistent reporting
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+<!-- ### :rocket: Performance Improvements -->
+
+
 ## [3.1.7] - 2026/04/28
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed

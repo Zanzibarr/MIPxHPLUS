@@ -15,6 +15,7 @@
 namespace callbacks {
 
 void relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::execution& exec, const hplus::instance& inst);
+void ensure_lb_rootnode(double best_lb);
 
 }  // namespace callbacks
 

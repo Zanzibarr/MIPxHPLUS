@@ -326,17 +326,20 @@ void exact::get_cplex_solution(const hplus::execution& exec, hplus::instance& in
 
     STATS.counter_set<"nodes">(CPXgetnodecnt(env, lp));
 
+    CPX_HANDLE_CALL(CPXgetbestobjval(env, lp, &stats.lower_bound));
+    stats.lower_bound = std::max<double>(stats.lower_bound, 0);
+
+    // This is called anyways, but it registers the lower bound ONLY if the same function in the relaxation callback is never fired... which means we
+    // never exited the root node
+    callbacks::ensure_lb_rootnode(stats.lower_bound);
+
     if (inst.sol_s > hplus::solution_status::FEAS) {
         return;
     }
 
-    CPX_HANDLE_CALL(CPXgetbestobjval(env, lp, &stats.lower_bound));
-    stats.lower_bound = std::max<double>(stats.lower_bound, 0);
-
-    // This is needed due to the patch applied to the beginning of the candidate/relaxation callback: if the lower and upper bounds match, we have the
-    // optimal. This is needed because CPLEX might return without having evaluated our posted optimal solution, so the status he has is FEAS, not OPT
-    // (even though the lower bound he gave use matches our best solution).
-    // Moreover, this is a nice check to be made, to prevent possible missing status updates...
+    // This is needed due to the global progress callback signaling an early exit: if the lower and upper bounds match, we have the optimal. This is
+    // needed because CPLEX might return without having evaluated our posted optimal solution, so the status he has is FEAS, not OPT (even though the
+    // lower bound he gave use matches our best solution). Moreover, this is a nice check to be made, to prevent possible missing status updates...
     if (stats.lower_bound >= stats.cost - HPLUS_EPSILON) {
         stats.lower_bound = static_cast<double>(stats.cost);  // Fix possible precision errors
         stats.status = HPLUS_STATUS_OPT;
