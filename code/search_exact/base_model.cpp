@@ -141,7 +141,6 @@ void store_cplex_solution(hplus::instance& inst, hplus::statistics& stats, const
             intcheck = true;
             cost += inst.actions[cpx_result[idx]].cost;
         }
-        // TODO: CPLEX solution not serializable — see issue #3
         ASSERT(intcheck);
     }
 
