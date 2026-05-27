@@ -39,7 +39,7 @@ make
 ### Build options (CMake parameters)
 
 - **-DCPLEX_PATH=**\<path_to_cplex>: (absolute path), specify a custom path to the CPLEX installation (see the CMakeLists.txt to see which are the default ones (CPLEX_POSSIBLE_PATHS) or append your to that list to avoid specifying it every time)
-- **-DCMAKE_BUILD_TYPE=**Debug/Release: Build type (default is Debug), Debug mode enables warnings
+- **-DCMAKE_BUILD_TYPE=**\<Debug/Release>: Build type (default is Debug), Debug mode enables warnings
 
 ### Run options
 
@@ -68,6 +68,7 @@ Here's a few examples:
 - **Master Thesis** (2025): [\[Thesis\]](results/2025_master_thesis.pdf)  
 - **AIROYoung Workshop** (2026): [\[Slides\]](results/2026_AIROYoung_slides.pdf)  
 - **IJOO MIP Workshop** (2025, under review): [\[Preprint\]](results/2025_MIPWorkshopIJOO_preprint.pdf)
+- **CPAIOR Extended Abstract** (2026): [\[Slides\]](results/2026_CPAIOR_slides.pdf)  
 
 ## License
 MIT License - see [LICENSE](LICENSE) for details.
