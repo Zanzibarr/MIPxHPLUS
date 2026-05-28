@@ -20,6 +20,7 @@ This software solves the Delete-Free relaxation of automated planning tasks usin
 - UNIX based OS
 - cmake 3.20 +
 - This software requires as input the SAS file produced by the [Fast Downward translator](https://www.fast-downward.org/latest/documentation/translator-output-format/) (this software was produced with version 3 of the FD translator as a reference)
+- IBM ILOG CPLEX Optimization Studio
 
 ## Build/Run instructions
 
