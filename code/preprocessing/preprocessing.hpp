@@ -45,8 +45,11 @@ inline void lmcut_landmarks_extraction(const hplus::execution& exec, hplus::inst
         double diff = GET_TIME() - start;
         for (const auto& landmark : landmarks) {
             inst.landmarks.push_back(landmark);
+            STATS.gauge_record<"lmcut.lm.avgsize">(static_cast<double>(landmark.size()));
         }
         stats.lower_bound = std::max(stats.lower_bound, lmcut_value);
+        STATS.gauge_record<"lmcut.size">(static_cast<double>(landmarks.size()));
+
         if (!landmarks.empty()) {
             LOG_INFO_S("Computed a lm-cut value of: " + std::to_string(lmcut_value) + " in " + std::to_string(diff) + "s");
         }

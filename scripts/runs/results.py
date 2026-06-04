@@ -10,7 +10,7 @@ ROOT = SCRIPT_FOLDER.parent.parent
 SCRIPTS_LOCATION = ROOT / "scripts"
 
 # ---------------------------------------------------------------------------
-# Log format reference (hplus v3.1.7 -> v3.1.8)
+# Log format reference (hplus v3.1.9.1)
 #
 # The log is structured in four output blocks, each delimited by a header line:
 #
@@ -158,6 +158,9 @@ FIELDNAMES = [
     # --- Cut sizes (mean number of non-zeros, from Gauge table) ---
     "Cand_LM_Size_Mean",
     "Fract_LM_Size_Mean",
+    # --- LM-Cut sizes ---
+    "LM_Cut_N_Landmarks",
+    "LM_Cut_AvgSize_Landmarks",
     # --- Other search counters ---
     "N_CL_It",  # custom cut-loop iterations
     "N_Nodes",  # branch-and-bound nodes expanded
@@ -206,6 +209,8 @@ DEFAULT_ROW = {
     "N_Cuts_Sec": None,
     "Cand_LM_Size_Mean": None,
     "Fract_LM_Size_Mean": None,
+    "LM_Cut_N_Landmarks": None,
+    "LM_Cut_AvgSize_Landmarks": None,
     "N_CL_It": None,
     "N_Nodes": None,
     "Relax_LB": None,
@@ -321,6 +326,10 @@ def parse_log(filepath):
     # --- Cut sizes (Gauge table, mean number of non-zeros per cut) ---
     row["Cand_LM_Size_Mean"] = gauges.get("cand_lm_size", None)
     row["Fract_LM_Size_Mean"] = gauges.get("fract_lm_size", None)
+
+    # --- LM-Cut sizes ---
+    row["LM_Cut_N_Landmarks"] = gauges.get("lmcut.size", None)
+    row["LM_Cut_AvgSize_Landmarks"] = gauges.get("lmcut.lm.avgsize", None)
 
     # --- Other search counters (Counter table) ---
     row["N_CL_It"] = counters.get("cloop_it", 0)

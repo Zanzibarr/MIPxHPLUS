@@ -33,6 +33,7 @@ HOW I DO VERSIONING:
 <!-- ### :heavy_exclamation_mark: Changed -->
 ### :heavy_plus_sign: Added
 - Option to just execute LM-Cut
+- [3.1.9.1] Additional statistics for LM-cut execution
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
 <!-- ### :rocket: Performance Improvements -->
