@@ -29,7 +29,8 @@ HOW I DO VERSIONING:
 
 ## [3.1.9] - 2026/06/04
 <!-- ### :warning: Known issues -->
-<!-- ### :ballot_box_with_check: Fixed -->
+### :ballot_box_with_check: Fixed
+- [3.1.9.2] If we computed LM-Cut but CPLEX couldn't solve the root node due to time limit breaching, CPLEXs lower bound (0) would overwrite LM-Cuts (>0)
 <!-- ### :heavy_exclamation_mark: Changed -->
 ### :heavy_plus_sign: Added
 - Option to just execute LM-Cut

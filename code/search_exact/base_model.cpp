@@ -326,8 +326,9 @@ void exact::get_cplex_solution(const hplus::execution& exec, hplus::instance& in
 
     STATS.counter_set<"nodes">(CPXgetnodecnt(env, lp));
 
-    CPX_HANDLE_CALL(CPXgetbestobjval(env, lp, &stats.lower_bound));
-    stats.lower_bound = std::max<double>(stats.lower_bound, 0);
+    double lower_bound = 0;
+    CPX_HANDLE_CALL(CPXgetbestobjval(env, lp, &lower_bound));
+    stats.lower_bound = std::max<double>(stats.lower_bound, lower_bound);
 
     // This is called anyways, but it registers the lower bound ONLY if the same function in the relaxation callback is never fired... which means we
     // never exited the root node
