@@ -451,6 +451,10 @@ void hplus::run(execution& exec, instance& inst, statistics& stats) {
         }
         stopcheck();
 
+        if (exec.alg == algorithm::LMCUT) {
+            return;
+        }
+
         // ~~~~~~~~~~~~~~ HEURISTIC ~~~~~~~~~~~~~~ //
         if (exec.ws > warmstart::NONE || exec.alg >= algorithm::GC) {
             exec.exec_s = exec_status::HEURISTIC;

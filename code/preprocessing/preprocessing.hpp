@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <limits.hxx>
 #include <map>
 
 #include "execution.hpp"
@@ -13,6 +14,7 @@
 #include "statistics.hpp"
 #include "stats_registry.hxx"
 #include "timer.hxx"
+#include "utils.hpp"
 
 namespace prep {
 
@@ -47,6 +49,13 @@ inline void lmcut_landmarks_extraction(const hplus::execution& exec, hplus::inst
         stats.lower_bound = std::max(stats.lower_bound, lmcut_value);
         if (!landmarks.empty()) {
             LOG_INFO_S("Computed a lm-cut value of: " + std::to_string(lmcut_value) + " in " + std::to_string(diff) + "s");
+        }
+
+        // For LM-Cut execution, if a timelimit is reached between executions, we would want to signal that we found at least one lower bound... hence
+        // if we passed at least the first execution we update the status
+        if (exec.alg == hplus::algorithm::LMCUT && choice == *exec.prep_lmcut.begin()) {
+            stats.status = HPLUS_STATUS_FEAS;
+            inst.sol_s = hplus::solution_status::FEAS;
         }
     }
 }

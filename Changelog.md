@@ -27,6 +27,17 @@ HOW I DO VERSIONING:
 <!-- ### :rocket: Performance Improvements -->
 
 
+## [3.1.9] - 2026/06/04
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+<!-- ### :heavy_exclamation_mark: Changed -->
+### :heavy_plus_sign: Added
+- Option to just execute LM-Cut
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+<!-- ### :rocket: Performance Improvements -->
+
+
 ## [3.1.8] - 2026/05/07
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed

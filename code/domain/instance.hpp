@@ -9,6 +9,7 @@
 #include <cstdint>
 
 #include "bs.hxx"
+#include "execution.hpp"
 #include "logger.hxx"
 
 namespace hplus {
@@ -82,10 +83,14 @@ inline void print(const instance& inst) {
     LOG_S("--------------------------------------------------------");
 }
 
-inline void print_sol(instance& inst) {
+inline void print_sol(const execution& exec, instance& inst) {
     if (inst.sol.updating) {
         LOG_WARN_S("Execution terminated while updating the solution and the solution got lost");
         inst.sol_s = solution_status::LOST;
+    }
+    if (exec.alg == algorithm::LMCUT && inst.sol_s == solution_status::FEAS) {
+        LOG_S("Only a lower bound has been computed through LM-Cut");
+        return;
     }
     switch (inst.sol_s) {
         case solution_status::LOST:

@@ -67,7 +67,7 @@ auto main(const int argc, const char** argv) -> int {
         // NOTE: All updates to the best solution and statistics, must be done immediatelly (es. in the cand callback or at the end of a search
         // algorithm), since however we get here, I assume that inst and stats are updated and no other operations are needed.
 
-        hplus::print_sol(inst);
+        hplus::print_sol(exec, inst);
         if (inst.sol_s == hplus::solution_status::INFEAS) {
             stats.lower_bound = INFBOUND_DBL;
         }

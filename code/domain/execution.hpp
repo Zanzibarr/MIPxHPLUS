@@ -27,7 +27,7 @@ enum class exec_status : std::uint8_t {
 };
 
 enum class exec_type : std::uint8_t { INFO, RUN };
-enum class algorithm : std::uint8_t { TL = 0, VE = 1, CUTS = 2, GC = 10, GCXE = 11, GHM = 12, GHA = 13 };
+enum class algorithm : std::uint8_t { TL = 0, VE = 1, CUTS = 2, LMCUT = 5, GC = 10, GCXE = 11, GHM = 12, GHA = 13 };
 enum class warmstart : std::uint8_t { NONE = 0, GC = 1, GCXE = 2, GHM = 3, GHA = 4 };
 
 struct execution {
@@ -132,6 +132,8 @@ inline auto to_string(algorithm alg) -> std::string {
             return HPLUS_CLI_ALG_FLAG_VE;
         case algorithm::CUTS:
             return HPLUS_CLI_ALG_FLAG_CUTS;
+        case algorithm::LMCUT:
+            return HPLUS_CLI_ALG_FLAG_LMCUT;
         case algorithm::GC:
             return HPLUS_CLI_ALG_FLAG_GREEDYCOST;
         case algorithm::GCXE:

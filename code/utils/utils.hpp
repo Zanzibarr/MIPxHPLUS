@@ -10,7 +10,7 @@
 // ############################## VERSION ############################## //
 // ##################################################################### //
 
-#define VERSION "3.1.8"
+#define VERSION "3.1.9"
 #define COMPILE_DATETIME __DATE__ + " " + __TIME__
 
 // ##################################################################### //
@@ -34,6 +34,7 @@
 #define HPLUS_CLI_ALG_FLAG_TL "tl"
 #define HPLUS_CLI_ALG_FLAG_VE "ve"
 #define HPLUS_CLI_ALG_FLAG_CUTS "cuts"
+#define HPLUS_CLI_ALG_FLAG_LMCUT "lmcut"
 #define HPLUS_CLI_ALG_FLAG_GREEDYCOST "gc"
 #define HPLUS_CLI_ALG_FLAG_GREEDYCXE "gcxe"
 #define HPLUS_CLI_ALG_FLAG_GREEDYHMAX "ghm"

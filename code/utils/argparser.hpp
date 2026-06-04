@@ -18,6 +18,7 @@
 #include "execution.hpp"
 #include "limits.hxx"
 #include "logger.hxx"
+#include "utils.hpp"
 
 static inline void parse_cli(const int argc, const char** argv, hplus::execution& exec) {
     auto _parsing = make_scoped_timer<"parsing.cli">(STATS);
@@ -67,10 +68,11 @@ static inline void parse_cli(const int argc, const char** argv, hplus::execution
     args::ValueFlag<std::string> algorithm(
         parser, "string",
         "Specify the algorithm to run (default: " + std::string(HPLUS_DEF_ALG_STRING) + ", options: [" + std::string(HPLUS_CLI_ALG_FLAG_TL) +
-            " (timestamps)," + std::string(HPLUS_CLI_ALG_FLAG_VE) + " (vertex elimination graphs)," + std::string(HPLUS_CLI_ALG_FLAG_CUTS) +
-            " (dynamic)," + std::string(HPLUS_CLI_ALG_FLAG_GREEDYCOST) + " (greedy cost)," + std::string(HPLUS_CLI_ALG_FLAG_GREEDYCXE) +
-            " (greedy cost x effect)," + std::string(HPLUS_CLI_ALG_FLAG_GREEDYHMAX) + " (lookahead hmax)," +
-            std::string(HPLUS_CLI_ALG_FLAG_GREEDYHADD) + " (lookahead hadd)])",
+            " (timestamps exact)," + std::string(HPLUS_CLI_ALG_FLAG_VE) + " (vertex elimination graphs exact)," +
+            std::string(HPLUS_CLI_ALG_FLAG_CUTS) + " (dynamic exact)," + std::string(HPLUS_CLI_ALG_FLAG_LMCUT) + " (LM-cut lower bound)," +
+            std::string(HPLUS_CLI_ALG_FLAG_GREEDYCOST) + " (greedy cost primal bound)," + std::string(HPLUS_CLI_ALG_FLAG_GREEDYCXE) +
+            " (greedy cost x effect primal bound)," + std::string(HPLUS_CLI_ALG_FLAG_GREEDYHMAX) + " (lookahead hmax primal bound)," +
+            std::string(HPLUS_CLI_ALG_FLAG_GREEDYHADD) + " (lookahead hadd primal bound)])",
         {HPLUS_CLI_ALG_FLAG}, HPLUS_DEF_ALG_STRING);
 
     // ~~~~~ WARM START AND PREPROCESSING ~~~~ //
@@ -308,6 +310,8 @@ static inline void parse_cli(const int argc, const char** argv, hplus::execution
             exec.alg = hplus::algorithm::VE;
         } else if (a == HPLUS_CLI_ALG_FLAG_CUTS) {
             exec.alg = hplus::algorithm::CUTS;
+        } else if (a == HPLUS_CLI_ALG_FLAG_LMCUT) {
+            exec.alg = hplus::algorithm::LMCUT;
         } else if (a == HPLUS_CLI_ALG_FLAG_GREEDYCOST) {
             exec.alg = hplus::algorithm::GC;
         } else if (a == HPLUS_CLI_ALG_FLAG_GREEDYCXE) {
@@ -628,6 +632,13 @@ static inline void parse_cli(const int argc, const char** argv, hplus::execution
                 "disabling greedy minimalization procedure");
             std::erase_if(exec.candlm_min, [](const auto val) { return val == 'g'; });
         }
+    }
+    if (exec.alg == hplus::algorithm::LMCUT) {
+        if (exec.prep_lmcut == "0") {
+            LOG_ERROR << "If you want to use LM-Cut as a standalone, you need to specify a policy through " << HPLUS_CLI_PREP_LMCUT_FLAG;
+        }
+        exec.ws = hplus::warmstart::NONE;
+        exec.fract_cuts = "0";
     }
     if (exec.fract_cuts == "0") {
         if (exec.custom_cutloop) {
