@@ -94,6 +94,7 @@ auto hmax::hmax_random(const std::vector<unsigned int>& preconditions, const std
 void LMcut::init() {
     pcf_ = std::vector<int>(inst_->m);
     hmax_values_ = std::vector<double>(inst_->n, std::numeric_limits<double>::infinity());
+    initial_hmax_values_ = std::vector<double>(inst_->n, std::numeric_limits<double>::infinity());
     pcf_hmax_ = std::vector<double>(inst_->m);
     reduced_costs_ = std::vector<double>(inst_->m);
     goal_ = inst_->goal.sparse();

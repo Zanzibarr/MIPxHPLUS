@@ -31,6 +31,7 @@ HOW I DO VERSIONING:
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed
 - [3.1.9.2] If we computed LM-Cut but CPLEX couldn't solve the root node due to time limit breaching, CPLEXs lower bound (0) would overwrite LM-Cuts (>0)
+- [3.1.9.3] Executing the VDM tie-breaking policy first in LM-cut used unitialized vector
 <!-- ### :heavy_exclamation_mark: Changed -->
 ### :heavy_plus_sign: Added
 - Option to just execute LM-Cut
