@@ -436,6 +436,26 @@ def compute_gaps(
     return pl.concat(frames)
 
 
+def compute_gap_diffs(
+    data: pl.DataFrame,
+    baseline: str,
+) -> pl.DataFrame:
+    """Paired gap differences vs a baseline model, in long format.
+
+    For each (Problem, Phase), computes Gap_model − Gap_baseline for every
+    non-baseline model.  Returns: Problem, Phase, Comparison, Difference.
+    """
+    base = data.filter(pl.col("Model") == baseline).select(
+        ["Problem", "Phase", pl.col("Gap").alias("_base")]
+    )
+    others = data.filter(pl.col("Model") != baseline)
+    joined = others.join(base, on=["Problem", "Phase"])
+    return joined.with_columns(
+        (pl.col("Gap") - pl.col("_base")).alias("Difference"),
+        (pl.col("Model") + pl.lit(f" − {baseline}")).alias("Comparison"),
+    ).select(["Problem", "Phase", "Comparison", "Difference"])
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------

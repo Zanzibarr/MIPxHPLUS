@@ -12,6 +12,7 @@ from plotnine import (
     geom_abline,
     geom_bar,
     geom_boxplot,
+    geom_violin,
     geom_hline,
     geom_point,
     position_dodge,
@@ -20,6 +21,7 @@ from plotnine import (
     geom_step,
     scale_color_brewer,
     scale_fill_brewer,
+    coord_flip,
     scale_x_log10,
     scale_y_log10,
     facet_wrap,
@@ -161,6 +163,87 @@ def boxplot(
             plot_title=element_text(size=12, face="bold"),
         )
     )
+    if show_points:
+        plot += geom_point(
+            size=1.2,
+            alpha=0.5,
+            color="#444444",
+            position=position_jitterdodge(jitter_width=0.1, dodge_width=0.9),
+        )
+    return plot
+
+
+# ---------------------------------------------------------------------------
+# Violin plot
+# ---------------------------------------------------------------------------
+
+
+def violin_plot(
+    df: pl.DataFrame,
+    group_col: str,
+    value_col: str = "Value",
+    fill_col: str | None = None,
+    title: str = "",
+    x_label: str = "",
+    y_label: str = "",
+    show_points: bool = False,
+    group_order: list[str] | None = None,
+    fill_order: list[str] | None = None,
+    reference_y: float | None = None,
+) -> ggplot:
+    actual_fill = fill_col or group_col
+    cols = [group_col, value_col] + (
+        [fill_col] if fill_col and fill_col != group_col else []
+    )
+    df = df.select(cols)
+
+    if group_order is not None:
+        df = df.with_columns(
+            pl.col(group_col).cast(pl.String).cast(pl.Enum(group_order))
+        )
+    else:
+        df = df.with_columns(pl.col(group_col).cast(pl.String))
+
+    if fill_col is not None and fill_col != group_col:
+        if fill_order is not None:
+            df = df.with_columns(
+                pl.col(fill_col).cast(pl.String).cast(pl.Enum(fill_order))
+            )
+        else:
+            df = df.with_columns(pl.col(fill_col).cast(pl.String))
+
+    n_groups = df[group_col].n_unique()
+    plot = (
+        ggplot(df, aes(x=group_col, y=value_col, fill=actual_fill))
+        + geom_violin(
+            scale="width",
+            width=0.6,
+            alpha=0.85,
+            position=position_dodge(width=0.9),
+        )
+        + geom_boxplot(
+            mapping=aes(group=actual_fill),
+            width=0.05,
+            outlier_shape=None,
+            fill="white",
+            alpha=0.8,
+            position=position_dodge(width=0.9),
+        )
+        + scale_fill_brewer(type="qual", palette="Set2")
+        + labs(title=title, x=x_label or group_col, y=y_label or value_col)
+        + theme_minimal()
+        + theme(
+            figure_size=(max(6, n_groups * 0.9), 5),
+            axis_text_x=element_text(angle=45, hjust=1, size=9),
+            axis_line=element_line(color="#cccccc"),
+            legend_position="right" if fill_col else "none",
+            plot_title=element_text(size=12, face="bold"),
+        )
+    )
+    if reference_y is not None:
+        plot += geom_hline(
+            yintercept=reference_y, color="red", size=0.8, alpha=0.6, linetype="dashed"
+        )
     if show_points:
         plot += geom_point(
             size=1.2,
