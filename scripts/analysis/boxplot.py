@@ -16,9 +16,10 @@ from data import (
     prepare_data,
     resolve_aliases,
     compute_gaps,
+    compute_gap_diffs,
     _DEFAULT_BEST_KNOWN,
 )
-from plots import boxplot, save
+from plots import boxplot, violin_plot, save
 
 
 def main() -> None:
@@ -50,9 +51,22 @@ def main() -> None:
         "--solved", action="store_true", help="Keep only instances solved by all runs"
     )
     parser.add_argument(
+        "--violin", action="store_true",
+        help="Violin plot instead of boxplot (requires --gap)",
+    )
+    parser.add_argument(
+        "--diff", action="store_true",
+        help="Paired-difference violin vs baseline (requires --gap, implies --violin)",
+    )
+    parser.add_argument(
         "--out", default="boxplot.pdf", help="Output file (default: boxplot.pdf)"
     )
     args = parser.parse_args()
+
+    if args.violin and not args.gap:
+        parser.error("--violin requires --gap")
+    if args.diff and not args.gap:
+        parser.error("--diff requires --gap")
 
     if args.gap and args.metric != "Time":
         parser.error("--gap and --metric are mutually exclusive.")
@@ -68,18 +82,36 @@ def main() -> None:
             solved_only=args.solved,
         )
         data = compute_gaps(data, args.gap, args.best_known)
-        plot = boxplot(
-            data,
-            group_col="Phase",
-            value_col="Gap",
-            fill_col="Model",
-            title="Optimality Gap by Phase",
-            x_label="Phase",
-            y_label="Gap to optimal (%)",
-            show_points=args.points,
-            group_order=args.gap,
-            fill_order=aliases,
-        )
+        if args.diff:
+            data = compute_gap_diffs(data, baseline=aliases[0])
+            comparisons = [f"{a} − {aliases[0]}" for a in aliases[1:]]
+            plot = violin_plot(
+                data,
+                group_col="Phase",
+                value_col="Difference",
+                fill_col="Comparison",
+                title=f"Gap Difference vs {aliases[0]} by Bound",
+                x_label="Bound",
+                y_label=f"Gap difference vs {aliases[0]} (pp)",
+                show_points=args.points,
+                group_order=args.gap,
+                fill_order=comparisons,
+                reference_y=0.0,
+            )
+        else:
+            plot_fn = violin_plot if args.violin else boxplot
+            plot = plot_fn(
+                data,
+                group_col="Phase",
+                value_col="Gap",
+                fill_col="Model",
+                title="Optimality Gap by Bound",
+                x_label="Bound",
+                y_label="Gap to optimal (%)",
+                show_points=args.points,
+                group_order=args.gap,
+                fill_order=aliases,
+            )
         width = max(8, len(args.gap) * 1.5 * len(aliases))
     else:
         extra = [args.metric] if args.metric not in ("Time", "Nodes") else None
