@@ -89,7 +89,7 @@ static inline void parse_cli(const int argc, const char** argv, hplus::execution
     args::ValueFlag<std::string> prep_lmcut(
         parser, "string",
         "Specify the pcf to find additional landmark constraints using LM-cut (def: " + std::string(HPLUS_DEF_PREP_LMCUT) +
-            "; options: 0 (none: no LM-cut), a (ARB), i (INV), v (VDM), r (RND))",
+            "; options: 0 (none: no LM-cut), a (ARB), i (INV), v (VDM), r (RND), z (GZD), b (BD), d (GZD+BD))",
         {HPLUS_CLI_PREP_LMCUT_FLAG}, HPLUS_DEF_PREP_LMCUT);
     args::ValueFlag<std::string> preplm_min(parser, "string",
                                             "Specify the minimalization procedure to use in LM-cut (for preprocessing) (def: " +

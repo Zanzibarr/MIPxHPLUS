@@ -12,29 +12,45 @@
 #include "instance.hpp"
 #include "pq.hxx"
 
-using hmax_function = std::function<std::pair<int, double>(const std::vector<unsigned int>&, const std::vector<double>&, const std::vector<double>&)>;
+struct hmax_context {
+    const std::vector<double>& hmax_values;
+    const std::vector<double>& initial_hmax_values;
+    const std::unordered_set<unsigned int>& goal_section;        // for GZD
+    const std::vector<double>& reduced_costs;                    // for BD
+    const std::vector<std::vector<unsigned int>>& act_with_eff;  // for BD
+};
+
+using hmax_function = std::function<std::pair<int, double>(const std::vector<unsigned int>&, const hmax_context&)>;
 
 namespace hmax {
 
 /// Hmax policy with arbitrary tie-breaking (FCFS)
 [[nodiscard]]
-auto hmax_arbitrary(const std::vector<unsigned int>& preconditions, const std::vector<double>& hmax_values,
-                    const std::vector<double>& /*initial_hmax_values*/) -> std::pair<int, double>;
+auto hmax_arbitrary(const std::vector<unsigned int>& preconditions, const hmax_context& ctx) -> std::pair<int, double>;
 
 /// Hmax policy with inverse tie-breaking (LCFS)
 [[nodiscard]]
-auto hmax_inverse(const std::vector<unsigned int>& preconditions, const std::vector<double>& hmax_values,
-                  const std::vector<double>& /*initial_hmax_values*/) -> std::pair<int, double>;
+auto hmax_inverse(const std::vector<unsigned int>& preconditions, const hmax_context& ctx) -> std::pair<int, double>;
 
 /// Hmax policy with VDM tie-breaking
 [[nodiscard]]
-auto hmax_value_decrease_minimization(const std::vector<unsigned int>& preconditions, const std::vector<double>& hmax_values,
-                                      const std::vector<double>& initial_hmax_values) -> std::pair<int, double>;
+auto hmax_value_decrease_minimization(const std::vector<unsigned int>& preconditions, const hmax_context& ctx) -> std::pair<int, double>;
 
 /// Hmax policy with random tie-breaking
 [[nodiscard]]
-auto hmax_random(const std::vector<unsigned int>& preconditions, const std::vector<double>& hmax_values,
-                 const std::vector<double>& /*initial_hmax_values*/) -> std::pair<int, double>;
+auto hmax_random(const std::vector<unsigned int>& preconditions, const hmax_context& ctx) -> std::pair<int, double>;
+
+/// Hmax policy with GZD tie-breaking (prefer preconditions in the zero-cost goal zone V*)
+[[nodiscard]]
+auto hmax_gzd(const std::vector<unsigned int>& preconditions, const hmax_context& ctx) -> std::pair<int, double>;
+
+/// Hmax policy with BD tie-breaking (prefer preconditions with no zero-cost achievers)
+[[nodiscard]]
+auto hmax_bd(const std::vector<unsigned int>& preconditions, const hmax_context& ctx) -> std::pair<int, double>;
+
+/// Hmax policy with GZD+BD tie-breaking (GZD first, BD for remaining ties)
+[[nodiscard]]
+auto hmax_gzd_bd(const std::vector<unsigned int>& preconditions, const hmax_context& ctx) -> std::pair<int, double>;
 
 }  // namespace hmax
 
@@ -72,6 +88,7 @@ class LMcut {
     std::vector<double> initial_hmax_values_;  // Mainly for VDM
     std::vector<double> pcf_hmax_;             // hmax_values[pcf[act]]
     std::vector<double> reduced_costs_;
+    std::unordered_set<unsigned int> goal_section_;  // Persistent V* for GZD
     std::vector<unsigned int> goal_;
     std::vector<unsigned int> initial_actions_;
     bool greedy_min_;

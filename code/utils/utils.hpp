@@ -10,7 +10,7 @@
 // ############################## VERSION ############################## //
 // ##################################################################### //
 
-#define VERSION "3.1.9.3"
+#define VERSION "3.1.10"
 #define COMPILE_DATETIME __DATE__ + " " + __TIME__
 
 // ##################################################################### //
@@ -112,7 +112,7 @@
 #define HPLUS_DEF_CUTOFF -1
 #define HPLUS_DEF_PREP true
 #define HPLUS_DEF_PREP_LMCUT "aiv"
-#define HPLUS_ALL_LMCUT_PCF "aivr"
+#define HPLUS_ALL_LMCUT_PCF "aivrzbd"
 #define HPLUS_DEF_PREP_LMCUT_MIN "c"
 
 #define HPLUS_DEF_LOG "0"

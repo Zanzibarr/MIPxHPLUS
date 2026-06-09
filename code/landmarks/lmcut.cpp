@@ -12,51 +12,48 @@
 #include "logger.hxx"
 #include "utils.hpp"
 
-auto hmax::hmax_arbitrary(const std::vector<unsigned int>& preconditions, const std::vector<double>& hmax_values,
-                          const std::vector<double>& /*initial_hmax_values*/) -> std::pair<int, double> {
+auto hmax::hmax_arbitrary(const std::vector<unsigned int>& preconditions, const hmax_context& ctx) -> std::pair<int, double> {
     int pcf{-1};
     double hmax{-1};
     for (const auto& pre : preconditions) {
-        if (hmax_values[pre] > hmax + HPLUS_EPSILON) {
-            hmax = hmax_values[pre];
+        if (ctx.hmax_values[pre] > hmax + HPLUS_EPSILON) {
+            hmax = ctx.hmax_values[pre];
             pcf = static_cast<int>(pre);
         }
     }
     return {pcf, hmax};
 }
 
-auto hmax::hmax_inverse(const std::vector<unsigned int>& preconditions, const std::vector<double>& hmax_values,
-                        const std::vector<double>& /*initial_hmax_values*/) -> std::pair<int, double> {
+auto hmax::hmax_inverse(const std::vector<unsigned int>& preconditions, const hmax_context& ctx) -> std::pair<int, double> {
     int pcf{-1};
     double hmax{-1};
     for (const auto& pre : preconditions) {
-        if (hmax_values[pre] >= hmax - HPLUS_EPSILON) {
-            hmax = hmax_values[pre];
+        if (ctx.hmax_values[pre] >= hmax - HPLUS_EPSILON) {
+            hmax = ctx.hmax_values[pre];
             pcf = static_cast<int>(pre);
         }
     }
     return {pcf, hmax};
 }
 
-auto hmax::hmax_value_decrease_minimization(const std::vector<unsigned int>& preconditions, const std::vector<double>& hmax_values,
-                                            const std::vector<double>& initial_hmax_values) -> std::pair<int, double> {
+auto hmax::hmax_value_decrease_minimization(const std::vector<unsigned int>& preconditions, const hmax_context& ctx) -> std::pair<int, double> {
     int pcf{-1};
     int count{0};
     double hmax{-1};
     double min_decrease{std::numeric_limits<double>::infinity()};
     for (const auto& pre : preconditions) {
-        if (hmax_values[pre] > hmax + HPLUS_EPSILON) {
-            hmax = hmax_values[pre];
+        if (ctx.hmax_values[pre] > hmax + HPLUS_EPSILON) {
+            hmax = ctx.hmax_values[pre];
             pcf = static_cast<int>(pre);
-            min_decrease = initial_hmax_values[pre] - hmax_values[pre];
+            min_decrease = ctx.initial_hmax_values[pre] - ctx.hmax_values[pre];
             count = 1;
-        } else if (std::abs(hmax - hmax_values[pre]) <= HPLUS_EPSILON) {
+        } else if (std::abs(hmax - ctx.hmax_values[pre]) <= HPLUS_EPSILON) {
             // First level tie-breaking: pcf with the smallest value decrease since the first hmax iteration
-            if (initial_hmax_values[pre] - hmax_values[pre] < min_decrease - HPLUS_EPSILON) {
+            if (ctx.initial_hmax_values[pre] - ctx.hmax_values[pre] < min_decrease - HPLUS_EPSILON) {
                 pcf = static_cast<int>(pre);
-                min_decrease = initial_hmax_values[pre] - hmax_values[pre];
+                min_decrease = ctx.initial_hmax_values[pre] - ctx.hmax_values[pre];
                 count = 1;
-            } else if (std::abs(initial_hmax_values[pre] - hmax_values[pre] - min_decrease) <= HPLUS_EPSILON) {
+            } else if (std::abs(ctx.initial_hmax_values[pre] - ctx.hmax_values[pre] - min_decrease) <= HPLUS_EPSILON) {
                 // Second level tie-breaking: random
                 count++;
                 std::uniform_int_distribution<int> dist(1, count);
@@ -69,17 +66,16 @@ auto hmax::hmax_value_decrease_minimization(const std::vector<unsigned int>& pre
     return {pcf, hmax};
 }
 
-auto hmax::hmax_random(const std::vector<unsigned int>& preconditions, const std::vector<double>& hmax_values,
-                       const std::vector<double>& /*initial_hmax_values*/) -> std::pair<int, double> {
+auto hmax::hmax_random(const std::vector<unsigned int>& preconditions, const hmax_context& ctx) -> std::pair<int, double> {
     int pcf{-1};
     int count{0};
     double hmax{-1};
     for (const auto& pre : preconditions) {
-        if (hmax_values[pre] > hmax + HPLUS_EPSILON) {
-            hmax = hmax_values[pre];
+        if (ctx.hmax_values[pre] > hmax + HPLUS_EPSILON) {
+            hmax = ctx.hmax_values[pre];
             pcf = static_cast<int>(pre);
             count = 1;
-        } else if (std::abs(hmax - hmax_values[pre]) <= HPLUS_EPSILON) {
+        } else if (std::abs(hmax - ctx.hmax_values[pre]) <= HPLUS_EPSILON) {
             count++;
             std::uniform_int_distribution<int> dist(1, count);
             if (dist(g_rng) == 1) {
@@ -91,12 +87,89 @@ auto hmax::hmax_random(const std::vector<unsigned int>& preconditions, const std
     return {pcf, hmax};
 }
 
+auto hmax::hmax_gzd(const std::vector<unsigned int>& preconditions, const hmax_context& ctx) -> std::pair<int, double> {
+    int pcf{-1};
+    double hmax{-1};
+    bool pcf_in_zone{false};
+    for (const auto& pre : preconditions) {
+        if (ctx.hmax_values[pre] > hmax + HPLUS_EPSILON) {
+            hmax = ctx.hmax_values[pre];
+            pcf = static_cast<int>(pre);
+            pcf_in_zone = ctx.goal_section.contains(pre);
+        } else if (std::abs(hmax - ctx.hmax_values[pre]) <= HPLUS_EPSILON) {
+            const bool pre_in_zone{ctx.goal_section.contains(pre)};
+            if (pre_in_zone && !pcf_in_zone) {
+                pcf = static_cast<int>(pre);
+                pcf_in_zone = true;
+            }
+        }
+    }
+    return {pcf, hmax};
+}
+
+auto hmax::hmax_bd(const std::vector<unsigned int>& preconditions, const hmax_context& ctx) -> std::pair<int, double> {
+    const auto is_border = [&](unsigned int fact) {
+        return std::none_of(ctx.act_with_eff[fact].begin(), ctx.act_with_eff[fact].end(),
+                            [&](unsigned int act_i) { return ctx.reduced_costs[act_i] <= HPLUS_EPSILON; });
+    };
+    int pcf{-1};
+    double hmax{-1};
+    bool pcf_is_border{false};
+    for (const auto& pre : preconditions) {
+        if (ctx.hmax_values[pre] > hmax + HPLUS_EPSILON) {
+            hmax = ctx.hmax_values[pre];
+            pcf = static_cast<int>(pre);
+            pcf_is_border = is_border(pre);
+        } else if (std::abs(hmax - ctx.hmax_values[pre]) <= HPLUS_EPSILON) {
+            if (is_border(pre) && !pcf_is_border) {
+                pcf = static_cast<int>(pre);
+                pcf_is_border = true;
+            }
+        }
+    }
+    return {pcf, hmax};
+}
+
+auto hmax::hmax_gzd_bd(const std::vector<unsigned int>& preconditions, const hmax_context& ctx) -> std::pair<int, double> {
+    const auto is_border = [&](unsigned int fact) {
+        return std::none_of(ctx.act_with_eff[fact].begin(), ctx.act_with_eff[fact].end(),
+                            [&](unsigned int act_i) { return ctx.reduced_costs[act_i] <= HPLUS_EPSILON; });
+    };
+    int pcf{-1};
+    double hmax{-1};
+    bool pcf_in_zone{false};
+    bool pcf_is_border{false};
+    for (const auto& pre : preconditions) {
+        if (ctx.hmax_values[pre] > hmax + HPLUS_EPSILON) {
+            hmax = ctx.hmax_values[pre];
+            pcf = static_cast<int>(pre);
+            pcf_in_zone = ctx.goal_section.contains(pre);
+            pcf_is_border = is_border(pre);
+        } else if (std::abs(hmax - ctx.hmax_values[pre]) <= HPLUS_EPSILON) {
+            const bool pre_in_zone{ctx.goal_section.contains(pre)};
+            const bool pre_is_border{is_border(pre)};
+            // GZD: prefer pre if it's in V* and current pcf is not
+            if (pre_in_zone && !pcf_in_zone) {
+                pcf = static_cast<int>(pre);
+                pcf_in_zone = true;
+                pcf_is_border = pre_is_border;
+                // BD: break remaining ties (both in zone or both not) by border status
+            } else if (pre_in_zone == pcf_in_zone && pre_is_border && !pcf_is_border) {
+                pcf = static_cast<int>(pre);
+                pcf_is_border = true;
+            }
+        }
+    }
+    return {pcf, hmax};
+}
+
 void LMcut::init() {
     pcf_ = std::vector<int>(inst_->m);
     hmax_values_ = std::vector<double>(inst_->n, std::numeric_limits<double>::infinity());
     initial_hmax_values_ = std::vector<double>(inst_->n, std::numeric_limits<double>::infinity());
     pcf_hmax_ = std::vector<double>(inst_->m);
     reduced_costs_ = std::vector<double>(inst_->m);
+    goal_section_.clear();
     goal_ = inst_->goal.sparse();
     initial_actions_.clear();
 
@@ -132,6 +205,11 @@ void LMcut::update_and_enqueue_effects_values(priority_queue<double>& queue, uns
 
 void LMcut::update_hmax_values(const std::vector<unsigned int>& changed_actions, const hmax_function& hmax) {
     priority_queue<double> queue{inst_->n};
+    const hmax_context ctx{.hmax_values = hmax_values_,
+                           .initial_hmax_values = initial_hmax_values_,
+                           .goal_section = goal_section_,
+                           .reduced_costs = reduced_costs_,
+                           .act_with_eff = inst_->act_with_eff};
 
     for (const auto& act_i : changed_actions) {
         update_and_enqueue_effects_values(queue, act_i);
@@ -150,7 +228,7 @@ void LMcut::update_hmax_values(const std::vector<unsigned int>& changed_actions,
             const double old_hmax{pcf_hmax_[act_i]};
 
             // Compute hmax and the pcf
-            const auto& [act_pcf, act_hmax]{hmax(inst_->actions[act_i].pre_sparse, hmax_values_, initial_hmax_values_)};
+            const auto& [act_pcf, act_hmax]{hmax(inst_->actions[act_i].pre_sparse, ctx)};
 
             // If this action has no pcf or it's infinite, skip
             if (act_pcf == -1 || act_hmax == std::numeric_limits<double>::infinity()) {
@@ -174,9 +252,14 @@ void LMcut::update_hmax_values(const std::vector<unsigned int>& changed_actions,
 auto LMcut::compute_goal_section(const hmax_function& hmax) -> std::unordered_set<unsigned int> {
     std::unordered_set<unsigned int> goal_section;
     std::deque<int> queue;
+    const hmax_context ctx{.hmax_values = hmax_values_,
+                           .initial_hmax_values = initial_hmax_values_,
+                           .goal_section = goal_section_,
+                           .reduced_costs = reduced_costs_,
+                           .act_with_eff = inst_->act_with_eff};
 
     // Simulate a 0-cost action with precondition the goal state -> set its pcf as starting goal_section
-    int goal_pcf{hmax(goal_, hmax_values_, initial_hmax_values_).first};
+    int goal_pcf{hmax(goal_, ctx).first};
     goal_section.insert(static_cast<unsigned int>(goal_pcf));
     queue.push_back(goal_pcf);
 
@@ -206,6 +289,7 @@ auto LMcut::compute_goal_section(const hmax_function& hmax) -> std::unordered_se
         }
     }
 
+    goal_section_ = goal_section;
     return goal_section;
 }
 
@@ -318,7 +402,12 @@ auto LMcut::compute_lmcut_private(const hmax_function& hmax) -> std::pair<std::v
 
     initial_hmax_values_ = std::vector<double>(hmax_values_.begin(), hmax_values_.end());
 
-    while (hmax(goal_, hmax_values_, initial_hmax_values_).second > HPLUS_EPSILON) {
+    const hmax_context ctx{.hmax_values = hmax_values_,
+                           .initial_hmax_values = initial_hmax_values_,
+                           .goal_section = goal_section_,
+                           .reduced_costs = reduced_costs_,
+                           .act_with_eff = inst_->act_with_eff};
+    while (hmax(goal_, ctx).second > HPLUS_EPSILON) {
         const auto& [cut, val] = compute_cut(hmax);
         // check_landmark(cut);  // This is an (expensive) integrity check...
         lmcut_value += val;

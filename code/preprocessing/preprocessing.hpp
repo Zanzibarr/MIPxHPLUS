@@ -37,7 +37,9 @@ inline void lmcut_landmarks_extraction(const hplus::execution& exec, hplus::inst
     LMcut lmcut(inst, exec.preplm_min.find('g') != std::string::npos, exec.preplm_min.find('c') != std::string::npos);
 
     std::map<char, hmax_function> hmax_functions{
-        {'a', hmax::hmax_arbitrary}, {'i', hmax::hmax_inverse}, {'v', hmax::hmax_value_decrease_minimization}, {'r', hmax::hmax_random}};
+        {'a', hmax::hmax_arbitrary}, {'i', hmax::hmax_inverse}, {'v', hmax::hmax_value_decrease_minimization},
+        {'r', hmax::hmax_random},    {'z', hmax::hmax_gzd},     {'b', hmax::hmax_bd},
+        {'d', hmax::hmax_gzd_bd}};
 
     for (auto choice : exec.prep_lmcut) {
         double start = GET_TIME();

@@ -27,6 +27,17 @@ HOW I DO VERSIONING:
 <!-- ### :rocket: Performance Improvements -->
 
 
+## [3.1.10] - 2026/06/09
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+<!-- ### :heavy_exclamation_mark: Changed -->
+### :heavy_plus_sign: Added
+- Added GZD, BD and GZD+BD tie-breaking policies for LM-Cut
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+<!-- ### :rocket: Performance Improvements -->
+
+
 ## [3.1.9] - 2026/06/04
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed

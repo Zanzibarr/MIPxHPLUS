@@ -646,6 +646,7 @@ auto fract_lm_sep::get_lmcut_violated_landmarks(const hplus::execution& exec, co
     auto _fract_lm = make_scoped_timer<"fract_lm_separator">(STATS);
     LMcut lmcut(inst, exec.fractlm_min.find('g') != std::string::npos, exec.fractlm_min.find('c') != std::string::npos);
     std::vector<double> actions_weights(relax_point.begin(), relax_point.begin() + inst.m);
+    // TODO: Test other tie-breaking strategies
     const auto& [found, landmarks] = lmcut.fract_separation(actions_weights, hmax::hmax_arbitrary);
 
     for (const auto& landmark : landmarks) {
