@@ -68,6 +68,23 @@ void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::
         ensure_lb_rootnode(last_root_lb.load());
     }
 
+    std::vector<double> lb(inst.m);
+    std::vector<double> ub(inst.m);
+    CPXcallbackgetgloballb(context, lb.data(), 0, inst.m);
+    CPXcallbackgetglobalub(context, ub.data(), 0, inst.m);
+    unsigned int count_lb = 0;
+    unsigned int count_ub = 0;
+    for (unsigned int i = 0; i < inst.m; i++) {
+        if ((lb[i] > HPLUS_EPSILON) && !inst.fixed_actions[i]) {
+            count_lb++;
+        }
+        if (ub[i] < 1 - HPLUS_EPSILON) {
+            count_ub++;
+        }
+    }
+    STATS.series_push<"n_fixed_zero">(count_ub);
+    STATS.series_push<"n_fixed_one">(count_lb);
+
     // If we don't want fractional cuts or we used the custom cutloop and don't want cuts at nodes we can exit
     if (exec.fract_cuts == "0" || (!exec.fract_cuts_at_nodes && exec.custom_cutloop)) {
         return;

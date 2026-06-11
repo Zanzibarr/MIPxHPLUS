@@ -67,6 +67,8 @@ inline void init_cplex(const hplus::execution& exec, CPXENVptr& env, CPXLPptr& l
     CPX_HANDLE_CALL(CPXsetterminate(env, &GLOBAL_TERMINATE_CONDITION));
     // random seed
     CPX_HANDLE_CALL(CPXsetintparam(env, CPXPARAM_RandomSeed, exec.seed));
+
+    CPX_HANDLE_CALL(CPXsetintparam(env, CPXPARAM_MIP_Limits_Nodes, 0));
 }
 
 void build_base_model(const hplus::execution& exec, hplus::instance& inst, CPXENVptr& env, CPXLPptr& lp);

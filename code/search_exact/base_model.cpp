@@ -25,6 +25,8 @@ void parse_cplex_status(const CPXENVptr& env, const CPXLPptr& lp, const hplus::e
             [[fallthrough]];
         case CPXMIP_MEM_LIM_FEAS:  // exceeded memory limit, found intermediate solution
             [[fallthrough]];
+        case CPXMIP_NODE_LIM_FEAS:  // exceeded node limit, found intermediate solution
+            [[fallthrough]];
         case CPXMIP_TIME_LIM_FEAS:  // exceeded time limit, found intermediate solution
             [[fallthrough]];
         case CPXMIP_ABORT_FEAS:  // terminated by user, found solution

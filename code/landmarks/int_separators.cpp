@@ -24,7 +24,6 @@ auto int_lm_sep::get_lmcut_violated_landmarks(const hplus::execution& exec, cons
         }
     }
 
-    // TODO: Test other tie-breaking strategies
     const auto& [found, landmarks] = lmcut.int_separation(used_actions, hmax::hmax_arbitrary);
 
     for (const auto& landmark : landmarks) {

@@ -187,6 +187,9 @@ FIELDNAMES = [
     "Cand_Sec_Sep_Time",
     "CPX_Time",  # total CPLEX MIP solve time
     "Time",  # total wall-clock time
+    # --- TMP ---
+    "N_Fixed_Zero",
+    "N_Fixed_One",
 ]
 
 DEFAULT_ROW = {
@@ -234,6 +237,9 @@ DEFAULT_ROW = {
     "Cand_Sec_Sep_Time": None,
     "CPX_Time": None,
     "Time": None,
+    # --- TMP ---
+    "N_Fixed_Zero": None,
+    "N_Fixed_One": None,
 }
 
 
@@ -369,6 +375,14 @@ def parse_log(filepath):
     row["Cand_Sec_Sep_Time"] = t("cand_sec_separator")
     row["CPX_Time"] = t("cpx_execution")
     row["Time"] = t("total")
+
+    if "N FIXED ONE" in results:
+        row["N_Fixed_One"] = int(
+            results.partition("N FIXED ONE: ")[2].partition("\n")[0]
+        )
+        row["N_Fixed_Zero"] = int(
+            results.partition("N FIXED ZERO: ")[2].partition("\n")[0]
+        )
 
     return row
 
