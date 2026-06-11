@@ -43,6 +43,13 @@ def main() -> None:
         "--solved", action="store_true", help="Keep only instances solved by all runs"
     )
     parser.add_argument(
+        "--time",
+        type=float,
+        default=None,
+        metavar="T",
+        help="Exclude instances where any run exceeded T seconds",
+    )
+    parser.add_argument(
         "--no-sig", action="store_true", help="Disable significance tests"
     )
     parser.add_argument(
@@ -61,6 +68,7 @@ def main() -> None:
             domain=args.domain,
             extra_cols=[args.metric],
             solved_only=args.solved,
+            max_time=args.time,
         )
         result = compute_stats(
             data, metrics=(args.metric, "Time"), models=aliases, test_significance=False

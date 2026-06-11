@@ -15,12 +15,16 @@ from plotnine import (
     geom_violin,
     geom_hline,
     geom_point,
+    geom_polygon,
+    geom_segment,
     position_dodge,
     position_jitterdodge,
     geom_rect,
     geom_step,
     scale_color_brewer,
     scale_fill_brewer,
+    scale_fill_manual,
+    scale_x_continuous,
     coord_flip,
     scale_x_log10,
     scale_y_log10,
@@ -190,8 +194,128 @@ def violin_plot(
     group_order: list[str] | None = None,
     fill_order: list[str] | None = None,
     reference_y: float | None = None,
+    global_scale: bool = False,
 ) -> ggplot:
     actual_fill = fill_col or group_col
+
+    if global_scale:
+        from scipy.stats import gaussian_kde
+
+        dodged = fill_col is not None and fill_col != group_col
+        groups_list = group_order or df[group_col].cast(pl.String).unique().sort().to_list()
+        fills_list = (
+            fill_order or df[fill_col].cast(pl.String).unique().sort().to_list()
+        ) if dodged else groups_list
+        n_groups = len(groups_list)
+        n_fills = len(fills_list) if dodged else 1
+
+        dodge_w = 0.9
+        violin_slot = dodge_w / n_fills if dodged else dodge_w
+        half_w = violin_slot * 0.44
+        box_w = half_w * 0.08
+
+        # first pass: compute all KDEs, find global max
+        kde_data: dict = {}
+        global_max = 0.0
+        for group in groups_list:
+            for fill in (fills_list if dodged else [group]):
+                mask = pl.col(group_col).cast(pl.String) == group
+                if dodged:
+                    mask = mask & (pl.col(fill_col).cast(pl.String) == fill)
+                vals = df.filter(mask)[value_col].drop_nulls().to_numpy()
+                vals = vals[np.isfinite(vals)]
+                if len(vals) < 2:
+                    continue
+                kde = gaussian_kde(vals, bw_method="scott")
+                margin = max((vals.max() - vals.min()) * 0.1, 1e-6)
+                y_pts = np.linspace(vals.min(), vals.max() + margin, 300)
+                density = kde(y_pts)
+                global_max = max(global_max, density.max())
+                kde_data[(group, fill)] = (vals, y_pts, density)
+
+        # second pass: build polygon + boxplot data
+        poly_rows: list[dict] = []
+        box_rows: list[dict] = []
+        median_rows: list[dict] = []
+        whisker_rows: list[dict] = []
+        point_rows: list[dict] = []
+
+        for gi, group in enumerate(groups_list):
+            for fi, fill in enumerate(fills_list if dodged else [group]):
+                key = (group, fill)
+                if key not in kde_data:
+                    continue
+                cx = float(gi) + (fi - (n_fills - 1) / 2.0) * violin_slot if dodged else float(gi)
+                vals, y_pts, density = kde_data[key]
+                norm_density = density / global_max * half_w
+                px = np.concatenate([cx - norm_density, (cx + norm_density)[::-1]])
+                py = np.concatenate([y_pts, y_pts[::-1]])
+                pid = f"{group}_{fill}"
+                for x, y in zip(px, py):
+                    poly_rows.append({"x": x, "y": y, "grp": pid, actual_fill: fill})
+
+                q25, q50, q75 = np.percentile(vals, [25, 50, 75])
+                iqr = q75 - q25
+                w_lo = float(max(vals.min(), q25 - 1.5 * iqr))
+                w_hi = float(min(vals.max(), q75 + 1.5 * iqr))
+                box_rows.append({"xmin": cx - box_w, "xmax": cx + box_w, "ymin": float(q25), "ymax": float(q75)})
+                median_rows.append({"x": cx - box_w, "xend": cx + box_w, "y": float(q50), "yend": float(q50)})
+                whisker_rows.append({"x": cx, "xend": cx, "y": w_lo, "yend": float(q25)})
+                whisker_rows.append({"x": cx, "xend": cx, "y": float(q75), "yend": w_hi})
+
+                if show_points:
+                    rng = np.random.default_rng()
+                    jitter = rng.uniform(-half_w * 0.2, half_w * 0.2, len(vals))
+                    for v, j in zip(vals, jitter):
+                        point_rows.append({"x": cx + j, "y": float(v), actual_fill: fill})
+
+        poly_df = pl.DataFrame(poly_rows).with_columns(pl.col(actual_fill).cast(pl.Enum(fills_list)))
+        box_df = pl.DataFrame(box_rows)
+        median_df = pl.DataFrame(median_rows)
+        whisker_df = pl.DataFrame(whisker_rows)
+
+        plot = (
+            ggplot(poly_df, aes(x="x", y="y", fill=actual_fill, group="grp"))
+            + geom_polygon(alpha=0.85, color="black", size=0.3)
+            + geom_segment(
+                data=whisker_df,
+                mapping=aes(x="x", xend="xend", y="y", yend="yend"),
+                color="black", size=0.4, inherit_aes=False,
+            )
+            + geom_rect(
+                data=box_df,
+                mapping=aes(xmin="xmin", xmax="xmax", ymin="ymin", ymax="ymax"),
+                fill="white", color="black", size=0.4, inherit_aes=False,
+            )
+            + geom_segment(
+                data=median_df,
+                mapping=aes(x="x", xend="xend", y="y", yend="yend"),
+                color="black", size=0.8, inherit_aes=False,
+            )
+            + scale_x_continuous(breaks=list(range(n_groups)), labels=groups_list)
+            + scale_fill_brewer(type="qual", palette="Set2")
+            + labs(title=title, x=x_label or group_col, y=y_label or value_col)
+            + theme_minimal()
+            + theme(
+                figure_size=(max(6, n_groups * 0.9), 5),
+                axis_text_x=element_text(angle=45, hjust=1, size=9),
+                axis_line=element_line(color="#cccccc"),
+                legend_position="right" if fill_col else "none",
+                plot_title=element_text(size=12, face="bold"),
+            )
+        )
+        if show_points and point_rows:
+            plot += geom_point(
+                data=pl.DataFrame(point_rows),
+                mapping=aes(x="x", y="y", color=actual_fill),
+                size=1.0, alpha=0.35, inherit_aes=False,
+            )
+        if reference_y is not None:
+            plot += geom_hline(
+                yintercept=reference_y, color="red", size=0.8, alpha=0.6, linetype="dashed"
+            )
+        return plot
+
     cols = [group_col, value_col] + (
         [fill_col] if fill_col and fill_col != group_col else []
     )
@@ -450,6 +574,173 @@ def _window_rows(
                 }
             )
     return pl.DataFrame(rows)
+
+
+_SET2 = [
+    "#66C2A5", "#FC8D62", "#8DA0CB", "#E78AC3",
+    "#A6D854", "#FFD92F", "#E5C494", "#B3B3B3",
+]
+
+
+def split_violin_plot(
+    df: pl.DataFrame,
+    pairs: list[tuple[str, str]],
+    group_col: str = "Phase",
+    value_col: str = "Gap",
+    group_order: list[str] | None = None,
+    title: str = "",
+    x_label: str = "",
+    y_label: str = "",
+    show_points: bool = False,
+    reference_y: float | None = None,
+    global_scale: bool = False,
+) -> ggplot:
+    """Split violin via geom_polygon — inherits theme_minimal style automatically."""
+    from scipy.stats import gaussian_kde
+
+    groups = group_order or sorted(df[group_col].unique().to_list())
+    n_groups = len(groups)
+    n_pairs = len(pairs)
+
+    all_aliases: list[str] = []
+    for left, right in pairs:
+        for a in (left, right):
+            if a not in all_aliases:
+                all_aliases.append(a)
+    color_map = {a: _SET2[i % len(_SET2)] for i, a in enumerate(all_aliases)}
+
+    total_width = 0.8
+    pair_width = total_width / n_pairs
+    half_w = pair_width * 0.44
+    box_w = half_w * 0.08
+
+    # first pass: compute all KDEs and global max
+    all_kde: dict = {}
+    global_max = 0.0
+    for gi, group in enumerate(groups):
+        gdf = df.filter(pl.col(group_col) == group)
+        for pi, (left_alias, right_alias) in enumerate(pairs):
+            pair_max = 0.0
+            for alias, sign in ((left_alias, -1), (right_alias, +1)):
+                vals = gdf.filter(pl.col("Model") == alias)[value_col].drop_nulls().to_numpy()
+                vals = vals[np.isfinite(vals)]
+                if len(vals) < 2:
+                    continue
+                kde = gaussian_kde(vals, bw_method="scott")
+                margin = max((vals.max() - vals.min()) * 0.1, 1e-6)
+                y_pts = np.linspace(vals.min(), vals.max() + margin, 300)
+                density = kde(y_pts)
+                pair_max = max(pair_max, density.max())
+                global_max = max(global_max, density.max())
+                all_kde[(gi, pi, alias)] = (sign, vals, y_pts, density, pair_max)
+
+    poly_rows: list[dict] = []
+    box_rows: list[dict] = []
+    median_rows: list[dict] = []
+    whisker_rows: list[dict] = []
+    spine_rows: list[dict] = []
+    point_rows: list[dict] = []
+
+    for gi, group in enumerate(groups):
+        for pi, (left_alias, right_alias) in enumerate(pairs):
+            cx = float(gi) + (pi - (n_pairs - 1) / 2.0) * pair_width
+
+            pair_entries = {
+                alias: all_kde[(gi, pi, alias)]
+                for alias in (left_alias, right_alias)
+                if (gi, pi, alias) in all_kde
+            }
+            if not pair_entries:
+                continue
+
+            pair_max = max(v[3].max() for v in pair_entries.values())
+            normaliser = global_max if global_scale else pair_max
+
+            for alias, (sign, vals, y_pts, density, _) in pair_entries.items():
+                norm_density = density / normaliser * half_w
+                edge_x = cx + sign * norm_density
+                px = np.concatenate([[cx], edge_x, [cx]])
+                py = np.concatenate([[y_pts[0]], y_pts, [y_pts[-1]]])
+                pid = f"{group}_{pi}_{alias}"
+                for x, y in zip(px, py):
+                    poly_rows.append({"x": x, "y": y, "grp": pid, "Model": alias})
+
+                q25, q50, q75 = np.percentile(vals, [25, 50, 75])
+                iqr = q75 - q25
+                w_lo = float(max(vals.min(), q25 - 1.5 * iqr))
+                w_hi = float(min(vals.max(), q75 + 1.5 * iqr))
+                xlo, xhi = min(cx, cx + sign * box_w), max(cx, cx + sign * box_w)
+                box_rows.append({"xmin": xlo, "xmax": xhi, "ymin": float(q25), "ymax": float(q75)})
+                median_rows.append({"x": xlo, "xend": xhi, "y": float(q50), "yend": float(q50)})
+                wx = cx + sign * box_w * 0.5
+                whisker_rows.append({"x": wx, "xend": wx, "y": w_lo, "yend": float(q25)})
+                whisker_rows.append({"x": wx, "xend": wx, "y": float(q75), "yend": w_hi})
+
+            all_y = np.concatenate([e[2] for e in pair_entries.values()])
+            spine_rows.append({"x": cx, "xend": cx, "y": float(all_y.min()), "yend": float(all_y.max())})
+
+            if show_points:
+                rng = np.random.default_rng()
+                for alias, (sign, vals, _, __, ___) in pair_entries.items():
+                    jitter = rng.uniform(0, half_w * 0.35, len(vals))
+                    for v, j in zip(vals, jitter):
+                        point_rows.append({"x": cx + sign * j, "y": float(v), "Model": alias})
+
+    poly_df = pl.DataFrame(poly_rows).with_columns(pl.col("Model").cast(pl.Enum(all_aliases)))
+    box_df = pl.DataFrame(box_rows)
+    median_df = pl.DataFrame(median_rows)
+    whisker_df = pl.DataFrame(whisker_rows)
+    spine_df = pl.DataFrame(spine_rows)
+
+    plot = (
+        ggplot(poly_df, aes(x="x", y="y", fill="Model", group="grp"))
+        + geom_polygon(alpha=0.82, color="black", size=0.3)
+        + geom_segment(
+            data=spine_df,
+            mapping=aes(x="x", xend="xend", y="y", yend="yend"),
+            color="#555555", size=0.4, alpha=0.5, inherit_aes=False,
+        )
+        + geom_segment(
+            data=whisker_df,
+            mapping=aes(x="x", xend="xend", y="y", yend="yend"),
+            color="black", size=0.4, inherit_aes=False,
+        )
+        + geom_rect(
+            data=box_df,
+            mapping=aes(xmin="xmin", xmax="xmax", ymin="ymin", ymax="ymax"),
+            fill="white", color="black", size=0.4, inherit_aes=False,
+        )
+        + geom_segment(
+            data=median_df,
+            mapping=aes(x="x", xend="xend", y="y", yend="yend"),
+            color="black", size=0.8, inherit_aes=False,
+        )
+        + scale_x_continuous(breaks=list(range(n_groups)), labels=groups)
+        + scale_fill_manual(values=color_map)
+        + labs(title=title, x=x_label or group_col, y=y_label or value_col)
+        + theme_minimal()
+        + theme(
+            figure_size=(max(6, n_groups * 0.9), 5),
+            axis_text_x=element_text(angle=45, hjust=1, size=9),
+            axis_line=element_line(color="#cccccc"),
+            legend_position="right",
+            plot_title=element_text(size=12, face="bold"),
+        )
+    )
+
+    if show_points and point_rows:
+        plot += geom_point(
+            data=pl.DataFrame(point_rows),
+            mapping=aes(x="x", y="y", color="Model"),
+            size=1.0, alpha=0.35, inherit_aes=False,
+        )
+
+    if reference_y is not None:
+        plot += geom_hline(
+            yintercept=reference_y, color="red", size=0.8, alpha=0.6, linetype="dashed"
+        )
+
+    return plot
 
 
 def window_plot(

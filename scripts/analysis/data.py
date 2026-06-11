@@ -74,6 +74,7 @@ def load_run(
     file_path: str,
     alias: str | None = None,
     extra_cols: list[str] | None = None,
+    max_time: float | None = None,
 ) -> pl.DataFrame:
     """Load a single CSV run file as a polars DataFrame.
 
@@ -113,20 +114,26 @@ def load_run(
     if extra_cols:
         keep += [c for c in extra_cols if c in df.columns]
 
-    return df.select(keep).sort("Problem")
+    df = df.select(keep)
+    if max_time is not None:
+        df = df.filter(pl.col("Time") <= max_time)
+    return df.sort("Problem")
 
 
 def load_runs(
     files: list[str],
     aliases: list[str] | None = None,
     extra_cols: list[str] | None = None,
+    max_time: float | None = None,
 ) -> pl.DataFrame:
     """Load multiple run files, keeping only instances present in all runs."""
     if aliases is None:
         aliases = [Path(f).stem for f in files]
     assert len(aliases) == len(files)
 
-    dfs = [load_run(files[i], aliases[i], extra_cols) for i in range(len(files))]
+    dfs = [
+        load_run(files[i], aliases[i], extra_cols, max_time) for i in range(len(files))
+    ]
     combined = pl.concat(dfs)
     counts = combined.group_by("Problem").agg(pl.col("Model").n_unique().alias("_n"))
     valid = counts.filter(pl.col("_n") == len(files)).select("Problem")
@@ -158,9 +165,10 @@ def prepare_data(
     domain: str = "",
     extra_cols: list[str] | None = None,
     solved_only: bool = False,
+    max_time: float | None = None,
 ) -> pl.DataFrame:
     """Load, intersect, and categorize runs. Optionally filter by domain substring."""
-    df = _add_categories(load_runs(files, aliases, extra_cols))
+    df = _add_categories(load_runs(files, aliases, extra_cols, max_time))
     if domain:
         df = df.filter(pl.col("Problem").str.contains(domain))
     if solved_only:
