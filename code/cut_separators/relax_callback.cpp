@@ -70,8 +70,8 @@ void callbacks::relaxation_callback(CPXCALLBACKCONTEXTptr context, const hplus::
 
     std::vector<double> lb(inst.m);
     std::vector<double> ub(inst.m);
-    CPXcallbackgetgloballb(context, lb.data(), 0, inst.m);
-    CPXcallbackgetglobalub(context, ub.data(), 0, inst.m);
+    CPXcallbackgetgloballb(context, lb.data(), 0, static_cast<int>(inst.m - 1));
+    CPXcallbackgetglobalub(context, ub.data(), 0, static_cast<int>(inst.m - 1));
     unsigned int count_lb = 0;
     unsigned int count_ub = 0;
     for (unsigned int i = 0; i < inst.m; i++) {
