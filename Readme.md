@@ -70,6 +70,7 @@ Here's a few examples:
 - **AIROYoung Workshop** (2026): [\[Slides\]](results/2026_AIROYoung_slides.pdf)  
 - **IJOO MIP Workshop** (2025, under review): [\[Preprint\]](results/2025_MIPWorkshopIJOO_preprint.pdf)
 - **CPAIOR Extended Abstract** (2026): [\[Slides\]](results/2026_CPAIOR_slides.pdf)  
+- **IPCO Poster** (2026): [\[Poster\]](results/2026_IPCO_poster.pdf)  
 
 ## License
 MIT License - see [LICENSE](LICENSE) for details.
