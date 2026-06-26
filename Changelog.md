@@ -33,6 +33,7 @@ HOW I DO VERSIONING:
 <!-- ### :heavy_exclamation_mark: Changed -->
 ### :heavy_plus_sign: Added
 - Added GZD, BD and GZD+BD tie-breaking policies for LM-Cut
+- [3.1.10.1] Added handling of nodelimit reach cplex status code
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
 <!-- ### :rocket: Performance Improvements -->
