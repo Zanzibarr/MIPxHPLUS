@@ -43,7 +43,11 @@ def main() -> None:
     default_cols = {"Nodes", "Time"}
     extra = [args.metric] if args.metric not in default_cols else None
     data = prepare_data(
-        args.files, aliases, extra_cols=extra, domain=args.domain, solved_only=args.solved
+        args.files,
+        aliases,
+        extra_cols=extra,
+        domain=args.domain,
+        solved_only=args.solved,
     )
 
     plot = bar_comparison_plot(data, aliases, metric=args.metric)

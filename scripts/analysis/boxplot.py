@@ -9,6 +9,8 @@ import sys
 import argparse
 from pathlib import Path
 
+import polars as pl
+
 sys.dont_write_bytecode = True
 sys.path.insert(0, str(Path(__file__).parent))
 
@@ -19,7 +21,7 @@ from data import (
     compute_gap_diffs,
     _DEFAULT_BEST_KNOWN,
 )
-from plots import boxplot, violin_plot, split_violin_plot, save
+from plots import boxplot, violin_plot, split_violin_plot, grouped_boxplot, save
 
 
 def main() -> None:
@@ -80,6 +82,25 @@ def main() -> None:
         help="Exclude instances where any run exceeded T seconds",
     )
     parser.add_argument(
+        "--grouped",
+        type=int,
+        metavar="N",
+        default=None,
+        help="Ad-hoc: cluster models into groups of N, repeating N fill colors per cluster (requires single --gap)",
+    )
+    parser.add_argument(
+        "--color-labels",
+        nargs="+",
+        default=None,
+        help="Legend labels for the N repeated colors (with --grouped)",
+    )
+    parser.add_argument(
+        "--group-labels",
+        nargs="+",
+        default=None,
+        help="X-axis labels, one per cluster (with --grouped)",
+    )
+    parser.add_argument(
         "--out", default="boxplot.pdf", help="Output file (default: boxplot.pdf)"
     )
     args = parser.parse_args()
@@ -97,6 +118,14 @@ def main() -> None:
 
     if args.gap and args.metric != "Time":
         parser.error("--gap and --metric are mutually exclusive.")
+
+    if args.grouped:
+        if not args.gap:
+            parser.error("--grouped requires --gap")
+        if len(args.gap) != 1:
+            parser.error("--grouped requires exactly one --gap column")
+        if args.violin or args.diff or args.pairs:
+            parser.error("--grouped is incompatible with --violin/--diff/--pairs")
 
     aliases = resolve_aliases(args.files, args.aliases)
 
@@ -125,7 +154,22 @@ def main() -> None:
             max_time=args.time,
         )
         data = compute_gaps(data, args.gap, args.best_known)
-        if args.pairs:
+        # drop problems whose gap is 0 for all models/phases
+        data = data.filter(pl.col("Gap").fill_null(0).abs().max().over("Problem") > 0)
+        # print(data)
+        if args.grouped:
+            plot = grouped_boxplot(
+                data,
+                models=aliases,
+                value_col="Gap",
+                group_size=args.grouped,
+                color_labels=args.color_labels,
+                group_labels=args.group_labels,
+                title="Optimality Gap",
+                y_label="Dual Gap (%)",
+            )
+            width = max(6, len(aliases) * 1.1)
+        elif args.pairs:
             pairs = _parse_pairs(args.pairs)
             plot = split_violin_plot(
                 data,

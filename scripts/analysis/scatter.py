@@ -40,9 +40,17 @@ def main() -> None:
     aliases = resolve_aliases(args.files, args.aliases)
     default_cols = {"Nodes", "Time"}
     extra = [args.metric] if args.metric not in default_cols else None
-    full_data = prepare_data(args.files, aliases, extra_cols=extra, solved_only=args.solved)
+    full_data = prepare_data(
+        args.files, aliases, extra_cols=extra, solved_only=args.solved
+    )
     highlight = (
-        prepare_data(args.files, aliases, extra_cols=extra, domain=args.domain, solved_only=args.solved)
+        prepare_data(
+            args.files,
+            aliases,
+            extra_cols=extra,
+            domain=args.domain,
+            solved_only=args.solved,
+        )
         if args.domain
         else None
     )

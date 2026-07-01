@@ -178,6 +178,77 @@ def boxplot(
 
 
 # ---------------------------------------------------------------------------
+# Grouped boxplot (ad-hoc: clusters of N models, N repeated fill colors)
+# ---------------------------------------------------------------------------
+
+
+def grouped_boxplot(
+    df: pl.DataFrame,
+    models: list[str],
+    value_col: str = "Gap",
+    model_col: str = "Model",
+    group_size: int = 3,
+    gap: float = 1.0,
+    color_labels: list[str] | None = None,
+    group_labels: list[str] | None = None,
+    title: str = "",
+    y_label: str = "",
+) -> ggplot:
+    """Boxplots clustered in groups of `group_size`, with `gap` empty units
+    between clusters. Fill encodes position within a cluster, so the same
+    `group_size` colors repeat across every cluster."""
+    # Computer Modern (LaTeX) look: serif family + `cm` mathtext font set,
+    # so math labels like $\mathrm{VE}_{h,\mathrm{LM}}(\Pi)$ render in CM.
+    plt.rcParams.update(
+        {
+            "font.family": "serif",
+            "mathtext.fontset": "cm",
+            "axes.formatter.use_mathtext": True,
+        }
+    )
+
+    n_groups = (len(models) + group_size - 1) // group_size
+    labels = color_labels or models[:group_size]
+
+    xpos = {
+        m: (i // group_size) * (group_size + gap) + (i % group_size)
+        for i, m in enumerate(models)
+    }
+    color_of = {m: labels[i % group_size] for i, m in enumerate(models)}
+
+    df = df.filter(pl.col(model_col).is_in(models)).with_columns(
+        pl.col(model_col).replace_strict(xpos, return_dtype=pl.Float64).alias("_x"),
+        pl.col(model_col)
+        .replace_strict(color_of, return_dtype=pl.String)
+        .cast(pl.Enum(labels))
+        .alias("_color"),
+    )
+
+    centers = [g * (group_size + gap) + (group_size - 1) / 2 for g in range(n_groups)]
+    glabels = group_labels or [f"Group {g + 1}" for g in range(n_groups)]
+
+    plot = (
+        ggplot(df, aes(x="_x", y=value_col, fill="_color", group=model_col))
+        + geom_boxplot(outlier_shape="", width=0.8, alpha=0.85)
+        + scale_fill_brewer(type="qual", palette="Set2")
+        + scale_x_continuous(breaks=centers, labels=glabels)
+        + labs(y=y_label or value_col, fill="")
+        + theme_minimal()
+        + theme(
+            text=element_text(family="serif"),
+            figure_size=(max(6, len(models) * 0.9), 5),
+            axis_title_x=element_blank(),
+            axis_line=element_line(color="#cccccc"),
+            legend_position=(0.98, 1),
+            legend_justification=(1, 1),
+            legend_background=element_blank(),
+            plot_title=element_text(size=12, face="bold"),
+        )
+    )
+    return plot
+
+
+# ---------------------------------------------------------------------------
 # Violin plot
 # ---------------------------------------------------------------------------
 
@@ -202,10 +273,14 @@ def violin_plot(
         from scipy.stats import gaussian_kde
 
         dodged = fill_col is not None and fill_col != group_col
-        groups_list = group_order or df[group_col].cast(pl.String).unique().sort().to_list()
+        groups_list = (
+            group_order or df[group_col].cast(pl.String).unique().sort().to_list()
+        )
         fills_list = (
-            fill_order or df[fill_col].cast(pl.String).unique().sort().to_list()
-        ) if dodged else groups_list
+            (fill_order or df[fill_col].cast(pl.String).unique().sort().to_list())
+            if dodged
+            else groups_list
+        )
         n_groups = len(groups_list)
         n_fills = len(fills_list) if dodged else 1
 
@@ -245,7 +320,11 @@ def violin_plot(
                 key = (group, fill)
                 if key not in kde_data:
                     continue
-                cx = float(gi) + (fi - (n_fills - 1) / 2.0) * violin_slot if dodged else float(gi)
+                cx = (
+                    float(gi) + (fi - (n_fills - 1) / 2.0) * violin_slot
+                    if dodged
+                    else float(gi)
+                )
                 vals, y_pts, density = kde_data[key]
                 norm_density = density / global_max * half_w
                 px = np.concatenate([cx - norm_density, (cx + norm_density)[::-1]])
@@ -258,18 +337,40 @@ def violin_plot(
                 iqr = q75 - q25
                 w_lo = float(max(vals.min(), q25 - 1.5 * iqr))
                 w_hi = float(min(vals.max(), q75 + 1.5 * iqr))
-                box_rows.append({"xmin": cx - box_w, "xmax": cx + box_w, "ymin": float(q25), "ymax": float(q75)})
-                median_rows.append({"x": cx - box_w, "xend": cx + box_w, "y": float(q50), "yend": float(q50)})
-                whisker_rows.append({"x": cx, "xend": cx, "y": w_lo, "yend": float(q25)})
-                whisker_rows.append({"x": cx, "xend": cx, "y": float(q75), "yend": w_hi})
+                box_rows.append(
+                    {
+                        "xmin": cx - box_w,
+                        "xmax": cx + box_w,
+                        "ymin": float(q25),
+                        "ymax": float(q75),
+                    }
+                )
+                median_rows.append(
+                    {
+                        "x": cx - box_w,
+                        "xend": cx + box_w,
+                        "y": float(q50),
+                        "yend": float(q50),
+                    }
+                )
+                whisker_rows.append(
+                    {"x": cx, "xend": cx, "y": w_lo, "yend": float(q25)}
+                )
+                whisker_rows.append(
+                    {"x": cx, "xend": cx, "y": float(q75), "yend": w_hi}
+                )
 
                 if show_points:
                     rng = np.random.default_rng()
                     jitter = rng.uniform(-half_w * 0.2, half_w * 0.2, len(vals))
                     for v, j in zip(vals, jitter):
-                        point_rows.append({"x": cx + j, "y": float(v), actual_fill: fill})
+                        point_rows.append(
+                            {"x": cx + j, "y": float(v), actual_fill: fill}
+                        )
 
-        poly_df = pl.DataFrame(poly_rows).with_columns(pl.col(actual_fill).cast(pl.Enum(fills_list)))
+        poly_df = pl.DataFrame(poly_rows).with_columns(
+            pl.col(actual_fill).cast(pl.Enum(fills_list))
+        )
         box_df = pl.DataFrame(box_rows)
         median_df = pl.DataFrame(median_rows)
         whisker_df = pl.DataFrame(whisker_rows)
@@ -280,17 +381,24 @@ def violin_plot(
             + geom_segment(
                 data=whisker_df,
                 mapping=aes(x="x", xend="xend", y="y", yend="yend"),
-                color="black", size=0.4, inherit_aes=False,
+                color="black",
+                size=0.4,
+                inherit_aes=False,
             )
             + geom_rect(
                 data=box_df,
                 mapping=aes(xmin="xmin", xmax="xmax", ymin="ymin", ymax="ymax"),
-                fill="white", color="black", size=0.4, inherit_aes=False,
+                fill="white",
+                color="black",
+                size=0.4,
+                inherit_aes=False,
             )
             + geom_segment(
                 data=median_df,
                 mapping=aes(x="x", xend="xend", y="y", yend="yend"),
-                color="black", size=0.8, inherit_aes=False,
+                color="black",
+                size=0.8,
+                inherit_aes=False,
             )
             + scale_x_continuous(breaks=list(range(n_groups)), labels=groups_list)
             + scale_fill_brewer(type="qual", palette="Set2")
@@ -308,11 +416,17 @@ def violin_plot(
             plot += geom_point(
                 data=pl.DataFrame(point_rows),
                 mapping=aes(x="x", y="y", color=actual_fill),
-                size=1.0, alpha=0.35, inherit_aes=False,
+                size=1.0,
+                alpha=0.35,
+                inherit_aes=False,
             )
         if reference_y is not None:
             plot += geom_hline(
-                yintercept=reference_y, color="red", size=0.8, alpha=0.6, linetype="dashed"
+                yintercept=reference_y,
+                color="red",
+                size=0.8,
+                alpha=0.6,
+                linetype="dashed",
             )
         return plot
 
@@ -577,8 +691,14 @@ def _window_rows(
 
 
 _SET2 = [
-    "#66C2A5", "#FC8D62", "#8DA0CB", "#E78AC3",
-    "#A6D854", "#FFD92F", "#E5C494", "#B3B3B3",
+    "#66C2A5",
+    "#FC8D62",
+    "#8DA0CB",
+    "#E78AC3",
+    "#A6D854",
+    "#FFD92F",
+    "#E5C494",
+    "#B3B3B3",
 ]
 
 
@@ -622,7 +742,11 @@ def split_violin_plot(
         for pi, (left_alias, right_alias) in enumerate(pairs):
             pair_max = 0.0
             for alias, sign in ((left_alias, -1), (right_alias, +1)):
-                vals = gdf.filter(pl.col("Model") == alias)[value_col].drop_nulls().to_numpy()
+                vals = (
+                    gdf.filter(pl.col("Model") == alias)[value_col]
+                    .drop_nulls()
+                    .to_numpy()
+                )
                 vals = vals[np.isfinite(vals)]
                 if len(vals) < 2:
                     continue
@@ -670,23 +794,42 @@ def split_violin_plot(
                 w_lo = float(max(vals.min(), q25 - 1.5 * iqr))
                 w_hi = float(min(vals.max(), q75 + 1.5 * iqr))
                 xlo, xhi = min(cx, cx + sign * box_w), max(cx, cx + sign * box_w)
-                box_rows.append({"xmin": xlo, "xmax": xhi, "ymin": float(q25), "ymax": float(q75)})
-                median_rows.append({"x": xlo, "xend": xhi, "y": float(q50), "yend": float(q50)})
+                box_rows.append(
+                    {"xmin": xlo, "xmax": xhi, "ymin": float(q25), "ymax": float(q75)}
+                )
+                median_rows.append(
+                    {"x": xlo, "xend": xhi, "y": float(q50), "yend": float(q50)}
+                )
                 wx = cx + sign * box_w * 0.5
-                whisker_rows.append({"x": wx, "xend": wx, "y": w_lo, "yend": float(q25)})
-                whisker_rows.append({"x": wx, "xend": wx, "y": float(q75), "yend": w_hi})
+                whisker_rows.append(
+                    {"x": wx, "xend": wx, "y": w_lo, "yend": float(q25)}
+                )
+                whisker_rows.append(
+                    {"x": wx, "xend": wx, "y": float(q75), "yend": w_hi}
+                )
 
             all_y = np.concatenate([e[2] for e in pair_entries.values()])
-            spine_rows.append({"x": cx, "xend": cx, "y": float(all_y.min()), "yend": float(all_y.max())})
+            spine_rows.append(
+                {
+                    "x": cx,
+                    "xend": cx,
+                    "y": float(all_y.min()),
+                    "yend": float(all_y.max()),
+                }
+            )
 
             if show_points:
                 rng = np.random.default_rng()
                 for alias, (sign, vals, _, __, ___) in pair_entries.items():
                     jitter = rng.uniform(0, half_w * 0.35, len(vals))
                     for v, j in zip(vals, jitter):
-                        point_rows.append({"x": cx + sign * j, "y": float(v), "Model": alias})
+                        point_rows.append(
+                            {"x": cx + sign * j, "y": float(v), "Model": alias}
+                        )
 
-    poly_df = pl.DataFrame(poly_rows).with_columns(pl.col("Model").cast(pl.Enum(all_aliases)))
+    poly_df = pl.DataFrame(poly_rows).with_columns(
+        pl.col("Model").cast(pl.Enum(all_aliases))
+    )
     box_df = pl.DataFrame(box_rows)
     median_df = pl.DataFrame(median_rows)
     whisker_df = pl.DataFrame(whisker_rows)
@@ -698,22 +841,32 @@ def split_violin_plot(
         + geom_segment(
             data=spine_df,
             mapping=aes(x="x", xend="xend", y="y", yend="yend"),
-            color="#555555", size=0.4, alpha=0.5, inherit_aes=False,
+            color="#555555",
+            size=0.4,
+            alpha=0.5,
+            inherit_aes=False,
         )
         + geom_segment(
             data=whisker_df,
             mapping=aes(x="x", xend="xend", y="y", yend="yend"),
-            color="black", size=0.4, inherit_aes=False,
+            color="black",
+            size=0.4,
+            inherit_aes=False,
         )
         + geom_rect(
             data=box_df,
             mapping=aes(xmin="xmin", xmax="xmax", ymin="ymin", ymax="ymax"),
-            fill="white", color="black", size=0.4, inherit_aes=False,
+            fill="white",
+            color="black",
+            size=0.4,
+            inherit_aes=False,
         )
         + geom_segment(
             data=median_df,
             mapping=aes(x="x", xend="xend", y="y", yend="yend"),
-            color="black", size=0.8, inherit_aes=False,
+            color="black",
+            size=0.8,
+            inherit_aes=False,
         )
         + scale_x_continuous(breaks=list(range(n_groups)), labels=groups)
         + scale_fill_manual(values=color_map)
@@ -732,7 +885,9 @@ def split_violin_plot(
         plot += geom_point(
             data=pl.DataFrame(point_rows),
             mapping=aes(x="x", y="y", color="Model"),
-            size=1.0, alpha=0.35, inherit_aes=False,
+            size=1.0,
+            alpha=0.35,
+            inherit_aes=False,
         )
 
     if reference_y is not None:
