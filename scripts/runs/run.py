@@ -11,7 +11,7 @@ from pathlib import Path
 
 TIME_LIMIT = 900
 MEMORY_LIMIT = 16000
-THREADS = 4
+THREADS = 1
 SEED = 2122187
 
 ROOT = Path(__file__).resolve().parent.parent.parent
@@ -121,6 +121,30 @@ SLURM_JOB_TEMPLATE = textwrap.dedent("""\
     ulimit -v 16777216
 
     {command}
+    
+    # THE COMMAND ABOVE WROTE THE MPS FILE AT /home/zanellamat/thesis_hplus/logs/cpxout/lp/{instance}.mps
+    
+    # SOLVE THE MPS USING XPRESS
+    source /nfsd/rop/sw/fico/xpressmp99/bin/xpvars.sh
+
+    TMPFILE=$(mktemp)
+    cat << EOF > $TMPFILE
+    readprob /home/zanellamat/thesis_hplus/logs/cpxout/lp/{instance}.mps
+    TIMELIMIT={timelimit}
+    THREADS={threads}
+    TREEMEMORYLIMIT=4050
+    mipoptimize
+    MIPSTATUS
+    NODES
+    MIPOBJVAL
+    BESTBOUND
+    quit
+    EOF
+
+    optimizer <$TMPFILE >>/home/zanellamat/thesis_hplus/logs/xpressout/{instance}.log 2>&1
+    
+    # DELETE THE MPS (THE SIZE IS TOO LARGE TO BE KEPT FOR ALL INSTANCES)
+    rm /home/zanellamat/thesis_hplus/logs/cpxout/lp/{instance}.mps
 
     sudo cpupower frequency-set -g powersave
 """)
@@ -279,6 +303,8 @@ def write_slurm_scripts(args, rundir):
                 time=SLURM_TIME,
                 wckey=SLURM_WCKEY,
                 output_dir=output_dir,
+                timelimit=args.timelimit,
+                threads=args.threads,
                 command=f"{command} {inst} --log={logsdir}/{instance}.log --cpxlog={cpxlogsdir}/{instance}.log",
             )
         )
@@ -311,13 +337,16 @@ def write_scripts(args, rundir):
 # --- Results ---
 
 
+def custom_parse(file):
+    return ""
+
+
 def collect_results(rundir):
     sys.path.insert(0, str(Path(__file__).parent))
-    from results import parse_log, FIELDNAMES
 
     assert Path(rundir).exists(), f"run directory not found: {rundir}"
 
-    logsdir = Path(rundir) / "logs"
+    logsdir = Path("/home/zanellamat/thesis_hplus/logs/xpressout")
     assert logsdir.exists(), f"logs directory not found: {logsdir}"
 
     log_files = sorted(logsdir.glob("*.log"))
@@ -327,11 +356,13 @@ def collect_results(rundir):
     csv_path = Path(rundir) / f"{run_name}.csv"
 
     with open(csv_path, "w", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=FIELDNAMES)
+        writer = csv.DictWriter(
+            f, fieldnames=["Instance", "Status", "N_Nodes", "Time", "Final_UB"]
+        )
         writer.writeheader()
         for i, log in enumerate(log_files, 1):
             print(f"[{i}/{len(log_files)}] {log.stem}")
-            writer.writerow(parse_log(log))
+            writer.writerow(custom_parse(log))
 
     print(f"Results written to {csv_path}")
 

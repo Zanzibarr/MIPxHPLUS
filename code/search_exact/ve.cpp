@@ -144,14 +144,21 @@ void ve::add_acyclicity_constraints(hplus::instance& inst, CPXENVptr& env, CPXLP
     std::vector<double> lbs(inst.n, 0.0);
     std::vector<double> ubs(inst.n, 1.0);
     std::vector<char> types(inst.n, 'B');
+    std::vector<std::string> names(inst.n);
+    std::vector<char*> cnames;
 
     inst.veg_starts.resize(inst.n);
 
     unsigned int count{0};
     for (unsigned int var_i = 0; var_i < inst.n; var_i++) {
         inst.veg_starts[var_i] = count;
+        cnames.clear();
+        for (int i = 0; i < inst.n; i++) {
+            names[i] = std::format("veg{}x{}", var_i, i);
+            cnames.push_back(names[i].data());
+        }
         CPX_HANDLE_CALL(CPXnewcols(env, lp, static_cast<int>(inst.veg_cumulative_graph[var_i].size()), objs.data(), lbs.data(), ubs.data(),
-                                   types.data(), nullptr));
+                                   types.data(), cnames.data()));
         count += inst.veg_cumulative_graph[var_i].size();
         stopcheck();
     }

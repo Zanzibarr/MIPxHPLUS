@@ -170,21 +170,26 @@ void exact::build_base_model(const hplus::execution& exec, hplus::instance& inst
 
     unsigned int curr_col{0};
     std::vector<double> objs(inst.m);
-    std::vector<double> lbs(inst.m);
+    std::vector<double> lbs(inst.m, 0);
     std::vector<double> ubs(inst.m, 1.0);
     std::vector<char> types(inst.m, 'B');
+    std::vector<std::string> names(inst.m);
+    std::vector<char*> cnames;
 
     // -------- actions ------- //
     const unsigned int act_start{curr_col};
     unsigned int count{0};
     for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
+        names[count] = std::format("act{}", act_i);
+        cnames.push_back(names[count].data());
         objs[count] = static_cast<double>(inst.actions[act_i].cost);
-        lbs[count++] = (inst.fixed_actions[act_i] ? 1 : 0);
+        // lbs[count++] = (inst.fixed_actions[act_i] ? 1 : 0);
+        count++;
     }
 
     curr_col += count;
 
-    CPX_HANDLE_CALL(CPXnewcols(env, lp, static_cast<int>(count), objs.data(), lbs.data(), ubs.data(), types.data(), nullptr));
+    CPX_HANDLE_CALL(CPXnewcols(env, lp, static_cast<int>(count), objs.data(), lbs.data(), ubs.data(), types.data(), cnames.data()));
     stopcheck();
 
     objs.clear();
@@ -195,25 +200,37 @@ void exact::build_base_model(const hplus::execution& exec, hplus::instance& inst
     ubs.resize(inst.n, 1.0);
     types.clear();
     types.resize(inst.n, 'B');
+    names.clear();
+    names.resize(inst.n);
 
     // --- first archievers --- //
     const unsigned int fa_start{curr_col};
     for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
         curr_col += inst.actions[act_i].eff_sparse.size();
-        CPX_HANDLE_CALL(
-            CPXnewcols(env, lp, static_cast<int>(inst.actions[act_i].eff_sparse.size()), objs.data(), lbs.data(), ubs.data(), types.data(), nullptr));
+        cnames.clear();
+        for (unsigned int i = 0; i < inst.actions[act_i].eff_sparse.size(); i++) {
+            names[i] = std::format("fadd{}x{}", act_i, i);
+            cnames.push_back(names[i].data());
+        }
+        CPX_HANDLE_CALL(CPXnewcols(env, lp, static_cast<int>(inst.actions[act_i].eff_sparse.size()), objs.data(), lbs.data(), ubs.data(),
+                                   types.data(), cnames.data()));
         stopcheck();
     }
+
+    cnames.clear();
 
     // ------- variables ------ //
     const unsigned int var_start{curr_col};
     count = 0;
     for (unsigned int var_i = 0; var_i < inst.n; var_i++) {
-        lbs[count++] = (inst.fixed_facts[var_i] || inst.goal[var_i]) ? 1 : 0;
+        names[count] = std::format("var{}", var_i);
+        cnames.push_back(names[count].data());
+        // lbs[count++] = (inst.fixed_facts[var_i] || inst.goal[var_i]) ? 1 : 0;
+        count++;
     }
     curr_col += count;
 
-    CPX_HANDLE_CALL(CPXnewcols(env, lp, static_cast<int>(count), objs.data(), lbs.data(), ubs.data(), types.data(), nullptr));
+    CPX_HANDLE_CALL(CPXnewcols(env, lp, static_cast<int>(count), objs.data(), lbs.data(), ubs.data(), types.data(), cnames.data()));
     stopcheck();
 
     STATS.counter_set<"n_var_base">(inst.n + inst.m + inst.nfadd);
@@ -238,6 +255,29 @@ void exact::build_base_model(const hplus::execution& exec, hplus::instance& inst
     constexpr double rhs_0{0};
     constexpr double rhs_1{1};
     constexpr int begin{0};
+
+    // Fixed actions (lb was set to 0 to avoid MPS bound issues): enforce via >= 1 constraint
+    ind.resize(1);
+    val.assign(1, 1.0);
+    for (unsigned int act_i = 0; act_i < inst.m; act_i++) {
+        if (!inst.fixed_actions[act_i]) {
+            continue;
+        }
+        ind[0] = get_act_idx(act_i);
+        CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, 1, &rhs_1, &sense_g, &begin, ind.data(), val.data(), nullptr, nullptr));
+    }
+
+    // Fixed facts / goal facts (lb was set to 0 to avoid MPS bound issues): enforce via >= 1 constraint
+    for (unsigned int var_i = 0; var_i < inst.n; var_i++) {
+        if (!inst.fixed_facts[var_i] && !inst.goal[var_i]) {
+            continue;
+        }
+        ind[0] = get_var_idx(var_i);
+        CPX_HANDLE_CALL(CPXaddrows(env, lp, 0, 1, 1, &rhs_1, &sense_g, &begin, ind.data(), val.data(), nullptr, nullptr));
+    }
+
+    ind.resize(inst.m + 1);
+    val.resize(inst.m + 1);
 
     for (unsigned int var_i = 0; var_i < inst.n; var_i++) {
         nnz = 0;

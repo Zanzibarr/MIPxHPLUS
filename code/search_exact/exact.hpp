@@ -242,6 +242,10 @@ inline void exact(hplus::execution& exec, hplus::instance& inst, hplus::statisti
         post_warm_start(exec, inst, env, lp);
     }
 
+    // Write problem file
+    CPX_HANDLE_CALL(CPXwriteprob(env, lp, std::format("{}/lp/{}.mps", HPLUS_CPLEX_OUTPUT_DIR, exec.file_name).c_str(), nullptr));
+    return;
+
     // Run cplex
     try {
         run_cplex(exec, inst, stats, env, lp, callback_userhandle);
