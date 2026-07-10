@@ -2,6 +2,7 @@ import argparse
 import csv
 import os
 import random
+import re
 import subprocess
 import sys
 import textwrap
@@ -338,8 +339,65 @@ def write_scripts(args, rundir):
 # --- Results ---
 
 
+# Xpress MIPSTATUS -> Status convention (0 optimal, 2 stopped early, -1 OOM, -2 unknown)
+#   6 XPRS_MIP_OPTIMAL | 4 SOLUTION (feasible, stopped) | 3 NO_SOL_FOUND (stopped) | 5 INFEAS
+XPRESS_STATUS = {6: 0, 4: 2, 3: 2, 5: -2}
+NO_SOLUTION = 1e20  # sentinel objective when no integer solution was found
+
+
+def xpress_attr(content, name):
+    """Best-effort read of the console-echoed value of an Xpress attribute.
+
+    !! FORMAT ASSUMPTION -- verify against a real log !!
+    Assumes the console echoes each queried attribute as "<NAME>[: or =]<value>",
+    one per line, uppercase name. This regex is the only thing to adjust if the
+    produced logs differ.
+    """
+    m = re.search(
+        rf"(?mi)^[ \t]*{name}[ \t]*[:=]?[ \t]*(-?\d[\d.eE+-]*)[ \t]*$", content
+    )
+    return m.group(1) if m else None
+
+
 def custom_parse(file):
-    return ""
+    row = {
+        "Instance": Path(file).stem,
+        "Status": -2,
+        "N_Nodes": None,
+        "Time": None,
+        "Final_UB": None,
+    }
+
+    with open(file, "r", errors="replace") as f:
+        content = f.read()
+
+    # Time (seconds) from the wall-clock marker appended by the job script
+    m = re.search(r">> XPRESS_WALLTIME_MS\s+(\d+) <<", content)
+    if m:
+        row["Time"] = int(m.group(1)) / 1000.0
+
+    if re.search(r"(?i)out of memory|insufficient memory", content):
+        row["Status"] = -1
+        return row
+
+    raw = xpress_attr(content, "MIPSTATUS")
+    if raw is None:
+        return row  # incomplete log -> Status -2
+    mipstatus = int(float(raw))
+    row["Status"] = XPRESS_STATUS.get(mipstatus, -2)
+
+    nodes = xpress_attr(content, "NODES")
+    if nodes is not None:
+        row["N_Nodes"] = int(float(nodes))
+
+    obj = xpress_attr(content, "MIPOBJVAL")
+    if obj is not None:
+        val = float(obj)
+        row["Final_UB"] = NO_SOLUTION if abs(val) >= 1e19 else val
+    if mipstatus == 3:  # no feasible solution found
+        row["Final_UB"] = NO_SOLUTION
+
+    return row
 
 
 def collect_results(rundir):

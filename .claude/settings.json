@@ -1,7 +1,0 @@
-{
-  "permissions": {
-    "allow": [
-      "Bash(awk -F, '$2!=0 && NR>1' test_gurobi_nomst.csv)"
-    ]
-  }
-}
