@@ -130,8 +130,8 @@ SLURM_JOB_TEMPLATE = textwrap.dedent("""\
     TMPFILE=$(mktemp)
     cat << EOF > $TMPFILE
     readprob /home/zanellamat/thesis_hplus/logs/cpxout/lp/{instance}.mps
-    TIMELIMIT={timelimit}
-    THREADS={threads}
+    TIMELIMIT=900
+    THREADS=4
     TREEMEMORYLIMIT=4050
     mipoptimize
     MIPSTATUS
@@ -141,7 +141,10 @@ SLURM_JOB_TEMPLATE = textwrap.dedent("""\
     quit
     EOF
 
-    optimizer <$TMPFILE >>/home/zanellamat/thesis_hplus/logs/xpressout/{instance}.log 2>&1
+    XPRESS_LOG=/home/zanellamat/thesis_hplus/logs/xpressout/{instance}.log
+    _t0=$(date +%s%N)
+    optimizer <$TMPFILE >>$XPRESS_LOG 2>&1
+    echo ">> XPRESS_WALLTIME_MS $(( ($(date +%s%N) - _t0) / 1000000 )) <<" >>$XPRESS_LOG
     
     # DELETE THE MPS (THE SIZE IS TOO LARGE TO BE KEPT FOR ALL INSTANCES)
     rm /home/zanellamat/thesis_hplus/logs/cpxout/lp/{instance}.mps
@@ -303,8 +306,6 @@ def write_slurm_scripts(args, rundir):
                 time=SLURM_TIME,
                 wckey=SLURM_WCKEY,
                 output_dir=output_dir,
-                timelimit=args.timelimit,
-                threads=args.threads,
                 command=f"{command} {inst} --log={logsdir}/{instance}.log --cpxlog={cpxlogsdir}/{instance}.log",
             )
         )
