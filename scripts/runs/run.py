@@ -345,18 +345,27 @@ XPRESS_STATUS = {6: 0, 4: 2, 3: 2, 5: -2}
 NO_SOLUTION = 1e20  # sentinel objective when no integer solution was found
 
 
-def xpress_attr(content, name):
-    """Best-effort read of the console-echoed value of an Xpress attribute.
+def xpress_echoed_values(content):
+    """Return the values the console echoes for the queried attributes.
 
-    !! FORMAT ASSUMPTION -- verify against a real log !!
-    Assumes the console echoes each queried attribute as "<NAME>[: or =]<value>",
-    one per line, uppercase name. This regex is the only thing to adjust if the
-    produced logs differ.
+    The optimizer prints each queried attribute (MIPSTATUS, NODES, MIPOBJVAL,
+    BESTBOUND) as a bare number on its own line, with no label. These four lines
+    are the contiguous run of numeric-only lines just before the wall-clock
+    marker (or at end of log). Returned in query order.
     """
-    m = re.search(
-        rf"(?mi)^[ \t]*{name}[ \t]*[:=]?[ \t]*(-?\d[\d.eE+-]*)[ \t]*$", content
+    lines = content.splitlines()
+    anchor = next(
+        (i for i, ln in enumerate(lines) if ln.startswith(">> XPRESS_WALLTIME_MS")),
+        len(lines),
     )
-    return m.group(1) if m else None
+    num = re.compile(r"^\s*(-?\d[\d.eE+-]*)\s*$")
+    vals = []
+    for ln in reversed(lines[:anchor]):
+        m = num.match(ln)
+        if not m:
+            break
+        vals.append(m.group(1))
+    return list(reversed(vals))
 
 
 def custom_parse(file):
@@ -371,31 +380,32 @@ def custom_parse(file):
     with open(file, "r", errors="replace") as f:
         content = f.read()
 
-    # Time (seconds) from the wall-clock marker appended by the job script
-    m = re.search(r">> XPRESS_WALLTIME_MS\s+(\d+) <<", content)
+    # Xpress-reported MIP solve time (mipoptimize only: excludes process
+    # startup, license checkout and readprob). This is the solver-internal time.
+    m = re.search(r"Solution time\s*/\s*primaldual integral\s*:\s*([\d.]+)s", content)
     if m:
-        row["Time"] = int(m.group(1)) / 1000.0
+        row["Time"] = float(m.group(1))
+    else:
+        # Fallback: wall-clock marker (includes startup + file read), used only
+        # when the summary is absent (e.g. process killed on time/mem limit).
+        m = re.search(r">> XPRESS_WALLTIME_MS\s+(\d+) <<", content)
+        if m:
+            row["Time"] = int(m.group(1)) / 1000.0
 
     if re.search(r"(?i)out of memory|insufficient memory", content):
         row["Status"] = -1
         return row
 
-    raw = xpress_attr(content, "MIPSTATUS")
-    if raw is None:
+    # Echoed attributes, in query order: MIPSTATUS, NODES, MIPOBJVAL, BESTBOUND
+    vals = xpress_echoed_values(content)
+    if len(vals) < 4:
         return row  # incomplete log -> Status -2
-    mipstatus = int(float(raw))
+
+    mipstatus = int(float(vals[0]))
     row["Status"] = XPRESS_STATUS.get(mipstatus, -2)
-
-    nodes = xpress_attr(content, "NODES")
-    if nodes is not None:
-        row["N_Nodes"] = int(float(nodes))
-
-    obj = xpress_attr(content, "MIPOBJVAL")
-    if obj is not None:
-        val = float(obj)
-        row["Final_UB"] = NO_SOLUTION if abs(val) >= 1e19 else val
-    if mipstatus == 3:  # no feasible solution found
-        row["Final_UB"] = NO_SOLUTION
+    row["N_Nodes"] = int(float(vals[1]))
+    obj = float(vals[2])
+    row["Final_UB"] = NO_SOLUTION if (mipstatus == 3 or abs(obj) >= 1e19) else obj
 
     return row
 
