@@ -138,7 +138,7 @@ def run_batch(args, regdir, label, exe):
         write_cmd += ["--threads", str(args.threads)]
     if args.seed is not None:
         write_cmd += ["--seed", str(args.seed)]
-    write_cmd += args.commands + ["-v"]
+    write_cmd += args.commands
     subprocess.run(write_cmd, check=True)
 
     print(f"Running batch '{label}' ({exe})")
