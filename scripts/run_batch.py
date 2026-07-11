@@ -180,7 +180,7 @@ def build_command(args):
     timelimit = args.timelimit if args.timelimit is not None else TIME_LIMIT
     threads = args.threads if args.threads is not None else THREADS
     seed = args.seed if args.seed is not None else SEED
-    base = f"{args.exe} -t {timelimit} -T {threads} -s {seed}"
+    base = f"{args.exe} -t {timelimit} -T {threads} -s {seed} -v"
     if args.commands is not None:
         return f"{base} {args.commands}"
     return base
