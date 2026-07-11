@@ -28,7 +28,15 @@ void Solver::hplus_progress_callback_(CPXCALLBACKCONTEXTptr context) {
     double best_lb{-1};
     call_cplex(CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_BND, &best_lb));
 
-    try_update_best_bound_(best_lb);
+    // From CPLEX Documentation:
+    // Important: This bound may be infinite (-CPX_INFBOUND or CPX_INFBOUND, depending on the objective sense) if no bound has been computed yet, or
+    // if no bound is available for the calling thread.
+    // Warning: Note that the best bound may exceed the value of the best feasible solution when
+    // optimality is proven.
+    // We update the best bound only if we know it is a valid one (hence lower than the best incumbent we know)
+    if (is_lw_or_eq_double(best_lb, global_.best_incumbent)) {
+        try_update_best_bound_(best_lb);
+    }
 
     // TODO: [lb_rootnode-v2] Track the root-node lower bound here, gated on NODECOUNT, instead of in the relaxation callback (which is not guaranteed
     // to fire below the root: see elevators-sat11-strips-p19, 471 nodes with every relaxation callback at depth 0). nodecount == 0 means the root is

@@ -322,7 +322,7 @@ class ParameterRegistry {
         std::string line;
         line.reserve(char_count * 3);  // "─" (U+2500) is 3 UTF-8 bytes
         for (std::size_t i = 0; i < char_count; ++i) {
-            line += "─";
+            line += "-";
         }
         return line;
     }
