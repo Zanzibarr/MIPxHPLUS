@@ -3,6 +3,7 @@
 .vscode/
 .trunk/
 .idea/
+.claude/
 
 # repository organization
 code/.cache

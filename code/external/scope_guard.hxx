@@ -31,10 +31,11 @@
  * SPDX-License-Identifier: MIT
  */
 
+#include <cstdio>
 #include <exception>
-#include <iostream>
 #include <utility>
 
+namespace utilz {
 /** Controls when the guarded callable is executed on scope exit. */
 enum class ScopeStrategy {
     EXIT,    // Always run
@@ -73,7 +74,7 @@ class ScopeGuard {
             try {
                 func_();
             } catch (...) {
-                std::cerr << "ScopeGuard: callable threw, terminating\n";
+                std::fputs("ScopeGuard: callable threw, terminating\n", stderr);
                 std::terminate();
             }
         }
@@ -112,3 +113,5 @@ template <typename F>
 [[nodiscard]] auto on_scope_fail(F&& func) {
     return ScopeGuard<std::decay_t<F>>(std::forward<F>(func), ScopeStrategy::FAIL);
 }
+
+}  // namespace utilz

@@ -27,6 +27,17 @@ HOW I DO VERSIONING:
 <!-- ### :rocket: Performance Improvements -->
 
 
+## [4.0.0] - 2026/07/DD
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+### :heavy_exclamation_mark: Changed
+- Code refactoring, execution path remains unchanged
+<!-- ### :heavy_plus_sign: Added -->
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+<!-- ### :rocket: Performance Improvements -->
+
+
 ## [3.1.10] - 2026/06/09
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->

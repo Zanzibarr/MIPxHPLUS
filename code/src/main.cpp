@@ -1,0 +1,85 @@
+#include <termios.h>  // For STDIN_FILENO
+#include <unistd.h>   // For STDIN_FILENO
+
+#include <argparser.hxx>
+#include <cstdlib>
+#include <exception>
+#include <logger.hxx>
+#include <parameters.hxx>
+
+#include "cli_parser.hpp"
+#include "solver.hpp"
+#include "utils.hpp"
+
+namespace {
+
+void signal_callback_handler(const int /*signal*/) {
+    // Only async-signal-safe work here: flip the lock-free global stop flags.
+    // First Ctrl+C requests a cooperative stop; a second one hard-exits.
+    if (global_limits::time_flag.load(std::memory_order_relaxed)) [[unlikely]] {
+        _Exit(EXIT_FAILURE);
+    }
+    global_limits::time_flag.store(true, std::memory_order_relaxed);
+    GLOBAL_TERMINATE_CONDITION = 1;  // tell CPLEX to stop
+}
+
+auto init(ParameterRegistry& params, Logger& logger) -> void {
+    // ~~~~~~~~~~~~ signal handler ~~~~~~~~~~~ //
+    signal(SIGINT, signal_callback_handler);
+    // Hide ^C from terminal
+    struct termios t{};
+    tcgetattr(STDIN_FILENO, &t);
+    t.c_lflag &= static_cast<tcflag_t>(~ECHOCTL);
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &t);
+
+    // ~~~~~~~~~~~~~~~~ limits ~~~~~~~~~~~~~~~ //
+    if (params.get<"time_limit", int>() > 0) {
+        set_time_limit(static_cast<unsigned int>(params.get<"time_limit", int>()), [&logger] {
+            GLOBAL_TERMINATE_CONDITION = 1;  // tell CPLEX to stop
+            logger[WARNING] << "Time limit reached.";
+        });
+    }
+
+    // Warn user of debug mode being used
+#ifndef NDEBUG
+    logger[WARNING] << "Debug mode is active, asserts are enabled";
+#endif
+}
+
+auto solve(const ParameterRegistry& params, Logger& logger) -> void {
+    logger << date_compile();
+    logger << date_today();
+    logger << version();
+    logger << params;
+
+    Solver solver(params, logger);
+    solver.solve();
+
+    solver.show();
+}
+
+}  // namespace
+
+auto main(const int argc, char** argv) -> int {
+    Logger logger;
+
+    auto params = parse_cli(argc, argv, logger);
+
+    init(params, logger);
+
+    try {
+        solve(params, logger);
+    } catch (const std::exception& e) {
+        logger[FATAL] << std::format("Caught exception in main(): {}", e.what());
+    } catch (...) {
+        logger[FATAL] << std::format("Something wrong happened in main().");
+    }
+
+    // Join the background timer thread from normal code (unsafe in the handler).
+    cancel_time_limit();
+
+    logger[SUCCESS] << "Execution terminated succesfully";
+    logger.flush();  // Flush to prevent success message not being printed in async mode
+
+    return EXIT_SUCCESS;
+}

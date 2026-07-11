@@ -1,0 +1,474 @@
+#include <binary_set.hxx>
+
+#include "cli_descriptions.hpp"
+#include "solver.hpp"
+
+// TODO: Can we parallelize the preprocessing?
+void Solver::preprocess_() {
+    std::vector<std::vector<unsigned int>> landmarks(inst_.n);
+    BinarySet relevant_variables(inst_.n);
+
+    global_.fixed_facts = BinarySet{inst_.n};
+    global_.fixed_actions = BinarySet{inst_.m};
+    global_.eliminated_facts = BinarySet{inst_.n};
+    global_.eliminated_actions = BinarySet{inst_.m};
+
+    const auto& choices = params_.get<cli_desc::preprocess, std::string>();
+
+    if (choices.find('l') != std::string::npos) {
+        prep_fact_landmarks_(landmarks);
+    }
+    if (choices.find('a') != std::string::npos) {
+        prep_first_adders_(landmarks);
+    }
+    if (choices.find('b') != std::string::npos) {
+        prep_relevance_backward_(relevant_variables);
+    }
+    if (choices.find('f') != std::string::npos) {
+        prep_relevance_forward_(relevant_variables);
+    }
+    prep_eliminated_facts_(landmarks);
+    if (choices.find('d') != std::string::npos) {
+        prep_dominated_actions_(landmarks);
+    }
+    prep_eliminated_actions_();
+
+    // TODO: Is there a way to know which action is achieving a fixed fact? If so, can we fix those as well (actions and first achievers)?
+    // TODO: Are we fixing all effects of fixed actions?
+}
+
+void Solver::prep_fact_landmarks_(std::vector<std::vector<unsigned int>>& landmarks_ret) {
+    // use the last bit as a flag to tell the BinarySet is full
+    std::vector<BinarySet> landmarks(inst_.n, BinarySet{inst_.n + 1});
+    for (unsigned int fact = 0; fact < inst_.n; fact++) {
+        landmarks[fact].add(inst_.n);
+    }
+
+    BinarySet s_set{inst_.n};
+
+    // add to the queue all initial actions (those with no preconditions)
+    std::deque<unsigned int> actions_queue;
+    BinarySet acts_in_queue{inst_.m};
+    for (unsigned int act_i = 0; act_i < inst_.m; act_i++) {
+        if (inst_.actions[act_i].pre_sparse.empty()) {
+            actions_queue.push_back(act_i);
+            acts_in_queue.add(act_i);
+        }
+    }
+
+    // list of actions that have as precondition variable p
+    std::vector<std::vector<unsigned int>> act_with_pre(inst_.n);
+    for (unsigned int act_i = 0; act_i < inst_.m; act_i++) {
+        for (const auto& pre : inst_.actions[act_i].pre_sparse) {
+            act_with_pre[pre].push_back(act_i);
+        }
+    }
+
+    // Watch preconditions for O(1) applicability checks against s_set.
+    // watch_s[act] = one precondition of act not yet in s_set (inst_.n = sentinel: action is applicable)
+    // watching_s[fact] = actions that are currently watching 'fact'
+    // applicable[act] = true once all preconditions of act are in s_set
+    std::vector<unsigned int> watch_s(inst_.m, inst_.n);
+    std::vector<std::vector<unsigned int>> watching_s(inst_.n);
+    BinarySet applicable{inst_.m};
+    for (unsigned int act_i = 0; act_i < inst_.m; act_i++) {
+        if (inst_.actions[act_i].pre_sparse.empty()) {
+            applicable.add(act_i);
+        } else {
+            // s_set is empty at init — first precondition is always unsatisfied
+            const unsigned int watched = inst_.actions[act_i].pre_sparse[0];
+            watch_s[act_i] = watched;
+            watching_s[watched].push_back(act_i);
+        }
+    }
+
+    while (!actions_queue.empty()) {
+        const auto act_i = actions_queue.front();
+        const auto& act = inst_.actions[act_i];
+        actions_queue.pop_front();
+        acts_in_queue.remove(act_i);
+
+        BinarySet x_a{inst_.n + 1};
+        for (const auto& eff : act.eff_sparse) {
+            x_a.add(eff);
+        }
+
+        // Compute the union of precondition landmarks once for all effects of this action.
+        BinarySet x_union{x_a};
+        bool x_union_full = false;
+        for (const auto& pre : act.pre_sparse) {
+            // if variable pre has the "full" flag then the union generates a "full" bitfield
+            if (landmarks[pre][inst_.n]) {
+                x_union_full = true;
+                break;
+            }
+            x_union |= landmarks[pre];
+        }
+
+        for (const auto& eff : act.eff_sparse) {
+            s_set.add(eff);
+
+            // Update watch preconditions for actions watching this newly reached fact.
+            // Swap-erase pattern: we always remove act_j from watching_s[eff] since eff is
+            // now in s_set and should never be watched again.
+            for (size_t wi = 0; wi < watching_s[eff].size();) {
+                const unsigned int act_j = watching_s[eff][wi];
+                bool moved = false;
+                for (const auto& pre : inst_.actions[act_j].pre_sparse) {
+                    if (!s_set[pre]) {
+                        watch_s[act_j] = pre;
+                        watching_s[pre].push_back(act_j);
+                        moved = true;
+                        break;
+                    }
+                }
+                watching_s[eff][wi] = watching_s[eff].back();
+                watching_s[eff].pop_back();
+                if (!moved) {
+                    applicable.add(act_j);
+                    watch_s[act_j] = inst_.n;  // sentinel: no unsatisfied precondition
+                }
+            }
+
+            // if x_union is already full, intersection with landmarks[eff] cannot shrink it —
+            // no useful landmark update is possible for this effect
+            if (x_union_full) {
+                continue;
+            }
+
+            BinarySet lm_new{x_union};
+
+            // if the set for variable eff is the full set of variables, the intersection
+            // generates back lm_new -> we can skip the intersection
+            if (!landmarks[eff][inst_.n]) {
+                lm_new &= landmarks[eff];
+            }
+
+            // we already know that lm_new is not the full set now, so if the set for variable
+            // eff is the full set, we know that lm_new is not equal to the set for variable eff
+            if (!landmarks[eff][inst_.n] && lm_new == landmarks[eff]) {
+                continue;
+            }
+
+            landmarks[eff] = lm_new;
+            for (const auto& act_j : act_with_pre[eff]) {
+                if (applicable[act_j] && !acts_in_queue[act_j]) {
+                    actions_queue.push_back(act_j);
+                    acts_in_queue.add(act_j);
+                }
+            }
+        }
+        if (global_limits::time_reached()) [[unlikely]] {
+            throw EarlyExit("preprocessing landmark extraction (main loop)", EarlyExit::TIMELIMIT);
+        }
+    }
+
+    // list of fact landmarks for each variable
+    for (unsigned int fact_p = 0; fact_p < inst_.n; fact_p++) {
+        for (unsigned int fact_q = 0; fact_q < inst_.n; fact_q++) {
+            if (landmarks[fact_p][fact_q] || landmarks[fact_p][inst_.n]) {
+                landmarks_ret[fact_p].push_back(fact_q);
+            }
+        }
+    }
+
+    // list of actions that have as effect variable p
+    std::vector<std::vector<unsigned int>> act_with_eff(inst_.n);
+    for (unsigned int act_i = 0; act_i < inst_.m; act_i++) {
+        for (const auto& eff : inst_.actions[act_i].eff_sparse) {
+            act_with_eff[eff].push_back(act_i);
+        }
+    }
+
+    for (const auto g_fact : inst_.goal) {
+        for (const auto& g_factlm : landmarks_ret[g_fact]) {
+            if (global_.fixed_facts[g_factlm]) {
+                continue;
+            }
+            global_.fixed_facts.add(g_factlm);
+            unsigned int count{0};
+            unsigned int cand_act = 0;
+            for (const auto& act_i : act_with_eff[g_factlm]) {
+                cand_act = act_i;
+                count++;
+                if (count > 1) {
+                    break;
+                }
+            }
+            if (count == 1) {
+                global_.fixed_actions.add(cand_act);
+            }
+        }
+        if (global_limits::time_reached()) [[unlikely]] {
+            throw EarlyExit("preprocessing landmark extraction (goal loop)", EarlyExit::TIMELIMIT);
+        }
+    }
+}
+
+void Solver::prep_first_adders_(std::vector<std::vector<unsigned int>>& landmarks) {
+    BinarySet fact_lm_for_a(inst_.n);
+
+    for (unsigned int act_i = 0; act_i < inst_.m; act_i++) {
+        fact_lm_for_a.clear();
+        for (const auto& pre : inst_.actions[act_i].pre_sparse) {
+            for (const auto& fact_q : landmarks[pre]) {
+                fact_lm_for_a.add(fact_q);
+            }
+        }
+        std::erase_if(inst_.actions[act_i].eff_sparse, [&fact_lm_for_a](const auto val) { return fact_lm_for_a[val]; });
+
+        if (global_limits::time_reached()) [[unlikely]] {
+            throw EarlyExit("preprocessing first adders extraction", EarlyExit::TIMELIMIT);
+        }
+    }
+}
+
+void Solver::prep_relevance_backward_(BinarySet& relevant_variables) {
+    BinarySet relevant_actions(inst_.m);
+    std::queue<unsigned int> relevant_facts_queue;
+
+    // compute first round of relevand variables and actions
+    for (const auto& g_fact : inst_.goal) {
+        relevant_variables.add(g_fact);
+        relevant_facts_queue.push(g_fact);
+    }
+
+    std::vector<std::vector<unsigned int>> act_with_eff(inst_.n);
+    for (unsigned int act_i = 0; act_i < inst_.m; act_i++) {
+        for (const auto eff : inst_.actions[act_i].eff_sparse) {
+            act_with_eff[eff].push_back(act_i);
+        }
+    }
+
+    while (!relevant_facts_queue.empty()) {
+        const auto fact = relevant_facts_queue.front();
+        relevant_facts_queue.pop();
+
+        for (const auto& act_i : act_with_eff[fact]) {
+            if (relevant_actions[act_i]) {
+                continue;
+            }
+            relevant_actions.add(act_i);
+            for (const auto& pre : inst_.actions[act_i].pre_sparse) {
+                // relevant_variables is empty at the beginning of this function, so this is equivalent to a check of "pre" already being in the queue
+                if (relevant_variables[pre]) {
+                    continue;
+                }
+                relevant_variables.add(pre);
+                relevant_facts_queue.push(pre);
+            }
+        }
+
+        if (global_limits::time_reached()) [[unlikely]] {
+            throw EarlyExit("preprocessing backwards relevance analysis", EarlyExit::TIMELIMIT);
+        }
+    }
+
+    // eliminate actions and variables that are not relevant (or landmarks)
+    global_.eliminated_facts |= !(relevant_variables | global_.fixed_facts);  // eliminating variables will be done at once, later
+    global_.eliminated_actions |= !relevant_actions;                          // eliminating actions will be done at once, later
+}
+
+void Solver::prep_relevance_forward_(BinarySet& relevant_variables) {
+    for (unsigned int act_i = 0; act_i < inst_.m; act_i++) {
+        if (global_.eliminated_actions[act_i] || global_.fixed_actions[act_i]) {
+            continue;
+        }
+        if (!bs_intersects(relevant_variables, inst_.actions[act_i].eff_sparse)) {
+            global_.eliminated_actions.add(act_i);
+        }
+        if (global_limits::time_reached()) [[unlikely]] {
+            throw EarlyExit("preprocessing forward relevance analysis", EarlyExit::TIMELIMIT);
+        }
+    }
+}
+
+void Solver::prep_dominated_actions_(std::vector<std::vector<unsigned int>>& landmarks) {
+    const auto& rem_act{(!global_.eliminated_actions).sparse()};
+
+    std::vector<BinarySet> act_flm(inst_.m, BinarySet(inst_.n));
+    for (const auto& act_i : rem_act) {
+        for (const auto& var_i : inst_.actions[act_i].pre_sparse) {
+            for (const auto& fact : landmarks[var_i]) {
+                act_flm[act_i].add(fact);
+            }
+        }
+        if (global_limits::time_reached()) [[unlikely]] {
+            throw EarlyExit("preprocessing dominated actions removal (first loop)", EarlyExit::TIMELIMIT);
+        }
+    }
+
+    bs_searcher candidates{inst_.n};
+    std::vector<BinarySet> actions_effects(inst_.m, BinarySet(inst_.n));
+    for (const auto& act_i : rem_act) {
+        if (global_.fixed_actions[act_i]) {
+            continue;
+        }
+        for (const auto& val : inst_.actions[act_i].eff_sparse) {
+            actions_effects[act_i].add(val);
+        }
+        candidates.add(act_i, actions_effects[act_i]);
+    }
+
+    BinarySet dominated_actions{inst_.m};
+
+    for (const auto& dominant_act : rem_act) {
+        if (dominated_actions[dominant_act]) {
+            continue;
+        }
+
+        for (const auto& dominated_act : candidates.find_subsets(actions_effects[dominant_act])) {
+            if (dominant_act == dominated_act || inst_.actions[dominant_act].cost > inst_.actions[dominated_act].cost ||
+                !bs_contains(act_flm[dominated_act], inst_.actions[dominant_act].pre_sparse)) {
+                continue;
+            }
+
+            dominated_actions.add(dominated_act);
+            global_.eliminated_actions.add(dominated_act);
+            candidates.remove(dominated_act, actions_effects[dominated_act]);
+        }
+
+        if (global_limits::time_reached()) [[unlikely]] {
+            throw EarlyExit("preprocessing dominated actions removal (main loop)", EarlyExit::TIMELIMIT);
+        }
+    }
+}
+
+void Solver::prep_eliminated_facts_(std::vector<std::vector<unsigned int>>& landmarks) {
+    unsigned int removed{static_cast<unsigned int>(global_.eliminated_facts.sparse().size())};
+
+    std::vector<unsigned int> removed_offsets(inst_.n, 0);
+    unsigned int current_removed = 0;
+    for (unsigned int i = 0; i < inst_.n; i++) {
+        removed_offsets[i] = current_removed;
+        if (global_.eliminated_facts[i]) {
+            ++current_removed;
+        }
+    }
+
+    for (unsigned int act_i = 0; act_i < inst_.m; act_i++) {
+        std::vector<unsigned int> new_pre;
+        std::vector<unsigned int> new_eff;
+        new_pre.reserve(inst_.actions[act_i].pre_sparse.size());
+        new_eff.reserve(inst_.actions[act_i].eff_sparse.size());
+        for (const auto& pre : inst_.actions[act_i].pre_sparse) {
+            if (!global_.eliminated_facts[pre]) {
+                new_pre.push_back(pre - removed_offsets[pre]);
+            }
+        }
+        for (const auto& eff : inst_.actions[act_i].eff_sparse) {
+            if (!global_.eliminated_facts[eff]) {
+                new_eff.push_back(eff - removed_offsets[eff]);
+            }
+        }
+        inst_.actions[act_i].pre_sparse = std::move(new_pre);
+        inst_.actions[act_i].eff_sparse = std::move(new_eff);
+    }
+
+    // Adjust goal
+    BinarySet new_goal(inst_.n - removed);
+    for (const auto p : inst_.goal) {
+        if (!global_.eliminated_facts[p]) {
+            new_goal.add(p - removed_offsets[p]);
+        }
+    }
+    inst_.goal = new_goal;
+
+    // Adjust landmarks
+    unsigned int counter{0};
+    for (const auto fact : !global_.eliminated_facts) {
+        std::vector<unsigned int> copy(landmarks[fact]);
+        landmarks[counter].clear();
+        for (const auto& l : copy) {
+            if (global_.eliminated_facts[l]) {
+                continue;
+            }
+            landmarks[counter].push_back(l - removed_offsets[l]);
+        }
+        counter++;
+    }
+    landmarks.resize(counter);
+
+    // Adjust fixed_facts
+    BinarySet new_fixed_facts(inst_.n - removed);
+    for (const auto fact : global_.fixed_facts) {
+        if (!global_.eliminated_facts[fact]) {
+            new_fixed_facts.add(fact - removed_offsets[fact]);
+        }
+    }
+    global_.fixed_facts = new_fixed_facts;
+
+    inst_.n -= removed;
+}
+
+void Solver::prep_eliminated_actions_() {
+    BinarySet new_fixed_actions(static_cast<unsigned int>(inst_.m - global_.eliminated_actions.sparse().size()));
+    unsigned int write_pos = 0;
+    for (unsigned int read_pos = 0; read_pos < inst_.actions.size(); ++read_pos) {
+        if (!global_.eliminated_actions[read_pos]) {
+            if (write_pos != read_pos) {
+                // Remove eliminated actions
+                inst_.actions[write_pos] = std::move(inst_.actions[read_pos]);
+                // Remove eliminated action names
+                inst_.actions_names[write_pos] = std::move(inst_.actions_names[read_pos]);
+                // Adjust positions of actions in fixed_actions
+                if (global_.fixed_actions[read_pos]) {
+                    new_fixed_actions.add(write_pos);
+                }
+            }
+            ++write_pos;
+        }
+    }
+    inst_.actions.resize(write_pos);
+    inst_.actions_names.resize(write_pos);
+    global_.fixed_actions = new_fixed_actions;
+
+    inst_.m = write_pos;
+
+    unsigned int count{0};
+    for (const auto& act : inst_.actions) {
+        count += act.eff_sparse.size();
+    }
+    inst_.nfadd = count;
+}
+
+void Solver::prep_setup_helpers_() {
+    global_.hplus_fadd_cpx_start.clear();
+    global_.hplus_fadd_cpx_start.reserve(inst_.m);
+    unsigned int sum{0};
+    for (const auto& act : inst_.actions) {
+        global_.hplus_fadd_cpx_start.push_back(sum);
+        sum += act.eff_sparse.size();
+    }
+    global_.act_with_pre = std::vector<std::vector<unsigned int>>(inst_.n);
+    global_.act_with_eff = std::vector<std::vector<unsigned int>>(inst_.n);
+    for (unsigned int act_i = 0; act_i < inst_.m; ++act_i) {
+        for (const auto& pre_i : inst_.actions[act_i].pre_sparse) {
+            global_.act_with_pre[pre_i].push_back(act_i);
+        }
+        for (const auto& eff_i : inst_.actions[act_i].eff_sparse) {
+            global_.act_with_eff[eff_i].push_back(act_i);
+        }
+    }
+
+    global_.eliminated_facts = BinarySet{1};
+    global_.eliminated_actions = BinarySet{1};
+
+    // When preprocessing is skipped these are never initialized; keep them valid (empty) here
+    if (global_.fixed_facts.capacity() == 0) {
+        global_.fixed_facts = BinarySet{inst_.n};
+    }
+    if (global_.fixed_actions.capacity() == 0) {
+        global_.fixed_actions = BinarySet{inst_.m};
+    }
+
+    // Since we removed initial facts, the initial state is empty, so initial actions are those with no preconditions
+    global_.initial_actions.clear();
+    for (unsigned int act_i = 0; act_i < inst_.m; act_i++) {
+        if (inst_.actions[act_i].pre_sparse.empty()) {
+            global_.initial_actions.push_back(act_i);
+        }
+    }
+
+    global_.goal_sparse = inst_.goal.sparse();
+}

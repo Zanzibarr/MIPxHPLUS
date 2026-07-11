@@ -1,7 +1,7 @@
 # MIP formulations for Deletefree AI Planning
 ![C++](https://img.shields.io/badge/C%2B%2B-00599C?style=for-the-badge&logo=c%2B%2B&logoColor=white)
 
-### Version: 3.1.10  
+### Version: 4.0.0  
 _Refer to the [Changelog](Changelog.md) for info about versions._  
 
 
@@ -34,7 +34,7 @@ cmake <build_options> ..
 make
 
 # to run the code on an instance
-./hplus <input_file> <parameters>
+./hplus -i <input_file> <parameters>
 ```
 
 ### Build options (CMake parameters)
@@ -47,30 +47,15 @@ make
 See the help page:
 ```shell
 # to view commands available
-./hplus --h
-```
-
-Here's a few examples:
-```shell
-# Run the vertex elimination algorithm with a time limit of 5 min
-./hplus problem.sas --a=ve --t=300
-
-# Run the greedy algorithm with the hadd lookahead strategy and no preprocessing
-./hplus problem.sas --a=gha --prep=0
-
-# Run the Landmark based model with various customizations
-./hplus problem.sas --a=cuts \
-    --ws=0 \          # Don't use the primal heuristic as warm start
-    --fract-minlm=0 \ # Don't use the LM minimalization procedure in relax callback
-    --cloop=1         # Use custom cutloop
+./hplus -h
 ```
 
 ## Publications and Presentations
-- **Master Thesis** (2025): [\[Thesis\]](results/2025_master_thesis.pdf)  
-- **AIROYoung Workshop** (2026): [\[Slides\]](results/2026_AIROYoung_slides.pdf)  
-- **IJOO MIP Workshop** (2025, under review): [\[Preprint\]](results/2025_MIPWorkshopIJOO_preprint.pdf)
-- **CPAIOR Extended Abstract** (2026): [\[Slides\]](results/2026_CPAIOR_slides.pdf)  
-- **IPCO Poster** (2026): [\[Poster\]](results/2026_IPCO_poster.pdf)  
+- **Master Thesis** (2025, v2.4.2): [\[Thesis\]](results/2025_master_thesis.pdf)  
+- **AIROYoung Workshop** (2026, v2.4.2): [\[Slides\]](results/2026_AIROYoung_slides.pdf)  
+- **IJOO MIP Workshop** (2025, v2.4.2, under review): [\[Preprint\]](results/2025_MIPWorkshopIJOO_preprint.pdf)
+- **CPAIOR Extended Abstract** (2026, v3.1.10): [\[Slides\]](results/2026_CPAIOR_slides.pdf)  
+- **IPCO Poster** (2026, v3.1.10): [\[Poster\]](results/2026_IPCO_poster.pdf)  
 
 ## License
 MIT License - see [LICENSE](LICENSE) for details.
