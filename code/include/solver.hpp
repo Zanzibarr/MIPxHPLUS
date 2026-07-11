@@ -211,6 +211,7 @@ class Solver {
         CPXENVptr hplus_env;
         CPXLPptr hplus_lp;
         CPXLONG hplus_callback_context;
+        double hplus_dettime = -1;  // deterministic ticks consumed by CPXmipopt (execution-path fingerprint)
 
         // Cplex base model helpers
         std::vector<unsigned int> hplus_fadd_cpx_start;

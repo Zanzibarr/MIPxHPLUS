@@ -233,6 +233,17 @@ def diff_instance(old_log, new_log):
         lines.append(f"    old: {format_updates(old_upd)}")
         lines.append(f"    new: {format_updates(new_upd)}")
 
+    old_cpx_fingerprint = re.search(r"CPLEX fingerprint: (.*)", old_content)
+    new_cpx_fingerprint = re.search(r"CPLEX fingerprint: (.*)", new_content)
+    if (
+        old_cpx_fingerprint
+        and new_cpx_fingerprint
+        and old_cpx_fingerprint.group(1) != new_cpx_fingerprint.group(1)
+    ):
+        lines.append("CPLEX fingerprint::")
+        lines.append(f"    old: {old_cpx_fingerprint.group(1)}")
+        lines.append(f"    new: {new_cpx_fingerprint.group(1)}")
+
     return lines
 
 

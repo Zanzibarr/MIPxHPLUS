@@ -115,8 +115,15 @@ void Solver::hplus_run_cplex_() {
 
     call_cplex(CPXcallbacksetfunc(global_.hplus_env, global_.hplus_lp, global_.hplus_callback_context, hplus_callback_hub_, this));
 
+    double det_start{0};
+    call_cplex(CPXgetdettime(global_.hplus_env, &det_start));
+
     // Solve model
     call_cplex(CPXmipopt(global_.hplus_env, global_.hplus_lp));
+
+    double det_end{0};
+    call_cplex(CPXgetdettime(global_.hplus_env, &det_end));
+    global_.hplus_dettime = det_end - det_start;
 }
 
 void Solver::hplus_build_base_model_() {
@@ -378,6 +385,19 @@ void Solver::hplus_cplex_gather_info_() {
 
     // ~~~~~~~~~~~~ Best solution ~~~~~~~~~~~~ //
     hplus_get_cplex_solution_();
+
+    // Execution-path fingerprint. dettime is the deterministic tick count CPLEX synchronizes threads on (UsrMan, "Determinism of results"):
+    // reproducible and independent of wall-clock. Read it asymmetrically: a MISMATCH proves two runs diverged; a MATCH is only strong evidence of
+    // the same B&B tree, not proof — the values are a lossy summary, and work in the speculative layer is not fully metered (observed: identical
+    // dettime despite an extra candidate-callback invocation that injected a duplicate lazy cut).
+    {
+        int user_cuts{-1};
+        call_cplex(CPXgetnumcuts(global_.hplus_env, global_.hplus_lp, CPX_CUT_USER, &user_cuts));
+        logger_[DEBUG] << std::format(
+            "CPLEX fingerprint: dettime={:.2f} ticks, simplex_iters={}, nodes={}, nodes_left={}, incumbent_node={}, user_cuts={}",
+            global_.hplus_dettime, CPXgetmipitcnt(global_.hplus_env, global_.hplus_lp), CPXgetnodecnt(global_.hplus_env, global_.hplus_lp),
+            CPXgetnodeleftcnt(global_.hplus_env, global_.hplus_lp), CPXgetnodeint(global_.hplus_env, global_.hplus_lp), user_cuts);
+    }
 }
 
 void Solver::hplus_parse_cplex_status_() {
