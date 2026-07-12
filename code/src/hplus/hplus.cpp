@@ -3,6 +3,7 @@
 
 #include "cli_descriptions.hpp"
 #include "constants.hpp"
+#include "dbg_trace.hpp"  // TEMP DEBUG
 #include "scope_guard.hxx"
 #include "solver.hpp"
 #include "utils.hpp"
@@ -342,6 +343,19 @@ void Solver::hplus_post_base_warm_start_() {
             val[var_idx] = 1;
         }
         state |= inst_.actions[act_i].eff_sparse;
+    }
+
+    // TEMP DEBUG: dump the warm start's used-action hash (same FNV as the candidate trace, to match against ghost candidates)
+    if (dbg_trace::file() != nullptr) {
+        std::uint64_t h = 0xcbf29ce484222325ULL;
+        std::size_t used{0};
+        for (unsigned int i = 0; i < inst_.m; i++) {
+            if (val[i] > 0.5) {
+                h = dbg_trace::fnv(h, i);
+                used++;
+            }
+        }
+        std::fprintf(dbg_trace::file(), "W %016llx used=%zu\n", static_cast<unsigned long long>(h), used);
     }
 
     call_cplex(CPXaddmipstarts(global_.hplus_env, global_.hplus_lp, 1, ncols, &izero, ind.data(), val.data(), &effortlevel, nullptr));

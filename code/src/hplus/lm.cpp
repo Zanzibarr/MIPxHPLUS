@@ -1,3 +1,4 @@
+#include "dbg_trace.hpp"  // TEMP DEBUG
 #include "solver.hpp"
 
 void Solver::hplus_separate_cand_lmfront_cut_(CPXCALLBACKCONTEXTptr context) {
@@ -30,6 +31,17 @@ void Solver::hplus_separate_relax_lm_cut_(CPXCALLBACKCONTEXTptr /*context*/, boo
 }
 
 void Solver::hplus_reject_cand_lm_(CPXCALLBACKCONTEXTptr context, const std::vector<std::vector<unsigned int>>& landmarks) {
+    // TEMP DEBUG: trace the cuts we answer with, tied to the candidate hash set in hplus_candidate_callback_
+    if (dbg_trace::file() != nullptr) {
+        for (const auto& landmark : landmarks) {
+            std::uint64_t h = 0xcbf29ce484222325ULL;
+            for (const auto act_i : landmark) {
+                h = dbg_trace::fnv(h, act_i);
+            }
+            std::fprintf(dbg_trace::file(), "L cand=%016llx cut=%016llx size=%zu\n", static_cast<unsigned long long>(dbg_trace::cur_cand_hash),
+                         static_cast<unsigned long long>(h), landmark.size());
+        }
+    }
     for (const auto& landmark : landmarks) {
         stats_.gauge_record<"cand_lm_size">(static_cast<double>(landmark.size()));
         stats_.counter_inc<"cand_lm">();
