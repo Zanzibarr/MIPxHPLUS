@@ -50,11 +50,14 @@ class Solver {
     // Haslum, Slaney, Thiebaux: "Minimal landmarks for optimal deletefree planning"
     // Imai, Fukunaga: "On a Practical, Integer-Linear Programming Model for Delete-Free Tasks and its Use as a Heuristic for Cost-Optimal Planning"
     void preprocess_();
-    void prep_fact_landmarks_(std::vector<std::vector<unsigned int>>& landmarks);
-    void prep_first_adders_(std::vector<std::vector<unsigned int>>& landmarks);
+    // Recomputes landmarks and fixed facts/actions; returns whether the landmark sets differ from the ones in input
+    auto prep_fact_landmarks_(std::vector<std::vector<unsigned int>>& landmarks) -> bool;
+    // Returns whether at least one effect entry was deleted
+    auto prep_first_adders_(std::vector<std::vector<unsigned int>>& landmarks) -> bool;
     void prep_relevance_backward_(BinarySet& relevant_variables);
     void prep_relevance_forward_(BinarySet& relevant_variables);
-    void prep_dominated_actions_(std::vector<std::vector<unsigned int>>& landmarks);
+    // Returns whether at least one action was eliminated
+    auto prep_dominated_actions_(std::vector<std::vector<unsigned int>>& landmarks) -> bool;
     void prep_eliminated_facts_(std::vector<std::vector<unsigned int>>& landmarks);
     void prep_eliminated_actions_();
     void prep_setup_helpers_();

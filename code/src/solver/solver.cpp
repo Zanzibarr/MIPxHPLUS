@@ -36,7 +36,7 @@ void Solver::solve() {
             prep_setup_helpers_();
         }
 
-        find_symmetries();
+        // find_symmetries();
 
         print_info_();
 

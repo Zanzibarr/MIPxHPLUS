@@ -101,17 +101,29 @@ inline auto validate_cli(cli::ArgParser& parser) -> void {
         parser.set<cli_desc::relax_cuts>("0");
     }
 
-    const auto& choices = parser.get<cli_desc::preprocess, std::string>();
-    parser.set<cli_desc::preprocess>(sanitize_letters(cli_desc::preprocess, choices, cli_desc::preprocess_letters));
-    if (choices.find('l') == std::string::npos) {
-        if (choices.find('a') != std::string::npos) {
-            parsing_warnings.emplace_back("First adders extraction (a) requires landmarks extraction (l): enabling landmarks extraction");
-            parser.set<cli_desc::preprocess>(choices + 'l');
+    {
+        std::string choices =
+            sanitize_letters(cli_desc::preprocess, parser.get<cli_desc::preprocess, std::string>(), cli_desc::preprocess_letters);
+        if (choices.find('l') == std::string::npos) {
+            bool add_l = false;
+            if (choices.find('a') != std::string::npos) {
+                parsing_warnings.emplace_back("First adders extraction (a) requires landmarks extraction (l): enabling landmarks extraction");
+                add_l = true;
+            }
+            if (choices.find('d') != std::string::npos) {
+                parsing_warnings.emplace_back("Dominated actions removal (d) requires landmarks extraction (l): enabling landmarks extraction");
+                add_l = true;
+            }
+            if (add_l) {
+                choices += 'l';
+            }
         }
-        if (choices.find('d') != std::string::npos) {
-            parsing_warnings.emplace_back("Dominated actions removal (d) requires landmarks extraction (l): enabling landmarks extraction");
-            parser.set<cli_desc::preprocess>(choices + 'l');
+        if (choices.find('f') != std::string::npos && choices.find('b') == std::string::npos) {
+            parsing_warnings.emplace_back(
+                "Forward relevance analysis (f) requires backward relevance analysis (b): enabling backward relevance analysis");
+            choices += 'b';
         }
+        parser.set<cli_desc::preprocess>(choices);
     }
     parser.set<cli_desc::lmcut_pcf>(
         sanitize_letters(cli_desc::lmcut_pcf, parser.get<cli_desc::lmcut_pcf, std::string>(), cli_desc::lmcut_pcf_letters));
