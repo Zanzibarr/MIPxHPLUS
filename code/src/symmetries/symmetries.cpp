@@ -34,8 +34,10 @@ auto symm_action_colors(const Instance& inst, unsigned int first_free_color) -> 
 
 // Cycle notation of an automorphism over n vertices, with vertices mapped back
 // to instance entities: p_<i> for facts, a_<i> for actions (fixed points omitted).
-auto symm_generator_to_string(unsigned int n_facts, unsigned int n, const unsigned int* aut) -> std::string {
-    auto name = [n_facts](unsigned int v) { return v < n_facts ? std::format("p_{}", v) : std::format("a_{}", v - n_facts); };
+auto symm_generator_to_string(unsigned int n_facts, unsigned int n, const BinarySet& goal, const unsigned int* aut) -> std::string {
+    auto name = [n_facts, goal](unsigned int v) {
+        return v < n_facts ? (goal[v] ? std::format("G{}", v) : std::format("P{}", v)) : std::format("A{}", v - n_facts);
+    };
     std::string cycles;
     std::vector<bool> visited(n, false);
     for (unsigned int v = 0; v < n; v++) {
@@ -80,6 +82,9 @@ void Solver::symm_write_graphfile(const std::string& path) {
     }
     // Coloring the actions
     const auto action_colors = symm_action_colors(inst_, 2);
+    // colors are assigned contiguously from 2, so the highest one tells how many classes exist
+    const unsigned int n_cost_classes = inst_.m == 0 ? 0 : *std::ranges::max_element(action_colors) - 1;
+    logger_[DEBUG] << std::format("Colors: {} action cost classes", n_cost_classes);
     for (unsigned int act_i = 0; act_i < inst_.m; act_i++) {
         f << std::format("n {} {}\n", action_to_node(act_i), action_colors[act_i]);
     }
@@ -102,7 +107,7 @@ void Solver::find_symmetries() {
     // prep_setup_helpers_();
 
     // Debug: dump the graph for cross-checking with the bliss CLI
-    // symm_write_graphfile("test.txt");
+    symm_write_graphfile("test.txt");
 
     // Build the symmetry graph (bliss vertices are 0-indexed: facts first, then actions)
     auto action_to_vertex = [this](unsigned int action) -> unsigned int { return inst_.n + action; };
@@ -133,7 +138,7 @@ void Solver::find_symmetries() {
     bliss::Orbit orbits;
     orbits.init(n_vertices);
     graph.find_automorphisms(stats, [this, &orbits](unsigned int n, const unsigned int* aut) {
-        logger_[DEBUG] << std::format("Symmetries: generator {}", symm_generator_to_string(inst_.n, n, aut));
+        logger_[DEBUG] << std::format("Symmetries: generator {}", symm_generator_to_string(inst_.n, n, inst_.goal, aut));
         for (unsigned int v = 0; v < n; v++) {
             if (aut[v] != v) {
                 orbits.merge_orbits(v, aut[v]);
