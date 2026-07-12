@@ -59,6 +59,11 @@ class Solver {
     void prep_eliminated_actions_();
     void prep_setup_helpers_();
 
+    // ~~~~~~~~~~~~~ symmetries ~~~~~~~~~~~~~~ //
+    void find_symmetries();
+    // Debug utility: dump the symmetry graph in DIMACS format (input for the bliss CLI)
+    void symm_write_graphfile(const std::string& path);
+
     void print_info_();
 
     // ~~~~~~~~~~~ landmarks utils ~~~~~~~~~~~ //

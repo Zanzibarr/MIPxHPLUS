@@ -36,6 +36,8 @@ void Solver::solve() {
             prep_setup_helpers_();
         }
 
+        find_symmetries();
+
         print_info_();
 
         // LM-Cut

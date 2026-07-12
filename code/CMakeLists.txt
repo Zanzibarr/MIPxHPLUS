@@ -123,6 +123,29 @@ add_library(cplex INTERFACE)
 target_include_directories(cplex SYSTEM INTERFACE ${CPLEX_INCLUDE})
 target_link_libraries(cplex INTERFACE ${CPLEX_LIBRARY} Threads::Threads ${CMAKE_DL_LIBS})
 
+# ── bliss (graph automorphism/symmetry detection) ───────────────────────────
+# Override auto-detection with -DBLISS_PATH=/path/to/bliss-<version>
+if(NOT DEFINED BLISS_PATH)
+    set(BLISS_PATH "/opt/sw/bliss-0.77")
+endif()
+if(NOT EXISTS "${BLISS_PATH}/src/digraph.hh")
+    message(FATAL_ERROR "bliss headers not found in ${BLISS_PATH}/src; pass -DBLISS_PATH=/path/to/bliss")
+endif()
+find_library(BLISS_LIBRARY
+    NAMES bliss_static bliss
+    PATHS ${BLISS_PATH}
+    NO_DEFAULT_PATH
+)
+if(NOT BLISS_LIBRARY)
+    message(FATAL_ERROR "bliss library not found in ${BLISS_PATH}")
+endif()
+message(STATUS "Found bliss: ${BLISS_PATH}")
+
+# SYSTEM include suppresses warnings from bliss headers (#include <digraph.hh>).
+add_library(bliss INTERFACE)
+target_include_directories(bliss SYSTEM INTERFACE "${BLISS_PATH}/src")
+target_link_libraries(bliss INTERFACE ${BLISS_LIBRARY})
+
 # Example: fetch an external library with FetchContent
 # include(FetchContent)
 # FetchContent_Declare(<lib> GIT_REPOSITORY https://github.com/... GIT_TAG v1.0.0)
@@ -179,6 +202,7 @@ target_link_libraries(hplus PRIVATE
     project_warnings
     project_sanitizers
     cplex
+    bliss
     ${AUTO_MODULE_LIBS}
     # <PackageName>::<PackageName>
 )
