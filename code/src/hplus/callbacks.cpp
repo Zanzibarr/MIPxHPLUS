@@ -61,6 +61,7 @@ void Solver::hplus_progress_callback_(CPXCALLBACKCONTEXTptr context) {
 
     // Sometimes our best incumbent (obtained in a callback) doesn't get processed immediatelly by CPLEX... if we realize that we can already prove
     // optimality, we can send an early exit signal
+    // ATTENTION: This breaks determinism
     if (is_gr_or_eq_double(global_.best_bound, global_.best_incumbent)) {
         // We already have the optimality proof... we don't need to do anything else...
         GLOBAL_TERMINATE_CONDITION = 1;  // We cannot throw a C++ exception since CPLEX has C code and it doesn't know how to handle it...
@@ -234,6 +235,7 @@ void Solver::hplus_reject_candidate_with_new_sol_(CPXCALLBACKCONTEXTptr context,
     try_update_best_incumbent_(new_sol, cost);
 
     // Give CPLEX the better solution
+    // ATTENTION: This breaks determinism
     call_cplex(
         CPXcallbackpostheursoln(context, static_cast<int>(ncols), ind.data(), val.data(), static_cast<double>(cost), CPXCALLBACKSOLUTION_NOCHECK));
 
