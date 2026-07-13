@@ -43,7 +43,7 @@ inline constexpr std::string_view hplus_alg_help =
     "MIP formulation for the hplus problem (base, tl, ve); used only when --mode=hplus. Candidate cuts (--cand-cuts) are required for the base model";
 inline constexpr std::string_view preprocess_help =
     "Preprocessing to apply as a combo of letters (0 for none): l (landmarks extraction), a (first adders, requires l), f (forward relevance "
-    "analysis), b (backward relevance analysis), d (dominated actions removal, requires l)";
+    "analysis, requires b), b (backward relevance analysis), d (dominated actions removal, requires l)";
 inline constexpr std::string_view lmcut_pcf_help =
     "Precondition Choice Function(s) driving LM-Cut as a combo of letters (0 to skip LM-Cut): a (ARB), i (INV), v (VDM), r (RND), z (GZD), b (BD), "
     "d (GZD+BD); each extra letter runs LM-Cut once more";

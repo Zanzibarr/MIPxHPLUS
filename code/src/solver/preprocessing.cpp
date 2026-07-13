@@ -5,39 +5,80 @@
 
 // TODO: Can we parallelize the preprocessing?
 void Solver::preprocess_() {
+    const auto& choices = params_.get<cli_desc::preprocess, std::string>();
+    const bool use_l = choices.find('l') != std::string::npos;
+    const bool use_a = choices.find('a') != std::string::npos;
+    const bool use_b = choices.find('b') != std::string::npos;
+    const bool use_f = choices.find('f') != std::string::npos;
+    const bool use_d = choices.find('d') != std::string::npos;
+
+    // Kept across passes (remapped on fact elimination) so a new landmark computation can be compared against the previous one
     std::vector<std::vector<unsigned int>> landmarks(inst_.n);
-    BinarySet relevant_variables(inst_.n);
 
     global_.fixed_facts = BinarySet{inst_.n};
     global_.fixed_actions = BinarySet{inst_.m};
-    global_.eliminated_facts = BinarySet{inst_.n};
-    global_.eliminated_actions = BinarySet{inst_.m};
 
-    const auto& choices = params_.get<cli_desc::preprocess, std::string>();
+    // Simplifications enable one another (e.g. removing an achiever can only grow landmark sets, which in turn enables new simplifications), so
+    // the steps are repeated until convergence. Each step, however, is idempotent on unchanged inputs, so it must be repeated only when its
+    // inputs changed since it last ran:
+    //  - l: an achiever disappeared, i.e. an (action, effect) pair was removed (deleted by 'a' or gone with an eliminated fact/action) -> tracked
+    //       exactly by nfadd, since preconditions of surviving actions never change and effect-less actions cannot affect landmarks
+    //  - a: a landmark set changed (across runs they can only grow); erasability of an effect depends only on landmarks and preconditions
+    //  - b: an effect entry was deleted ('a') or an action was eliminated after 'b' ran ('d'); eliminating the facts/actions 'b' itself found
+    //       never changes relevance of the survivors (they were unreachable in the backward exploration)
+    //  - d: a landmark set changed or an effect set shrank ('a' or fact elimination); eliminating actions cannot create new dominations (the
+    //       domination condition is pairwise and transitive) and newly fixed actions can never be dominated (the dominant action would be a
+    //       second achiever of the fact the fixed action uniquely achieves)
+    bool pending_a = true;
+    bool pending_b = true;
+    bool pending_d = true;
+    unsigned int nfadd_at_last_l = inst_.nfadd + 1;  // makes 'l' pending on the first pass
 
-    if (choices.find('l') != std::string::npos) {
-        prep_fact_landmarks_(landmarks);
+    while ((use_l && nfadd_at_last_l != inst_.nfadd) || (use_a && pending_a) || (use_b && pending_b) || (use_d && pending_d)) {
+        global_.eliminated_facts = BinarySet{inst_.n};
+        global_.eliminated_actions = BinarySet{inst_.m};
+
+        if (use_l && nfadd_at_last_l != inst_.nfadd) {
+            nfadd_at_last_l = inst_.nfadd;
+            if (prep_fact_landmarks_(landmarks)) {
+                pending_a = true;
+                pending_d = true;
+            }
+        }
+        if (use_a && pending_a) {
+            pending_a = false;
+            if (prep_first_adders_(landmarks)) {
+                pending_b = true;
+                pending_d = true;
+            }
+        }
+        if (use_b && pending_b) {
+            pending_b = false;
+            BinarySet relevant_variables(inst_.n);
+            prep_relevance_backward_(relevant_variables);
+            // 'f' needs the relevant variables computed by 'b' in this same pass: with none computed, every action would look irrelevant
+            if (use_f) {
+                prep_relevance_forward_(relevant_variables);
+            }
+        }
+        if (!global_.eliminated_facts.empty()) {
+            prep_eliminated_facts_(landmarks);
+            pending_d = true;  // effect sets of surviving actions may have shrunk
+        }
+        if (use_d && pending_d) {
+            pending_d = false;
+            if (prep_dominated_actions_(landmarks)) {
+                pending_b = true;  // facts that were relevant only as preconditions of dominated actions are now irrelevant
+            }
+        }
+        prep_eliminated_actions_();  // also recounts nfadd (the repetition trigger for 'l')
     }
-    if (choices.find('a') != std::string::npos) {
-        prep_first_adders_(landmarks);
-    }
-    if (choices.find('b') != std::string::npos) {
-        prep_relevance_backward_(relevant_variables);
-    }
-    if (choices.find('f') != std::string::npos) {
-        prep_relevance_forward_(relevant_variables);
-    }
-    prep_eliminated_facts_(landmarks);
-    if (choices.find('d') != std::string::npos) {
-        prep_dominated_actions_(landmarks);
-    }
-    prep_eliminated_actions_();
 
     // TODO: Is there a way to know which action is achieving a fixed fact? If so, can we fix those as well (actions and first achievers)?
     // TODO: Are we fixing all effects of fixed actions?
 }
 
-void Solver::prep_fact_landmarks_(std::vector<std::vector<unsigned int>>& landmarks_ret) {
+auto Solver::prep_fact_landmarks_(std::vector<std::vector<unsigned int>>& landmarks_ret) -> bool {
     // use the last bit as a flag to tell the BinarySet is full
     std::vector<BinarySet> landmarks(inst_.n, BinarySet{inst_.n + 1});
     for (unsigned int fact = 0; fact < inst_.n; fact++) {
@@ -164,10 +205,11 @@ void Solver::prep_fact_landmarks_(std::vector<std::vector<unsigned int>>& landma
     }
 
     // list of fact landmarks for each variable
+    std::vector<std::vector<unsigned int>> new_landmarks(inst_.n);
     for (unsigned int fact_p = 0; fact_p < inst_.n; fact_p++) {
         for (unsigned int fact_q = 0; fact_q < inst_.n; fact_q++) {
             if (landmarks[fact_p][fact_q] || landmarks[fact_p][inst_.n]) {
-                landmarks_ret[fact_p].push_back(fact_q);
+                new_landmarks[fact_p].push_back(fact_q);
             }
         }
     }
@@ -180,8 +222,13 @@ void Solver::prep_fact_landmarks_(std::vector<std::vector<unsigned int>>& landma
         }
     }
 
+    // Rebuilt from scratch on every run: landmark sets only grow and achiever sets only shrink between two runs, so a fresh computation always
+    // re-derives (a superset of) the previous run's fixed sets
+    global_.fixed_facts.clear();
+    global_.fixed_actions.clear();
+
     for (const auto g_fact : inst_.goal) {
-        for (const auto& g_factlm : landmarks_ret[g_fact]) {
+        for (const auto& g_factlm : new_landmarks[g_fact]) {
             if (global_.fixed_facts[g_factlm]) {
                 continue;
             }
@@ -203,10 +250,15 @@ void Solver::prep_fact_landmarks_(std::vector<std::vector<unsigned int>>& landma
             throw EarlyExit("preprocessing landmark extraction (goal loop)", EarlyExit::TIMELIMIT);
         }
     }
+
+    const bool changed = new_landmarks != landmarks_ret;
+    landmarks_ret = std::move(new_landmarks);
+    return changed;
 }
 
-void Solver::prep_first_adders_(std::vector<std::vector<unsigned int>>& landmarks) {
+auto Solver::prep_first_adders_(std::vector<std::vector<unsigned int>>& landmarks) -> bool {
     BinarySet fact_lm_for_a(inst_.n);
+    bool erased_any = false;
 
     for (unsigned int act_i = 0; act_i < inst_.m; act_i++) {
         fact_lm_for_a.clear();
@@ -215,12 +267,13 @@ void Solver::prep_first_adders_(std::vector<std::vector<unsigned int>>& landmark
                 fact_lm_for_a.add(fact_q);
             }
         }
-        std::erase_if(inst_.actions[act_i].eff_sparse, [&fact_lm_for_a](const auto val) { return fact_lm_for_a[val]; });
+        erased_any |= std::erase_if(inst_.actions[act_i].eff_sparse, [&fact_lm_for_a](const auto val) { return fact_lm_for_a[val]; }) > 0;
 
         if (global_limits::time_reached()) [[unlikely]] {
             throw EarlyExit("preprocessing first adders extraction", EarlyExit::TIMELIMIT);
         }
     }
+    return erased_any;
 }
 
 void Solver::prep_relevance_backward_(BinarySet& relevant_variables) {
@@ -283,7 +336,7 @@ void Solver::prep_relevance_forward_(BinarySet& relevant_variables) {
     }
 }
 
-void Solver::prep_dominated_actions_(std::vector<std::vector<unsigned int>>& landmarks) {
+auto Solver::prep_dominated_actions_(std::vector<std::vector<unsigned int>>& landmarks) -> bool {
     const auto& rem_act{(!global_.eliminated_actions).sparse()};
 
     std::vector<BinarySet> act_flm(inst_.m, BinarySet(inst_.n));
@@ -332,6 +385,7 @@ void Solver::prep_dominated_actions_(std::vector<std::vector<unsigned int>>& lan
             throw EarlyExit("preprocessing dominated actions removal (main loop)", EarlyExit::TIMELIMIT);
         }
     }
+    return !dominated_actions.empty();
 }
 
 void Solver::prep_eliminated_facts_(std::vector<std::vector<unsigned int>>& landmarks) {
@@ -402,29 +456,32 @@ void Solver::prep_eliminated_facts_(std::vector<std::vector<unsigned int>>& land
 }
 
 void Solver::prep_eliminated_actions_() {
-    BinarySet new_fixed_actions(static_cast<unsigned int>(inst_.m - global_.eliminated_actions.sparse().size()));
-    unsigned int write_pos = 0;
-    for (unsigned int read_pos = 0; read_pos < inst_.actions.size(); ++read_pos) {
-        if (!global_.eliminated_actions[read_pos]) {
-            if (write_pos != read_pos) {
-                // Remove eliminated actions
-                inst_.actions[write_pos] = std::move(inst_.actions[read_pos]);
-                // Remove eliminated action names
-                inst_.actions_names[write_pos] = std::move(inst_.actions_names[read_pos]);
+    if (!global_.eliminated_actions.empty()) {
+        BinarySet new_fixed_actions(static_cast<unsigned int>(inst_.m - global_.eliminated_actions.size()));
+        unsigned int write_pos = 0;
+        for (unsigned int read_pos = 0; read_pos < inst_.actions.size(); ++read_pos) {
+            if (!global_.eliminated_actions[read_pos]) {
+                if (write_pos != read_pos) {
+                    // Remove eliminated actions
+                    inst_.actions[write_pos] = std::move(inst_.actions[read_pos]);
+                    // Remove eliminated action names
+                    inst_.actions_names[write_pos] = std::move(inst_.actions_names[read_pos]);
+                }
                 // Adjust positions of actions in fixed_actions
                 if (global_.fixed_actions[read_pos]) {
                     new_fixed_actions.add(write_pos);
                 }
+                ++write_pos;
             }
-            ++write_pos;
         }
+        inst_.actions.resize(write_pos);
+        inst_.actions_names.resize(write_pos);
+        global_.fixed_actions = new_fixed_actions;
+
+        inst_.m = write_pos;
     }
-    inst_.actions.resize(write_pos);
-    inst_.actions_names.resize(write_pos);
-    global_.fixed_actions = new_fixed_actions;
 
-    inst_.m = write_pos;
-
+    // Recounted even without eliminations: first adders deletes effect entries directly
     unsigned int count{0};
     for (const auto& act : inst_.actions) {
         count += act.eff_sparse.size();

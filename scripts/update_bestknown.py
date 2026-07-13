@@ -12,6 +12,7 @@ from pathlib import Path
 import polars as pl
 
 DEFAULT_BESTKNOWN = "../results/best_known.csv"
+EPS = 1e-6
 
 
 def load_run(file: str) -> pl.DataFrame:
@@ -39,13 +40,13 @@ def check(bk: pl.DataFrame, new: pl.DataFrame) -> None:
             row["Incumbent_new"],
         )
 
-        if bound_new > inc_new:
+        if bound_new > inc_new + EPS:
             errors.append(f"{prob}: new bound is higher than new incumbent")
 
-        if bound_new > inc_ref:
+        if bound_new > inc_ref + EPS:
             errors.append(f"{prob}: new bound is higher than reference incumbent")
 
-        if inc_new < bound_ref:
+        if inc_new < bound_ref - EPS:
             errors.append(f"{prob}: new incumbent is lower than reference bound")
 
     if errors:
@@ -75,11 +76,11 @@ def update(bk: pl.DataFrame, new: pl.DataFrame) -> tuple[pl.DataFrame, dict]:
 
         ref = bk_dict[prob]
         changed = False
-        if bound_new > ref["Bound"]:
+        if bound_new > ref["Bound"] + EPS:
             ref["Bound"] = bound_new
             stats["bound_updates"] += 1
             changed = True
-        if inc_new < ref["Incumbent"]:
+        if inc_new < ref["Incumbent"] - EPS:
             ref["Incumbent"] = inc_new
             stats["incumbent_updates"] += 1
             changed = True
