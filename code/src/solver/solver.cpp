@@ -94,6 +94,8 @@ void Solver::solve() {
                 logger_[ERROR] << std::format("Unhandled early exit: {}", e.what());
                 break;
         }
+    } catch (const std::bad_alloc& e) {
+        logger_[WARNING] << "Reached memory limit";
     } catch (const std::exception& e) {
         logger_[FATAL] << std::format("Caught exception in Solver::solve(): {}", e.what());
     } catch (...) {
@@ -159,7 +161,8 @@ void Solver::try_update_best_incumbent_(const std::vector<unsigned int>& new_sol
         costcheck += inst_.actions[act_i].cost;
     }
     integritycheck(state.superset_of(inst_.goal), "Solution doesn't lead to the goal state");
-    integritycheck(is_same_double(costcheck, new_incumbent), "Proposed cost doesn't match computed cost");
+    integritycheck(is_same_double(costcheck, new_incumbent),
+                   std::format("Proposed cost doesn't match computed cost {}-{}", costcheck, new_incumbent));
 
     // Early check, before locking mutex
     if (is_gr_or_eq_double(new_incumbent, global_.best_incumbent)) {

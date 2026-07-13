@@ -59,7 +59,7 @@ void Solver::solve_hplus_() {
                 break;
         }
     } catch (const std::bad_alloc& e) {
-        logger_[WARNING] << "Reached memory limit";
+        throw e;  // We cannot solve CPLEX since the build process hasn't ended, so we can just throw the execption
     } catch (const std::exception& e) {
         logger_[FATAL] << std::format("Caught exception in Solver::solve_hplus_(): {}", e.what());
     } catch (...) {
@@ -471,14 +471,6 @@ void Solver::hplus_get_cplex_solution_() {
         }
     }
 
-    // If the solution we have is the same/better than the one returned by cplex, we can skip the rest of this function
-    double obj{-1};
-    call_cplex(CPXgetobjval(global_.hplus_env, global_.hplus_lp, &obj));
-    if (is_gr_or_eq_double(obj, global_.best_incumbent)) {
-        // We already have a better solution, so we can simply exit
-        return;
-    }
-
     // convert to a integer vector for easier parsing
     std::vector<unsigned int> cpx_result;
     cpx_result.reserve(inst_.m);
@@ -492,6 +484,7 @@ void Solver::hplus_get_cplex_solution_() {
     solution.reserve(inst_.m);
     BinarySet remaining{static_cast<unsigned int>(cpx_result.size()), true};
     BinarySet state{inst_.n};
+    double cost{0};
 
     // Check we are getting ALL the actions that cplex uses
     while (!remaining.empty()) {
@@ -504,11 +497,18 @@ void Solver::hplus_get_cplex_solution_() {
             remaining.remove(idx);
             state |= inst_.actions[cpx_result[idx]].eff_sparse;
             solution.push_back(cpx_result[idx]);
+            cost += inst_.actions[cpx_result[idx]].cost;
             intcheck = true;
         }
         integritycheck(intcheck, "No action can be applied on the current state");
     }
 
+    // If the solution we have is the same/better than the one returned by cplex, we can skip the rest of this function
+    if (is_gr_or_eq_double(cost, global_.best_incumbent)) {
+        // We already have a better solution, so we can simply exit
+        return;
+    }
+
     // store solution
-    try_update_best_incumbent_(solution, obj);
+    try_update_best_incumbent_(solution, cost);
 }

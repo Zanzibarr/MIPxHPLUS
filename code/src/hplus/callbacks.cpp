@@ -144,13 +144,6 @@ void Solver::hplus_candidate_get_info_() {
         if (local_.cand_xstar[act_i] > constants::cpx_int_rounding) {
             local_.cand_used_actions.add(act_i);
             local_.cand_unreachable_actions.push_back(act_i);
-
-            // Check for used first achievers
-            for (unsigned int i = 0; i < inst_.actions[act_i].eff_sparse.size(); i++) {
-                unsigned int idx{inst_.m + global_.hplus_fadd_cpx_start[act_i] + i};
-                if (local_.cand_xstar[idx] > constants::cpx_int_rounding) {
-                }
-            }
         } else {
             local_.cand_unused_actions.push_back(act_i);
         }
