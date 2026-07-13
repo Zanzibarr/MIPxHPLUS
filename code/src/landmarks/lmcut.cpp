@@ -377,39 +377,60 @@ auto Solver::lmcut_compute_cut_(const lmcut_hmax_function& hmax, char minimizati
     std::unordered_set<unsigned int> explored;
     std::deque<int> queue;
 
+    const auto& lmcut_opt = params_.get<cli_desc::lmcut_opt, std::string>();
     const auto& check_update_cut_pregoal = [&](unsigned int act_i) -> void {
         explored.insert(act_i);
 
         if (is_gr_strict_double(local_.lmcut_reduced_costs[act_i], 0)) {
-            // TODO Salvagnin, Zanella: "Tighter Bounds for h+ MIP Planning via LM-Cut Strengthening and Cut Generation"
-
-            // Case 1: This is the only action from the pre_goal_section that achieves a fact p not in the goal_section... actions added to
-            // the cut because of this fact are not necessary for the validity of the landmark (the current action is a landmark for p (with
-            // the current pcf) hence adding actions that generated from p (or from successive iterations generated from p) would only weaken
-            // the landmark)... now pre_goal and goal sections are not summing up to the totality of the facts, but we can consider as
-            // partition (pre_goal_section, P \ pre_goal_section) instead of (pre_goal_section, goal_section), which would still produce a
-            // valid landmark since it's a cut for a valid partition of the facts
-            //
-            // Case 2: There are other actions from the pre_goal_section (that don't cross the cut) that achieve fact p... then they are gonna
-            // add it to the pre_goal_section: the validity of the partition is preserved
-
-            // First pass: check if this action crosses the cut (has an effect in the goal section).
-            // Done as a separate pass so that if we return early, no facts are incorrectly added
-            // to pre_goal_section.
-            for (const auto& eff : inst_.actions[act_i].eff_sparse) {
-                if (local_.lmcut_goal_section.contains(eff)) {
-                    cut.push_back(act_i);
-                    return;
+            if (lmcut_opt == "0") {
+                bool added = false;
+                for (const auto& eff : inst_.actions[act_i].eff_sparse) {
+                    if (local_.lmcut_goal_section.contains(eff)) {
+                        if (added) {
+                            continue;
+                        }
+                        cut.push_back(act_i);
+                        added = true;
+                    } else if (!pre_goal_section[eff]) {
+                        pre_goal_section.add(eff);
+                        queue.push_back(static_cast<int>(eff));
+                    }
                 }
+
+            } else if (lmcut_opt == "strict-eff") {
+                // TODO Salvagnin, Zanella: "Tighter Bounds for h+ MIP Planning via LM-Cut Strengthening and Cut Generation"
+
+                // Case 1: This is the only action from the pre_goal_section that achieves a fact p not in the goal_section... actions added to
+                // the cut because of this fact are not necessary for the validity of the landmark (the current action is a landmark for p (with
+                // the current pcf) hence adding actions that generated from p (or from successive iterations generated from p) would only weaken
+                // the landmark)... now pre_goal and goal sections are not summing up to the totality of the facts, but we can consider as
+                // partition (pre_goal_section, P \ pre_goal_section) instead of (pre_goal_section, goal_section), which would still produce a
+                // valid landmark since it's a cut for a valid partition of the facts
+                //
+                // Case 2: There are other actions from the pre_goal_section (that don't cross the cut) that achieve fact p... then they are gonna
+                // add it to the pre_goal_section: the validity of the partition is preserved
+
+                // First pass: check if this action crosses the cut (has an effect in the goal section).
+                // Done as a separate pass so that if we return early, no facts are incorrectly added
+                // to pre_goal_section.
+                for (const auto& eff : inst_.actions[act_i].eff_sparse) {
+                    if (local_.lmcut_goal_section.contains(eff)) {
+                        cut.push_back(act_i);
+                        return;
+                    }
+                }
+
+                // Second pass: add effects to pre_goal_section in sorted eff_sparse order (deterministic).
+                for (const auto& eff : inst_.actions[act_i].eff_sparse) {
+                    if (!pre_goal_section[eff]) {
+                        pre_goal_section.add(eff);
+                        queue.push_back(static_cast<int>(eff));
+                    }
+                }
+            } else {
+                logger_[FATAL] << std::format("Unhandled {} option: {}", cli_desc::lmcut_opt.view(), lmcut_opt);
             }
 
-            // Second pass: add effects to pre_goal_section in sorted eff_sparse order (deterministic).
-            for (const auto& eff : inst_.actions[act_i].eff_sparse) {
-                if (!pre_goal_section[eff]) {
-                    pre_goal_section.add(eff);
-                    queue.push_back(static_cast<int>(eff));
-                }
-            }
         } else {
             for (const auto& eff : inst_.actions[act_i].eff_sparse) {
                 myassert(!local_.lmcut_goal_section.contains(eff), "0-cost action crosses pre-goal/goal partition");

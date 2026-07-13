@@ -23,6 +23,7 @@ inline constexpr CTString hplus_alg = "hplus-alg";
 inline constexpr CTString preprocess = "preprocess";
 inline constexpr CTString lmcut_pcf = "lmcut-pcf";
 inline constexpr CTString lmcut_min = "lmcut-min";
+inline constexpr CTString lmcut_opt = "lmcut-opt";
 inline constexpr CTString primal_heur = "primal-heur";
 inline constexpr CTString cand_cuts = "cand-cuts";
 inline constexpr CTString relax_cuts = "relax-cuts";
@@ -49,6 +50,9 @@ inline constexpr std::string_view lmcut_pcf_help =
     "d (GZD+BD); each extra letter runs LM-Cut once more";
 inline constexpr std::string_view lmcut_min_help =
     "Landmark minimization inside LM-Cut: g (greedy), c (complete), 0 for none; forced to 0 when --lmcut-pcf=0";
+inline constexpr std::string_view lmcut_opt_help =
+    "Landmark optimizations inside LM-Cut: 0 (None), strict-eff (non goal-section effects of an action crossing the cut are not added to the "
+    "pre-goal)";
 inline constexpr std::string_view primal_heur_help =
     "Primal heuristic used to warm-start the MIP or for the hplus-feas mode (0 for none); disabled in info/lmcut modes";
 inline constexpr std::string_view cand_cuts_help =
@@ -62,6 +66,7 @@ inline constexpr std::string_view relax_cuts_help =
 inline constexpr std::array<std::string_view, 4> mode_choices = {"info", "lmcut", "hplus-feas", "hplus"};
 inline constexpr std::array<std::string_view, 4> hplus_alg_choices = {"0", "base", "tl", "ve"};
 inline constexpr std::array<std::string_view, 3> lmcut_min_choices = {"0", "g", "c"};
+inline constexpr std::array<std::string_view, 2> lmcut_opt_choices = {"0", "strict-eff"};
 inline constexpr std::array<std::string_view, 5> primal_heur_choices = {"0", "gc", "gcxe", "gha", "ghm"};
 inline constexpr std::array<std::string_view, 7> cand_cuts_choices = {"0", "sec", "lm-f", "lm-c", "lmcut", "lmcut-g", "lmcut-c"};
 inline constexpr std::array<std::string_view, 7> relax_cuts_choices = {"0", "sec", "lm", "lm-m", "lmcut", "lmcut-g", "lmcut-c"};

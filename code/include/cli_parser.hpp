@@ -89,6 +89,7 @@ inline auto validate_cli(cli::ArgParser& parser) -> void {
         parser.set<cli_desc::preprocess>("0");
         parser.set<cli_desc::lmcut_pcf>("0");
         parser.set<cli_desc::lmcut_min>("0");
+        parser.set<cli_desc::lmcut_opt>("0");
         parser.set<cli_desc::primal_heur>("0");
         parser.set<cli_desc::hplus_alg>("0");
         parser.set<cli_desc::cand_cuts>("0");
@@ -102,8 +103,7 @@ inline auto validate_cli(cli::ArgParser& parser) -> void {
     }
 
     {
-        std::string choices =
-            sanitize_letters(cli_desc::preprocess, parser.get<cli_desc::preprocess, std::string>(), cli_desc::preprocess_letters);
+        std::string choices = sanitize_letters(cli_desc::preprocess, parser.get<cli_desc::preprocess, std::string>(), cli_desc::preprocess_letters);
         if (choices.find('l') == std::string::npos) {
             bool add_l = false;
             if (choices.find('a') != std::string::npos) {
@@ -131,6 +131,7 @@ inline auto validate_cli(cli::ArgParser& parser) -> void {
     // if LM-Cut is not executed, no minimization procedure is used
     if (parser.get<cli_desc::lmcut_pcf, std::string>() == "0") {
         parser.set<cli_desc::lmcut_min>("0");
+        parser.set<cli_desc::lmcut_opt>("0");
     }
 
     // Candidate cuts are needed only for base model
@@ -172,6 +173,8 @@ auto parse_cli(const int argc, char** argv, Logger& logger) -> ParameterRegistry
     parser.add<cli_desc::lmcut_pcf, std::string>().shorthand('L').description(cli_desc::lmcut_pcf_help).default_val(defaults::lmcut_pcf);
     apply_allow(parser.add<cli_desc::lmcut_min, std::string>().shorthand('M').description(cli_desc::lmcut_min_help).default_val(defaults::lmcut_min),
                 cli_desc::lmcut_min_choices);
+    apply_allow(parser.add<cli_desc::lmcut_opt, std::string>().shorthand('e').description(cli_desc::lmcut_opt_help).default_val(defaults::lmcut_opt),
+                cli_desc::lmcut_opt_choices);
 
     // Primal Heuristic
     apply_allow(

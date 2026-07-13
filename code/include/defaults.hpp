@@ -22,6 +22,7 @@ constexpr std::string preprocess = "lafbd";
 // LMCut
 constexpr std::string lmcut_pcf = "aiv";
 constexpr std::string lmcut_min = "c";
+constexpr std::string lmcut_opt = "strict-eff";
 
 // Primal Heuristic
 constexpr std::string primal_heur = "gha";
