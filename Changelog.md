@@ -27,12 +27,15 @@ HOW I DO VERSIONING:
 <!-- ### :rocket: Performance Improvements -->
 
 
-## [4.0.0] - 2026/07/DD
+## [4.0.0] - 2026/07/14
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->
 ### :heavy_exclamation_mark: Changed
-- Code refactoring, execution path remains unchanged
-<!-- ### :heavy_plus_sign: Added -->
+- Code refactoring
+### :heavy_plus_sign: Added
+- Preprocessing loop and preprocessing steps flags
+- `--lmcut-opt` flag for optimizations to LM-Cut
+- Bound tracking (only on verbose option)
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
 <!-- ### :rocket: Performance Improvements -->
