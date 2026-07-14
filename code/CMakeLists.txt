@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(hplus
-    VERSION 0.1.0
+    VERSION 4.0.0
     LANGUAGES CXX
 )
 

@@ -4,12 +4,16 @@
 #include <argparser.hxx>
 #include <cstdlib>
 #include <exception>
+#include <limits.hxx>
 #include <logger.hxx>
 #include <parameters.hxx>
+#include <scope_guard.hxx>
 
+#include "cli_descriptions.hpp"
 #include "cli_parser.hpp"
 #include "solver.hpp"
 #include "utils.hpp"
+#include "validation.hpp"
 
 namespace {
 
@@ -46,7 +50,7 @@ auto init(ParameterRegistry& params, Logger& logger) -> void {
 #endif
 }
 
-auto solve(const ParameterRegistry& params, Logger& logger) -> void {
+auto solve(const ParameterRegistry& params, Logger& logger) -> std::vector<std::string> {
     logger << date_compile();
     logger << date_today();
     logger << version();
@@ -56,6 +60,8 @@ auto solve(const ParameterRegistry& params, Logger& logger) -> void {
     solver.solve();
 
     solver.show();
+
+    return solver.get();
 }
 
 }  // namespace
@@ -66,20 +72,20 @@ auto main(const int argc, char** argv) -> int {
     auto params = parse_cli(argc, argv, logger);
 
     init(params, logger);
+    auto _timerthread_scope = on_scope_exit([]() { cancel_time_limit(); });
 
+    std::vector<std::string> solution;
     try {
-        solve(params, logger);
+        solution = solve(params, logger);
     } catch (const std::exception& e) {
         logger[FATAL] << std::format("Caught exception in main(): {}", e.what());
     } catch (...) {
         logger[FATAL] << std::format("Something wrong happened in main().");
     }
 
-    // Join the background timer thread from normal code (unsafe in the handler).
-    cancel_time_limit();
+    // validate(params.get<cli_desc::input, std::string>(), solution, logger);
 
     logger[SUCCESS] << "Execution terminated succesfully";
-    logger.flush();  // Flush to prevent success message not being printed in async mode
 
     return EXIT_SUCCESS;
 }

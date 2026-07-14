@@ -115,6 +115,15 @@ void Solver::show() {
     logger_ << stats_.gauge_report_to_str();
 }
 
+auto Solver::get() -> std::vector<std::string> {
+    std::vector<std::string> solution_names;
+    solution_names.reserve(global_.solution.size());
+    for (auto act_i : global_.solution) {
+        solution_names.emplace_back(inst_.actions_names[act_i]);
+    }
+    return solution_names;
+}
+
 void Solver::print_info_() {
     logger_ << "----------------- Info on the instance -----------------";
     if (!inst_.actions.empty()) {

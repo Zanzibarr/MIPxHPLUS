@@ -4,6 +4,10 @@
 #include "solver.hpp"
 
 // TODO: Can we parallelize the preprocessing?
+// TODO: Is there a way to know which action is achieving a fixed fact? If so, can we fix those as well (actions and first achievers)?
+// TODO: Are we fixing all effects of fixed actions?
+// TODO: Add orbital probing
+// TODO: Applicable fixed/0-cost actions should be applied and simplified away from the problem (initial state removal, then repeat preprocessing)
 void Solver::preprocess_() {
     const auto& choices = params_.get<cli_desc::preprocess, std::string>();
     const bool use_l = choices.find('l') != std::string::npos;
@@ -73,9 +77,6 @@ void Solver::preprocess_() {
         }
         prep_eliminated_actions_();  // also recounts nfadd (the repetition trigger for 'l')
     }
-
-    // TODO: Is there a way to know which action is achieving a fixed fact? If so, can we fix those as well (actions and first achievers)?
-    // TODO: Are we fixing all effects of fixed actions?
 }
 
 auto Solver::prep_fact_landmarks_(std::vector<std::vector<unsigned int>>& landmarks_ret) -> bool {

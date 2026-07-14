@@ -18,6 +18,8 @@ void Solver::solve_lmcut_() {
         const auto& [landmarks, lmcut_value] = lmcut_lmcut_(hmax_functions[choice], minimization);
 
         // TODO: If lmcut_value is infinite, then the problem is infeasible
+        // TODO: Use fixed actions from the preprocessing as I'd use used actions in the integer separator (remember to keep track of the cost of
+        // those actions)
 
         for (const auto& landmark : landmarks) {
             global_.landmarks.push_back(landmark);

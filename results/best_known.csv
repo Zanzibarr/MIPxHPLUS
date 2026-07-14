@@ -1288,13 +1288,13 @@ organic-synthesis-split-sat18-strips-p10,201.0,318.0
 organic-synthesis-split-sat18-strips-p11,175.0,362.0
 organic-synthesis-split-sat18-strips-p12,281.0,429.0
 organic-synthesis-split-sat18-strips-p13,301.0,486.0
-organic-synthesis-split-sat18-strips-p14,287.0,1424581.0
+organic-synthesis-split-sat18-strips-p14,433.0,1424581.0
 organic-synthesis-split-sat18-strips-p15,273.0,273.0
 organic-synthesis-split-sat18-strips-p16,540.0,540.0
 organic-synthesis-split-sat18-strips-p17,293.0,580.0
 organic-synthesis-split-sat18-strips-p18,473.0,803.0
 organic-synthesis-split-sat18-strips-p19,83.0,1e+20
-organic-synthesis-split-sat18-strips-p20,103.0,2166157.0
+organic-synthesis-split-sat18-strips-p20,218.0,2166157.0
 parcprinter-08-strips-p01,169009.0,169009.0
 parcprinter-08-strips-p02,438047.0,438047.0
 parcprinter-08-strips-p03,807114.0,807114.0
@@ -2308,7 +2308,7 @@ thoughtful-mco14-strips-p11_6_98-typed,69.0,71.0
 thoughtful-mco14-strips-p11_6_99-typed,68.62758919007608,70.0
 thoughtful-mco14-strips-p13_7_55-typed,77.58050731726567,80.0
 thoughtful-mco14-strips-p13_7_56-typed,80.07534939585003,83.0
-thoughtful-mco14-strips-p13_7_58-typed,81.00000000000001,85.0
+thoughtful-mco14-strips-p13_7_58-typed,81.00000000000001,84.0
 thoughtful-mco14-strips-p13_7_61-typed,84.58493364167748,89.0
 thoughtful-mco14-strips-p13_7_62-typed,84.0,84.0
 thoughtful-mco14-strips-p13_7_64-typed,84.24795891160842,88.0
@@ -2542,8 +2542,8 @@ transport-sat11-strips-p11,440.9920347117031,462.0
 transport-sat11-strips-p12,398.3798606684643,507.0
 transport-sat11-strips-p13,434.4034804556629,529.0
 transport-sat11-strips-p14,855.2371088294866,945.0
-transport-sat11-strips-p15,912.2184371740807,976.0
-transport-sat11-strips-p16,830.2401710519132,947.0
+transport-sat11-strips-p15,912.2184371740807,974.0
+transport-sat11-strips-p16,830.2401710519132,917.0
 transport-sat11-strips-p17,886.8936303199877,1294.0
 transport-sat11-strips-p18,813.29190900195,1175.0
 transport-sat11-strips-p19,856.1386206568834,1265.0
@@ -2561,7 +2561,7 @@ transport-sat14-strips-p10,936.7103369632657,1425.0
 transport-sat14-strips-p11,439.54156290660086,575.0
 transport-sat14-strips-p12,471.0768779993679,618.0
 transport-sat14-strips-p13,502.4842565103172,556.0
-transport-sat14-strips-p14,784.439666695194,964.0
+transport-sat14-strips-p14,784.439666695194,963.0
 transport-sat14-strips-p15,926.0773158427704,1035.0
 transport-sat14-strips-p16,899.5966245572394,968.0
 transport-sat14-strips-p17,1002.5837348120383,1356.0

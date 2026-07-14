@@ -38,10 +38,9 @@ struct Instance {
 class Solver {
    public:
     Solver(const ParameterRegistry& params, Logger& logger) : params_(params), logger_(logger) { global_.using_cplex = false; };
-
     void solve();
-
     void show();
+    auto get() -> std::vector<std::string>;
 
    private:
     void read_instance_();
