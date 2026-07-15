@@ -360,28 +360,18 @@ void Solver::hplus_cplex_gather_info_() {
     call_cplex(CPXgetbestobjval(global_.hplus_env, global_.hplus_lp, &lower_bound));
     try_update_best_bound_(lower_bound);
 
-    // TODO: [lb_rootnode-v1] If the relaxation callback never fired outside the root (e.g. the whole search stayed at depth 0, or CPLEX never invoked
-    // it at depth > 0), record the final lower bound as the root-node bound. NOTE: matches the old implementation, but when nodes > 0 this attributes
-    // tree-search progress to the root (e.g. elevators-sat11-strips-p19: records 230 = optimum instead of the ~214 root bound).
     bool expected = false;
     if (global_.relax_lb_rootnode_recorded.compare_exchange_strong(expected, true)) {
-        stats_.gauge_record<"lb_rootnode">(global_.best_bound);
+        if (stats_.counter_get<"nodes">() == 0) {
+            // Never left the root: the final bound IS the root bound (also covers runs where the progress callback never fired)
+            stats_.gauge_record<"lb_rootnode">(global_.best_bound);
+        } else if (global_.relax_last_root_lb.load() >= 0) {
+            // Branched, but no progress callback fired with nodecount > 0: freeze what we observed while still at the root
+            stats_.gauge_record<"lb_rootnode">(global_.relax_last_root_lb);
+        }
+        // else (pathological: branched without any root progress event): record nothing rather than over-estimate the root bound with the final
+        // one; the gauge stays at 0 samples, which is the honest "we never measured it"
     }
-
-    // TODO: [lb_rootnode-v2] Replacement for the block above (see hplus_progress_callback_): use the node count to decide WHICH value to record, so
-    // the root bound never absorbs tree progress. Enable together with the other [lb_rootnode-v2] block, deleting the v1 versions.
-    // bool expected = false;
-    // if (global_.relax_lb_rootnode_recorded.compare_exchange_strong(expected, true)) {
-    //     if (stats_.counter_get<"nodes">() == 0) {
-    //         // Never left the root: the final bound IS the root bound (also covers runs where the progress callback never fired)
-    //         stats_.gauge_record<"lb_rootnode">(global_.best_bound);
-    //     } else if (global_.relax_last_root_lb.load() >= 0) {
-    //         // Branched, but no progress callback fired with nodecount > 0: freeze what we observed while still at the root
-    //         stats_.gauge_record<"lb_rootnode">(global_.relax_last_root_lb);
-    //     }
-    //     // else (pathological: branched without any root progress event): record nothing rather than over-estimate the root bound with the final
-    //     // one; the gauge stays at 0 samples, which is the honest "we never measured it"
-    // }
 
     // ~~~~~~~~~~~~ Best solution ~~~~~~~~~~~~ //
     hplus_get_cplex_solution_();
@@ -457,20 +447,6 @@ void Solver::hplus_get_cplex_solution_() {
             break;
     }
 
-    // fixing the solution to read the plan (some 0-cost actions are set to 1 even if they are not a first archiever of anything)
-    for (unsigned int act_i = 0; act_i < inst_.m; act_i++) {
-        bool set_zero{true};
-        for (unsigned int var_count = 0; var_count < inst_.actions[act_i].eff_sparse.size(); var_count++) {
-            if (plan[inst_.m + global_.hplus_fadd_cpx_start[act_i] + var_count] > constants::cpx_int_rounding) {
-                set_zero = false;
-                break;
-            }
-        }
-        if (set_zero) {
-            plan[act_i] = 0;
-        }
-    }
-
     // convert to a integer vector for easier parsing
     std::vector<unsigned int> cpx_result;
     cpx_result.reserve(inst_.m);
@@ -487,18 +463,24 @@ void Solver::hplus_get_cplex_solution_() {
     double cost{0};
 
     // Check we are getting ALL the actions that cplex uses
-    while (!remaining.empty()) {
+    while (!state.superset_of(inst_.goal)) {
         bool intcheck{false};
         for (const auto idx : remaining) {
             if (!bs_contains(state, inst_.actions[cpx_result[idx]].pre_sparse)) {
                 continue;
             }
-
             remaining.remove(idx);
+            if (bs_contains(state, inst_.actions[cpx_result[idx]].eff_sparse)) {
+                continue;  // adds nothing to a monotone state: prune it from the plan
+            }
+
             state |= inst_.actions[cpx_result[idx]].eff_sparse;
             solution.push_back(cpx_result[idx]);
             cost += inst_.actions[cpx_result[idx]].cost;
             intcheck = true;
+            if (state.superset_of(inst_.goal)) {
+                break;  // goal reached: whatever is left in remaining is discarded
+            }
         }
         integritycheck(intcheck, "No action can be applied on the current state");
     }

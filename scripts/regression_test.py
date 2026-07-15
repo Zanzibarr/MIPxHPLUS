@@ -28,17 +28,9 @@ COMPARED_FIELDS = [
     "N_Var_Acyc",
     "N_Const_Base",
     "N_Const_Acyc",
-    "N_Cand_Calls",
-    "N_Cand_LM",
-    "N_Cand_Sec",
-    "N_Relax_Calls",
-    "N_Relax_LM",
-    "N_Relax_Sec",
-    "Cand_LM_Size_Mean",
-    "Relax_LM_Size_Mean",
     "N_Nodes",
-    "Relax_LB",
-    "Root_LB",
+    # "Relax_LB",
+    # "Root_LB",
     "Final_LB",
     "Initial_UB",
     "Final_UB",
@@ -214,25 +206,28 @@ def diff_instance(old_log, new_log):
             " (failed execution, counters not compared)"
         ]
 
+    # === DIFF ON CSV DATA ===
     lines = []
     for field in COMPARED_FIELDS:
         if values_differ(old_row[field], new_row[field]):
             lines.append(f"{field}: old={old_row[field]} new={new_row[field]}")
 
-    old_upd = parse_updates(old_content)
-    new_upd = parse_updates(new_content)
-    if old_upd != new_upd:
-        step = next(
-            (i for i, (o, n) in enumerate(zip(old_upd, new_upd)) if o != n),
-            min(len(old_upd), len(new_upd)),
-        )
-        lines.append(
-            f"Updates: diverge at step {step + 1}"
-            f" (old: {len(old_upd)} updates, new: {len(new_upd)})"
-        )
-        lines.append(f"    old: {format_updates(old_upd)}")
-        lines.append(f"    new: {format_updates(new_upd)}")
+    # # === DIFF ON SEQUENCE OF UPDATES ===
+    # old_upd = parse_updates(old_content)
+    # new_upd = parse_updates(new_content)
+    # if old_upd != new_upd:
+    #     step = next(
+    #         (i for i, (o, n) in enumerate(zip(old_upd, new_upd)) if o != n),
+    #         min(len(old_upd), len(new_upd)),
+    #     )
+    #     lines.append(
+    #         f"Updates: diverge at step {step + 1}"
+    #         f" (old: {len(old_upd)} updates, new: {len(new_upd)})"
+    #     )
+    #     lines.append(f"    old: {format_updates(old_upd)}")
+    #     lines.append(f"    new: {format_updates(new_upd)}")
 
+    # === DIFF ON CPLEX FINGERPRINT ===
     old_cpx_fingerprint = re.search(r"CPLEX fingerprint: (.*)", old_content)
     new_cpx_fingerprint = re.search(r"CPLEX fingerprint: (.*)", new_content)
     if (

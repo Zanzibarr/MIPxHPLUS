@@ -74,8 +74,7 @@ auto Solver::lmcut_relax_separation_(const std::vector<double>& actions_weights,
         for (const auto& act_i : landmark) {
             sum += actions_weights[act_i];
         }
-        return sum >= 1 - constants::lm_relax_violation;  // TODO: Set to is_gr_or_eq_double(sum, 1 - constants::lm_relax_violation) once the new
-                                                          // implementation has been proven identical to the old one
+        return is_gr_or_eq_double(sum, 1 - constants::lm_relax_violation);
     });
 
     return {!landmarks.empty(), landmarks};

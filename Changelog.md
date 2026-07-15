@@ -27,9 +27,10 @@ HOW I DO VERSIONING:
 <!-- ### :rocket: Performance Improvements -->
 
 
-## [4.0.0] - 2026/07/14
+## [4.0.0] - 2026/07/15
 <!-- ### :warning: Known issues -->
-<!-- ### :ballot_box_with_check: Fixed -->
+### :ballot_box_with_check: Fixed
+- Bug in CPLEX solution retrieval in base model
 ### :heavy_exclamation_mark: Changed
 - Code refactoring
 ### :heavy_plus_sign: Added

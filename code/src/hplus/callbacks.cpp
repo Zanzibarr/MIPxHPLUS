@@ -38,26 +38,20 @@ void Solver::hplus_progress_callback_(CPXCALLBACKCONTEXTptr context) {
         try_update_best_bound_(best_lb);
     }
 
-    // TODO: [lb_rootnode-v2] Track the root-node lower bound here, gated on NODECOUNT, instead of in the relaxation callback (which is not guaranteed
-    // to fire below the root: see elevators-sat11-strips-p19, 471 nodes with every relaxation callback at depth 0). nodecount == 0 means the root is
-    // still being processed; it keeps growing across restarts, so post-restart root reprocessing is deliberately NOT counted as root.
-    // NOTE: this intentionally diverges from the old implementation (depth-based + final-bound fallback), so enable it only once the regression
-    // campaign against the old codebase is over. When enabling: uncomment this block, delete the [lb_rootnode-v1] block in
-    // hplus_relaxation_callback_ and switch the fallback in hplus_cplex_gather_info_ to its [lb_rootnode-v2] version.
-    // CPXLONG nodecount{-1};
-    // call_cplex(CPXcallbackgetinfolong(context, CPXCALLBACKINFO_NODECOUNT, &nodecount));
-    // if (nodecount == 0) {
-    //     // Still at the root: track the highest bound seen so far
-    //     double current = global_.relax_last_root_lb.load();
-    //     while (best_lb > current && !global_.relax_last_root_lb.compare_exchange_weak(current, best_lb)) {
-    //     }
-    // } else {
-    //     // First progress event after leaving the root: freeze the root bound
-    //     bool expected = false;
-    //     if (global_.relax_lb_rootnode_recorded.compare_exchange_strong(expected, true)) {
-    //         stats_.gauge_record<"lb_rootnode">(global_.relax_last_root_lb);
-    //     }
-    // }
+    CPXLONG nodecount{-1};
+    call_cplex(CPXcallbackgetinfolong(context, CPXCALLBACKINFO_NODECOUNT, &nodecount));
+    if (nodecount == 0) {
+        // Still at the root: track the highest bound seen so far
+        double current = global_.relax_last_root_lb.load();
+        while (best_lb > current && !global_.relax_last_root_lb.compare_exchange_weak(current, best_lb)) {
+        }
+    } else {
+        // First progress event after leaving the root: freeze the root bound
+        bool expected = false;
+        if (global_.relax_lb_rootnode_recorded.compare_exchange_strong(expected, true)) {
+            stats_.gauge_record<"lb_rootnode">(global_.relax_last_root_lb);
+        }
+    }
 
     // Sometimes our best incumbent (obtained in a callback) doesn't get processed immediatelly by CPLEX... if we realize that we can already prove
     // optimality, we can send an early exit signal
@@ -259,23 +253,6 @@ void Solver::hplus_relaxation_callback_(CPXCALLBACKCONTEXTptr context) {
     int nodedepth{-1};
     call_cplex(CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODEUID, &nodeuid));
     call_cplex(CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODEDEPTH, &nodedepth));
-
-    // TODO: [lb_rootnode-v1] Track the highest LB seen at the root (root = depth 0, matching the old implementation: after a restart the rebuilt root
-    // has a fresh uid but depth 0, so its reprocessing counts as root); record on first transition to a non-root node. DELETE this whole if/else
-    // block when enabling the [lb_rootnode-v2] tracking in hplus_progress_callback_ (otherwise the two race for relax_lb_rootnode_recorded and this
-    // one wins with the wrong semantics).
-    if (nodedepth == 0) {
-        double best_lb{-1};
-        call_cplex(CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_BND, &best_lb));
-        double current = global_.relax_last_root_lb.load();
-        while (best_lb > current && !global_.relax_last_root_lb.compare_exchange_weak(current, best_lb)) {
-        }
-    } else {
-        bool expected = false;
-        if (global_.relax_lb_rootnode_recorded.compare_exchange_strong(expected, true)) {
-            stats_.gauge_record<"lb_rootnode">(global_.relax_last_root_lb);
-        }
-    }
 
     // Visit each node (except for root node) at most once
     thread_local static std::unordered_set<int> visited_nodes;
