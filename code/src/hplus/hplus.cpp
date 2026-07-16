@@ -485,12 +485,8 @@ void Solver::hplus_get_cplex_solution_() {
         integritycheck(intcheck, "No action can be applied on the current state");
     }
 
-    // If the solution we have is the same/better than the one returned by cplex, we can skip the rest of this function
-    if (is_gr_or_eq_double(cost, global_.best_incumbent)) {
-        // We already have a better solution, so we can simply exit
-        return;
-    }
-
     // store solution
-    try_update_best_incumbent_(solution, cost);
+    // In deterministic mode we always read CPLEX solution and switch it with our own (which is non-deterministically obtained)
+    const auto deterministic = params_.get<cli_desc::deterministic, bool>();
+    try_update_best_incumbent_(solution, cost, deterministic);
 }

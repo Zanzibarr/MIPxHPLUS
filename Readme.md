@@ -1,7 +1,7 @@
 # MIP formulations for Deletefree AI Planning
 ![C++](https://img.shields.io/badge/C%2B%2B-00599C?style=for-the-badge&logo=c%2B%2B&logoColor=white)
 
-### Version: 4.0.0  
+### Version: 4.0.1  
 _Refer to the [Changelog](Changelog.md) for info about versions._  
 
 
@@ -39,8 +39,9 @@ make
 
 ### Build options (CMake parameters)
 
-- **-DCPLEX_PATH=**\<path_to_cplex>: (absolute path), specify a custom path to the CPLEX installation (see the CMakeLists.txt to see which are the default ones (CPLEX_POSSIBLE_PATHS) or append your to that list to avoid specifying it every time)
 - **-DCMAKE_BUILD_TYPE=**\<Debug/Release>: Build type (default is Debug), Debug mode enables warnings
+- **-DENABLE_ASSERTS=**\<ON/OFF>: Specify whether to enable asserts in non-Debug builds (default is OFF)
+- **-DCPLEX_PATH=**\<path_to_cplex>: (absolute path), specify a custom path to the CPLEX installation (see the CMakeLists.txt to see which are the default ones (CPLEX_POSSIBLE_PATHS) or append your to that list to avoid specifying it every time)
 
 ### Run options
 

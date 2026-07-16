@@ -9,7 +9,6 @@
 #include <parameters.hxx>
 #include <scope_guard.hxx>
 
-#include "cli_descriptions.hpp"
 #include "cli_parser.hpp"
 #include "solver.hpp"
 #include "utils.hpp"
@@ -31,10 +30,10 @@ auto init(ParameterRegistry& params, Logger& logger) -> void {
     // ~~~~~~~~~~~~ signal handler ~~~~~~~~~~~ //
     signal(SIGINT, signal_callback_handler);
     // Hide ^C from terminal
-    struct termios t{};
-    tcgetattr(STDIN_FILENO, &t);
-    t.c_lflag &= static_cast<tcflag_t>(~ECHOCTL);
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &t);
+    struct termios term{};
+    tcgetattr(STDIN_FILENO, &term);
+    term.c_lflag &= static_cast<tcflag_t>(~ECHOCTL);
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &term);
 
     // ~~~~~~~~~~~~~~~~ limits ~~~~~~~~~~~~~~~ //
     if (params.get<"time_limit", int>() > 0) {
@@ -46,7 +45,7 @@ auto init(ParameterRegistry& params, Logger& logger) -> void {
 
     // Warn user of debug mode being used
 #ifndef NDEBUG
-    logger[WARNING] << "Debug mode is active, asserts are enabled";
+    logger[WARNING] << "Asserts are enabled";
 #endif
 }
 

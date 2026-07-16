@@ -1,13 +1,12 @@
 #include "solver.hpp"
 
-#include <algorithm>
 #include <cassert>
 #include <exception>
-#include <limits>
 #include <logger.hxx>
 #include <timer.hxx>
 
 #include "cli_descriptions.hpp"
+#include "constants.hpp"
 #include "utils.hpp"
 
 using namespace std::chrono_literals;
@@ -104,11 +103,18 @@ void Solver::solve() {
 }
 
 void Solver::show() {
-    logger_ << std::format("Best bound: {}", global_.best_bound);
-    logger_ << std::format("Best incumbent: {}", global_.best_incumbent);
-    // logger_ << "Best solution:";
-    // for (auto a : global_.solution) {
-    //     logger_ << inst_.actions_names[a];
+    double best_bound = actual_bound_(global_.best_bound);
+    double best_incumbent = actual_bound_(global_.best_incumbent);
+    logger_ << std::format("Best bound: {}", best_bound);
+    logger_ << std::format("Best incumbent: {}", best_incumbent);
+    // if (is_lw_strict_double(best_incumbent, constants::infeas_bound)) {  // If I actually have a complete solution, not just an incomplete prefix
+    //     logger_ << "Best solution:";
+    //     for (auto act_name : global_.solution_prefix) {
+    //         logger_ << act_name;
+    //     }
+    //     for (auto a : global_.solution) {
+    //         logger_ << inst_.actions_names[a];
+    //     }
     // }
     logger_ << stats_.stats_report_to_str();
     logger_ << stats_.counter_report_to_str();
@@ -118,6 +124,9 @@ void Solver::show() {
 auto Solver::get() -> std::vector<std::string> {
     std::vector<std::string> solution_names;
     solution_names.reserve(global_.solution.size());
+    for (const auto& act_name : global_.solution_prefix) {
+        solution_names.emplace_back(act_name);
+    }
     for (auto act_i : global_.solution) {
         solution_names.emplace_back(inst_.actions_names[act_i]);
     }
@@ -150,11 +159,11 @@ void Solver::try_update_best_bound_(double new_bound) {
             return;
         }
         global_.best_bound = new_bound;
-        logger_[DEBUG] << std::format("Updated best bound: {}", global_.best_bound);
+        logger_[DEBUG] << std::format("Updated best bound: {}", actual_bound_(global_.best_bound));
     }
 }
 
-void Solver::try_update_best_incumbent_(const std::vector<unsigned int>& new_solution, double new_incumbent) {
+void Solver::try_update_best_incumbent_(const std::vector<unsigned int>& new_solution, double new_incumbent, bool swap) {
     integritycheck(is_gr_or_eq_double(new_incumbent, global_.best_bound), "Proposed incumbent is lower than best bound");
 
     std::unordered_set<unsigned int> dbcheck;
@@ -174,17 +183,30 @@ void Solver::try_update_best_incumbent_(const std::vector<unsigned int>& new_sol
                    std::format("Proposed cost doesn't match computed cost {}-{}", costcheck, new_incumbent));
 
     // Early check, before locking mutex
-    if (is_gr_or_eq_double(new_incumbent, global_.best_incumbent)) {
-        return;
+    if (swap) {
+        if (is_gr_strict_double(new_incumbent, global_.best_incumbent)) {
+            return;
+        }
+
+    } else {
+        if (is_gr_or_eq_double(new_incumbent, global_.best_incumbent)) {
+            return;
+        }
     }
 
     {
         std::lock_guard<std::mutex> lock(global_.solution_mutex);
-        if (is_gr_or_eq_double(new_incumbent, global_.best_incumbent)) {
-            return;
+        if (swap) {
+            if (is_gr_strict_double(new_incumbent, global_.best_incumbent)) {
+                return;
+            }
+        } else {
+            if (is_gr_or_eq_double(new_incumbent, global_.best_incumbent)) {
+                return;
+            }
         }
         global_.solution = new_solution;
         global_.best_incumbent = fix_precision(new_incumbent);  // We know all costs are actually integer, so we have to fix precision errors here
-        logger_[INFO] << std::format("Updated best solution: {}", global_.best_incumbent);
+        logger_[INFO] << std::format("Updated best solution: {}", actual_bound_(global_.best_incumbent));
     }
 }

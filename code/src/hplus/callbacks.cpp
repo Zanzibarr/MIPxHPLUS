@@ -55,11 +55,13 @@ void Solver::hplus_progress_callback_(CPXCALLBACKCONTEXTptr context) {
 
     // Sometimes our best incumbent (obtained in a callback) doesn't get processed immediatelly by CPLEX... if we realize that we can already prove
     // optimality, we can send an early exit signal
-    // ATTENTION: This breaks determinism
-    if (is_gr_or_eq_double(global_.best_bound, global_.best_incumbent)) {
-        // We already have the optimality proof... we don't need to do anything else...
-        GLOBAL_TERMINATE_CONDITION = 1;  // We cannot throw a C++ exception since CPLEX has C code and it doesn't know how to handle it...
-        return;
+    const auto deterministic = params_.get<cli_desc::deterministic, bool>();
+    if (!deterministic) {
+        if (is_gr_or_eq_double(global_.best_bound, global_.best_incumbent)) {
+            // We already have the optimality proof... we don't need to do anything else...
+            GLOBAL_TERMINATE_CONDITION = 1;  // We cannot throw a C++ exception since CPLEX has C code and it doesn't know how to handle it...
+            return;
+        }
     }
 }
 

@@ -46,7 +46,6 @@ inline auto date_compile() -> std::string {
 
 #include "cli_descriptions.hpp"
 #include "constants.hpp"
-#include "defaults.hpp"
 
 // ##################################################################### //
 // ############################### LIMITS ############################## //

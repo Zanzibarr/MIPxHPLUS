@@ -18,8 +18,6 @@ void Solver::solve_lmcut_() {
         const auto& [landmarks, lmcut_value] = lmcut_lmcut_(hmax_functions[choice], minimization);
 
         // TODO: If lmcut_value is infinite, then the problem is infeasible
-        // TODO: Use fixed actions from the preprocessing as I'd use used actions in the integer separator (remember to keep track of the cost of
-        // those actions)
 
         for (const auto& landmark : landmarks) {
             global_.landmarks.push_back(landmark);
@@ -27,8 +25,8 @@ void Solver::solve_lmcut_() {
         }
         stats_.gauge_record<"lmcut.size">(static_cast<double>(landmarks.size()));
 
-        if (!landmarks.empty()) {
-            logger_[DEBUG] << std::format("Computed a lm-cut value of {}", lmcut_value);
+        if (is_gr_strict_double(lmcut_value, 0)) {
+            logger_[DEBUG] << std::format("Computed a lm-cut value of {}", actual_bound_(lmcut_value));
             try_update_best_bound_(lmcut_value);
         }
 
@@ -40,7 +38,13 @@ void Solver::solve_lmcut_() {
 
 auto Solver::lmcut_lmcut_(const lmcut_hmax_function& hmax, char minimization) -> std::pair<std::vector<std::vector<unsigned int>>, double> {
     lmcut_init_();
-    return lmcut_compute_private_(hmax, minimization);
+    double fixed_cost{0};
+    for (const auto act_i : global_.fixed_actions) {
+        fixed_cost += local_.lmcut_reduced_costs[act_i];
+        local_.lmcut_reduced_costs[act_i] = 0;
+    }
+    auto [landmarks, cost] = lmcut_compute_private_(hmax, minimization);
+    return {landmarks, cost + fixed_cost};
 }
 
 auto Solver::lmcut_int_separation_(const std::vector<unsigned int>& used_actions, const lmcut_hmax_function& hmax, char minimization)
