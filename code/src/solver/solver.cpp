@@ -108,7 +108,7 @@ void Solver::show() {
     logger_ << std::format("Best bound: {}", best_bound);
     logger_ << std::format("Best incumbent: {}", best_incumbent);
     // if (is_lw_strict_double(best_incumbent, constants::infeas_bound)) {  // If I actually have a complete solution, not just an incomplete prefix
-    //     logger_ << "Best solution:";
+    //     logger_ << std::format("Best solution ({}):", global_.solution_prefix.size() + global_.solution.size());
     //     for (auto act_name : global_.solution_prefix) {
     //         logger_ << act_name;
     //     }
