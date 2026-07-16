@@ -29,7 +29,8 @@ HOW I DO VERSIONING:
 
 ## [4.0.1] - 2026/07/16
 <!-- ### :warning: Known issues -->
-<!-- ### :ballot_box_with_check: Fixed -->
+### :ballot_box_with_check: Fixed
+- CPLEX infeasible bound in manual termination
 ### :heavy_exclamation_mark: Changed
 - Actions that were fixed during preprocessing now enhance LM-Cut
 - Fixed some warnings

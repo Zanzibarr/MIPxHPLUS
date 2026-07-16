@@ -358,7 +358,12 @@ void Solver::hplus_cplex_gather_info_() {
 
     double lower_bound = 0;
     call_cplex(CPXgetbestobjval(global_.hplus_env, global_.hplus_lp, &lower_bound));
-    try_update_best_bound_(lower_bound);
+    // Depending on how CPLEX is terminated, the lower bound could not match the global optimum (if we terminate the execution with all open nodes
+    // being infeasible, the lower bound returned is the minimum between those of open nodes, so it will be invalid...) register it only if it is
+    // compatible with our best incumbent (lower or equal)
+    if (is_lw_or_eq_double(lower_bound, global_.best_incumbent)) {
+        try_update_best_bound_(lower_bound);
+    }
 
     bool expected = false;
     if (global_.relax_lb_rootnode_recorded.compare_exchange_strong(expected, true)) {
