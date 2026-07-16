@@ -364,10 +364,10 @@ void Solver::hplus_cplex_gather_info_() {
     if (global_.relax_lb_rootnode_recorded.compare_exchange_strong(expected, true)) {
         if (stats_.counter_get<"nodes">() == 0) {
             // Never left the root: the final bound IS the root bound (also covers runs where the progress callback never fired)
-            stats_.gauge_record<"lb_rootnode">(global_.best_bound);
+            stats_.gauge_record<"lb_rootnode">(actual_bound_(global_.best_bound));
         } else if (global_.relax_last_root_lb.load() >= 0) {
             // Branched, but no progress callback fired with nodecount > 0: freeze what we observed while still at the root
-            stats_.gauge_record<"lb_rootnode">(global_.relax_last_root_lb);
+            stats_.gauge_record<"lb_rootnode">(actual_bound_(global_.relax_last_root_lb));
         }
         // else (pathological: branched without any root progress event): record nothing rather than over-estimate the root bound with the final
         // one; the gauge stays at 0 samples, which is the honest "we never measured it"

@@ -49,7 +49,7 @@ void Solver::hplus_progress_callback_(CPXCALLBACKCONTEXTptr context) {
         // First progress event after leaving the root: freeze the root bound
         bool expected = false;
         if (global_.relax_lb_rootnode_recorded.compare_exchange_strong(expected, true)) {
-            stats_.gauge_record<"lb_rootnode">(global_.relax_last_root_lb);
+            stats_.gauge_record<"lb_rootnode">(actual_bound_(global_.relax_last_root_lb));
         }
     }
 
@@ -248,7 +248,7 @@ void Solver::hplus_relaxation_callback_(CPXCALLBACKCONTEXTptr context) {
     std::call_once(lb_once, [&] {
         double best_lb{-1};
         call_cplex(CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_BND, &best_lb));
-        stats_.gauge_record<"lb_relaxation">(best_lb);
+        stats_.gauge_record<"lb_relaxation">(actual_bound_(best_lb));
     });
 
     int nodeuid{-1};

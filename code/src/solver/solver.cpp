@@ -83,8 +83,8 @@ void Solver::solve() {
                 // matching lmcut's lower bound: in this case we have no way of knowing what would have been the LP/root relaxation, so we write
                 // it here (note that since we already proved optimality, there couldn't be an higher LP/root relaxation, so this is correct)
                 myassert(!global_.using_cplex, "OPTIMAL EarlyExit thrown while using CPLEX");
-                stats_.gauge_record<"lb_relaxation">(global_.best_bound);
-                stats_.gauge_record<"lb_rootnode">(global_.best_bound);
+                stats_.gauge_record<"lb_relaxation">(actual_bound_(global_.best_bound));
+                stats_.gauge_record<"lb_rootnode">(actual_bound_(global_.best_bound));
                 stats_.counter_set<"nodes">(0);
 
                 break;
