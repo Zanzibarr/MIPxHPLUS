@@ -107,15 +107,15 @@ void Solver::show() {
     double best_incumbent = actual_bound_(global_.best_incumbent);
     logger_ << std::format("Best bound: {}", best_bound);
     logger_ << std::format("Best incumbent: {}", best_incumbent);
-    // if (is_lw_strict_double(best_incumbent, constants::infeas_bound)) {  // If I actually have a complete solution, not just an incomplete prefix
-    //     logger_ << std::format("Best solution ({}):", global_.solution_prefix.size() + global_.solution.size());
-    //     for (auto act_name : global_.solution_prefix) {
-    //         logger_ << act_name;
-    //     }
-    //     for (auto a : global_.solution) {
-    //         logger_ << inst_.actions_names[a];
-    //     }
-    // }
+    if (is_lw_strict_double(best_incumbent, constants::infeas_bound)) {  // If I actually have a complete solution, not just an incomplete prefix
+        logger_ << std::format("Best solution ({}):", global_.solution_prefix.size() + global_.solution.size());
+        for (auto act_name : global_.solution_prefix) {
+            logger_ << act_name;
+        }
+        for (auto a : global_.solution) {
+            logger_ << inst_.actions_names[a];
+        }
+    }
     logger_ << stats_.stats_report_to_str();
     logger_ << stats_.counter_report_to_str();
     logger_ << stats_.gauge_report_to_str();
