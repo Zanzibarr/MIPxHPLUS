@@ -32,7 +32,7 @@ inline constexpr CTString relax_cuts = "relax-cuts";
 
 // --- Defaults ---
 // General parameters
-constexpr bool def_deterministic = true;
+constexpr bool def_deterministic = false;
 constexpr bool def_debug_enabled = false;
 
 // Execution parameters
