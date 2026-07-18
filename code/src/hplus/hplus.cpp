@@ -358,16 +358,21 @@ void Solver::hplus_cplex_gather_info_() {
 
     double lower_bound = 0;
     call_cplex(CPXgetbestobjval(global_.hplus_env, global_.hplus_lp, &lower_bound));
-    try_update_best_bound_(lower_bound);
+    // Depending on how CPLEX is terminated, the lower bound could not match the global optimum (if we terminate the execution with all open nodes
+    // being infeasible, the lower bound returned is the minimum between those of open nodes, so it will be invalid...) register it only if it is
+    // compatible with our best incumbent (lower or equal)
+    if (is_lw_or_eq_double(lower_bound, global_.best_incumbent)) {
+        try_update_best_bound_(lower_bound);
+    }
 
     bool expected = false;
     if (global_.relax_lb_rootnode_recorded.compare_exchange_strong(expected, true)) {
         if (stats_.counter_get<"nodes">() == 0) {
             // Never left the root: the final bound IS the root bound (also covers runs where the progress callback never fired)
-            stats_.gauge_record<"lb_rootnode">(global_.best_bound);
+            stats_.gauge_record<"lb_rootnode">(actual_bound_(global_.best_bound));
         } else if (global_.relax_last_root_lb.load() >= 0) {
             // Branched, but no progress callback fired with nodecount > 0: freeze what we observed while still at the root
-            stats_.gauge_record<"lb_rootnode">(global_.relax_last_root_lb);
+            stats_.gauge_record<"lb_rootnode">(actual_bound_(global_.relax_last_root_lb));
         }
         // else (pathological: branched without any root progress event): record nothing rather than over-estimate the root bound with the final
         // one; the gauge stays at 0 samples, which is the honest "we never measured it"
@@ -485,12 +490,8 @@ void Solver::hplus_get_cplex_solution_() {
         integritycheck(intcheck, "No action can be applied on the current state");
     }
 
-    // If the solution we have is the same/better than the one returned by cplex, we can skip the rest of this function
-    if (is_gr_or_eq_double(cost, global_.best_incumbent)) {
-        // We already have a better solution, so we can simply exit
-        return;
-    }
-
     // store solution
-    try_update_best_incumbent_(solution, cost);
+    // In deterministic mode we always read CPLEX solution and switch it with our own (which is non-deterministically obtained)
+    const auto deterministic = params_.get<cli_desc::deterministic, bool>();
+    try_update_best_incumbent_(solution, cost, deterministic);
 }

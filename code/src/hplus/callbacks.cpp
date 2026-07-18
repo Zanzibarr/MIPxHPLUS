@@ -49,17 +49,19 @@ void Solver::hplus_progress_callback_(CPXCALLBACKCONTEXTptr context) {
         // First progress event after leaving the root: freeze the root bound
         bool expected = false;
         if (global_.relax_lb_rootnode_recorded.compare_exchange_strong(expected, true)) {
-            stats_.gauge_record<"lb_rootnode">(global_.relax_last_root_lb);
+            stats_.gauge_record<"lb_rootnode">(actual_bound_(global_.relax_last_root_lb));
         }
     }
 
     // Sometimes our best incumbent (obtained in a callback) doesn't get processed immediatelly by CPLEX... if we realize that we can already prove
     // optimality, we can send an early exit signal
-    // ATTENTION: This breaks determinism
-    if (is_gr_or_eq_double(global_.best_bound, global_.best_incumbent)) {
-        // We already have the optimality proof... we don't need to do anything else...
-        GLOBAL_TERMINATE_CONDITION = 1;  // We cannot throw a C++ exception since CPLEX has C code and it doesn't know how to handle it...
-        return;
+    const auto deterministic = params_.get<cli_desc::deterministic, bool>();
+    if (!deterministic) {
+        if (is_gr_or_eq_double(global_.best_bound, global_.best_incumbent)) {
+            // We already have the optimality proof... we don't need to do anything else...
+            GLOBAL_TERMINATE_CONDITION = 1;  // We cannot throw a C++ exception since CPLEX has C code and it doesn't know how to handle it...
+            return;
+        }
     }
 }
 
@@ -246,7 +248,7 @@ void Solver::hplus_relaxation_callback_(CPXCALLBACKCONTEXTptr context) {
     std::call_once(lb_once, [&] {
         double best_lb{-1};
         call_cplex(CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_BND, &best_lb));
-        stats_.gauge_record<"lb_relaxation">(best_lb);
+        stats_.gauge_record<"lb_relaxation">(actual_bound_(best_lb));
     });
 
     int nodeuid{-1};

@@ -179,6 +179,12 @@ def values_differ(old, new):
     return old != new
 
 
+def read_next_lines(content, match, n):
+    """Return the n lines immediately following the line containing `match`."""
+    start = content.find("\n", match.end()) + 1
+    return content[start:].splitlines()[:n]
+
+
 def diff_instance(old_log, new_log):
     """Compare the two runs of one instance.
 
@@ -235,9 +241,27 @@ def diff_instance(old_log, new_log):
         and new_cpx_fingerprint
         and old_cpx_fingerprint.group(1) != new_cpx_fingerprint.group(1)
     ):
-        lines.append("CPLEX fingerprint::")
+        lines.append("CPLEX fingerprint:")
         lines.append(f"    old: {old_cpx_fingerprint.group(1)}")
         lines.append(f"    new: {new_cpx_fingerprint.group(1)}")
+
+    # === DIFF ON SOLUTION OBTAINED ===
+    old_solution_size = re.search(r"Best solution \((\d+)\):", old_content)
+    new_solution_size = re.search(r"Best solution \((\d+)\):", new_content)
+
+    if old_solution_size and new_solution_size:
+        old_n = int(old_solution_size.group(1))
+        new_n = int(new_solution_size.group(1))
+        old_solution = read_next_lines(old_content, old_solution_size, old_n)
+        new_solution = read_next_lines(new_content, new_solution_size, new_n)
+        if old_solution != new_solution:
+            lines.append(f"Solution: old has {old_n} actions, new has {new_n} actions")
+            if old_solution != new_solution[: len(old_solution)]:  # optional: show first divergence
+                step = next(
+                    (i for i, (o, n) in enumerate(zip(old_solution, new_solution)) if o != n),
+                    min(old_n, new_n),
+                )
+                lines.append(f"    diverge at action {step + 1}: old={old_solution[step] if step < old_n else '(none)'} new={new_solution[step] if step < new_n else '(none)'}")
 
     return lines
 

@@ -12,11 +12,11 @@
 #include <random>
 #include <stack>
 #include <stats_registry.hxx>
-#include <unordered_map>
 #include <unordered_set>
 #include <utility>
 
 // Keep this: we need it for the "using namespce utilz"
+#include "constants.hpp"
 #include "utils.hpp"
 
 struct Action {
@@ -45,20 +45,31 @@ class Solver {
    private:
     void read_instance_();
 
+    // Used to print a bound computed: it needs to consider the prefix computed (or not) during the preprocessing
+    auto actual_bound_(double value) const -> double {
+        return is_gr_or_eq_double(value, constants::infeas_bound) ? constants::infeas_bound : value + global_.cost_prefix;
+    }
+
     // ~~~~~~~~~~~~ preprocessing ~~~~~~~~~~~~ //
     // Haslum, Slaney, Thiebaux: "Minimal landmarks for optimal deletefree planning"
     // Imai, Fukunaga: "On a Practical, Integer-Linear Programming Model for Delete-Free Tasks and its Use as a Heuristic for Cost-Optimal Planning"
     void preprocess_();
     // Recomputes landmarks and fixed facts/actions; returns whether the landmark sets differ from the ones in input
+    [[nodiscard]]
     auto prep_fact_landmarks_(std::vector<std::vector<unsigned int>>& landmarks) -> bool;
     // Returns whether at least one effect entry was deleted
+    [[nodiscard]]
     auto prep_first_adders_(std::vector<std::vector<unsigned int>>& landmarks) -> bool;
     void prep_relevance_backward_(BinarySet& relevant_variables);
     void prep_relevance_forward_(BinarySet& relevant_variables);
     // Returns whether at least one action was eliminated
+    [[nodiscard]]
     auto prep_dominated_actions_(std::vector<std::vector<unsigned int>>& landmarks) -> bool;
+    void prep_orbital_probing_();
+    void prep_initial_action_sequencing_(std::vector<std::vector<unsigned int>>& landmarks);
     void prep_eliminated_facts_(std::vector<std::vector<unsigned int>>& landmarks);
     void prep_eliminated_actions_();
+    void prep_fixed_actions_();
     void prep_setup_helpers_();
 
     void print_info_();
@@ -78,25 +89,37 @@ class Solver {
     using lmcut_hmax_function = std::pair<int, double> (Solver::*)(const std::vector<unsigned int>&);
     void solve_lmcut_();
 
+    [[nodiscard]]
     auto lmcut_lmcut_(const lmcut_hmax_function& hmax, char minimization) -> std::pair<std::vector<std::vector<unsigned int>>, double>;
+    [[nodiscard]]
     auto lmcut_int_separation_(const std::vector<unsigned int>& used_actions, const lmcut_hmax_function& hmax, char minimization)
         -> std::pair<bool, std::vector<std::vector<unsigned int>>>;
+    [[nodiscard]]
     auto lmcut_relax_separation_(const std::vector<double>& actions_weights, const lmcut_hmax_function& hmax, char minimization)
         -> std::pair<bool, std::vector<std::vector<unsigned int>>>;
 
+    [[nodiscard]]
     auto lmcut_hmax_arbitrary_(const std::vector<unsigned int>& preconditions) -> std::pair<int, double>;
+    [[nodiscard]]
     auto lmcut_hmax_inverse_(const std::vector<unsigned int>& preconditions) -> std::pair<int, double>;
+    [[nodiscard]]
     auto lmcut_hmax_vdm_(const std::vector<unsigned int>& preconditions) -> std::pair<int, double>;
+    [[nodiscard]]
     auto lmcut_hmax_random_(const std::vector<unsigned int>& preconditions) -> std::pair<int, double>;
+    [[nodiscard]]
     auto lmcut_hmax_gzd_(const std::vector<unsigned int>& preconditions) -> std::pair<int, double>;
+    [[nodiscard]]
     auto lmcut_hmax_bd_(const std::vector<unsigned int>& preconditions) -> std::pair<int, double>;
+    [[nodiscard]]
     auto lmcut_hmax_gzd_bd_(const std::vector<unsigned int>& preconditions) -> std::pair<int, double>;
 
     void lmcut_init_();
+    [[nodiscard]]
     auto lmcut_compute_private_(const lmcut_hmax_function& hmax, char minimization) -> std::pair<std::vector<std::vector<unsigned int>>, double>;
     void lmcut_update_and_enqueue_effects_values_(priority_queue<double>& queue, unsigned int act_i);
     void lmcut_compute_goal_section_(const lmcut_hmax_function& hmax);
     void lmcut_update_hmax_values_(const std::vector<unsigned int>& changed_actions, const lmcut_hmax_function& hmax);
+    [[nodiscard]]
     auto lmcut_compute_cut_(const lmcut_hmax_function& hmax, char minimization) -> std::pair<std::vector<unsigned int>, double>;
 
     // ~~~~~~~~~~~ primal heuristic ~~~~~~~~~~ //
@@ -110,9 +133,13 @@ class Solver {
     void primal_update_hmax_values_(const std::vector<unsigned int>& new_facts);
     void primal_update_hadd_values_(const std::vector<unsigned int>& new_facts);
 
+    [[nodiscard]]
     auto primal_greedychoice_cost_(const std::list<unsigned int>& candidates, const BinarySet& state) -> std::pair<bool, unsigned int>;
+    [[nodiscard]]
     auto primal_greedychoice_cxe_(const std::list<unsigned int>& candidates, const BinarySet& state) -> std::pair<bool, unsigned int>;
+    [[nodiscard]]
     auto primal_greedychoice_hmax_(const std::list<unsigned int>& candidates, const BinarySet& state) -> std::pair<bool, unsigned int>;
+    [[nodiscard]]
     auto primal_greedychoice_hadd_(const std::list<unsigned int>& candidates, const BinarySet& state) -> std::pair<bool, unsigned int>;
 
     // ~~~~~~~~~~~ computing hplus ~~~~~~~~~~~ //
@@ -164,7 +191,7 @@ class Solver {
 
     // ~~~~~~~~~~~ solution updates ~~~~~~~~~~ //
     void try_update_best_bound_(double new_bound);
-    void try_update_best_incumbent_(const std::vector<unsigned int>& new_solution, double new_incumbent);
+    void try_update_best_incumbent_(const std::vector<unsigned int>& new_solution, double new_incumbent, bool swap = false);
 
     // ~~~~~~~~~~~~~~ time helpers ~~~~~~~~~~~~ //
     // Wall-clock seconds since solve() started (matches the global timer thread's clock).
@@ -182,6 +209,8 @@ class Solver {
         double best_bound = 0;
         double best_incumbent = constants::infeas_bound;
         std::vector<unsigned int> solution;
+        double cost_prefix = 0;
+        std::vector<std::string> solution_prefix;
         std::mutex solution_mutex;
 
         // Preprocessing and helpers
@@ -192,7 +221,7 @@ class Solver {
         std::vector<std::vector<unsigned int>> act_with_pre;
         std::vector<std::vector<unsigned int>> act_with_eff;
         std::vector<unsigned int> goal_sparse;
-        std::vector<unsigned int> initial_actions;
+        std::vector<unsigned int> initial_actions;  // Actions that are applicable from the initial (empty) state
 
         // LM-Cut data
         std::vector<std::vector<unsigned int>> landmarks;
@@ -264,7 +293,7 @@ class Solver {
     // ~~~~~~~~ early exit conditions ~~~~~~~~ //
     class EarlyExit : public std::exception {
        public:
-        enum Reason { TIMELIMIT, INFEASIBLE, OPTIMAL };
+        enum Reason : std::uint8_t { TIMELIMIT, INFEASIBLE, OPTIMAL };
         EarlyExit(const char* msg, Reason rsn) : message(msg), reason_(rsn) {}
         [[nodiscard]] auto what() const noexcept -> const char* override { return message.c_str(); }
         [[nodiscard]] auto reason() const noexcept -> Reason { return reason_; };
@@ -281,6 +310,7 @@ class Solver {
     // call seed_rng_ (e.g. single-threaded use) fall back to a lazily assigned index of 0.
     // SplitMix64 finalizer: maps a counter-like input to a well-distributed 64-bit value,
     // so closely-spaced (seed, index) pairs yield uncorrelated mt19937_64 streams.
+    [[nodiscard]]
     static auto splitmix64(std::uint64_t state) -> std::uint64_t {
         constexpr std::uint64_t GOLDEN = 0x9E3779B97F4A7C15ULL;
         constexpr std::uint64_t MIX_A = 0xBF58476D1CE4E5B9ULL;
@@ -298,6 +328,7 @@ class Solver {
         local_.rng_ready = true;
     }
 
+    [[nodiscard]]
     auto rng_() -> std::mt19937_64& {
         if (!local_.rng_ready) {
             seed_rng_(0);

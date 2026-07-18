@@ -27,6 +27,23 @@ HOW I DO VERSIONING:
 <!-- ### :rocket: Performance Improvements -->
 
 
+## [4.0.1] - 2026/07/16
+<!-- ### :warning: Known issues -->
+### :ballot_box_with_check: Fixed
+- CPLEX infeasible bound in manual termination
+### :heavy_exclamation_mark: Changed
+- Actions that were fixed during preprocessing now enhance LM-Cut
+- Fixed some warnings
+### :heavy_plus_sign: Added
+- Placeholder for Orbital Probing step in preprocessing
+- Initial Action Sequencing preprocessing step
+- Flag for deterministic execution
+- Flag for asserts in Release builds (debug builds are too slow for testing, in which asserts are needed)
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+<!-- ### :rocket: Performance Improvements -->
+
+
 ## [4.0.0] - 2026/07/15
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed

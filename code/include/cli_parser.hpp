@@ -7,7 +7,6 @@
 #include <logger.hxx>
 
 #include "cli_descriptions.hpp"
-#include "defaults.hpp"
 #include "utils.hpp"
 
 namespace {
@@ -82,7 +81,7 @@ inline auto validate_cli(cli::ArgParser& parser) -> void {
     } else {
         if ((parser.get<cli_desc::hplus_alg, std::string>()) == "0") {
             throw cli::ParseError(std::format("{} cannot be '0' when {} is 'hplus'", cli_desc::mode.view(), cli_desc::hplus_alg.view()));
-            parser.set<cli_desc::hplus_alg>(defaults::hplus_alg);
+            parser.set<cli_desc::hplus_alg>(cli_desc::def_hplus_alg);
         }
     }
     if (parser.get<cli_desc::mode, std::string>() == "info") {
@@ -147,45 +146,52 @@ inline auto validate_cli(cli::ArgParser& parser) -> void {
     }
 }
 }  // namespace
-auto parse_cli(const int argc, char** argv, Logger& logger) -> ParameterRegistry {
+inline auto parse_cli(const int argc, char** argv, Logger& logger) -> ParameterRegistry {
     cli::ArgParser parser(argv[0], "Find a solution / the optimal solution to the deletefree relaxation of a SAS+ planning task.");
 
     // General parameters
-    parser.add<cli_desc::verbose, bool>().shorthand('v').description(cli_desc::verbose_help).default_val(defaults::debug_enabled);
+    parser.add<cli_desc::deterministic, bool>().shorthand('d').description(cli_desc::deterministic_help).default_val(cli_desc::def_deterministic);
+    parser.add<cli_desc::verbose, bool>().shorthand('v').description(cli_desc::verbose_help).default_val(cli_desc::def_debug_enabled);
 
     // Execution parameters
-    parser.add<cli_desc::seed, int>().shorthand('s').description(cli_desc::seed_help).default_val(defaults::seed);
-    parser.add<cli_desc::stdout_, bool>().shorthand('o').description(cli_desc::stdout_help).default_val(defaults::stdout);
-    parser.add<cli_desc::log, std::string>().shorthand('l').description(cli_desc::log_help).default_val(defaults::log);
-    parser.add<cli_desc::cpxlog, std::string>().shorthand('c').description(cli_desc::cpxlog_help).default_val(defaults::cpxlog);
+    parser.add<cli_desc::seed, int>().shorthand('s').description(cli_desc::seed_help).default_val(cli_desc::def_seed);
+    parser.add<cli_desc::stdout_, bool>().shorthand('o').description(cli_desc::stdout_help).default_val(cli_desc::def_stdout);
+    parser.add<cli_desc::log, std::string>().shorthand('l').description(cli_desc::log_help).default_val(cli_desc::def_log);
+    parser.add<cli_desc::cpxlog, std::string>().shorthand('c').description(cli_desc::cpxlog_help).default_val(cli_desc::def_cpxlog);
     parser.add<cli_desc::input, std::string>().shorthand('i').description(cli_desc::input_help).require();
-    parser.add<cli_desc::time_limit, int>().shorthand('t').description(cli_desc::time_limit_help).default_val(defaults::time_limit_s).min(0);
-    parser.add<cli_desc::threads, int>().shorthand('T').description(cli_desc::threads_help).default_val(defaults::threads).min(1);
-    apply_allow(parser.add<cli_desc::mode, std::string>().shorthand('m').description(cli_desc::mode_help).default_val(defaults::mode),
+    parser.add<cli_desc::time_limit, int>().shorthand('t').description(cli_desc::time_limit_help).default_val(cli_desc::def_time_limit_s).min(0);
+    parser.add<cli_desc::threads, int>().shorthand('T').description(cli_desc::threads_help).default_val(cli_desc::def_threads).min(1);
+    apply_allow(parser.add<cli_desc::mode, std::string>().shorthand('m').description(cli_desc::mode_help).default_val(cli_desc::def_mode),
                 cli_desc::mode_choices);
-    apply_allow(parser.add<cli_desc::hplus_alg, std::string>().shorthand('a').description(cli_desc::hplus_alg_help).default_val(defaults::hplus_alg),
-                cli_desc::hplus_alg_choices);
+    apply_allow(
+        parser.add<cli_desc::hplus_alg, std::string>().shorthand('a').description(cli_desc::hplus_alg_help).default_val(cli_desc::def_hplus_alg),
+        cli_desc::hplus_alg_choices);
 
     // Preprocessing
-    parser.add<cli_desc::preprocess, std::string>().shorthand('p').description(cli_desc::preprocess_help).default_val(defaults::preprocess);
+    parser.add<cli_desc::preprocess, std::string>().shorthand('p').description(cli_desc::preprocess_help).default_val(cli_desc::def_preprocess);
 
     // LM-Cut
-    parser.add<cli_desc::lmcut_pcf, std::string>().shorthand('L').description(cli_desc::lmcut_pcf_help).default_val(defaults::lmcut_pcf);
-    apply_allow(parser.add<cli_desc::lmcut_min, std::string>().shorthand('M').description(cli_desc::lmcut_min_help).default_val(defaults::lmcut_min),
-                cli_desc::lmcut_min_choices);
-    apply_allow(parser.add<cli_desc::lmcut_opt, std::string>().shorthand('e').description(cli_desc::lmcut_opt_help).default_val(defaults::lmcut_opt),
-                cli_desc::lmcut_opt_choices);
+    parser.add<cli_desc::lmcut_pcf, std::string>().shorthand('L').description(cli_desc::lmcut_pcf_help).default_val(cli_desc::def_lmcut_pcf);
+    apply_allow(
+        parser.add<cli_desc::lmcut_min, std::string>().shorthand('M').description(cli_desc::lmcut_min_help).default_val(cli_desc::def_lmcut_min),
+        cli_desc::lmcut_min_choices);
+    apply_allow(
+        parser.add<cli_desc::lmcut_opt, std::string>().shorthand('e').description(cli_desc::lmcut_opt_help).default_val(cli_desc::def_lmcut_opt),
+        cli_desc::lmcut_opt_choices);
 
     // Primal Heuristic
-    apply_allow(
-        parser.add<cli_desc::primal_heur, std::string>().shorthand('H').description(cli_desc::primal_heur_help).default_val(defaults::primal_heur),
-        cli_desc::primal_heur_choices);
+    apply_allow(parser.add<cli_desc::primal_heur, std::string>()
+                    .shorthand('H')
+                    .description(cli_desc::primal_heur_help)
+                    .default_val(cli_desc::def_primal_heur),
+                cli_desc::primal_heur_choices);
 
     // Cut separators
-    apply_allow(parser.add<cli_desc::cand_cuts, std::string>().shorthand('I').description(cli_desc::cand_cuts_help).default_val(defaults::cand_cuts),
-                cli_desc::cand_cuts_choices);
     apply_allow(
-        parser.add<cli_desc::relax_cuts, std::string>().shorthand('F').description(cli_desc::relax_cuts_help).default_val(defaults::relax_cuts),
+        parser.add<cli_desc::cand_cuts, std::string>().shorthand('I').description(cli_desc::cand_cuts_help).default_val(cli_desc::def_cand_cuts),
+        cli_desc::cand_cuts_choices);
+    apply_allow(
+        parser.add<cli_desc::relax_cuts, std::string>().shorthand('F').description(cli_desc::relax_cuts_help).default_val(cli_desc::def_relax_cuts),
         cli_desc::relax_cuts_choices);
 
     parsing_warnings.clear();

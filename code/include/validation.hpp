@@ -5,7 +5,7 @@
 
 #include "utils.hpp"
 
-inline void validate(const std::string& file_path, const std::vector<std::string>& solution, Logger& logger) {
+inline void validate(const std::string& /*file_path*/, const std::vector<std::string>& /*solution*/, Logger& logger) {
     logger[WARNING] << "Verifying the solution";
 
     // TODO

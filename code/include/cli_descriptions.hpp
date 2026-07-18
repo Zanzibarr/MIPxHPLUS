@@ -2,6 +2,7 @@
 
 #include <array>
 #include <ct_string.hxx>
+#include <string>
 #include <string_view>
 
 // Metadata for the CLI arguments registered in cli_parser: parameter names,
@@ -10,6 +11,7 @@ namespace cli_desc {
 using utilz::CTString;
 
 // ── Parameter names (compile-time, usable as ArgParser NTTP keys) ──
+inline constexpr CTString deterministic = "deterministic";
 inline constexpr CTString verbose = "verbose";
 inline constexpr CTString seed = "seed";
 inline constexpr CTString stdout_ = "stdout";
@@ -28,7 +30,38 @@ inline constexpr CTString primal_heur = "primal-heur";
 inline constexpr CTString cand_cuts = "cand-cuts";
 inline constexpr CTString relax_cuts = "relax-cuts";
 
+// --- Defaults ---
+// General parameters
+constexpr bool def_deterministic = false;
+constexpr bool def_debug_enabled = false;
+
+// Execution parameters
+constexpr int def_time_limit_s = 60;
+constexpr int def_threads = 16;
+constexpr bool def_stdout = true;
+constexpr std::string def_log = "0";
+constexpr std::string def_cpxlog = "cplex.log";
+constexpr int def_seed = 2122187;
+constexpr std::string def_mode = "hplus";
+constexpr std::string def_hplus_alg = "base";
+
+// Preprocessing
+constexpr std::string def_preprocess = "lafbdi";
+
+// LMCut
+constexpr std::string def_lmcut_pcf = "aiv";
+constexpr std::string def_lmcut_min = "c";
+constexpr std::string def_lmcut_opt = "strict-eff";
+
+// Primal Heuristic
+constexpr std::string def_primal_heur = "gha";
+
+// Cut separators
+constexpr std::string def_cand_cuts = "lmcut-c";
+constexpr std::string def_relax_cuts = "lmcut-g";
+
 // ── Help descriptions ──
+inline constexpr std::string_view deterministic_help = "Enable deterministic execution";
 inline constexpr std::string_view verbose_help = "Enable verbose (DEBUG-level) logging";
 inline constexpr std::string_view seed_help = "Random seed for reproducible runs";
 inline constexpr std::string_view stdout_help = "Also write output to stdout (independent of --log)";
@@ -44,7 +77,8 @@ inline constexpr std::string_view hplus_alg_help =
     "MIP formulation for the hplus problem (base, tl, ve); used only when --mode=hplus. Candidate cuts (--cand-cuts) are required for the base model";
 inline constexpr std::string_view preprocess_help =
     "Preprocessing to apply as a combo of letters (0 for none): l (landmarks extraction), a (first adders, requires l), f (forward relevance "
-    "analysis, requires b), b (backward relevance analysis), d (dominated actions removal, requires l)";
+    "analysis, requires b), b (backward relevance analysis), d (dominated actions removal, requires l), o (orbital probing), i (initial actions "
+    "sequencing)";
 inline constexpr std::string_view lmcut_pcf_help =
     "Precondition Choice Function(s) driving LM-Cut as a combo of letters (0 to skip LM-Cut): a (ARB), i (INV), v (VDM), r (RND), z (GZD), b (BD), "
     "d (GZD+BD); each extra letter runs LM-Cut once more";
@@ -72,6 +106,6 @@ inline constexpr std::array<std::string_view, 7> cand_cuts_choices = {"0", "sec"
 inline constexpr std::array<std::string_view, 7> relax_cuts_choices = {"0", "sec", "lm", "lm-m", "lmcut", "lmcut-g", "lmcut-c"};
 
 // Letter-combination allow lists (validated by sanitize_letters, not by ArgParser::allow)
-inline constexpr std::string_view preprocess_letters = "lafbd";
+inline constexpr std::string_view preprocess_letters = "lafbdoi";
 inline constexpr std::string_view lmcut_pcf_letters = "aivrzbd";
 }  // namespace cli_desc

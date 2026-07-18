@@ -6,6 +6,7 @@
 #include "cli_descriptions.hpp"
 #include "solver.hpp"
 
+namespace {
 [[nodiscard]]
 constexpr auto hmax(double fact_a, double fact_b) -> double {
     return fact_a > fact_b ? fact_a : fact_b;
@@ -15,6 +16,7 @@ constexpr auto hmax(double fact_a, double fact_b) -> double {
 constexpr auto hadd(double fact_a, double fact_b) -> double {
     return fact_a + fact_b;
 }
+}  // namespace
 
 void Solver::primal_greedy_() {
     // Initialize watch preconditions
@@ -30,14 +32,10 @@ void Solver::primal_greedy_() {
             candidates.push_back(act_i);
             initial_actions_counter++;
         } else {
-            // Find one unsatisfied precondition to watch
-            for (const auto& pre : inst_.actions[act_i].pre_sparse) {
-                if (!state[pre]) {
-                    watch_pre[act_i] = pre;
-                    watching[pre].push_back(act_i);
-                    break;
-                }
-            }
+            myassert(!inst_.actions[act_i].pre_sparse.empty(), "Action missing from initial_actions has no preconditions");
+            const auto pre = inst_.actions[act_i].pre_sparse[0];
+            watch_pre[act_i] = pre;
+            watching[pre].push_back(act_i);
         }
     }
 
