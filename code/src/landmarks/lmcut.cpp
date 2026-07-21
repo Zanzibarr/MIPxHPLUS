@@ -38,10 +38,13 @@ void Solver::solve_lmcut_() {
 
 auto Solver::lmcut_lmcut_(const lmcut_hmax_function& hmax, char minimization) -> std::pair<std::vector<std::vector<unsigned int>>, double> {
     lmcut_init_();
+    const auto& lmcut_opt = params_.get<cli_desc::lmcut_opt, std::string>();
     double fixed_cost{0};
-    for (const auto act_i : global_.fixed_actions) {
-        fixed_cost += local_.lmcut_reduced_costs[act_i];
-        local_.lmcut_reduced_costs[act_i] = 0;
+    if (lmcut_opt.find('f') != std::string::npos) {
+        for (const auto act_i : global_.fixed_actions) {
+            fixed_cost += local_.lmcut_reduced_costs[act_i];
+            local_.lmcut_reduced_costs[act_i] = 0;
+        }
     }
     auto [landmarks, cost] = lmcut_compute_private_(hmax, minimization);
     return {landmarks, cost + fixed_cost};
@@ -387,7 +390,7 @@ auto Solver::lmcut_compute_cut_(const lmcut_hmax_function& hmax, char minimizati
         explored.insert(act_i);
 
         if (is_gr_strict_double(local_.lmcut_reduced_costs[act_i], 0)) {
-            if (lmcut_opt == "0") {
+            if (lmcut_opt.find('e') == std::string::npos) {
                 bool added = false;
                 for (const auto& eff : inst_.actions[act_i].eff_sparse) {
                     if (local_.lmcut_goal_section.contains(eff)) {
@@ -401,8 +404,7 @@ auto Solver::lmcut_compute_cut_(const lmcut_hmax_function& hmax, char minimizati
                         queue.push_back(static_cast<int>(eff));
                     }
                 }
-
-            } else if (lmcut_opt == "strict-eff") {
+            } else {
                 // TODO Salvagnin, Zanella: "Tighter Bounds for h+ MIP Planning via LM-Cut Strengthening and Cut Generation"
 
                 // Case 1: This is the only action from the pre_goal_section that achieves a fact p not in the goal_section... actions added to
@@ -432,8 +434,6 @@ auto Solver::lmcut_compute_cut_(const lmcut_hmax_function& hmax, char minimizati
                         queue.push_back(static_cast<int>(eff));
                     }
                 }
-            } else {
-                logger_[FATAL] << std::format("Unhandled {} option: {}", cli_desc::lmcut_opt.view(), lmcut_opt);
             }
 
         } else {

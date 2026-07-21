@@ -126,6 +126,8 @@ inline auto validate_cli(cli::ArgParser& parser) -> void {
     }
     parser.set<cli_desc::lmcut_pcf>(
         sanitize_letters(cli_desc::lmcut_pcf, parser.get<cli_desc::lmcut_pcf, std::string>(), cli_desc::lmcut_pcf_letters));
+    parser.set<cli_desc::lmcut_opt>(
+        sanitize_letters(cli_desc::lmcut_opt, parser.get<cli_desc::lmcut_opt, std::string>(), cli_desc::lmcut_opt_letters));
 
     // if LM-Cut is not executed, no minimization procedure is used
     if (parser.get<cli_desc::lmcut_pcf, std::string>() == "0") {
@@ -174,9 +176,7 @@ inline auto parse_cli(const int argc, char** argv, Logger& logger) -> ParameterR
     apply_allow(
         parser.add<cli_desc::lmcut_min, std::string>().shorthand('M').description(cli_desc::lmcut_min_help).default_val(cli_desc::def_lmcut_min),
         cli_desc::lmcut_min_choices);
-    apply_allow(
-        parser.add<cli_desc::lmcut_opt, std::string>().shorthand('e').description(cli_desc::lmcut_opt_help).default_val(cli_desc::def_lmcut_opt),
-        cli_desc::lmcut_opt_choices);
+    parser.add<cli_desc::lmcut_opt, std::string>().shorthand('O').description(cli_desc::lmcut_opt_help).default_val(cli_desc::def_lmcut_opt);
 
     // Primal Heuristic
     apply_allow(parser.add<cli_desc::primal_heur, std::string>()

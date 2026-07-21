@@ -33,6 +33,7 @@ HOW I DO VERSIONING:
 ### :heavy_exclamation_mark: Changed
 - Fully deterministic code execution as default
 - No more rejecting a solution that reached the goal if it has unreachable actions (just posting a better one)
+- Changed functionality of lmcut-opt flag
 <!-- ### :heavy_plus_sign: Added -->
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
