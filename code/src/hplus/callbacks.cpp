@@ -28,16 +28,6 @@ void Solver::hplus_progress_callback_(CPXCALLBACKCONTEXTptr context) {
     double best_lb{-1};
     call_cplex(CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_BND, &best_lb));
 
-    // From CPLEX Documentation:
-    // Important: This bound may be infinite (-CPX_INFBOUND or CPX_INFBOUND, depending on the objective sense) if no bound has been computed yet, or
-    // if no bound is available for the calling thread.
-    // Warning: Note that the best bound may exceed the value of the best feasible solution when
-    // optimality is proven.
-    // We update the best bound only if we know it is a valid one (hence lower than the best incumbent we know)
-    if (is_lw_or_eq_double(best_lb, global_.best_incumbent)) {
-        try_update_best_bound_(best_lb);
-    }
-
     CPXLONG nodecount{-1};
     call_cplex(CPXcallbackgetinfolong(context, CPXCALLBACKINFO_NODECOUNT, &nodecount));
     if (nodecount == 0) {
@@ -50,17 +40,6 @@ void Solver::hplus_progress_callback_(CPXCALLBACKCONTEXTptr context) {
         bool expected = false;
         if (global_.relax_lb_rootnode_recorded.compare_exchange_strong(expected, true)) {
             stats_.gauge_record<"lb_rootnode">(actual_bound_(global_.relax_last_root_lb));
-        }
-    }
-
-    // Sometimes our best incumbent (obtained in a callback) doesn't get processed immediatelly by CPLEX... if we realize that we can already prove
-    // optimality, we can send an early exit signal
-    const auto deterministic = params_.get<cli_desc::deterministic, bool>();
-    if (!deterministic) {
-        if (is_gr_or_eq_double(global_.best_bound, global_.best_incumbent)) {
-            // We already have the optimality proof... we don't need to do anything else...
-            GLOBAL_TERMINATE_CONDITION = 1;  // We cannot throw a C++ exception since CPLEX has C code and it doesn't know how to handle it...
-            return;
         }
     }
 }
@@ -86,8 +65,6 @@ void Solver::hplus_candidate_callback_(CPXCALLBACKCONTEXTptr context) {
     if (local_.cand_unreachable_actions.empty()) {
         myassert(local_.cand_reachable_state.superset_of(inst_.goal),
                  "Solution with no unreachable actions that doesn't reach the goal has been found in the candidate callback");
-        // Check wether this is a better solution than the one we already have
-        try_update_best_incumbent_(local_.cand_reachable_action_sequence, cost);
         return;
     }
 
@@ -220,22 +197,9 @@ void Solver::hplus_reject_candidate_with_new_sol_(CPXCALLBACKCONTEXTptr context,
         }
     }
 
-    // Store the new solution
-    try_update_best_incumbent_(new_sol, cost);
-
     // Give CPLEX the better solution
-    // ATTENTION: This breaks determinism
     call_cplex(
         CPXcallbackpostheursoln(context, static_cast<int>(ncols), ind.data(), val.data(), static_cast<double>(cost), CPXCALLBACKSOLUTION_NOCHECK));
-
-    constexpr int rejind{0};
-    constexpr int rejbegin{0};
-    constexpr double rejval{0.0};
-    constexpr double rejrhs{0.0};
-    constexpr char rejsense{'E'};
-
-    // Reject the current solution
-    call_cplex(CPXcallbackrejectcandidate(context, 0, 0, &rejrhs, &rejsense, &rejbegin, &rejind, &rejval));
 }
 
 // ##################################################################### //

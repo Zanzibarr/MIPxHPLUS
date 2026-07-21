@@ -11,7 +11,6 @@ namespace cli_desc {
 using utilz::CTString;
 
 // ── Parameter names (compile-time, usable as ArgParser NTTP keys) ──
-inline constexpr CTString deterministic = "deterministic";
 inline constexpr CTString verbose = "verbose";
 inline constexpr CTString seed = "seed";
 inline constexpr CTString stdout_ = "stdout";
@@ -32,7 +31,6 @@ inline constexpr CTString relax_cuts = "relax-cuts";
 
 // --- Defaults ---
 // General parameters
-constexpr bool def_deterministic = false;
 constexpr bool def_debug_enabled = false;
 
 // Execution parameters
@@ -61,7 +59,6 @@ constexpr std::string def_cand_cuts = "lmcut-c";
 constexpr std::string def_relax_cuts = "lmcut-g";
 
 // ── Help descriptions ──
-inline constexpr std::string_view deterministic_help = "Enable deterministic execution";
 inline constexpr std::string_view verbose_help = "Enable verbose (DEBUG-level) logging";
 inline constexpr std::string_view seed_help = "Random seed for reproducible runs";
 inline constexpr std::string_view stdout_help = "Also write output to stdout (independent of --log)";

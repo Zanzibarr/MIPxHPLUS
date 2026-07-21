@@ -27,7 +27,19 @@ HOW I DO VERSIONING:
 <!-- ### :rocket: Performance Improvements -->
 
 
-## [4.0.1] - 2026/07/16
+## [4.1.1] - 2026/07/21
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+### :heavy_exclamation_mark: Changed
+- Fully deterministic code execution as default
+- No more rejecting a solution that reached the goal if it has unreachable actions (just posting a better one)
+<!-- ### :heavy_plus_sign: Added -->
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+<!-- ### :rocket: Performance Improvements -->
+
+
+## [4.1.0] - 2026/07/16
 <!-- ### :warning: Known issues -->
 ### :ballot_box_with_check: Fixed
 - CPLEX infeasible bound in manual termination

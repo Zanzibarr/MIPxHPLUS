@@ -163,7 +163,7 @@ void Solver::try_update_best_bound_(double new_bound) {
     }
 }
 
-void Solver::try_update_best_incumbent_(const std::vector<unsigned int>& new_solution, double new_incumbent, bool swap) {
+void Solver::try_update_best_incumbent_(const std::vector<unsigned int>& new_solution, double new_incumbent) {
     integritycheck(is_gr_or_eq_double(new_incumbent, global_.best_bound), "Proposed incumbent is lower than best bound");
 
     std::unordered_set<unsigned int> dbcheck;
@@ -183,27 +183,14 @@ void Solver::try_update_best_incumbent_(const std::vector<unsigned int>& new_sol
                    std::format("Proposed cost doesn't match computed cost {}-{}", costcheck, new_incumbent));
 
     // Early check, before locking mutex
-    if (swap) {
-        if (is_gr_strict_double(new_incumbent, global_.best_incumbent)) {
-            return;
-        }
-
-    } else {
-        if (is_gr_or_eq_double(new_incumbent, global_.best_incumbent)) {
-            return;
-        }
+    if (is_gr_or_eq_double(new_incumbent, global_.best_incumbent)) {
+        return;
     }
 
     {
         std::lock_guard<std::mutex> lock(global_.solution_mutex);
-        if (swap) {
-            if (is_gr_strict_double(new_incumbent, global_.best_incumbent)) {
-                return;
-            }
-        } else {
-            if (is_gr_or_eq_double(new_incumbent, global_.best_incumbent)) {
-                return;
-            }
+        if (is_gr_or_eq_double(new_incumbent, global_.best_incumbent)) {
+            return;
         }
         global_.solution = new_solution;
         global_.best_incumbent = fix_precision(new_incumbent);  // We know all costs are actually integer, so we have to fix precision errors here

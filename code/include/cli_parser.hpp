@@ -150,7 +150,6 @@ inline auto parse_cli(const int argc, char** argv, Logger& logger) -> ParameterR
     cli::ArgParser parser(argv[0], "Find a solution / the optimal solution to the deletefree relaxation of a SAS+ planning task.");
 
     // General parameters
-    parser.add<cli_desc::deterministic, bool>().shorthand('d').description(cli_desc::deterministic_help).default_val(cli_desc::def_deterministic);
     parser.add<cli_desc::verbose, bool>().shorthand('v').description(cli_desc::verbose_help).default_val(cli_desc::def_debug_enabled);
 
     // Execution parameters

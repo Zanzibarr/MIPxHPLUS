@@ -191,7 +191,7 @@ class Solver {
 
     // ~~~~~~~~~~~ solution updates ~~~~~~~~~~ //
     void try_update_best_bound_(double new_bound);
-    void try_update_best_incumbent_(const std::vector<unsigned int>& new_solution, double new_incumbent, bool swap = false);
+    void try_update_best_incumbent_(const std::vector<unsigned int>& new_solution, double new_incumbent);
 
     // ~~~~~~~~~~~~~~ time helpers ~~~~~~~~~~~~ //
     // Wall-clock seconds since solve() started (matches the global timer thread's clock).

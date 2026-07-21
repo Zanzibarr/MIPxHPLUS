@@ -491,7 +491,5 @@ void Solver::hplus_get_cplex_solution_() {
     }
 
     // store solution
-    // In deterministic mode we always read CPLEX solution and switch it with our own (which is non-deterministically obtained)
-    const auto deterministic = params_.get<cli_desc::deterministic, bool>();
-    try_update_best_incumbent_(solution, cost, deterministic);
+    try_update_best_incumbent_(solution, cost);
 }
