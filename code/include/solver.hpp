@@ -68,11 +68,15 @@ class Solver {
     [[nodiscard]]
     auto prep_orbital_probing_() -> bool;
     [[nodiscard]]
-    auto prep_initial_action_sequencing_(std::vector<std::vector<unsigned int>>& landmarks) -> bool;
+    auto prep_initial_action_sequencing_() -> bool;
     void prep_eliminated_facts_(std::vector<std::vector<unsigned int>>& landmarks);
     void prep_eliminated_actions_();
     void prep_fixed_actions_();
     void prep_setup_helpers_();
+
+    [[maybe_unused]]
+    void symm_write_graph_(const std::string& path, const std::vector<unsigned int>& fact_colors, const std::vector<unsigned int>& action_colors,
+                           const std::vector<unsigned int>& local_fact, const std::vector<unsigned int>& local_act);
 
     void print_info_();
 
@@ -81,8 +85,8 @@ class Solver {
     // TODO Salvagnin, Zanella: "Tighter Bounds for h+ MIP Planning via LM-Cut Strengthening and Cut Generation"
     void landmark_minimalization_greedy_(std::vector<unsigned int>& landmark, const BinarySet& reachable_state);
     void landmark_minimalization_(std::vector<unsigned int>& landmark, const std::vector<unsigned int>& unapplicable, BinarySet reachable_state);
-    // ATTENTION: check_landmark_(..) is meant to be a check for debugging... it's not optimized to be used as a routine
-    void check_landmark_(const std::vector<unsigned int>& landmark);
+    [[nodiscard]]
+    auto check_landmark_(const BinarySet& landmark) -> bool;
 
     // ~~~~~~~~~~~~~~~~ lmcut ~~~~~~~~~~~~~~~~ //
     // Domshlak, Helmert: "Landmarks, Critical Paths and Abstractions: What's the Difference Anyway?"

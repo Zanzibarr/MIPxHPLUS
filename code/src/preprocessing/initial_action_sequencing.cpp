@@ -2,7 +2,9 @@
 
 #include "solver.hpp"
 
-auto Solver::prep_initial_action_sequencing_(std::vector<std::vector<unsigned int>>& landmarks) -> bool {
+auto Solver::prep_initial_action_sequencing_() -> bool {
+    logger_[DEBUG] << "PREP: initial prefix extraction";
+
     //  Apply fixed/0-cost actions to the prefix  //
     std::vector<unsigned int> watch_pre(inst_.m, inst_.n);
     std::vector<std::vector<unsigned int>> watching(inst_.n);
@@ -10,6 +12,11 @@ auto Solver::prep_initial_action_sequencing_(std::vector<std::vector<unsigned in
 
     std::vector<unsigned int> candidates;  // List of applicable fixed/0-cost actions
     for (unsigned int act_i = 0; act_i < inst_.m; act_i++) {
+        // An action already marked for elimination is gone from the task: it must not enter the prefix, nor pay its cost into it
+        if (global_.eliminated_actions[act_i]) {
+            continue;
+        }
+
         if (!global_.fixed_actions[act_i] && inst_.actions[act_i].cost != 0) {
             continue;
         }
@@ -33,7 +40,7 @@ auto Solver::prep_initial_action_sequencing_(std::vector<std::vector<unsigned in
             used_actions.push_back(act_i);
             global_.cost_prefix += inst_.actions[act_i].cost;
             global_.solution_prefix.push_back(inst_.actions_names[act_i]);
-            logger_[DEBUG] << std::format("Added to prefix: A{}", act_i);
+            logger_[DEBUG] << std::format("PRFX: Added to prefix: A{}", act_i);
             for (const auto eff : inst_.actions[act_i].eff_sparse) {
                 if (state[eff]) {
                     continue;
@@ -92,22 +99,18 @@ auto Solver::prep_initial_action_sequencing_(std::vector<std::vector<unsigned in
         return false;
     }
 
-    // The prefix alone reaches the goal: signal optimality to the caller (via its goal-empty check) instead of removing the reached facts
+    // The prefix alone reaches the goal: signal optimality to the caller (via its goal-empty check) instead of marking the reached facts (binary sets
+    // of size 0 are not allowed, and the caller never gets to eliminate anything anyway)
     // The prefix has already been stored, so altering the goal state to exit early is fine
-    if (state.superset_of(inst_.goal)) {
+    // The goal facts already marked for elimination don't count: only 'o' can mark one, and only when it keeps an identical goal fact in its place
+    if (state.superset_of(inst_.goal - global_.eliminated_facts)) {
         inst_.goal = BinarySet{inst_.n};
         return true;  // caller exits on the empty goal, so this value is only for consistency
     }
 
-    // ~~ Remove used actions (remaps fixed actions and recounts nfadd, the repetition trigger for 'l') ~~ //
-    global_.eliminated_actions = BinarySet{inst_.m};
+    // ~~ The prefix actions and every fact they reached leave the instance in the shared elimination block at the end of the pass ~~ //
     global_.eliminated_actions |= used_actions;
-    prep_eliminated_actions_();
+    global_.eliminated_facts |= state;
 
-    // ~~ Remove all reached facts (remaps goal, landmarks and fixed facts, and recounts nfadd) ~~ //
-    // Reassigned (not cleared) since earlier fact eliminations in this pass may have shrunk inst_.n below the BinarySet capacity
-    global_.eliminated_facts = state;
-    prep_eliminated_facts_(landmarks);
-
-    return true;  // actions and/or facts were removed: the instance (and thus the symmetry graph) changed
+    return true;  // actions and/or facts were marked: the instance (and thus the symmetry graph) changes at the end of the pass
 }

@@ -17,6 +17,7 @@ logs/
 scripts/**/*.pdf
 scripts/**/*.dot
 scripts/**/*.svg
+scripts/**/*.png
 scripts/results
 scripts/scpfile
 

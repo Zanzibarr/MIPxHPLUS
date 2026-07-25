@@ -1,42 +1,113 @@
+#include <binary_set.hxx>
+#include <timer.hxx>
+
+#include "bs_utils.hpp"
 #include "solver.hpp"
 
-void Solver::check_landmark_(const std::vector<unsigned int>& landmark) {
-    bool found = false;
-    BinarySet state(inst_.n);
-    BinarySet remaining_actions(inst_.m, true);
-    for (const auto& act_i : landmark) {
-        remaining_actions.remove(act_i);
+auto Solver::check_landmark_(const BinarySet& landmark) -> bool {
+    // TODO: Remove
+    auto _tmr = make_scoped_timer<"reach_test">(stats_);
+
+    // Goal facts still to be reached. The moment this hits 0 the goal is relaxed-reachable,
+    // so the orbit is NOT a landmark and we can bail out without saturating the rest of the
+    // reachable set (which is the common case: most orbits aren't landmarks).
+    std::size_t goal_remaining = inst_.goal.size();
+    if (goal_remaining == 0) {
+        return false;
     }
 
-    while (!found) {
-        auto state_before = state;
-        for (const auto act_i : remaining_actions) {
-            const auto& act = inst_.actions[act_i];
-            if (bs_contains(state, act.pre_sparse)) {
-                remaining_actions.remove(act_i);
-                state |= act.eff_sparse;
+    BinarySet state{inst_.n};
+    std::vector<unsigned int> watch_pre(inst_.m, inst_.n);
+    std::vector<std::vector<unsigned int>> watching(inst_.n);
+    std::vector<unsigned int> candidates;
+    std::vector<unsigned int> new_effects;  // reused across rounds, holds only the newly reached facts
+    BinarySet queued(inst_.m);              // dedup marker for the next round's candidates
+
+    for (unsigned int act_i = 0; act_i < inst_.m; act_i++) {
+        // We don't want to use actions in the landmark
+        if (landmark[act_i]) {
+            continue;
+        }
+
+        // An action with no effects can never change the state: never track it
+        if (inst_.actions[act_i].eff_sparse.empty()) {
+            continue;
+        }
+
+        if (inst_.actions[act_i].pre_sparse.empty()) {  // Initial state is empty
+            candidates.push_back(act_i);
+        } else {  // We know this action has at least one precondition, since the initial state is empty such precondition isn't achieved
+            const auto pre = inst_.actions[act_i].pre_sparse[0];
+            watch_pre[act_i] = pre;
+            watching[pre].push_back(act_i);
+        }
+    }
+
+    while (!candidates.empty()) {
+        new_effects.clear();
+        for (const auto act_i : candidates) {  // Order is irrelevant since they are all applicable
+            myassert(bs_contains(state, inst_.actions[act_i].pre_sparse), "Applying an action whose preconditions are not satisfied");
+            for (const auto eff : inst_.actions[act_i].eff_sparse) {
+                if (state[eff]) {
+                    continue;
+                }
+                // Mark reached immediately: this dedups new_effects across actions in the same round
+                // and folds the old separate `state |= eff_sparse` pass into this single traversal.
+                state.add(eff);
+                new_effects.push_back(eff);
+                if (inst_.goal[eff] && --goal_remaining == 0) {
+                    return false;  // whole goal reached -> not a landmark
+                }
             }
         }
-        if (state.superset_of(inst_.goal)) {
-            found = true;
+
+        // Update watch preconditions and candidates list
+        candidates.clear();
+        for (const auto eff : new_effects) {
+            // eff is now reached, so pre != eff for any unsatisfied pre below; watching[pre] is
+            // therefore always a different list than watchers, keeping this reference stable.
+            auto& watchers = watching[eff];
+            for (std::size_t i = 0; i < watchers.size();) {
+                // No filter needed here: non-landmark actions are ever inserted into the watch lists (see the init loop above)
+                const auto act_i = watchers[i];
+                myassert(!landmark[act_i], "Non fixed/0-cost action found in a watch list");
+
+                // Swap-erase from watching[eff] regardless (this fact is now reached, so no action is watching it as its watch_pre)
+                watchers[i] = watchers.back();
+                watchers.pop_back();
+
+                // If every effect is already reached, applying the action can't change the state anymore. Since an action lives in exactly one watch
+                // list (the one of its watch_pre), dropping it here removes it for good: later rounds won't even see it.
+                if (bs_contains(state, inst_.actions[act_i].eff_sparse)) {
+                    watch_pre[act_i] = inst_.n;
+                    continue;
+                }
+
+                // Try to find a new unsatisfied precondition to watch
+                bool moved = false;
+                for (const auto pre : inst_.actions[act_i].pre_sparse) {
+                    if (!state[pre]) {
+                        watch_pre[act_i] = pre;
+                        watching[pre].push_back(act_i);
+                        moved = true;
+                        break;
+                    }
+                }
+
+                if (moved || queued[act_i]) {
+                    continue;
+                }
+                queued.add(act_i);
+                candidates.push_back(act_i);
+            }
         }
-        if (state_before == state) {
-            break;  // Valid landmark: without its actions we can't reach the goal
+        // Reset the dedup markers for exactly the actions we just queued (O(#new candidates))
+        for (const auto act_i : candidates) {
+            queued.remove(act_i);
         }
     }
 
-    if (found) {  // If this was a valid landmark we wouldn't be able to find a valid plan to the goal
-        logger_[WARNING] << vtos(landmark);
-        logger_[WARNING] << std::format("# Actions: {}", inst_.m);
-        logger_[WARNING] << std::format("Goal: {}", std::string(inst_.goal));
-        for (const auto& act_i : landmark) {
-            logger_[WARNING] << std::format("Act {}", act_i);
-            logger_[WARNING] << std::format("Cost: {}", inst_.actions[act_i].cost);
-            logger_[WARNING] << std::format("Pre: {}", vtos(inst_.actions[act_i].pre_sparse));
-            logger_[WARNING] << std::format("Eff: {}", vtos(inst_.actions[act_i].eff_sparse));
-        }
-        logger_[FATAL] << "Found invalid landmark.";
-    }
+    return !state.superset_of(inst_.goal);
 }
 
 void Solver::landmark_minimalization_greedy_(std::vector<unsigned int>& landmark, const BinarySet& reachable_state) {
@@ -60,7 +131,6 @@ void Solver::landmark_minimalization_(std::vector<unsigned int>& landmark, const
     std::unordered_set<unsigned int> to_remove;
 
     const unsigned int goal_act = inst_.m;
-    const auto& goal = inst_.goal.sparse();
 
     const auto check_update_watch_pre = [&](unsigned int act_i, bool init = false) -> void {
         myassert(init || watch_pre[act_i] != inst_.n, "Wrongly initialized watch precondition");
@@ -106,7 +176,7 @@ void Solver::landmark_minimalization_(std::vector<unsigned int>& landmark, const
         if (!init && !reachable_state[watch_pre[goal_act]]) {
             return;
         }
-        for (const auto& g_fact : goal) {
+        for (const auto& g_fact : global_.goal_sparse) {
             if (reachable_state[g_fact]) {
                 continue;
             }

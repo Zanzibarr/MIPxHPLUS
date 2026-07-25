@@ -4,15 +4,6 @@ All notable changes to this project will be documented in this file.
 
 _To see info about this project, please refer to the [Readme](Readme.md)._
 
-<!--
-HOW I DO VERSIONING:
-- Increase x... for a groundbreaking update to the code (e.g. refactoring of some kind)
-- Increase .x.. for updated/new feature (that change what the code does, eg different algorithm)
-- Increase ..x. for new implementations (that doesn't change fundamentaly what the code does)
-- Increase ...x for bug fixes
-
-- Increasing a digit implies the reset of all following ones to 0 
--->
 
 ## Versions
 
@@ -22,6 +13,20 @@ HOW I DO VERSIONING:
 <!-- ### :ballot_box_with_check: Fixed -->
 <!-- ### :heavy_exclamation_mark: Changed -->
 <!-- ### :heavy_plus_sign: Added -->
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+<!-- ### :rocket: Performance Improvements -->
+
+
+## [4.2.0] - YYYY/MM/DD
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+### :heavy_exclamation_mark: Changed
+- Refactored preprocessing
+- Minor optimizations here and there
+### :heavy_plus_sign: Added
+- Preprocessing Symmetry Breaking: fixing actions on orbital landmarks
+- Preprocessing Symmetry Breaking: eliminating facts in fact-only generators
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
 <!-- ### :rocket: Performance Improvements -->

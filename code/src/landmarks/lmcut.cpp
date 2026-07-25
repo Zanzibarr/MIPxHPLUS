@@ -1,3 +1,4 @@
+#include <binary_set.hxx>
 #include <map>
 
 #include "cli_descriptions.hpp"
@@ -268,7 +269,9 @@ auto Solver::lmcut_compute_private_(const lmcut_hmax_function& hmax, char minimi
 
     while (is_gr_strict_double((this->*hmax)(global_.goal_sparse).second, 0)) {
         const auto& [cut, val] = lmcut_compute_cut_(hmax, minimization);
-        // check_landmark_(cut);  // This is an (expensive) integrity check...
+        // BinarySet cut_bs{inst_.m};
+        // cut_bs |= cut;
+        // myassert(check_landmark_(cut_bs), "Found invalid landmark in lmcut");
         lmcut_value += val;
         lmcut_update_hmax_values_(cut, hmax);
         landmarks.push_back(cut);
