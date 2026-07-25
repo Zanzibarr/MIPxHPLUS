@@ -27,6 +27,20 @@ HOW I DO VERSIONING:
 <!-- ### :rocket: Performance Improvements -->
 
 
+## [4.1.2] - 2026/07/25
+<!-- ### :warning: Known issues -->
+### :ballot_box_with_check: Fixed
+- Preprocessing loop: missing re-activation of preprocessing steps after computing a prefix
+- Dominated actions: fixed actions didn't have the chance to dominate other actions
+### :heavy_exclamation_mark: Changed
+- Optimized greedy
+### :heavy_plus_sign: Added
+- During preprocessing, non-goal facts that aren't preconditions get eliminated
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+<!-- ### :rocket: Performance Improvements -->
+
+
 ## [4.1.1] - 2026/07/21
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->

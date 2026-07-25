@@ -24,6 +24,7 @@ from analysis_utils import (
     resolve_aliases,
     sgm,
     wilcoxon_test,
+    OPT_EPS,
 )
 
 
@@ -65,7 +66,11 @@ def _category_row(
             base_arr, base_sv = base_data[m]
             model_arr = model_df[m].cast(pl.Float64).to_numpy()
             sv = sgm(model_arr)
-            ratio = sv / base_sv if base_sv != 0 else float("nan")
+            ratio = (
+                1
+                if abs(sv - base_sv) < OPT_EPS
+                else (sv / base_sv if base_sv != 0 else float("nan"))
+            )
             ratio_str = f"{ratio:.3f}"
             if test_sig and wilcoxon_test(base_arr, model_arr) < PVALUE:
                 ratio_str = f"*{ratio_str}"

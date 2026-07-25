@@ -1,6 +1,7 @@
 #include "solver.hpp"
 
-void Solver::prep_orbital_probing_() {
+auto Solver::prep_orbital_probing_() -> bool {
     // TODO
     unimplemented();
+    return false;  // no action was fixed
 }

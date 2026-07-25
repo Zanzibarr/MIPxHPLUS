@@ -24,31 +24,39 @@ void Solver::preprocess_() {
     // Simplifications enable one another (e.g. removing an achiever can only grow landmark sets, which in turn enables new simplifications), so
     // the steps are repeated until convergence. Each step, however, is idempotent on unchanged inputs, so it must be repeated only when its
     // inputs changed since it last ran:
-    //  - l: an achiever disappeared, i.e. an (action, effect) pair was removed (deleted by 'a' or gone with an eliminated fact/action) -> tracked
-    //       exactly by nfadd, since preconditions of surviving actions never change and effect-less actions cannot affect landmarks
-    //  - a: a landmark set changed (across runs they can only grow); erasability of an effect depends only on landmarks and preconditions
-    //  - b: an effect entry was deleted ('a') or an action was eliminated after 'b' ran ('d'); eliminating the facts/actions 'b' itself found
-    //       never changes relevance of the survivors (they were unreachable in the backward exploration)
-    //  - d: a landmark set changed or an effect set shrank ('a' or fact elimination); eliminating actions cannot create new dominations (the
-    //       domination condition is pairwise and transitive) and newly fixed actions can never be dominated (the dominant action would be a
-    //       second achiever of the fact the fixed action uniquely achieves)
-    //  - i: the fixed actions may have changed ('l' re-ran: achievers shrank, so actions can become fixed even with unchanged landmarks) or
-    //       preconditions shrank (facts eliminated by 'b', or emptied by a previous 'i' application), possibly enabling new fixed/0-cost
-    //       applications; eliminating actions alone can never enable an application (it never satisfies a precondition)
-    //  - o: re-run on every pass
+    //  - l: an achiever disappeared, i.e. an (action, effect) pair was removed (deleted by 'a' or gone with an eliminated fact/action), or the goal
+    //       shrank ('i') -> all tracked by nfadd, which drops on every such event: effect-less actions cannot affect landmarks, and the only step
+    //       that shrinks the preconditions of a surviving action ('i', whose eliminated facts are exactly the ones its prefix reached) always
+    //       eliminates the prefix actions that added them
+    //  - a: a landmark set changed (across runs they can only grow); erasability of an effect depends only on landmarks and preconditions, and
+    //       shrinking a precondition set can only shrink the landmark union, i.e. erase fewer effects
+    //  - b: an effect entry was deleted ('a'), an action was eliminated after 'b' ran ('d' or 'i'), or the goal shrank ('i'); eliminating the
+    //       facts/actions 'b' itself found never changes relevance of the survivors (they were unreachable in the backward exploration), and a
+    //       growing fixed_facts/fixed_actions can only protect more facts/actions from elimination
+    //  - d: a landmark set changed or a pre/eff set shrank ('a', or any fact elimination — including the one 'i' performs, which can collapse
+    //       distinct actions into duplicates); eliminating actions cannot create new dominations (the domination condition is pairwise and
+    //       transitive) and newly fixed actions can never be dominated (they are excluded from the candidates outright)
+    //  - i: the fixed actions may have changed ('l' re-ran: achievers shrank, so actions can become fixed even with unchanged landmarks; or 'o'
+    //       fixed one) or preconditions shrank (facts eliminated by 'b'), possibly enabling new fixed/0-cost applications; eliminating actions
+    //       alone can never enable an application (it never satisfies a precondition), and 'i' saturates internally so it never re-arms itself
+    //  - o: fixes at most one action per pass (fixing one changes the symmetry graph); a successful fix re-arms itself so the loop keeps running
+    //       until no further action can be fixed, and also re-arms 'i' (the newly fixed action's preconditions become fixed facts). It is not
+    //       gated on a pending flag: it runs on every pass, since any change to the instance reshapes the symmetry graph
     bool pending_a = true;
     bool pending_b = true;
     bool pending_d = true;
     bool pending_i = true;
+    bool pending_o = true;
     unsigned int nfadd_at_last_l = inst_.nfadd + 1;  // makes 'l' pending on the first pass
 
     // Convergence tripwire: every pass beyond the first must be caused by a change, and each change strictly shrinks n, m or nfadd (or grows a
-    // landmark set, which re-arms at most one extra settling pass) — a generous linear bound catches any future non-terminating trigger
+    // landmark set, which re-arms at most one extra settling pass, or grows fixed_actions via 'o', at most m times) — a generous linear bound
+    // catches any future non-terminating trigger
     const unsigned int max_passes = (2 * (inst_.n + inst_.m + inst_.nfadd)) + 3;
     unsigned int passes{0};
 
     while ((use_l && nfadd_at_last_l != inst_.nfadd) || (use_a && pending_a) || (use_b && pending_b) || (use_d && pending_d) ||
-           (use_i && pending_i)) {
+           (use_i && pending_i) || (use_o && pending_o)) {
         myassert(++passes <= max_passes, "Preprocessing loop did not converge");
         global_.eliminated_facts = BinarySet{inst_.n};
         global_.eliminated_actions = BinarySet{inst_.m};
@@ -98,13 +106,20 @@ void Solver::preprocess_() {
         prep_fixed_actions_();  // Fixes all preconditions and effects of fixed actions
 
         if (use_o) {
-            prep_orbital_probing_();
-            pending_i = true;
+            pending_o = prep_orbital_probing_();
+            pending_i |= pending_o;  // the newly fixed action's preconditions become fixed facts, possibly enabling new fixed/0-cost applications
         }
 
         if (use_i && pending_i) {
             pending_i = false;
-            prep_initial_action_sequencing_(landmarks);  // also recounts nfadd (the repetition trigger for 'l')
+            const bool i_changed = prep_initial_action_sequencing_(landmarks);  // also recounts nfadd (the repetition trigger for 'l')
+            // 'i' eliminates the prefix actions and every fact they reached. Unlike the other elimination steps it does so on its own, past the
+            // shared elimination block above, so it has to re-arm the same steps that block re-arms (and 'b', since it also drops actions and can
+            // shrink the goal): the survivors come out with smaller pre/eff sets, which can turn previously distinct actions into duplicates ('d')
+            // and previously relevant facts/actions into unreachable ones ('b')
+            pending_o |= i_changed;
+            pending_d |= i_changed;
+            pending_b |= i_changed;
             // If we reach the goal state with the prefix, the goal is set to empty without changing any other data structure -> this is fine ONLY
             // because the check immediatelly after this line terminates the execution with an optimality proof and only the prefix is considered
             // (empty rest of the solution since the goal is already reached)...
@@ -384,6 +399,27 @@ void Solver::prep_relevance_backward_(BinarySet& relevant_variables) {
     // eliminate actions and variables that are not relevant (or landmarks)
     global_.eliminated_facts |= !(relevant_variables | global_.fixed_facts);  // eliminating variables will be done at once, later
     global_.eliminated_actions |= !relevant_actions;                          // eliminating actions will be done at once, later
+
+    // Eliminate non-goal facts that aren't precondition of any action
+    // list of actions that have as precondition variable p
+    std::vector<std::vector<unsigned int>> act_with_pre(inst_.n);
+    for (unsigned int act_i = 0; act_i < inst_.m; act_i++) {
+        if (global_.eliminated_actions[act_i]) {
+            continue;
+        }
+        for (const auto& pre : inst_.actions[act_i].pre_sparse) {
+            if (global_.eliminated_facts[pre]) {
+                continue;
+            }
+            act_with_pre[pre].push_back(act_i);
+        }
+    }
+
+    for (unsigned int i = 0; i < inst_.n; i++) {
+        if (!inst_.goal[i] && act_with_pre[i].empty()) {
+            global_.eliminated_facts.add(i);
+        }
+    }
 }
 
 void Solver::prep_relevance_forward_(BinarySet& relevant_variables) {
@@ -418,11 +454,11 @@ auto Solver::prep_dominated_actions_(std::vector<std::vector<unsigned int>>& lan
     bs_searcher candidates{inst_.n};
     std::vector<BinarySet> actions_effects(inst_.m, BinarySet(inst_.n));
     for (const auto& act_i : rem_act) {
-        if (global_.fixed_actions[act_i]) {
-            continue;
-        }
         for (const auto& val : inst_.actions[act_i].eff_sparse) {
             actions_effects[act_i].add(val);
+        }
+        if (global_.fixed_actions[act_i]) {
+            continue;
         }
         candidates.add(act_i, actions_effects[act_i]);
     }

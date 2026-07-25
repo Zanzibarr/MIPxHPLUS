@@ -76,7 +76,12 @@ void Solver::primal_greedy_() {
     std::vector<unsigned int> solution;
     double incumbent{0};
 
-    while (!state.superset_of(inst_.goal)) {
+    // Track how many goal facts are still unreached instead of re-scanning the whole state bitset
+    // each iteration. State is monotonic here (only |=), so this counter only ever decreases.
+    std::size_t goal_remaining = inst_.goal.size();
+    std::vector<unsigned int> new_eff;  // reused across iterations
+
+    while (goal_remaining > 0) {
         if (candidates.empty()) [[unlikely]] {
             throw EarlyExit("computing the primal heuristic", EarlyExit::INFEASIBLE);
         }
@@ -88,13 +93,16 @@ void Solver::primal_greedy_() {
 
         candidates.remove(choice);
 
-        // Compute new effects
-        std::vector<unsigned int> new_eff(inst_.actions[choice].eff_sparse.begin(), inst_.actions[choice].eff_sparse.end());
+        // Compute new effects (facts not already in the state)
+        new_eff.assign(inst_.actions[choice].eff_sparse.begin(), inst_.actions[choice].eff_sparse.end());
         std::erase_if(new_eff, [&state](const auto val) { return state[val]; });
         state |= new_eff;
 
         // Update candidates via watch preconditions
         for (const auto& eff : new_eff) {
+            if (inst_.goal[eff]) {
+                --goal_remaining;
+            }
             for (size_t i = 0; i < watching[eff].size();) {
                 const auto act_i = watching[eff][i];
 
