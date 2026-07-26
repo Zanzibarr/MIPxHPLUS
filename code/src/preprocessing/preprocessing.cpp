@@ -30,7 +30,7 @@ void Solver::preprocess_() {
     //  - l: an achiever disappeared or the goal shrank, both tracked by nfadd
     //  - a: a landmark set changed
     //  - b: an effect entry was deleted, an action was eliminated after 'b' ran, or the goal shrank
-    //  - d: a landmark set changed, or a pre/eff set shrank past what it reasoned on
+    //  - d: a landmark set changed, or a fact was marked, by 'b' (it must then run before 'o', which reasons on the surviving facts too) or by 'o'
     //  - i: the fixed actions changed, or a precondition set shrank
     //  - o: ungated, since any change to the instance reshapes the symmetry graph; it fixes at most one action per pass and re-arms itself
     bool pending_a = true;
@@ -80,25 +80,33 @@ void Solver::preprocess_() {
             }
         }
 
-        // Facts already marked when 'd' reasoned about the instance: only the ones marked past this point invalidate its result. Left at 0 when 'd'
-        // does not run, so that any mark at all re-arms it
-        unsigned int marks_seen_by_d{0};
+        // What 'b' marked shrinks the pre/eff sets of every survivor, so 'd' and 'i' must reconsider the instance in this very pass: 'o' reasons on
+        // the surviving facts too, and two actions differing only on facts 'b' just marked reach it as an only-action generator unless 'd' ran first
+        if (!global_.eliminated_facts.empty()) {
+            pending_d = true;
+            pending_i = true;
+        }
+
         if (use_d && pending_d) {
             pending_d = false;
             if (prep_dominated_actions_(landmarks)) {
                 pending_b = true;  // facts that were relevant only as preconditions of dominated actions are now irrelevant
             }
-            marks_seen_by_d = global_.eliminated_facts.size();
         }
 
+        const unsigned int marks_before_o = global_.eliminated_facts.size();
         if (use_o) {
             pending_o = prep_orbital_probing_();
             pending_i |= pending_o;  // the newly fixed action's preconditions become fixed facts, possibly enabling new fixed/0-cost applications
         }
+        // An only-fact generator fixes every action, so the twin 'o' drops duplicates the one it keeps in every pre/eff set: no effect subset
+        // relation moves, and 'i' (pure reachability over those sets) reaches both twins together, so it needs nothing. 'd' does: its other half
+        // tests pre(dominant) against landmarks that 'l' computed at the top of the pass, on an instance the generator is not a symmetry of, so one
+        // twin can sit in a landmark set without the other and dropping it can satisfy a containment that used to fail
+        if (global_.eliminated_facts.size() > marks_before_o) {
+            pending_d = true;
+        }
 
-        // Facts marked before 'i' ran: 'i' reasons on the un-shrunk precondition sets, so those re-arm it for the next pass. The ones it marks itself
-        // never do, since it saturates internally
-        const unsigned int marks_before_i = global_.eliminated_facts.size();
         if (use_i && pending_i) {
             pending_i = false;
             const bool i_changed = prep_initial_action_sequencing_();
@@ -111,13 +119,6 @@ void Solver::preprocess_() {
         }
 
         // ~~~~~~ Apply what the pass marked ~~~~~ //
-        if (global_.eliminated_facts.size() > marks_seen_by_d) {
-            pending_d = true;  // the surviving pre/eff sets shrink past what 'd' reasoned on
-        }
-        if (marks_before_i > 0) {
-            pending_i = true;  // the surviving precondition sets shrink, so applicability is worth re-checking
-        }
-
         // Actions first: fact elimination then only rewrites the pre/eff sets of the survivors, and its nfadd recount is the one that stands
         prep_eliminated_actions_();
         prep_eliminated_facts_(landmarks);
@@ -149,7 +150,7 @@ void Solver::preprocess_() {
         const auto n_actions = inst_.m - global_.fixed_actions.size();
         const auto n_effects = inst_.nfadd;
         logger_[DEBUG] << std::format("Facts: {:>5} Actions: {:>5} Effects: {:>5}", n_facts, n_actions, n_effects);
-        
+
         // Goal reached during preprocessing: 'i' empties the goal without touching anything else, which is fine only because we stop right here with
         // an optimality proof, the prefix being the whole solution
         if (inst_.goal.empty()) {
