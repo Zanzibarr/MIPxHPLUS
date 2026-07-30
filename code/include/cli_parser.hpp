@@ -48,8 +48,8 @@ inline auto validate_cli(cli::ArgParser& parser) -> void {
         parsing_warnings.push_back(std::format("This machine has {} cores: using up to {} threads", max_threads, max_threads));
     }
 
-    // log paths should exist
-    auto check_log_dir = [](std::string_view flag, const std::string& path) {
+    // files paths should exist
+    auto check_file_dir = [](std::string_view flag, const std::string& path) {
         if (path == "0") {
             return;  // no log file
         }
@@ -58,8 +58,11 @@ inline auto validate_cli(cli::ArgParser& parser) -> void {
             throw cli::ParseError(std::format("--{}: directory '{}' does not exist", flag, parent.string()));
         }
     };
-    check_log_dir(cli_desc::log, parser.get<cli_desc::log, std::string>());
-    check_log_dir(cli_desc::cpxlog, parser.get<cli_desc::cpxlog, std::string>());
+
+    check_file_dir(cli_desc::sol_file, parser.get<cli_desc::sol_file, std::string>());
+
+    check_file_dir(cli_desc::log, parser.get<cli_desc::log, std::string>());
+    check_file_dir(cli_desc::cpxlog, parser.get<cli_desc::cpxlog, std::string>());
 
     // input file should exist
     const auto& input = parser.get<cli_desc::input, std::string>();
@@ -153,10 +156,11 @@ inline auto parse_cli(const int argc, char** argv, Logger& logger) -> ParameterR
 
     // General parameters
     parser.add<cli_desc::verbose, bool>().shorthand('v').description(cli_desc::verbose_help).default_val(cli_desc::def_debug_enabled);
+    parser.add<cli_desc::sol_file, std::string>().shorthand('w').description(cli_desc::sol_file_help).default_val(cli_desc::def_sol_file);
 
     // Execution parameters
     parser.add<cli_desc::seed, int>().shorthand('s').description(cli_desc::seed_help).default_val(cli_desc::def_seed);
-    parser.add<cli_desc::stdout_, bool>().shorthand('o').description(cli_desc::stdout_help).default_val(cli_desc::def_stdout);
+    parser.add<cli_desc::stdout, bool>().shorthand('o').description(cli_desc::stdout_help).default_val(cli_desc::def_stdout);
     parser.add<cli_desc::log, std::string>().shorthand('l').description(cli_desc::log_help).default_val(cli_desc::def_log);
     parser.add<cli_desc::cpxlog, std::string>().shorthand('c').description(cli_desc::cpxlog_help).default_val(cli_desc::def_cpxlog);
     parser.add<cli_desc::input, std::string>().shorthand('i').description(cli_desc::input_help).require();
@@ -201,7 +205,7 @@ inline auto parse_cli(const int argc, char** argv, Logger& logger) -> ParameterR
     logger.set_memory(parser.get<cli_desc::verbose, bool>());
     logger.set_thread(parser.get<cli_desc::verbose, bool>());
     logger.set_min_level(parser.get<cli_desc::verbose, bool>() ? DEBUG : INFO);
-    logger.set_stdout(parser.get<cli_desc::stdout_, bool>());
+    logger.set_stdout(parser.get<cli_desc::stdout, bool>());
     if (const auto& log_path = parser.get<cli_desc::log, std::string>(); log_path != "0") {
         logger.open_file(log_path);
     }

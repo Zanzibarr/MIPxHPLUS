@@ -13,7 +13,8 @@ using utilz::CTString;
 // ── Parameter names (compile-time, usable as ArgParser NTTP keys) ──
 inline constexpr CTString verbose = "verbose";
 inline constexpr CTString seed = "seed";
-inline constexpr CTString stdout_ = "stdout";
+inline constexpr CTString stdout = "stdout";
+inline constexpr CTString sol_file = "solfile";
 inline constexpr CTString log = "log";
 inline constexpr CTString cpxlog = "cpxlog";
 inline constexpr CTString input = "input";
@@ -32,6 +33,7 @@ inline constexpr CTString relax_cuts = "relax-cuts";
 // --- Defaults ---
 // General parameters
 constexpr bool def_debug_enabled = false;
+constexpr std::string def_sol_file = "0";
 
 // Execution parameters
 constexpr int def_time_limit_s = 60;
@@ -60,6 +62,7 @@ constexpr std::string def_relax_cuts = "lmcut-g";
 
 // ── Help descriptions ──
 inline constexpr std::string_view verbose_help = "Enable verbose (DEBUG-level) logging";
+inline constexpr std::string_view sol_file_help = "Write the solution to file (Fast Downward format)";
 inline constexpr std::string_view seed_help = "Random seed for reproducible runs";
 inline constexpr std::string_view stdout_help = "Also write output to stdout (independent of --log)";
 inline constexpr std::string_view log_help = "Path to the solver log file, or 0 for none (parent directory must exist)";

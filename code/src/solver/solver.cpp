@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <exception>
+#include <fstream>
 #include <logger.hxx>
 #include <timer.hxx>
 
@@ -109,11 +110,24 @@ void Solver::show() {
     logger_ << std::format("Best incumbent: {}", best_incumbent);
     if (is_lw_strict_double(best_incumbent, constants::infeas_bound)) {  // If I actually have a complete solution, not just an incomplete prefix
         logger_ << std::format("Best solution ({}):", global_.solution_prefix.size() + global_.solution.size());
-        for (auto act_name : global_.solution_prefix) {
+        for (const auto& act_name : global_.solution_prefix) {
             logger_ << act_name;
         }
-        for (auto a : global_.solution) {
-            logger_ << inst_.actions_names[a];
+        for (auto act_i : global_.solution) {
+            logger_ << inst_.actions_names[act_i];
+        }
+
+        const auto& sol_file = params_.get<cli_desc::sol_file, std::string>();
+        if (sol_file != "0") {
+            std::ofstream file(sol_file);
+            integritycheck(file, "Solution file didn't open correctly");
+            for (const auto& act_name : global_.solution_prefix) {
+                file << std::format("({})\n", act_name);
+            }
+            for (auto act_i : global_.solution) {
+                file << std::format("({})\n", inst_.actions_names[act_i]);
+            }
+            file << std::format("; cost = {} ({} cost)", static_cast<int>(best_incumbent), inst_.unit_costs ? "unit" : "general");
         }
     }
     logger_ << stats_.stats_report_to_str();
@@ -136,8 +150,7 @@ auto Solver::get() -> std::vector<std::string> {
 void Solver::print_info_() {
     logger_ << "----------------- Info on the instance -----------------";
     if (!inst_.actions.empty()) {
-        const std::string cost_type = inst_.actions[0].cost == 1 ? "unitary costs" : "constant costs";
-        logger_ << "Metric:                             " << std::setw(20) << (inst_.equal_costs ? cost_type : "integer costs");
+        logger_ << "Metric:                             " << std::setw(20) << (inst_.unit_costs ? "unitary costs" : "integer costs");
     }
     logger_ << "# facts:                                      " << std::setw(10) << inst_.n;
     logger_ << "# actions:                                    " << std::setw(10) << inst_.m;

@@ -26,7 +26,7 @@ struct Action {
 };
 
 struct Instance {
-    bool equal_costs{};
+    bool unit_costs{};
     unsigned int n{};
     unsigned int m{};
     unsigned int nfadd{};

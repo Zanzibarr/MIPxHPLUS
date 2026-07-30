@@ -33,7 +33,7 @@ void Solver::read_instance_() {
     if (!isint(line, 0, 1)) {
         logger_[FATAL] << "Corrupted file: <metric> is not 0 or 1";
     }
-    inst_.equal_costs = stoi(line) == 0;
+    inst_.unit_costs = stoi(line) == 0;
     std::getline(file, line);  // end_metric
     if (line != "end_metric") {
         logger_[FATAL] << "Corrupted file: missing <end_metric>";
@@ -149,8 +149,6 @@ void Solver::read_instance_() {
     }
 
     // * operator (actions) section
-    int checkcosts{-1};
-    bool equalcosts_check{true};
     logger_[WARNING] << "Ignoring effect conditions";
     std::getline(file, line);  // n_act
     if (!isint(line, 0)) {
@@ -244,13 +242,8 @@ void Solver::read_instance_() {
             logger_[FATAL] << "Corrupted file: action cost is not a positive integer";
         }
         unsigned int cost{1};
-        if (!inst_.equal_costs) {
+        if (!inst_.unit_costs) {
             cost = static_cast<unsigned int>(stoi(line));
-            if (checkcosts == -1) {
-                checkcosts = static_cast<int>(cost);
-            } else if (static_cast<unsigned int>(checkcosts) != cost) {
-                equalcosts_check = false;
-            }
         }
         std::getline(file, line);  // end_operator
         if (line != "end_operator") {
@@ -269,7 +262,6 @@ void Solver::read_instance_() {
             act_eff[var] = -1;  // reset for next action
         }
     }
-    inst_.equal_costs = equalcosts_check;
 
     logger_[WARNING] << "Ignoring axiom section";
 
