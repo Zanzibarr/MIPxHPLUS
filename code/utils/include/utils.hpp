@@ -100,7 +100,7 @@ constexpr auto fix_precision(double val) -> double {
 // ##################################################################### //
 
 [[nodiscard]]
-inline auto isint(const std::string& str, const int from = std::numeric_limits<int>::min(), const int to = std::numeric_limits<int>::max()) -> bool {
+inline auto isint(const std::string& str, const long long from = std::numeric_limits<int>::min(), const long long to = std::numeric_limits<int>::max()) -> bool {
     // Handle empty string
     if (str.empty()) {
         return false;
@@ -125,8 +125,9 @@ inline auto isint(const std::string& str, const int from = std::numeric_limits<i
     }
 
     try {
-        // Only convert to int if the string consists of valid digits
-        int num{std::stoi(str)};
+        // Parse in 64 bit: the comparison below is then free of any signed-overflow
+        // assumption on the (int-sized) bounds the callers derive with '- 1'
+        const long long num{std::stoll(str)};
         return num >= from && num <= to;
     } catch (const std::out_of_range&) {
         // Handle overflow cases

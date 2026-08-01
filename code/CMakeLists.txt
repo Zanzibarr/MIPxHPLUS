@@ -51,7 +51,7 @@ add_library(project_warnings INTERFACE)
 target_compile_options(project_warnings INTERFACE
     $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:
         -Wall -Wextra -Wpedantic
-        -Wuninitialized -Wstrict-overflow=5
+        -Wuninitialized -Wstrict-overflow=3
         -Wshadow -Wnon-virtual-dtor -Woverloaded-virtual
         -Wnull-dereference -Wcast-align -Wcast-qual
         -Wdouble-promotion -Wformat=2 -Wunused

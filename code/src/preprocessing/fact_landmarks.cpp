@@ -1,5 +1,6 @@
 #include <binary_set.hxx>
 #include <deque>
+#include <utility>  // std::move
 
 #include "solver.hpp"
 
@@ -118,7 +119,7 @@ auto Solver::prep_fact_landmarks_(std::vector<std::vector<unsigned int>>& landma
                 continue;
             }
 
-            landmarks[eff] = lm_new;
+            landmarks[eff] = std::move(lm_new);
             for (const auto& act_j : act_with_pre[eff]) {
                 if (applicable[act_j] && !acts_in_queue[act_j]) {
                     actions_queue.push_back(act_j);

@@ -103,7 +103,7 @@ void Solver::read_instance_() {
     std::vector<int> tmp_istate(num_variables);
     for (unsigned int var_i = 0; var_i < num_variables; var_i++) {
         std::getline(file, line);  // initial value of var_i
-        if (!isint(line, 0, var_ranges[var_i] - 1)) {
+        if (!isint(line, 0, static_cast<long long>(var_ranges[var_i]) - 1)) {
             logger_[FATAL] << "Corrupted file: invalid value for variable in initial state";
         }
         const int val{stoi(line)};
@@ -121,7 +121,7 @@ void Solver::read_instance_() {
     }
     std::vector<int> tmp_goal(num_variables, -1);
     std::getline(file, line);  // number of goals
-    if (!isint(line, 0, static_cast<int>(num_variables))) {
+    if (!isint(line, 0, static_cast<long long>(num_variables))) {
         logger_[FATAL] << "Corrupted file: invalid number of goals";
     }
     const unsigned int ngoals{static_cast<unsigned int>(stoi(line))};
@@ -133,11 +133,11 @@ void Solver::read_instance_() {
         if (tokens.size() != 2) {
             logger_[FATAL] << "Corrupted file: expected pair variable goal";
         }
-        if (!isint(tokens[0], 0, static_cast<int>(num_variables) - 1)) {
+        if (!isint(tokens[0], 0, static_cast<long long>(num_variables) - 1)) {
             logger_[FATAL] << "Corrupted file: invalid variable index in goal state";  // variable index
         }
         const unsigned int var{static_cast<unsigned int>(stoi(tokens[0]))};
-        if (!isint(tokens[1], 0, var_ranges[var] - 1)) {
+        if (!isint(tokens[1], 0, static_cast<long long>(var_ranges[var]) - 1)) {
             logger_[FATAL] << "Corrupted file: invalid variable value in goal state";  // variable goal
         }
         const int value{stoi(tokens[1])};
@@ -179,7 +179,7 @@ void Solver::read_instance_() {
         std::getline(file, line);  // symbolic action name
         std::string name{std::move(line)};
         std::getline(file, line);  // number of prevail conditions
-        if (!isint(line, 0, static_cast<int>(num_variables))) {
+        if (!isint(line, 0, static_cast<long long>(num_variables))) {
             logger_[FATAL] << "Corrupted file: invalid number of prevail conditions for action";
         }
         const unsigned int n_pre{static_cast<unsigned int>(stoi(line))};
@@ -191,11 +191,11 @@ void Solver::read_instance_() {
             if (tokens.size() != 2) {
                 logger_[FATAL] << "Corrupted file: expected pair variable value";
             }
-            if (!isint(tokens[0], 0, static_cast<int>(num_variables) - 1)) {
+            if (!isint(tokens[0], 0, static_cast<long long>(num_variables) - 1)) {
                 logger_[FATAL] << "Corrupted file: invalid variable index for action precondition";  // variable index
             }
             const unsigned int var{static_cast<unsigned int>(stoi(tokens[0]))};
-            if (!isint(tokens[1], 0, var_ranges[var] - 1)) {
+            if (!isint(tokens[1], 0, static_cast<long long>(var_ranges[var]) - 1)) {
                 logger_[FATAL] << "Corrupted file: invalid variable value for action precondition";  // variable value
             }
             const int value{stoi(tokens[1])};
@@ -218,15 +218,15 @@ void Solver::read_instance_() {
             if (!isint(tokens[0], 0, 0)) {
                 logger_[FATAL] << "This program won't handle effect conditions";  // number of effect conditions (ignored and check to be 0)
             }
-            if (!isint(tokens[1], 0, static_cast<int>(num_variables) - 1)) {
+            if (!isint(tokens[1], 0, static_cast<long long>(num_variables) - 1)) {
                 logger_[FATAL] << "Corrupted file: invalid variable index for action effect";  // variable affected by the action
             }
             const unsigned int var{static_cast<unsigned int>(stoi(tokens[1]))};
-            if (!isint(tokens[2], -1, var_ranges[var] - 1)) {
+            if (!isint(tokens[2], -1, static_cast<long long>(var_ranges[var]) - 1)) {
                 logger_[FATAL] << "Corrupted file: invalid variable value for action precondition (effects)";  // precondition of the variable
             }
             const int pre_val{stoi(tokens[2])};
-            if (!isint(tokens[3], 0, var_ranges[var] - 1)) {
+            if (!isint(tokens[3], 0, static_cast<long long>(var_ranges[var]) - 1)) {
                 logger_[FATAL] << "Corrupted file: invalid variable value for action effect";  // effect of the variable
             }
             const int eff_val{stoi(tokens[3])};
