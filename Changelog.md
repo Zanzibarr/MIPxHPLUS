@@ -18,13 +18,14 @@ _To see info about this project, please refer to the [Readme](Readme.md)._
 <!-- ### :rocket: Performance Improvements -->
 
 
-## [x.y.z] - 2026/08/01
+## [4.2.1] - 2026/08/01
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->
 ### :heavy_exclamation_mark: Changed
 - Splitted read_instance in reading and initial state removal, the second part has been moved in the preprocessing scope (executed always) -> no change in execution expected
 ### :heavy_plus_sign: Added
 - Added preprocessing flags for "fixed facts get promoted to goal facts" and "non-goal facts that are not preconditions get eliminated"
+- Flag to write solution to file
 ### :x: Removed
 - Moved validation out-of-source
 <!-- ### :curly_loop: Other -->
