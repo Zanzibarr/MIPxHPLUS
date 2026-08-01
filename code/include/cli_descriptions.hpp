@@ -75,7 +75,7 @@ inline constexpr std::string_view hplus_alg_help =
 inline constexpr std::string_view preprocess_help =
     "Preprocessing to apply as a combo of letters (0 for none): l (landmarks extraction), a (first adders, requires l), f (forward relevance "
     "analysis, requires b), b (backward relevance analysis), d (dominated actions removal, requires l), o (orbital probing), i (initial actions "
-    "sequencing)";
+    "sequencing), g (fixed facts get promoted to goal facts), p (non-goal facts that are not preconditions get eliminated)";
 inline constexpr std::string_view lmcut_pcf_help =
     "Precondition Choice Function(s) driving LM-Cut as a combo of letters (0 to skip LM-Cut): a (ARB), i (INV), v (VDM), r (RND), z (GZD), b (BD), "
     "d (GZD+BD); each extra letter runs LM-Cut once more";
@@ -102,7 +102,7 @@ inline constexpr std::array<std::string_view, 7> cand_cuts_choices = {"0", "sec"
 inline constexpr std::array<std::string_view, 7> relax_cuts_choices = {"0", "sec", "lm", "lm-m", "lmcut", "lmcut-g", "lmcut-c"};
 
 // Letter-combination allow lists (validated by sanitize_letters, not by ArgParser::allow)
-inline constexpr std::string_view preprocess_letters = "lafbdoi";
+inline constexpr std::string_view preprocess_letters = "lafbdoigp";
 inline constexpr std::string_view lmcut_pcf_letters = "aivrzbd";
 inline constexpr std::string_view lmcut_opt_letters = "ef";
 }  // namespace cli_desc

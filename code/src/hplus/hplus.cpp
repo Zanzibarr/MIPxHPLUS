@@ -178,8 +178,6 @@ void Solver::hplus_build_base_model_() {
     const unsigned int var_start{curr_col};
     count = 0;
     for (unsigned int var_i = 0; var_i < inst_.n; var_i++) {
-        // Technically fixed_facts == goal if the preprocessing is enabled, and fixed_facts = \emptyset otherwise, so we could just use inst_.goal
-        // here... we choose to keep it this way as it's more robust to future changes that do not update the goal
         lbs[count++] = (global_.fixed_facts[var_i] || inst_.goal[var_i]) ? 1 : 0;
     }
     curr_col += count;

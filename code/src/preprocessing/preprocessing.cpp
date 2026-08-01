@@ -4,7 +4,6 @@
 #include "solver.hpp"
 
 // TODO: Can we parallelize the preprocessing?
-// TODO: Is there a way to know which action is achieving a fixed fact? If so, can we fix those as well (actions and first achievers)?
 void Solver::preprocess_() {
     const auto& choices = params_.get<cli_desc::preprocess, std::string>();
     const bool use_l = choices.find('l') != std::string::npos;
@@ -164,10 +163,67 @@ void Solver::preprocess_() {
 
     // Fixed facts can be treated as goal facts (we cannot move this step in the preprocessing loop, since there's a step that eliminates non-goal
     // facts that have no actions needing them... in that case goal and fixed facts are different, and keeping a small goal enables more eliminations)
-    inst_.goal |= global_.fixed_facts;
+    if (params_.get<cli_desc::preprocess, std::string>().find('g') != std::string::npos) {
+        inst_.goal |= global_.fixed_facts;
+    }
 
     logger_[DEBUG] << std::format("Computed a prefix of cost {}", global_.cost_prefix);
     logger_[DEBUG] << std::format("Size of the prefix: {}", global_.solution_prefix.size());
+}
+
+void Solver::prep_initial_state_removal_() {
+    logger_[INFO] << ("Removing initial state variables");
+    std::vector<size_t> istate_offsets(inst_.n);
+    size_t n_opt{inst_.n};
+    for (unsigned int i = 0, counter = 0; i < inst_.n; i++) {
+        if (inst_.start[i]) {
+            counter++;
+            n_opt--;
+        }
+        istate_offsets[i] = counter;
+    }
+    inst_.n = static_cast<unsigned int>(n_opt);
+    BinarySet goal_opt{inst_.n};
+    for (const auto var : inst_.goal) {
+        if (!inst_.start[var]) {
+            goal_opt.add(static_cast<unsigned int>(var - istate_offsets[var]));
+        }
+    }
+    inst_.goal = goal_opt;
+    inst_.nfadd = 0;
+    for (size_t i = 0; i < inst_.m; i++) {
+        std::vector<unsigned int> act_pre_irem;
+        std::vector<unsigned int> act_eff_irem;
+        act_pre_irem.reserve(inst_.actions[i].pre_sparse.size());
+        act_eff_irem.reserve(inst_.actions[i].eff_sparse.size());
+        for (const auto& var : inst_.actions[i].pre_sparse) {
+            if (!inst_.start[var]) {
+                act_pre_irem.push_back(static_cast<unsigned int>(var - istate_offsets[var]));
+            }
+        }
+        for (const auto& var : inst_.actions[i].eff_sparse) {
+            if (!inst_.start[var]) {
+                act_eff_irem.push_back(static_cast<unsigned int>(var - istate_offsets[var]));
+            }
+        }
+        inst_.actions[i].pre_sparse = std::move(act_pre_irem);
+        inst_.actions[i].eff_sparse = std::move(act_eff_irem);
+        inst_.nfadd += inst_.actions[i].eff_sparse.size();
+    }
+
+    // Set this to an empty set of capacity 1 so an error is thrown if this is ever used (different size BinarySet)... if they are of the same size,
+    // then this is correct (empty binary set of the correct number of facts)
+    inst_.start = BinarySet{1};
+
+    logger_[DEBUG] << std::format("{} variables (istate-removed)", inst_.n);
+    logger_[DEBUG] << std::format("{} first adders", inst_.nfadd);
+
+    const bool is_infeasible = (  // add here other fast feasibility checks
+        inst_.m == 0 && !inst_.goal.empty());
+
+    if (is_infeasible) {
+        throw EarlyExit("performing binary expansion", EarlyExit::INFEASIBLE);
+    }
 }
 
 void Solver::prep_eliminated_facts_(std::vector<std::vector<unsigned int>>& landmarks) {

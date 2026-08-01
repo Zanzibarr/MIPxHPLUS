@@ -2,8 +2,8 @@
 #include <queue>
 
 #include "bs_utils.hpp"
+#include "cli_descriptions.hpp"
 #include "solver.hpp"
-
 
 void Solver::prep_relevance_backward_(BinarySet& relevant_variables) {
     logger_[DEBUG] << "PREP: backwards relevance analysis";
@@ -55,22 +55,24 @@ void Solver::prep_relevance_backward_(BinarySet& relevant_variables) {
 
     // Eliminate non-goal facts that aren't precondition of any action
     // list of actions that have as precondition variable p
-    std::vector<std::vector<unsigned int>> act_with_pre(inst_.n);
-    for (unsigned int act_i = 0; act_i < inst_.m; act_i++) {
-        if (global_.eliminated_actions[act_i]) {
-            continue;
-        }
-        for (const auto& pre : inst_.actions[act_i].pre_sparse) {
-            if (global_.eliminated_facts[pre]) {
+    if (params_.get<cli_desc::preprocess, std::string>().find('p') != std::string::npos) {
+        std::vector<std::vector<unsigned int>> act_with_pre(inst_.n);
+        for (unsigned int act_i = 0; act_i < inst_.m; act_i++) {
+            if (global_.eliminated_actions[act_i]) {
                 continue;
             }
-            act_with_pre[pre].push_back(act_i);
+            for (const auto& pre : inst_.actions[act_i].pre_sparse) {
+                if (global_.eliminated_facts[pre]) {
+                    continue;
+                }
+                act_with_pre[pre].push_back(act_i);
+            }
         }
-    }
 
-    for (unsigned int i = 0; i < inst_.n; i++) {
-        if (!inst_.goal[i] && !global_.eliminated_facts[i] && act_with_pre[i].empty()) {
-            global_.eliminated_facts.add(i);
+        for (unsigned int i = 0; i < inst_.n; i++) {
+            if (!inst_.goal[i] && !global_.eliminated_facts[i] && act_with_pre[i].empty()) {
+                global_.eliminated_facts.add(i);
+            }
         }
     }
 }

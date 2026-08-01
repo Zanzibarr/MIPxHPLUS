@@ -32,6 +32,7 @@ struct Instance {
     unsigned int nfadd{};
     std::vector<Action> actions;
     std::vector<std::string> actions_names;
+    BinarySet start;  // Never use this since the initial state is assumed empty
     BinarySet goal;
 };
 
@@ -54,6 +55,7 @@ class Solver {
     // Haslum, Slaney, Thiebaux: "Minimal landmarks for optimal deletefree planning"
     // Imai, Fukunaga: "On a Practical, Integer-Linear Programming Model for Delete-Free Tasks and its Use as a Heuristic for Cost-Optimal Planning"
     void preprocess_();
+    void prep_initial_state_removal_();
     // Recomputes landmarks and fixed facts/actions; returns whether the landmark sets differ from the ones in input
     [[nodiscard]]
     auto prep_fact_landmarks_(std::vector<std::vector<unsigned int>>& landmarks) -> bool;

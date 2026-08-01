@@ -271,6 +271,7 @@ auto Solver::prep_orbital_probing_() -> bool {
     {
         auto _fixing_tmr = make_scoped_timer<"orbprob.fixing">(stats_);
 
+        // TODO: Set a limit to the amount of orbits we look at...
         for (const auto& orbit : orbits_members) {
             // Check whether this orbit is a valid landmark. The eliminated actions are excluded alongside the orbit: they are already gone from the
             // task as far as this pass is concerned, and letting them reach the goal would hide landmarks. The facts marked for elimination need no

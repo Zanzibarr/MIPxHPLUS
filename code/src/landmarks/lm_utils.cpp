@@ -5,7 +5,6 @@
 #include "solver.hpp"
 
 auto Solver::check_landmark_(const BinarySet& landmark) -> bool {
-    // TODO: Remove
     auto _tmr = make_scoped_timer<"reach_test">(stats_);
 
     // Goal facts still to be reached. The moment this hits 0 the goal is relaxed-reachable,

@@ -275,16 +275,6 @@ void Solver::read_instance_() {
 
     file.close();
 
-    // Early infeasibility check
-    if (inst_.m == 0) {
-        for (unsigned int i = 0; i < num_variables; i++) {
-            if (tmp_istate[i] == tmp_goal[i] || tmp_goal[i] < 0) {
-                continue;
-            }
-            throw EarlyExit("reading instance", EarlyExit::INFEASIBLE);
-        }
-    }
-
     // ====================================================== //
     // ================== BINARY EXPANSION ================== //
     // ====================================================== //
@@ -296,15 +286,16 @@ void Solver::read_instance_() {
         offsets[i] = n_exp;
         n_exp += var_ranges[i];
     }
-    BinarySet istate = BinarySet(n_exp);
+    inst_.start = BinarySet(n_exp);
     inst_.goal = BinarySet(n_exp);
     for (size_t i = 0; i < num_variables; i++) {
-        istate.add(offsets[i] + static_cast<unsigned int>(tmp_istate[i]));
+        inst_.start.add(offsets[i] + static_cast<unsigned int>(tmp_istate[i]));
         if (tmp_goal[i] >= 0) {
             inst_.goal.add(offsets[i] + static_cast<unsigned int>(tmp_goal[i]));
         }
     }
     inst_.n = n_exp;
+    inst_.nfadd = 0;
     logger_[DEBUG] << std::format("{} variables (binary-expanded)", inst_.n);
     for (size_t i = 0; i < inst_.m; i++) {
         std::vector<unsigned int> act_pre_exp;
@@ -319,58 +310,6 @@ void Solver::read_instance_() {
         }
         inst_.actions[i].pre_sparse = std::move(act_pre_exp);
         inst_.actions[i].eff_sparse = std::move(act_eff_exp);
-    }
-
-    // ====================================================== //
-    // ================ INITIAL STATE REMOVAL =============== //
-    // ====================================================== //
-
-    logger_[INFO] << ("Removing initial state variables");
-    std::vector<size_t> istate_offsets(inst_.n);
-    size_t n_opt{inst_.n};
-    for (unsigned int i = 0, counter = 0; i < inst_.n; i++) {
-        if (istate[i]) {
-            counter++;
-            n_opt--;
-        }
-        istate_offsets[i] = counter;
-    }
-    inst_.n = static_cast<unsigned int>(n_opt);
-    BinarySet goal_opt{inst_.n};
-    for (const auto var : inst_.goal) {
-        if (!istate[var]) {
-            goal_opt.add(static_cast<unsigned int>(var - istate_offsets[var]));
-        }
-    }
-    inst_.goal = goal_opt;
-    inst_.nfadd = 0;
-    for (size_t i = 0; i < inst_.m; i++) {
-        std::vector<unsigned int> act_pre_irem;
-        std::vector<unsigned int> act_eff_irem;
-        act_pre_irem.reserve(inst_.actions[i].pre_sparse.size());
-        act_eff_irem.reserve(inst_.actions[i].eff_sparse.size());
-        for (const auto& var : inst_.actions[i].pre_sparse) {
-            if (!istate[var]) {
-                act_pre_irem.push_back(static_cast<unsigned int>(var - istate_offsets[var]));
-            }
-        }
-        for (const auto& var : inst_.actions[i].eff_sparse) {
-            if (!istate[var]) {
-                act_eff_irem.push_back(static_cast<unsigned int>(var - istate_offsets[var]));
-            }
-        }
-        inst_.actions[i].pre_sparse = std::move(act_pre_irem);
-        inst_.actions[i].eff_sparse = std::move(act_eff_irem);
         inst_.nfadd += inst_.actions[i].eff_sparse.size();
-    }
-
-    logger_[DEBUG] << std::format("{} variables (istate-removed)", inst_.n);
-    logger_[DEBUG] << std::format("{} first adders", inst_.nfadd);
-
-    const bool is_infeasible = (  // add here other fast feasibility checks
-        inst_.m == 0 && !inst_.goal.empty());
-
-    if (is_infeasible) {
-        throw EarlyExit("performing binary expansion", EarlyExit::INFEASIBLE);
     }
 }

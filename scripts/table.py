@@ -3,7 +3,7 @@ Script used in pair with parse_results.py to track changes in the performance of
 
 Used for experimental evaluation of the 'hplus' solver
 
-This script is compatible with hplus versions: 4.0.0
+This script is compatible with hplus versions: 4.0.0 -> 4.2.0
 
 Comparison table: category + time-bracket rows (or per-family rows with
 --by-family), model metric columns. First file is the baseline.
@@ -108,6 +108,7 @@ def compute_problem_stats(
     data: pl.DataFrame,
     models: list[str],
     metrics: tuple[str, ...] = ("Nodes", "Time"),
+    test_significance: bool = True,
 ) -> pl.DataFrame:
     """One row per problem family (prefix before the first '-')."""
     data = require_complete(data, list(metrics))
@@ -115,7 +116,13 @@ def compute_problem_stats(
         pl.col("Problem").str.split("-").list.first().alias("_family")
     )
     rows = [
-        _category_row(data.filter(pl.col("_family") == fam), models, fam, metrics, True)
+        _category_row(
+            data.filter(pl.col("_family") == fam),
+            models,
+            fam,
+            metrics,
+            test_significance,
+        )
         for fam in sorted(data["_family"].unique().to_list())
     ]
     return pl.DataFrame(rows)
@@ -170,14 +177,13 @@ def main() -> None:
         args.files, aliases, domain=args.domain, extra_cols=extra, max_time=args.time
     )
 
+    compute = compute_problem_stats if args.by_family else compute_stats
     if args.metric:
-        result = compute_stats(
+        result = compute(
             data, aliases, metrics=(args.metric, "Time"), test_significance=False
         )
-    elif args.by_family:
-        result = compute_problem_stats(data, aliases)
     else:
-        result = compute_stats(data, aliases)
+        result = compute(data, aliases)
 
     print_table(result)
 
