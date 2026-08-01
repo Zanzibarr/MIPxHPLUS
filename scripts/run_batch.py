@@ -224,6 +224,9 @@ def write_slurm_scripts(args, rundir):
     output_dir = Path(rundir) / "jobs_output"
     output_dir.mkdir()
 
+    solutions_dir = Path(rundir) / "solutions"
+    solutions_dir.mkdir()
+
     job_paths = []
     for inst in instances(args):
         instance = Path(inst).stem
@@ -234,7 +237,7 @@ def write_slurm_scripts(args, rundir):
                 threads=THREADS,
                 timelimit_slurm=TIME_LIMIT_SLURM,
                 output_dir=output_dir,
-                command=f"{command} -i {inst} -o false -l {logsdir}/{instance}.log -c {cpxlogsdir}/{instance}.log",
+                command=f"{command} -i {inst} -o false -l {logsdir}/{instance}.log -c {cpxlogsdir}/{instance}.log -w {solutions_dir}/{instance}.sol",
             )
         )
         job.chmod(0o755)
@@ -264,12 +267,15 @@ def write_bash_scripts(args, rundir):
     output_dir = Path(rundir) / "jobs_output"
     output_dir.mkdir()
 
+    solutions_dir = Path(rundir) / "solutions"
+    solutions_dir.mkdir()
+
     job_paths = []
     for inst in instances(args):
         instance = Path(inst).stem
         job = jobsdir / f"{instance}.sh"
         job.write_text(
-            f"#!/bin/bash\n{command} -i {inst} -o false -l {logsdir}/{instance}.log -c {cpxlogsdir}/{instance}.log\n"
+            f"#!/bin/bash\n{command} -i {inst} -o false -l {logsdir}/{instance}.log -c {cpxlogsdir}/{instance}.log -w {solutions_dir}/{instance}.sol\n"
         )
         job.chmod(0o755)
         job_paths.append(job)
