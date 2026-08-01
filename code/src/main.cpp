@@ -12,7 +12,6 @@
 #include "cli_parser.hpp"
 #include "solver.hpp"
 #include "utils.hpp"
-#include "validation.hpp"
 
 namespace {
 
@@ -81,8 +80,6 @@ auto main(const int argc, char** argv) -> int {
     } catch (...) {
         logger[FATAL] << std::format("Something wrong happened in main().");
     }
-
-    // validate(params.get<cli_desc::input, std::string>(), solution, logger);
 
     logger[SUCCESS] << "Execution terminated succesfully";
 

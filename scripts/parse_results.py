@@ -3,7 +3,7 @@ Script used in pair with run_batch.py to aggregate the results of a batch into a
 
 Used for experimental evaluation of the 'hplus' solver
 
-This script is compatible with hplus versions: 4.0.0
+This script is compatible with hplus versions: 4.0.0 -> 4.2.0
 """
 
 import re

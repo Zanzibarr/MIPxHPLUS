@@ -3,7 +3,7 @@ Script used in pair with parse_results.py to compare runs of the 'hplus' solver 
 
 Used for experimental evaluation of the 'hplus' solver
 
-This script is compatible with hplus versions: 4.0.0
+This script is compatible with hplus versions: 4.0.0 -> 4.2.0
 
 Grouped bar chart of SGM ratios of a metric (default: Time) vs the baseline
 (first file): one group of bars per category / time bracket (the [900,+inf)

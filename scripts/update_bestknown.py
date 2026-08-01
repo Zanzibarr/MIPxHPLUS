@@ -3,7 +3,7 @@ Script used in pair with parse_results.py to keep track of the best solutions fo
 
 Used for experimental evaluation of the 'hplus' solver
 
-This script is compatible with hplus versions: 4.0.0
+This script is compatible with hplus versions: 4.0.0 -> 4.2.0
 """
 
 import sys
@@ -119,6 +119,7 @@ def main() -> None:
         check(bk, new)
         bk, stats = update(bk, new)
 
+        print(f"===== {file} =====")
         print(
             f"Added: {stats['added']}  Bound updates: {stats['bound_updates']}  "
             f"Incumbent updates: {stats['incumbent_updates']}  Total changes: {stats['total']}"
