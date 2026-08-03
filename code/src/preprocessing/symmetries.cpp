@@ -12,7 +12,7 @@
 
 namespace {}  // namespace
 
-auto Solver::prep_orbital_probing_() -> bool {
+auto Solver::prep_symmetry_breaking_() -> bool {
     auto _tmr = make_scoped_timer<"orbprob">(stats_);
     logger_[DEBUG] << "PREP: symmetry breaking";
 
@@ -167,134 +167,142 @@ auto Solver::prep_orbital_probing_() -> bool {
         return cycles_string;
     };
 
-    for (const auto& generator : generators) {
-        bool is_onlyfact_generator = true;
-        bool is_onlyact_generator = true;
+    bool use_s = params_.get<cli_desc::preprocess, std::string>().find('s') != std::string::npos;
+    if (use_s) {
+        for (const auto& generator : generators) {
+            bool is_onlyfact_generator = true;
+            bool is_onlyact_generator = true;
 
-        for (const auto& cycle : generator) {
-            bool is_fact_cycle = cycle.front() < n_local;  // Cycles won't ever mix facts and actions
+            for (const auto& cycle : generator) {
+                bool is_fact_cycle = cycle.front() < n_local;  // Cycles won't ever mix facts and actions
 
-            if (!is_fact_cycle) {
-                is_onlyfact_generator = false;
-            } else {
-                is_onlyact_generator = false;
-            }
+                if (!is_fact_cycle) {
+                    is_onlyfact_generator = false;
+                } else {
+                    is_onlyact_generator = false;
+                }
 
-            if (!is_onlyact_generator && !is_onlyfact_generator) {
-                break;
-            }
-        }
-
-        // If this is an generator of only facts, then this means that each cycle is composed of facts that are preconditions/effects of the same set
-        // of actions, meaning that they are virtually identical (each action achieving any, achieves all and each action needing any, needs all) and
-        // we can remove all but one of them
-        // Note that this might eliminate goal facts, but only if they are virtually identical to a fixed/goal fact... this guarantees that if we
-        // delete a goal fact, an identical fixed/goal fact remains in the task (at the end of the preprocessing, all fixed facts are promoted to
-        // goals)
-        if (is_onlyfact_generator) {
-            // logger_[WARNING] << std::format("SYMM: Found only-fact generator (size: {}): {}", generator.size(), generator_to_string(generator));
-            // Conjecture: we cannot have a only-fact generator with more than one cycle
-            myassert(generator.size() == 1, std::format("Found a only-fact generator with more than one cycle: {}", generator_to_string(generator)));
-            const auto& only_cycle = generator.front();
-            // Conjecture: only cycles of size 2 are possible
-            myassert(only_cycle.size() == 2,
-                     std::format("Found a only-fact generator with a cycle with more than 2 facts: {}", generator_to_string(generator)));
-            // Keep a goal fact as the cycle's representative whenever the cycle holds one
-            unsigned int keep = 0;
-            for (unsigned int p = 0; p < only_cycle.size(); p++) {
-                if (inst_.goal[vertex_to_fact(only_cycle[p])]) {
-                    keep = p;
+                if (!is_onlyact_generator && !is_onlyfact_generator) {
                     break;
                 }
             }
 
-            for (unsigned int p = 0; p < only_cycle.size(); p++) {
-                if (p == keep) {
-                    continue;
+            // If this is an generator of only facts, then this means that each cycle is composed of facts that are preconditions/effects of the same
+            // set of actions, meaning that they are virtually identical (each action achieving any, achieves all and each action needing any, needs
+            // all) and we can remove all but one of them Note that this might eliminate goal facts, but only if they are virtually identical to a
+            // fixed/goal fact... this guarantees that if we delete a goal fact, an identical fixed/goal fact remains in the task (at the end of the
+            // preprocessing, all fixed facts are promoted to goals)
+            if (is_onlyfact_generator) {
+                // logger_[WARNING] << std::format("SYMM: Found only-fact generator (size: {}): {}", generator.size(),
+                // generator_to_string(generator)); Conjecture: we cannot have a only-fact generator with more than one cycle
+                myassert(generator.size() == 1,
+                         std::format("Found a only-fact generator with more than one cycle: {}", generator_to_string(generator)));
+                const auto& only_cycle = generator.front();
+                // Conjecture: only cycles of size 2 are possible
+                myassert(only_cycle.size() == 2,
+                         std::format("Found a only-fact generator with a cycle with more than 2 facts: {}", generator_to_string(generator)));
+                // Keep a goal fact as the cycle's representative whenever the cycle holds one
+                unsigned int keep = 0;
+                for (unsigned int p = 0; p < only_cycle.size(); p++) {
+                    if (inst_.goal[vertex_to_fact(only_cycle[p])]) {
+                        keep = p;
+                        break;
+                    }
                 }
-                global_.eliminated_facts.add(vertex_to_fact(only_cycle[p]));
-                logger_[DEBUG] << std::format("SYMM: Eliminating fact {} during orbital probing", vertex_to_fact(only_cycle[p]));
-            }
-        }
 
-        // Conjecture: an only-action generator means that multiple actions have the same preconditions, same effects, same cost and fixed status...
-        // if the dominated actions step is enabled, such generator should never appear
-        myassert((!is_onlyact_generator || params_.get<cli_desc::preprocess, std::string>().find('d') == std::string::npos),
-                 std::format("Found an only-action generator: {}", generator_to_string(generator)));
+                for (unsigned int p = 0; p < only_cycle.size(); p++) {
+                    if (p == keep) {
+                        continue;
+                    }
+                    global_.eliminated_facts.add(vertex_to_fact(only_cycle[p]));
+                    logger_[DEBUG] << std::format("SYMM: Eliminating fact {} during orbital probing", vertex_to_fact(only_cycle[p]));
+                }
+            }
+
+            // Conjecture: an only-action generator means that multiple actions have the same preconditions, same effects, same cost and fixed
+            // status... if the dominated actions step is enabled, such generator should never appear
+            myassert((!is_onlyact_generator || params_.get<cli_desc::preprocess, std::string>().find('d') == std::string::npos),
+                     std::format("Found an only-action generator: {}", generator_to_string(generator)));
+        }
     }
 
     // ~~~~~~~~~~~~ Compute orbits ~~~~~~~~~~~ //
-    std::vector<BinarySet> orbits_members;
-    std::vector<unsigned int> rep_to_idx(n_vertices);
-    {
-        auto _orbits_tmr = make_scoped_timer<"orbprob.orbits">(stats_);
+    bool use_o = params_.get<cli_desc::preprocess, std::string>().find('o') != std::string::npos;
+    if (use_o) {
+        std::vector<BinarySet> orbits_members;
+        std::vector<unsigned int> rep_to_idx(n_vertices);
+        {
+            auto _orbits_tmr = make_scoped_timer<"orbprob.orbits">(stats_);
 
-        for (unsigned int v = 0; v < n_vertices; v++) {
-            const auto rep = orbits.get_minimal_representative(v);
-            // Ignore singleton orbits since those don't carry symmetries to exploit
-            // Ignore orbigs of facts (for now)
-            // Orbits of fixed actions are useless
-            if (orbits.orbit_size(rep) == 1 || rep < n_local || global_.fixed_actions[vertex_to_act(rep)]) {
-                continue;
-            }
-            if (v == rep) {
-                rep_to_idx[rep] = orbits_members.size();
-                orbits_members.emplace_back(BinarySet{inst_.m});
-            }
-            orbits_members[rep_to_idx[rep]].add(vertex_to_act(v));
-        }
-    }
-    if (orbits_members.empty()) {
-        logger_[DEBUG] << "SYMM: There are no non-trivial orbits of actions.";
-        return false;
-    }
-
-    // ~~~~~~~~~~~ Sort the orbits ~~~~~~~~~~~ //
-    // TODO: Insertion sort instead
-    {
-        auto _sorting_tmr = make_scoped_timer<"orbprob.sorting">(stats_);
-
-        std::ranges::sort(orbits_members, [this](const auto& a, const auto& b) {
-            // Order by orbit size: largest orbits first
-            if (a.size() > b.size()) {
-                return true;
-            }
-            myassert(!a.empty() && !b.empty(), "Empty orbit");
-            // If sizes match, prefer the orbit with less preconditions (most likely to be applied immediatelly)
-            // If size doesn't match return false (b.size() > a.size())
-            return a.size() == b.size() && inst_.actions[*a.begin()].pre_sparse.size() < inst_.actions[*b.begin()].pre_sparse.size();
-        });
-    }
-
-    //  Fix arbitrary action of orbital landmarks  //
-    bool fixed_one = false;
-    {
-        auto _fixing_tmr = make_scoped_timer<"orbprob.fixing">(stats_);
-
-        // TODO: Set a limit to the amount of orbits we look at...
-        for (const auto& orbit : orbits_members) {
-            // Check whether this orbit is a valid landmark. The eliminated actions are excluded alongside the orbit: they are already gone from the
-            // task as far as this pass is concerned, and letting them reach the goal would hide landmarks. The facts marked for elimination need no
-            // such care: 'b' (which is currently the only step before this that eliminates some facts) never strands a surviving action with an
-            // eliminated precondition (it drags the preconditions of every relevant action into the relevant set), and the twins dropped just above
-            // are reached exactly when their surviving partner is
-            if (check_landmark_(orbit | global_.eliminated_actions)) {
-                unsigned int fixed_act = *orbit.begin();
-                // If this is a valid symmetric landmark, any action is equal to the other, so we simply fix the first one in the orbit
-                global_.fixed_actions.add(fixed_act);
-                // Fixing an action would change symmetries, we cannot fix more than one action per preprocessing loop
-                logger_[DEBUG] << std::format("SYMM: Fixing action {} during orbital probing", fixed_act);
-                fixed_one = true;
-                break;
-            }
-
-            if (global_limits::time_reached()) [[unlikely]] {
-                throw EarlyExit("orbital probing (looking for an action to fix) ({})", EarlyExit::TIMELIMIT);
+            for (unsigned int v = 0; v < n_vertices; v++) {
+                const auto rep = orbits.get_minimal_representative(v);
+                // Ignore singleton orbits since those don't carry symmetries to exploit
+                // Ignore orbigs of facts (for now)
+                // Orbits of fixed actions are useless
+                if (orbits.orbit_size(rep) == 1 || rep < n_local || global_.fixed_actions[vertex_to_act(rep)]) {
+                    continue;
+                }
+                if (v == rep) {
+                    rep_to_idx[rep] = orbits_members.size();
+                    orbits_members.emplace_back(BinarySet{inst_.m});
+                }
+                orbits_members[rep_to_idx[rep]].add(vertex_to_act(v));
             }
         }
+        if (orbits_members.empty()) {
+            logger_[DEBUG] << "SYMM: There are no non-trivial orbits of actions.";
+            return false;
+        }
+
+        // ~~~~~~~~~~~ Sort the orbits ~~~~~~~~~~~ //
+        // TODO: Insertion sort instead
+        {
+            auto _sorting_tmr = make_scoped_timer<"orbprob.sorting">(stats_);
+
+            std::ranges::sort(orbits_members, [this](const auto& a, const auto& b) {
+                // Order by orbit size: largest orbits first
+                if (a.size() > b.size()) {
+                    return true;
+                }
+                myassert(!a.empty() && !b.empty(), "Empty orbit");
+                // If sizes match, prefer the orbit with less preconditions (most likely to be applied immediatelly)
+                // If size doesn't match return false (b.size() > a.size())
+                return a.size() == b.size() && inst_.actions[*a.begin()].pre_sparse.size() < inst_.actions[*b.begin()].pre_sparse.size();
+            });
+        }
+
+        //  Fix arbitrary action of orbital landmarks  //
+        bool fixed_one = false;
+        {
+            auto _fixing_tmr = make_scoped_timer<"orbprob.fixing">(stats_);
+
+            // TODO: Set a limit to the amount of orbits we look at...
+            for (const auto& orbit : orbits_members) {
+                // Check whether this orbit is a valid landmark. The eliminated actions are excluded alongside the orbit: they are already gone from
+                // the task as far as this pass is concerned, and letting them reach the goal would hide landmarks. The facts marked for elimination
+                // need no such care: 'b' (which is currently the only step before this that eliminates some facts) never strands a surviving action
+                // with an eliminated precondition (it drags the preconditions of every relevant action into the relevant set), and the twins dropped
+                // just above are reached exactly when their surviving partner is
+                if (check_landmark_(orbit | global_.eliminated_actions)) {
+                    unsigned int fixed_act = *orbit.begin();
+                    // If this is a valid symmetric landmark, any action is equal to the other, so we simply fix the first one in the orbit
+                    global_.fixed_actions.add(fixed_act);
+                    // Fixing an action would change symmetries, we cannot fix more than one action per preprocessing loop
+                    logger_[DEBUG] << std::format("SYMM: Fixing action {} during orbital probing", fixed_act);
+                    fixed_one = true;
+                    break;
+                }
+
+                if (global_limits::time_reached()) [[unlikely]] {
+                    throw EarlyExit("orbital probing (looking for an action to fix) ({})", EarlyExit::TIMELIMIT);
+                }
+            }
+        }
+
+        return fixed_one;
     }
 
-    return fixed_one;
+    return false;
 }
 
 /// Dumps the symmetry graph to Graphviz: facts are circles, actions are squares, fill color follows the bliss color

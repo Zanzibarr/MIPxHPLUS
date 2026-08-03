@@ -18,6 +18,19 @@ _To see info about this project, please refer to the [Readme](Readme.md)._
 <!-- ### :rocket: Performance Improvements -->
 
 
+## [4.2.2] - 2026/08/03
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+### :heavy_exclamation_mark: Changed
+- Timer statistics are now fixed on ms
+- Changed preprocessing defaults
+### :heavy_plus_sign: Added
+- Split preprocessing flags for symmetric fact elimination and orbital probing ('o' -> "so")
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+<!-- ### :rocket: Performance Improvements -->
+
+
 ## [4.2.1] - 2026/08/01
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->

@@ -11,7 +11,7 @@ void Solver::preprocess_() {
     const bool use_f = choices.find('f') != std::string::npos;
     const bool use_b = choices.find('b') != std::string::npos;
     const bool use_d = choices.find('d') != std::string::npos;
-    const bool use_o = choices.find('o') != std::string::npos;
+    const bool use_symm = choices.find('o') != std::string::npos || choices.find('s') != std::string::npos;
     const bool use_i = choices.find('i') != std::string::npos;
 
     // Kept across passes (remapped on fact elimination) so a new landmark computation can be compared against the previous one
@@ -36,7 +36,7 @@ void Solver::preprocess_() {
     bool pending_b = true;
     bool pending_d = true;
     bool pending_i = true;
-    bool pending_o = true;
+    bool pending_symm = true;
     unsigned int nfadd_at_last_l = inst_.nfadd + 1;  // makes 'l' pending on the first pass
 
     // Convergence tripwire: every pass beyond the first must be caused by a change, and each change strictly shrinks n, m or nfadd (or grows a
@@ -46,7 +46,7 @@ void Solver::preprocess_() {
     unsigned int passes{0};
 
     while ((use_l && nfadd_at_last_l != inst_.nfadd) || (use_a && pending_a) || (use_b && pending_b) || (use_d && pending_d) ||
-           (use_i && pending_i) || (use_o && pending_o)) {
+           (use_i && pending_i) || (use_symm && pending_symm)) {
         static int counter = 0;
         logger_[DEBUG] << std::format("======= PREPROCESSING ITERATION {} ========", counter++);
 
@@ -94,9 +94,9 @@ void Solver::preprocess_() {
         }
 
         const unsigned int marks_before_o = global_.eliminated_facts.size();
-        if (use_o) {
-            pending_o = prep_orbital_probing_();
-            pending_i |= pending_o;  // the newly fixed action's preconditions become fixed facts, possibly enabling new fixed/0-cost applications
+        if (use_symm) {
+            pending_symm = prep_symmetry_breaking_();
+            pending_i |= pending_symm;  // the newly fixed action's preconditions become fixed facts, possibly enabling new fixed/0-cost applications
         }
         // An only-fact generator fixes every action, so the twin 'o' drops duplicates the one it keeps in every pre/eff set: no effect subset
         // relation moves, and 'i' (pure reachability over those sets) reaches both twins together, so it needs nothing. 'd' does: its other half
@@ -112,7 +112,7 @@ void Solver::preprocess_() {
             // The prefix takes actions and facts with it, so the survivors come out with smaller pre/eff sets: previously distinct actions can become
             // duplicates ('d'), previously relevant facts and actions can become unreachable ('b'), and the instance reshapes the symmetry graph
             // ('o')
-            pending_o |= i_changed;
+            pending_symm |= i_changed;
             pending_d |= i_changed;
             pending_b |= i_changed;
         }

@@ -68,7 +68,7 @@ class Solver {
     [[nodiscard]]
     auto prep_dominated_actions_(std::vector<std::vector<unsigned int>>& landmarks) -> bool;
     [[nodiscard]]
-    auto prep_orbital_probing_() -> bool;
+    auto prep_symmetry_breaking_() -> bool;
     [[nodiscard]]
     auto prep_initial_action_sequencing_() -> bool;
     void prep_eliminated_facts_(std::vector<std::vector<unsigned int>>& landmarks);
