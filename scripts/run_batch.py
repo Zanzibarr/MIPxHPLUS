@@ -42,7 +42,7 @@ SLURM_JOB_TEMPLATE = textwrap.dedent("""\
 
     sudo cpupower frequency-set -g performance
     sleep 0.1
-    stress-ng -c 4 --cpu-ops=100
+    stress-ng -c {threads} --cpu-ops=100
 
     ulimit -v 16777216
 
@@ -227,6 +227,8 @@ def write_slurm_scripts(args, rundir):
     solutions_dir = Path(rundir) / "solutions"
     solutions_dir.mkdir()
 
+    threads = args.threads if args.threads is not None else THREADS
+
     job_paths = []
     for inst in instances(args):
         instance = Path(inst).stem
@@ -234,7 +236,7 @@ def write_slurm_scripts(args, rundir):
         job.write_text(
             SLURM_JOB_TEMPLATE.format(
                 instance=instance,
-                threads=THREADS,
+                threads=threads,
                 timelimit_slurm=TIME_LIMIT_SLURM,
                 output_dir=output_dir,
                 command=f"{command} -i {inst} -o false -l {logsdir}/{instance}.log -c {cpxlogsdir}/{instance}.log -w {solutions_dir}/{instance}.sol",
