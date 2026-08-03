@@ -106,20 +106,20 @@ struct UnitSpec {
 };
 
 inline auto pick_unit(double min_ns) -> UnitSpec {
-    constexpr double NANOS_PER_SECOND = 1e9;
+    // constexpr double NANOS_PER_SECOND = 1e9;
     constexpr double NANOS_PER_MILLI = 1e6;
-    constexpr double NANOS_PER_MICRO = 1e3;
+    // constexpr double NANOS_PER_MICRO = 1e3;
 
-    if (min_ns >= NANOS_PER_SECOND) {
-        return {.divisor = NANOS_PER_SECOND, .suffix = "s"};
-    }
-    if (min_ns >= NANOS_PER_MILLI) {
-        return {.divisor = NANOS_PER_MILLI, .suffix = "ms"};
-    }
-    if (min_ns >= NANOS_PER_MICRO) {
-        return {.divisor = NANOS_PER_MICRO, .suffix = "us"};
-    }
-    return {.divisor = 1.0, .suffix = "ns"};
+    // if (min_ns >= NANOS_PER_SECOND) {
+    //     return {.divisor = NANOS_PER_SECOND, .suffix = "s"};
+    // }
+    // if (min_ns >= NANOS_PER_MILLI) {
+    return {.divisor = NANOS_PER_MILLI, .suffix = "ms"};
+    // }
+    // if (min_ns >= NANOS_PER_MICRO) {
+    //     return {.divisor = NANOS_PER_MICRO, .suffix = "us"};
+    // }
+    // return {.divisor = 1.0, .suffix = "ns"};
 }
 
 template <typename Row>
