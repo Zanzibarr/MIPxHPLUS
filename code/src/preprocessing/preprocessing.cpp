@@ -157,6 +157,8 @@ void Solver::preprocess_() {
             global_.best_bound = 0;
             global_.best_incumbent = 0;
             global_.solution = {};
+            logger_[DEBUG] << std::format("Computed a prefix of cost {}", global_.cost_prefix);
+            logger_[DEBUG] << std::format("Size of the prefix: {}", global_.solution_prefix.size());
             throw EarlyExit("preprocessing", EarlyExit::OPTIMAL);
         }
     }

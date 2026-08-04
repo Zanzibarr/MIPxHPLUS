@@ -3,7 +3,7 @@ Script used in pair with parse_results.py to track changes in the performance of
 
 Used for experimental evaluation of the 'hplus' solver
 
-This script is compatible with hplus versions: 4.0.0 -> 4.2.0
+This script is compatible with hplus versions: 4.0.0 -> current
 
 Comparison table: category + time-bracket rows (or per-family rows with
 --by-family), model metric columns. First file is the baseline.

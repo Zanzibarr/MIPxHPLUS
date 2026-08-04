@@ -3,7 +3,7 @@ Script used to compare differences in execution between incremental versions
 
 Used for development of the 'hplus' solver
 
-This script is compatible with hplus versions: 4.0.0 -> 4.2.0
+This script is compatible with hplus versions: 4.0.0 -> current
 """
 
 import argparse

@@ -3,7 +3,7 @@ Script used in pair with parse_results.py to compare runs of the 'hplus' solver 
 
 Used for experimental evaluation of the 'hplus' solver
 
-This script is compatible with hplus versions: 4.0.0 -> 4.2.0
+This script is compatible with hplus versions: 4.0.0 -> current
 
 Log-log scatter plot of a metric (default: Time): each non-baseline model vs
 the baseline (first file), one facet per model. Reference lines: y=x (black),

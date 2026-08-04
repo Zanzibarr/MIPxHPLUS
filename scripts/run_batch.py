@@ -3,7 +3,7 @@ Script used to run a batch of instances on the UNIPD DEI Cluster through SLURM
 
 Used for experimental evaluation of the 'hplus' solver
 
-This script is compatible with hplus versions: 4.0.0 -> 4.2.0
+This script is compatible with hplus versions: 4.2.2 -> current
 """
 
 import argparse

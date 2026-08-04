@@ -3,7 +3,7 @@ Script used in pair with parse_results.py to compare bound quality across runs o
 
 Used for experimental evaluation of the 'hplus' solver
 
-This script is compatible with hplus versions: 4.0.0 -> 4.2.0
+This script is compatible with hplus versions: 4.0.0 -> current
 
 Boxplot of the gap (%) between bound columns (--gap) and the best known
 incumbent (from results/best_known.csv, not necessarily a proven optimum):

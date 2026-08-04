@@ -3,7 +3,7 @@ Script used in pair with parse_results.py to keep track of the best solutions fo
 
 Used for experimental evaluation of the 'hplus' solver
 
-This script is compatible with hplus versions: 4.0.0 -> 4.2.0
+This script is compatible with hplus versions: 4.0.0 -> current
 """
 
 import sys

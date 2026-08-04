@@ -3,7 +3,7 @@ Utilities shared by the analysis scripts (table.py, barplot.py, boxplot.py, scat
 
 Used for experimental evaluation of the 'hplus' solver
 
-This script is compatible with hplus versions: 4.0.0 -> 4.2.0
+This script is compatible with hplus versions: 4.0.0 -> current
 """
 
 import sys

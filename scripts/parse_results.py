@@ -3,7 +3,7 @@ Script used in pair with run_batch.py to aggregate the results of a batch into a
 
 Used for experimental evaluation of the 'hplus' solver
 
-This script is compatible with hplus versions: 4.0.0 -> 4.2.0
+This script is compatible with hplus versions: 4.2.2 -> current
 """
 
 import re
@@ -38,6 +38,8 @@ FIELDNAMES = [
     # --- Other search counters ---
     "N_Nodes",  # branch-and-bound nodes expanded
     # --- Bounds ---
+    "Prefix_LB", # Initial Prefix lower bound
+    "LMCut_LB", # LM-Cut lower bound
     "Relax_LB",  # relaxation lower bound
     "Root_LB",  # root-node lower bound
     "Final_LB",  # final lower bound (from Results block)
@@ -80,6 +82,8 @@ DEFAULT_ROW = {
     "LM_Cut_N_Landmarks": None,
     "LM_Cut_AvgSize_Landmarks": None,
     "N_Nodes": None,
+    "Prefix_LB": None,
+    "LMCut_LB": None,
     "Relax_LB": None,
     "Root_LB": None,
     "Final_LB": None,
@@ -267,6 +271,10 @@ def parse_log(filepath):
     )
 
     # Lower bound stats
+    row["Prefix_LB"] = float(parse_regex(r"Computed a prefix of cost (\S+)", content, 0))
+    vals = [float(v) for v in re.findall(r"Computed a lm-cut value of (\d+)", content)]
+    row["LMCut_LB"] = max(vals, default=0)
+    
     row["Relax_LB"] = gauges.get("lb_relaxation", None)
     row["Root_LB"] = gauges.get("lb_rootnode", None)
 
