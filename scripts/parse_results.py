@@ -38,8 +38,8 @@ FIELDNAMES = [
     # --- Other search counters ---
     "N_Nodes",  # branch-and-bound nodes expanded
     # --- Bounds ---
-    "Prefix_LB", # Initial Prefix lower bound
-    "LMCut_LB", # LM-Cut lower bound
+    "Prefix_LB",  # Initial Prefix lower bound
+    "LMCut_LB",  # LM-Cut lower bound
     "Relax_LB",  # relaxation lower bound
     "Root_LB",  # root-node lower bound
     "Final_LB",  # final lower bound (from Results block)
@@ -271,10 +271,12 @@ def parse_log(filepath):
     )
 
     # Lower bound stats
-    row["Prefix_LB"] = float(parse_regex(r"Computed a prefix of cost (\S+)", content, 0))
+    row["Prefix_LB"] = float(
+        parse_regex(r"Computed a prefix of cost (\S+)", content, 0)
+    )
     vals = [float(v) for v in re.findall(r"Computed a lm-cut value of (\d+)", content)]
-    row["LMCut_LB"] = max(vals, default=0)
-    
+    row["LMCut_LB"] = max(vals, default=row["Prefix_LB"])
+
     row["Relax_LB"] = gauges.get("lb_relaxation", None)
     row["Root_LB"] = gauges.get("lb_rootnode", None)
 
