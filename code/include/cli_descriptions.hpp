@@ -29,11 +29,13 @@ inline constexpr CTString lmcut_opt = "lmcut-opt";
 inline constexpr CTString primal_heur = "primal-heur";
 inline constexpr CTString cand_cuts = "cand-cuts";
 inline constexpr CTString relax_cuts = "relax-cuts";
+inline constexpr CTString testing = "testing";
 
 // --- Defaults ---
 // General parameters
 constexpr bool def_debug_enabled = false;
 constexpr std::string def_sol_file = "0";
+constexpr bool def_testing = false;
 
 // Execution parameters
 constexpr int def_time_limit_s = 60;
@@ -96,6 +98,7 @@ inline constexpr std::string_view cand_cuts_help =
 inline constexpr std::string_view relax_cuts_help =
     "Cut settings for the relaxation (fractional-solution) separator; 0: none, sec: Subtour Elimination Constraints, lm: Max-Flow Landmarks, lm-m: "
     "Minimal Max-Flow Landmarks, lmcut: LM-Cut separator, lmcut-g/-c: Minimal LM-Cut";
+inline constexpr std::string_view testing_help = "Testing flag for development";
 
 // ── Allowed values ──
 inline constexpr std::array<std::string_view, 4> mode_choices = {"info", "lmcut", "hplus-feas", "hplus"};

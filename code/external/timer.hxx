@@ -110,6 +110,9 @@ inline auto pick_unit(double min_ns) -> UnitSpec {
     constexpr double NANOS_PER_MILLI = 1e6;
     // constexpr double NANOS_PER_MICRO = 1e3;
 
+    // Forced to ms: with the timelimit we use (900s) if a single timer is in microseconds, an instance that required +100s will have its timers
+    // malformed
+    //
     // if (min_ns >= NANOS_PER_SECOND) {
     //     return {.divisor = NANOS_PER_SECOND, .suffix = "s"};
     // }

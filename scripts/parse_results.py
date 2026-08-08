@@ -261,6 +261,13 @@ def parse_log(filepath):
     # --- Other search counters (Counter table) ---
     row["N_Nodes"] = counters.get("nodes", 0)
 
+    # Lower bound stats
+    row["Prefix_LB"] = float(
+        parse_regex(r"Computed a prefix of cost (\S+)", content, 0)
+    )
+    vals = [float(v) for v in re.findall(r"Computed a lm-cut value of (\d+)", content)]
+    row["LMCut_LB"] = max(vals, default=row["Prefix_LB"])
+
     # --- Bounds (Results block, >> Label value << format) ---
     row["Final_LB"] = float(parse_regex(r"Best bound: (\S+)", content, 0))
     row["Final_UB"] = float(parse_regex(r"Best incumbent: (\S+)", content, 1e20))
@@ -269,13 +276,9 @@ def parse_log(filepath):
         if re.search(r"primal-heur\s+string\s+\"0\"", content) is not None
         else float(parse_regex(r"Updated best solution: (\S+)", content, 1e20))
     )
-
-    # Lower bound stats
-    row["Prefix_LB"] = float(
-        parse_regex(r"Computed a prefix of cost (\S+)", content, 0)
-    )
-    vals = [float(v) for v in re.findall(r"Computed a lm-cut value of (\d+)", content)]
-    row["LMCut_LB"] = max(vals, default=row["Prefix_LB"])
+    # If the instance has been solved during preprocessing, we never had an "Updated best solution" line or a "primal-heur" stat, so we need to store the optimal solution
+    if "Proved optimality for this instance while preprocessing" in content:
+        row["Initial_UB"] = row["Prefix_LB"]
 
     row["Relax_LB"] = gauges.get("lb_relaxation", None)
     row["Root_LB"] = gauges.get("lb_rootnode", None)

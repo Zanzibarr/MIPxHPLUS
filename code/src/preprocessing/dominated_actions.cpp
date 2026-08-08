@@ -1,6 +1,5 @@
 #include <binary_set.hxx>
 
-#include "bs_utils.hpp"
 #include "solver.hpp"
 
 auto Solver::prep_dominated_actions_(std::vector<std::vector<unsigned int>>& landmarks) -> bool {
@@ -33,57 +32,92 @@ auto Solver::prep_dominated_actions_(std::vector<std::vector<unsigned int>>& lan
         }
     }
 
-    bs_searcher candidates{n_local};
-    std::vector<BinarySet> actions_effects(inst_.m, BinarySet(n_local));
-    for (const auto& act_i : rem_act) {
-        for (const auto& val : inst_.actions[act_i].eff_sparse) {
-            if (global_.eliminated_facts[val]) {
-                continue;
-            }
-            actions_effects[act_i].add(local_idx[val]);
-        }
-        if (global_.fixed_actions[act_i]) {
+    std::vector<std::vector<unsigned int>> act_with_eff = std::vector<std::vector<unsigned int>>(n_local);
+    std::vector<BinarySet> actions_effects_bs(inst_.m, BinarySet(n_local));
+    for (unsigned int act_i = 0; act_i < inst_.m; ++act_i) {
+        if (global_.eliminated_actions[act_i]) {
             continue;
         }
-        candidates.add(act_i, actions_effects[act_i]);
+        for (const auto& eff : inst_.actions[act_i].eff_sparse) {
+            if (global_.eliminated_facts[eff]) {
+                continue;
+            }
+            act_with_eff[local_idx[eff]].push_back(act_i);
+            actions_effects_bs[act_i].add(local_idx[eff]);
+        }
     }
 
     // pre(dominant) is a subset of the fact landmarks of the dominated action, restricted to the surviving facts
     const auto flm_covers_pre = [&](unsigned int dominated_act, unsigned int dominant_act) -> bool {
         for (const auto& pre : inst_.actions[dominant_act].pre_sparse) {
-            if (global_.eliminated_facts[pre]) {
-                continue;
-            }
-            if (!act_flm[dominated_act][local_idx[pre]]) {
+            if (!global_.eliminated_facts[pre] && !act_flm[dominated_act][local_idx[pre]]) {
                 return false;
             }
         }
         return true;
     };
 
-    // rem_act excludes everything marked before this step, so within it "already marked" and "dominated here" are the same thing: eliminated_actions
-    // doubles as the record of what this loop found, and only the count has to be tracked separately
-    unsigned int dominated{0};
+    const auto eff_contains_wlim = [&](unsigned int dominant_act, unsigned int dominated_act) -> bool {
+        for (const auto& eff : inst_.actions[dominated_act].eff_sparse) {
+            if (!global_.eliminated_facts[eff] && !actions_effects_bs[dominant_act][local_idx[eff]]) {
+                return false;
+            }
+        }
+        return true;
+    };
 
-    for (const auto& dominant_act : rem_act) {
-        if (global_.eliminated_actions[dominant_act]) {
+    // rem_act excludes everything marked before this step, so within it "already marked" and "dominated here" are the same thing:
+    // eliminated_actions doubles as the record of what this loop found, and only the count has to be tracked separately
+    unsigned int dominated_count{0};
+
+    // Reversing the loop, iterating through possible dominated actions, looking for a dominant one
+    for (const auto dominated_act : rem_act) {
+        if (global_.fixed_actions[dominated_act]) {
             continue;
         }
 
-        for (const auto& dominated_act : candidates.find_subsets(actions_effects[dominant_act])) {
-            if (dominant_act == dominated_act || inst_.actions[dominant_act].cost > inst_.actions[dominated_act].cost ||
-                !flm_covers_pre(dominated_act, dominant_act)) {
+        unsigned int best_fact{inst_.n};  // sentinel: "not found"
+        unsigned int best_count{inst_.m + 1};
+
+        for (const auto& eff : inst_.actions[dominated_act].eff_sparse) {
+            if (global_.eliminated_facts[eff]) {
+                continue;
+            }
+            const auto count = act_with_eff[local_idx[eff]].size();
+            if (count < best_count) {
+                best_count = count;
+                best_fact = eff;
+            }
+        }
+
+        // If dominated_act has no effect, it can be eliminated by relevance
+        if (best_fact == inst_.n) {
+            global_.eliminated_actions.add(dominated_act);
+            dominated_count++;
+            continue;
+        }
+
+        for (const auto& dominant_act : act_with_eff[local_idx[best_fact]]) {
+            // act_with_eff/rem_act are snapshots from before this loop started, so actions eliminated by earlier
+            // iterations of this same pass can still show up here and must be skipped explicitly
+            if (dominant_act == dominated_act || global_.eliminated_actions[dominant_act]) {
+                continue;
+            }
+            if (!eff_contains_wlim(dominant_act, dominated_act)) {
+                continue;
+            }
+            if (!flm_covers_pre(dominated_act, dominant_act)) {
+                continue;
+            }
+            if (inst_.actions[dominant_act].cost > inst_.actions[dominated_act].cost) {
                 continue;
             }
 
             global_.eliminated_actions.add(dominated_act);
-            candidates.remove(dominated_act, actions_effects[dominated_act]);
-            dominated++;
-        }
-
-        if (global_limits::time_reached()) [[unlikely]] {
-            throw EarlyExit("preprocessing dominated actions removal (main loop)", EarlyExit::TIMELIMIT);
+            dominated_count++;
+            break;
         }
     }
-    return dominated > 0;
+
+    return dominated_count > 0;
 }
