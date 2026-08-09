@@ -1286,14 +1286,14 @@ organic-synthesis-split-sat18-strips-p08,108.0,108.0
 organic-synthesis-split-sat18-strips-p09,126.0,238.0
 organic-synthesis-split-sat18-strips-p10,237.22609366652708,318.0
 organic-synthesis-split-sat18-strips-p11,177.0,362.0
-organic-synthesis-split-sat18-strips-p12,300.0,429.0
-organic-synthesis-split-sat18-strips-p13,322.0,486.0
+organic-synthesis-split-sat18-strips-p12,306.0,429.0
+organic-synthesis-split-sat18-strips-p13,325.0,486.0
 organic-synthesis-split-sat18-strips-p14,433.0,25202.0
 organic-synthesis-split-sat18-strips-p15,273.0,273.0
 organic-synthesis-split-sat18-strips-p16,540.0,540.0
 organic-synthesis-split-sat18-strips-p17,293.0,580.0
 organic-synthesis-split-sat18-strips-p18,480.0,803.0
-organic-synthesis-split-sat18-strips-p19,83.0,1e+20
+organic-synthesis-split-sat18-strips-p19,86.0,1e+20
 organic-synthesis-split-sat18-strips-p20,218.0,17002.0
 parcprinter-08-strips-p01,169009.0,169009.0
 parcprinter-08-strips-p02,438047.0,438047.0
@@ -1662,9 +1662,9 @@ pipesworld-tankage-p44-net5-b24-g5-t80,16.182958171984826,24.0
 pipesworld-tankage-p45-net5-b26-g4-t50,16.497121060705002,23.0
 pipesworld-tankage-p46-net5-b26-g6-t50,21.257004081263695,32.0
 pipesworld-tankage-p47-net5-b28-g5-t50,21.970414353072595,35.0
-pipesworld-tankage-p48-net5-b28-g7-t50,26.195366246944754,39.0
+pipesworld-tankage-p48-net5-b28-g7-t50,26.79623867798117,39.0
 pipesworld-tankage-p49-net5-b30-g6-t50,18.066936840078412,28.0
-pipesworld-tankage-p50-net5-b30-g8-t50,23.8454700144993,39.0
+pipesworld-tankage-p50-net5-b30-g8-t50,23.905387937560402,39.0
 psr-small-p01-s2-n1-l2-f50,1.0,1.0
 psr-small-p02-s5-n1-l3-f30,1.0,1.0
 psr-small-p03-s7-n1-l3-f70,1.0,1.0
@@ -2314,7 +2314,7 @@ thoughtful-mco14-strips-p13_7_62-typed,84.0,84.0
 thoughtful-mco14-strips-p13_7_64-typed,84.88251704405104,88.0
 thoughtful-mco14-strips-p13_7_68-typed,82.0,82.0
 thoughtful-mco14-strips-p13_7_69-typed,85.95577916161935,90.0
-thoughtful-mco14-strips-p13_7_72-typed,83.68260413105963,87.0
+thoughtful-mco14-strips-p13_7_72-typed,83.84860997512223,87.0
 thoughtful-mco14-strips-p13_7_74-typed,84.11506932247131,87.0
 thoughtful-mco14-strips-p13_7_79-typed,81.0,81.0
 thoughtful-mco14-strips-p13_7_86-typed,78.38925432647073,82.0
@@ -2324,7 +2324,7 @@ thoughtful-sat14-strips-bootstrap-typed-03,25.0,25.0
 thoughtful-sat14-strips-bootstrap-typed-04,26.0,26.0
 thoughtful-sat14-strips-bootstrap-typed-05,29.0,29.0
 thoughtful-sat14-strips-p11_6_53-typed,73.0,73.0
-thoughtful-sat14-strips-p11_6_59-typed,68.32518371283271,70.0
+thoughtful-sat14-strips-p11_6_59-typed,70.0,70.0
 thoughtful-sat14-strips-p11_6_62-typed,65.98027158416286,68.0
 thoughtful-sat14-strips-p13_7_78-typed,83.87504485050296,87.0
 thoughtful-sat14-strips-p13_7_79-typed,81.0,81.0
@@ -2545,7 +2545,7 @@ transport-sat11-strips-p14,857.3299820992974,945.0
 transport-sat11-strips-p15,914.0643288852324,974.0
 transport-sat11-strips-p16,833.0261426646288,917.0
 transport-sat11-strips-p17,902.9688332653426,1294.0
-transport-sat11-strips-p18,814.3241595893962,1175.0
+transport-sat11-strips-p18,814.4954633652594,1175.0
 transport-sat11-strips-p19,868.1773177534358,1265.0
 transport-sat11-strips-p20,854.8675760807304,1309.0
 transport-sat14-strips-p01,405.9603059611584,523.0
