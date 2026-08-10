@@ -18,6 +18,18 @@ _To see info about this project, please refer to the [Readme](Readme.md)._
 <!-- ### :rocket: Performance Improvements -->
 
 
+## [x.y.z] - YYYY/MM/DD
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+### :heavy_exclamation_mark: Changed
+- Insertion sort instead of post-sort for orbits in symmetry breaking
+### :heavy_plus_sign: Added
+- Max number of iterations while looking for possible orbits of actions
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+<!-- ### :rocket: Performance Improvements -->
+
+
 ## [4.3.0] - 2026/08/06
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->

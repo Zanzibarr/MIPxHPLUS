@@ -2,6 +2,7 @@
 #include <array>
 #include <digraph.hh>
 #include <fstream>
+#include <list>
 #include <logger.hxx>
 #include <map>
 #include <orbit.hh>
@@ -226,49 +227,61 @@ auto Solver::prep_symmetry_breaking_() -> bool {
         }
     }
 
-    // ~~~~~~~~~~~~ Compute orbits ~~~~~~~~~~~ //
+    // ~~~~~~~~~~~~ Compute orbits (bounded leaderboard, storage only for orbits that make the cut) ~~~~~~~~~~~ //
+    // The fixing loop below only ever inspects the best 'max_iters' orbits, and both ranking keys (orbit size and the precondition count of the
+    // orbit's minimal action) are known the instant a representative is first seen, well before its members get filled in. So there is no need to
+    // allocate a BinarySet, or track membership at all, for an orbit that doesn't currently beat the worst of the leaderboard: the leaderboard's
+    // threshold only rises as more orbits are found, so a rejected orbit can never qualify later, and an orbit that gets evicted after being
+    // accepted can be dropped from then on too. 'active' records, per representative, whether we're still bothering to track that orbit
     bool use_o = params_.get<cli_desc::preprocess, std::string>().find('o') != std::string::npos;
     if (use_o) {
-        std::vector<BinarySet> orbits_members;
-        std::vector<unsigned int> rep_to_idx(n_vertices);
+        struct Orbit {
+            unsigned int rep;
+            unsigned int size{0};      // final orbit size: largest orbits are ordered first
+            unsigned int pre_size{0};  // preconditions of the orbit's minimal action: ties favor the one most likely to be applied immediately
+            BinarySet members;
+        };
+        constexpr int max_iters{5};
+
+        std::list<Orbit> top_orbits;  // owns storage, best-first, size capped at max_iters
+        std::vector<std::list<Orbit>::iterator> rep_to_idx(n_vertices);
+        std::vector<bool> active(n_vertices, false);
         {
             auto _orbits_tmr = make_scoped_timer<"orbprob.orbits">(stats_);
 
+            auto beats = [](unsigned int size, unsigned int pre_size, const Orbit& o) {
+                return size > o.size || (size == o.size && pre_size < o.pre_size);
+            };
             for (unsigned int v = 0; v < n_vertices; v++) {
                 const auto rep = orbits.get_minimal_representative(v);
                 // Ignore singleton orbits since those don't carry symmetries to exploit
-                // Ignore orbigs of facts (for now)
+                // Ignore orbits of facts (for now)
                 // Orbits of fixed actions are useless
                 if (orbits.orbit_size(rep) == 1 || rep < n_local || global_.fixed_actions[vertex_to_act(rep)]) {
                     continue;
                 }
                 if (v == rep) {
-                    rep_to_idx[rep] = orbits_members.size();
-                    orbits_members.emplace_back(BinarySet{inst_.m});
+                    const auto size = orbits.orbit_size(rep);
+                    const auto pre_size = static_cast<unsigned int>(inst_.actions[vertex_to_act(rep)].pre_sparse.size());
+                    if (static_cast<int>(top_orbits.size()) < max_iters || beats(size, pre_size, top_orbits.back())) {
+                        const auto pos = std::ranges::find_if(top_orbits, [&](const Orbit& o) { return beats(size, pre_size, o); });
+                        rep_to_idx[rep] =
+                            top_orbits.insert(pos, Orbit{.rep = rep, .size = size, .pre_size = pre_size, .members = BinarySet{inst_.m}});
+                        active[rep] = true;
+                        if (static_cast<int>(top_orbits.size()) > max_iters) {
+                            active[top_orbits.back().rep] = false;
+                            top_orbits.pop_back();
+                        }
+                    }
                 }
-                orbits_members[rep_to_idx[rep]].add(vertex_to_act(v));
+                if (active[rep]) {
+                    rep_to_idx[rep]->members.add(vertex_to_act(v));
+                }
             }
         }
-        if (orbits_members.empty()) {
+        if (top_orbits.empty()) {
             logger_[DEBUG] << "SYMM: There are no non-trivial orbits of actions.";
             return false;
-        }
-
-        // ~~~~~~~~~~~ Sort the orbits ~~~~~~~~~~~ //
-        // TODO: Insertion sort instead
-        {
-            auto _sorting_tmr = make_scoped_timer<"orbprob.sorting">(stats_);
-
-            std::ranges::sort(orbits_members, [this](const auto& a, const auto& b) {
-                // Order by orbit size: largest orbits first
-                if (a.size() > b.size()) {
-                    return true;
-                }
-                myassert(!a.empty() && !b.empty(), "Empty orbit");
-                // If sizes match, prefer the orbit with less preconditions (most likely to be applied immediatelly)
-                // If size doesn't match return false (b.size() > a.size())
-                return a.size() == b.size() && inst_.actions[*a.begin()].pre_sparse.size() < inst_.actions[*b.begin()].pre_sparse.size();
-            });
         }
 
         //  Fix arbitrary action of orbital landmarks  //
@@ -276,8 +289,8 @@ auto Solver::prep_symmetry_breaking_() -> bool {
         {
             auto _fixing_tmr = make_scoped_timer<"orbprob.fixing">(stats_);
 
-            // TODO: Set a limit to the amount of orbits we look at...
-            for (const auto& orbit : orbits_members) {
+            for (const auto& entry : top_orbits) {
+                const auto& orbit = entry.members;
                 // Check whether this orbit is a valid landmark. The eliminated actions are excluded alongside the orbit: they are already gone from
                 // the task as far as this pass is concerned, and letting them reach the goal would hide landmarks. The facts marked for elimination
                 // need no such care: 'b' (which is currently the only step before this that eliminates some facts) never strands a surviving action
