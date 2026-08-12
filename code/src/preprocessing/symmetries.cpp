@@ -225,6 +225,8 @@ auto Solver::prep_symmetry_breaking_() -> bool {
             myassert((!is_onlyact_generator || params_.get<cli_desc::preprocess, std::string>().find('d') == std::string::npos),
                      std::format("Found an only-action generator: {}", generator_to_string(generator)));
         }
+
+        logger_[DEBUG] << std::format("Generators: {}", generators.size());
     }
 
     // ~~~~~~~~~~~~ Compute orbits (bounded leaderboard, storage only for orbits that make the cut) ~~~~~~~~~~~ //
@@ -235,6 +237,8 @@ auto Solver::prep_symmetry_breaking_() -> bool {
     // accepted can be dropped from then on too. 'active' records, per representative, whether we're still bothering to track that orbit
     bool use_o = params_.get<cli_desc::preprocess, std::string>().find('o') != std::string::npos;
     if (use_o) {
+        unsigned int orbits_counter{0};
+        
         struct Orbit {
             unsigned int rep;
             unsigned int size{0};      // final orbit size: largest orbits are ordered first
@@ -261,6 +265,7 @@ auto Solver::prep_symmetry_breaking_() -> bool {
                     continue;
                 }
                 if (v == rep) {
+                    orbits_counter++;
                     const auto size = orbits.orbit_size(rep);
                     const auto pre_size = static_cast<unsigned int>(inst_.actions[vertex_to_act(rep)].pre_sparse.size());
                     if (static_cast<int>(top_orbits.size()) < max_iters || beats(size, pre_size, top_orbits.back())) {
@@ -283,6 +288,9 @@ auto Solver::prep_symmetry_breaking_() -> bool {
             logger_[DEBUG] << "SYMM: There are no non-trivial orbits of actions.";
             return false;
         }
+
+        logger_[DEBUG] << std::format("Orbits: {}", orbits_counter);
+        logger_[DEBUG] << std::format("Largest Orbit: {}", (*top_orbits.begin()).size);
 
         //  Fix arbitrary action of orbital landmarks  //
         bool fixed_one = false;
