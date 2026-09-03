@@ -52,7 +52,7 @@ void Solver::hplus_candidate_callback_(CPXCALLBACKCONTEXTptr context) {
     auto _callback_timer = scoped_timer("cand_callback");
     stats_.counter_inc<"cand_calls">();
 
-    const unsigned int size = inst_.m + inst_.nfadd;
+    const unsigned int size = inst_.m;
     if (local_.cand_xstar.size() != size) {
         local_.cand_xstar = std::vector<double>(size);
     }
@@ -237,7 +237,7 @@ void Solver::hplus_relaxation_callback_(CPXCALLBACKCONTEXTptr context) {
     auto _callback_timer = scoped_timer("relax_callback");
     stats_.counter_inc<"relax_calls">();
 
-    const unsigned int size = inst_.m + inst_.nfadd;
+    const unsigned int size = inst_.m;
     if (local_.relax_xstar.size() != size) {
         local_.relax_xstar = std::vector<double>(size);
     }
