@@ -32,7 +32,14 @@ from plotnine import (
     theme_minimal,
 )
 
-from analysis_utils import INFINITY, prepare_data, require_complete, resolve_aliases
+from analysis_utils import (
+    INFINITY,
+    add_time_limit_arg,
+    prepare_data,
+    require_complete,
+    resolve_aliases,
+    set_time_limit,
+)
 
 BEST_KNOWN = Path(__file__).parent.parent / "results" / "best_known.csv"
 
@@ -148,11 +155,13 @@ def main() -> None:
         metavar="T",
         help="Exclude instances where any run exceeded T seconds",
     )
+    add_time_limit_arg(parser)
     parser.add_argument(
         "--out", default="boxplot.pdf", help="Output file (default: boxplot.pdf)"
     )
     args = parser.parse_args()
 
+    set_time_limit(args.time_limit)
     aliases = resolve_aliases(args.files, args.aliases)
     data = prepare_data(
         args.files,

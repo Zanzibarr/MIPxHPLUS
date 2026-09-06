@@ -28,11 +28,13 @@ from plotnine import (
     theme_minimal,
 )
 
+import analysis_utils as au
 from analysis_utils import (
-    GROUP_ORDER,
+    add_time_limit_arg,
     prepare_data,
     require_complete,
     resolve_aliases,
+    set_time_limit,
     sgm,
 )
 
@@ -52,7 +54,7 @@ def sgm_ratios(
         ("all-solvable", data.filter(pl.col("Category") == "all-solvable")),
     ] + [
         (b, data.filter(pl.col("Time_Bracket") == b))
-        for b in GROUP_ORDER[3:-1]  # skip the [900,+inf) bracket
+        for b in au.GROUP_ORDER[3:-1]  # skip the last, open-ended bracket
         if b in present
     ]
 
@@ -120,6 +122,7 @@ def main() -> None:
     parser.add_argument(
         "--domain", default="", help="Filter instances matching domain substring"
     )
+    add_time_limit_arg(parser)
     parser.add_argument(
         "--out", default="bar_plot.pdf", help="Output file (default: bar_plot.pdf)"
     )
@@ -128,6 +131,7 @@ def main() -> None:
     if len(args.files) < 2:
         parser.error("At least two files required (baseline + one comparison).")
 
+    set_time_limit(args.time_limit)
     aliases = resolve_aliases(args.files, args.aliases)
     extra = [args.metric] if args.metric not in ("Nodes", "Time") else None
     data = prepare_data(args.files, aliases, domain=args.domain, extra_cols=extra)

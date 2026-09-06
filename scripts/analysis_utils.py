@@ -39,6 +39,35 @@ BRACKET_LABELS: list[str] = _bracket_labels()
 GROUP_ORDER: list[str] = ["all", "solvable", "all-solvable"] + BRACKET_LABELS
 
 
+def set_time_limit(limit: float | None) -> None:
+    """Override the run time limit (seconds) and rebuild the derived brackets.
+
+    Must be called before prepare_data(): TIME_LIMIT is the value unsolved runs
+    are capped at and the upper edge of the last time bracket. Passing None or
+    the current value is a no-op.
+    """
+    global TIME_LIMIT, BRACKET_LABELS, GROUP_ORDER
+    if limit is None or float(limit) == float(TIME_LIMIT):
+        return
+    if limit <= TIME_BRACKETS[-1]:
+        print(f"ERROR: time limit must exceed {TIME_BRACKETS[-1]}s.")
+        sys.exit(1)
+    TIME_LIMIT = int(limit) if float(limit).is_integer() else limit
+    BRACKET_LABELS = _bracket_labels()
+    GROUP_ORDER = ["all", "solvable", "all-solvable"] + BRACKET_LABELS
+
+
+def add_time_limit_arg(parser) -> None:
+    """Register the shared --time-limit option on an argparse parser."""
+    parser.add_argument(
+        "--time-limit",
+        type=float,
+        default=None,
+        metavar="T",
+        help=f"solver time limit of the runs, in seconds (default: {TIME_LIMIT})",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Data loading (CSV files produced by parse_results.py)
 # ---------------------------------------------------------------------------

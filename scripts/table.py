@@ -15,13 +15,15 @@ import argparse
 
 import polars as pl
 
+import analysis_utils as au
 from analysis_utils import (
-    GROUP_ORDER,
     PVALUE,
+    add_time_limit_arg,
     mcnemar_test,
     prepare_data,
     require_complete,
     resolve_aliases,
+    set_time_limit,
     sgm,
     wilcoxon_test,
     OPT_EPS,
@@ -88,19 +90,24 @@ def compute_stats(
     """Rows: all / solvable / all-solvable + one per non-empty time bracket."""
     data = require_complete(data, list(metrics))
 
-    solvable = data.filter(pl.col("Category") != "non-solvable")
-    all_solvable = data.filter(pl.col("Category") == "all-solvable")
-    rows = [
-        _category_row(data, models, "all", metrics, test_significance),
-        _category_row(solvable, models, "solvable", metrics, test_significance),
-        _category_row(all_solvable, models, "all-solvable", metrics, test_significance),
+    subsets = [
+        ("all", data),
+        ("solvable", data.filter(pl.col("Category") != "non-solvable")),
+        ("all-solvable", data.filter(pl.col("Category") == "all-solvable")),
     ]
 
     present = set(data["Time_Bracket"].unique().to_list())
-    for bracket in [b for b in GROUP_ORDER[3:] if b in present]:
-        sub = data.filter(pl.col("Time_Bracket") == bracket)
-        rows.append(_category_row(sub, models, bracket, metrics, test_significance))
+    subsets += [
+        (b, data.filter(pl.col("Time_Bracket") == b))
+        for b in au.GROUP_ORDER[3:]
+        if b in present
+    ]
 
+    rows = [
+        _category_row(sub, models, name, metrics, test_significance)
+        for name, sub in subsets
+        if sub.height > 0
+    ]
     return pl.DataFrame(rows)
 
 
@@ -164,6 +171,7 @@ def main() -> None:
         metavar="T",
         help="Exclude instances where any run exceeded T seconds",
     )
+    add_time_limit_arg(parser)
     parser.add_argument(
         "--by-family",
         action="store_true",
@@ -171,6 +179,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    set_time_limit(args.time_limit)
     aliases = resolve_aliases(args.files, args.aliases)
     extra = [args.metric] if args.metric else None
     data = prepare_data(

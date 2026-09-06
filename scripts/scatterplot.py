@@ -30,7 +30,12 @@ from plotnine import (
     theme_minimal,
 )
 
-from analysis_utils import prepare_data, resolve_aliases
+from analysis_utils import (
+    add_time_limit_arg,
+    prepare_data,
+    resolve_aliases,
+    set_time_limit,
+)
 
 
 def scatter_plot(
@@ -106,6 +111,7 @@ def main() -> None:
     parser.add_argument(
         "--domain", default="", help="Highlight instances matching domain substring"
     )
+    add_time_limit_arg(parser)
     parser.add_argument(
         "--out", default="scatter.pdf", help="Output file (default: scatter.pdf)"
     )
@@ -114,6 +120,7 @@ def main() -> None:
     if len(args.files) < 2:
         parser.error("At least two files required (baseline + one comparison).")
 
+    set_time_limit(args.time_limit)
     aliases = resolve_aliases(args.files, args.aliases)
     extra = [args.metric] if args.metric not in ("Nodes", "Time") else None
     data = prepare_data(args.files, aliases, extra_cols=extra)
