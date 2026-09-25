@@ -131,7 +131,7 @@ def main() -> None:
     if len(args.files) < 2:
         parser.error("At least two files required (baseline + one comparison).")
 
-    set_time_limit(args.time_limit)
+    set_time_limit(args.time_limit, cap_unsolved=not args.raw_time)
     aliases = resolve_aliases(args.files, args.aliases)
     extra = [args.metric] if args.metric not in ("Nodes", "Time") else None
     data = prepare_data(args.files, aliases, domain=args.domain, extra_cols=extra)

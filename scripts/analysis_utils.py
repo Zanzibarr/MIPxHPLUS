@@ -20,6 +20,7 @@ INFINITY: float = 1e20  # Final_UB value when no solution was found
 OPT_EPS: float = 1e-6  # bounds closer than this prove optimality
 
 TIME_BRACKETS: list[float] = [0.1, 1, 10, 100]
+CAP_UNSOLVED: bool = True  # set Time of unsolved runs to TIME_LIMIT
 
 
 def _bracket_labels() -> list[str]:
@@ -39,14 +40,16 @@ BRACKET_LABELS: list[str] = _bracket_labels()
 GROUP_ORDER: list[str] = ["all", "solvable", "all-solvable"] + BRACKET_LABELS
 
 
-def set_time_limit(limit: float | None) -> None:
+def set_time_limit(limit: float | None, cap_unsolved: bool = True) -> None:
     """Override the run time limit (seconds) and rebuild the derived brackets.
 
     Must be called before prepare_data(): TIME_LIMIT is the value unsolved runs
-    are capped at and the upper edge of the last time bracket. Passing None or
-    the current value is a no-op.
+    are capped at (unless cap_unsolved is False, in which case their reported
+    Time is kept) and the upper edge of the last time bracket. Passing None or
+    the current value leaves the limit unchanged.
     """
-    global TIME_LIMIT, BRACKET_LABELS, GROUP_ORDER
+    global TIME_LIMIT, BRACKET_LABELS, GROUP_ORDER, CAP_UNSOLVED
+    CAP_UNSOLVED = cap_unsolved
     if limit is None or float(limit) == float(TIME_LIMIT):
         return
     if limit <= TIME_BRACKETS[-1]:
@@ -65,6 +68,12 @@ def add_time_limit_arg(parser) -> None:
         default=None,
         metavar="T",
         help=f"solver time limit of the runs, in seconds (default: {TIME_LIMIT})",
+    )
+    parser.add_argument(
+        "--raw-time",
+        action="store_true",
+        help="keep the reported Time of unsolved runs instead of setting it to "
+        "the time limit (e.g. for bound-only runs)",
     )
 
 
@@ -97,6 +106,7 @@ def _load_run(
     or infeasibility was proved (Final_LB == Final_UB == INFINITY).
     Unsolved runs (LB/UB gap not closed) have Time set to TIME_LIMIT, whatever
     the solver reported: it stops itself slightly before the limit.
+    With CAP_UNSOLVED = False the reported Time is kept instead.
     """
     if not Path(file_path).is_file():
         print(f"ERROR: {file_path} is not an existing file.")
@@ -114,7 +124,7 @@ def _load_run(
         ).alias("Solved"),
         pl.lit(alias).alias("Model"),
     ).with_columns(
-        pl.when(~pl.col("Solved"))
+        pl.when(~pl.col("Solved") & CAP_UNSOLVED)
         .then(pl.lit(float(TIME_LIMIT)))
         .otherwise(pl.col("Time"))
         .cast(pl.Float64)

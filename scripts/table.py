@@ -179,7 +179,7 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    set_time_limit(args.time_limit)
+    set_time_limit(args.time_limit, cap_unsolved=not args.raw_time)
     aliases = resolve_aliases(args.files, args.aliases)
     extra = [args.metric] if args.metric else None
     data = prepare_data(
