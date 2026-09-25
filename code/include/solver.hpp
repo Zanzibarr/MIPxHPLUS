@@ -2,6 +2,7 @@
 
 #include <cplex.h>
 
+#include <atomic>
 #include <binary_set.hxx>
 #include <cstdint>
 #include <list>
@@ -263,6 +264,11 @@ class Solver {
         std::atomic<bool> relax_lb_rootnode_recorded{false};
         std::atomic<double> relax_last_root_lb{-1.0};
 
+        // Relaxation callback data
+        std::once_flag relax_lb_once;  // Record the first LP relaxation bound only once
+        std::mutex relax_root_mutex;   // Guards the two fields below, which must change together
+        int relax_root_restart{0};     // CPLEX restart the root iteration counter refers to
+        int relax_root_iterations{0};  // Number of relaxation callback calls at the root node of the current restart
     } global_;
 
     struct LocalData {
@@ -288,6 +294,8 @@ class Solver {
 
         // Relaxation callback data
         std::vector<double> relax_xstar;
+        std::unordered_set<int> relax_visited_nodes;  // Nodes (except root) already visited by this thread in the current restart
+        int relax_visited_restart;                    // CPLEX restart relax_visited_nodes refers to (zero-initialized: local_ is static)
     };
     // ATTENTION: This data structure is shared for ALL SOLVER INSTANCES in the same thread.. if only one Solver instance is ever used concurrently,
     // then this just means that each thread has its own data and no problem occurs

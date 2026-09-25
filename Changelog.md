@@ -18,6 +18,23 @@ _To see info about this project, please refer to the [Readme](Readme.md)._
 <!-- ### :rocket: Performance Improvements -->
 
 
+## [4.3.1] - YYYY/MM/DD
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+### :heavy_exclamation_mark: Changed
+- Insertion sort instead of post-sort for orbits in symmetry breaking
+- Orbital probing only checks the 5 best orbits (largest first, ties by fewest preconditions, then by discovery order) instead of all of them: it
+  can now fix nothing where it used to find a landmark further down the list, and on ties the orbit fixed may differ from v4.3.0
+- Small space optimizations in callbacks (no behavioural change)
+### :heavy_plus_sign: Added
+- Max number of iterations while looking for possible orbits of actions
+- `--root-iter` (`-r`): max number of relaxation callbacks at the root node, counted per CPLEX restart (default 30, -1 for no limit); root cut
+  rounds were previously unlimited
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+<!-- ### :rocket: Performance Improvements -->
+
+
 ## [4.3.0] - 2026/08/06
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->

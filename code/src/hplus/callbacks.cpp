@@ -52,7 +52,7 @@ void Solver::hplus_candidate_callback_(CPXCALLBACKCONTEXTptr context) {
     auto _callback_timer = scoped_timer("cand_callback");
     stats_.counter_inc<"cand_calls">();
 
-    const unsigned int size = inst_.m + inst_.nfadd;
+    const unsigned int size = inst_.m;
     if (local_.cand_xstar.size() != size) {
         local_.cand_xstar = std::vector<double>(size);
     }
@@ -208,8 +208,7 @@ void Solver::hplus_reject_candidate_with_new_sol_(CPXCALLBACKCONTEXTptr context,
 
 void Solver::hplus_relaxation_callback_(CPXCALLBACKCONTEXTptr context) {
     // Get the lp relaxation (first ever LP solution)
-    static std::once_flag lb_once;
-    std::call_once(lb_once, [&] {
+    std::call_once(global_.relax_lb_once, [&] {
         double best_lb{-1};
         call_cplex(CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_BND, &best_lb));
         stats_.gauge_record<"lb_relaxation">(actual_bound_(best_lb));
@@ -219,13 +218,35 @@ void Solver::hplus_relaxation_callback_(CPXCALLBACKCONTEXTptr context) {
     int nodedepth{-1};
     call_cplex(CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODEUID, &nodeuid));
     call_cplex(CPXcallbackgetinfoint(context, CPXCALLBACKINFO_NODEDEPTH, &nodedepth));
+    int restarts{0};
+    call_cplex(CPXcallbackgetinfoint(context, CPXCALLBACKINFO_RESTARTS, &restarts));
 
-    // Visit each node (except for root node) at most once
-    thread_local static std::unordered_set<int> visited_nodes;
-    if (nodedepth != 0 && visited_nodes.contains(nodeuid)) {
+    // A restart rebuilds the tree from a new root: node uids from the previous tree are meaningless
+    if (restarts > local_.relax_visited_restart) {
+        local_.relax_visited_nodes.clear();
+        local_.relax_visited_restart = restarts;
+    }
+
+    if (nodedepth == 0) {  // Visit the root node at most k times (per restart)
+        int iter{0};
+        {
+            std::scoped_lock lock(global_.relax_root_mutex);
+            if (restarts > global_.relax_root_restart) {
+                global_.relax_root_restart = restarts;
+                global_.relax_root_iterations = 0;
+            }
+            iter = ++global_.relax_root_iterations;
+        }
+
+        const auto max_root_iter = params_.get<cli_desc::root_max_iter, int>();
+        if (iter > max_root_iter) {
+            return;
+        }
+
+    } else if (local_.relax_visited_nodes.contains(nodeuid)) {  // Visit each node (except for root node) at most once
         return;
     }
-    visited_nodes.insert(nodeuid);
+    local_.relax_visited_nodes.insert(nodeuid);
 
     const auto& relax_cuts = params_.get<cli_desc::relax_cuts, std::string>();
     if (relax_cuts == "0") {
@@ -237,7 +258,7 @@ void Solver::hplus_relaxation_callback_(CPXCALLBACKCONTEXTptr context) {
     auto _callback_timer = scoped_timer("relax_callback");
     stats_.counter_inc<"relax_calls">();
 
-    const unsigned int size = inst_.m + inst_.nfadd;
+    const unsigned int size = inst_.m;
     if (local_.relax_xstar.size() != size) {
         local_.relax_xstar = std::vector<double>(size);
     }

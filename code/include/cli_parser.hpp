@@ -96,12 +96,14 @@ inline auto validate_cli(cli::ArgParser& parser) -> void {
         parser.set<cli_desc::hplus_alg>("0");
         parser.set<cli_desc::cand_cuts>("0");
         parser.set<cli_desc::relax_cuts>("0");
+        parser.set<cli_desc::root_max_iter>(-1);
     }
     if (parser.get<cli_desc::mode, std::string>() == "lmcut") {
         parser.set<cli_desc::primal_heur>("0");
         parser.set<cli_desc::hplus_alg>("0");
         parser.set<cli_desc::cand_cuts>("0");
         parser.set<cli_desc::relax_cuts>("0");
+        parser.set<cli_desc::root_max_iter>(-1);
     }
 
     {
@@ -147,6 +149,14 @@ inline auto validate_cli(cli::ArgParser& parser) -> void {
         const auto& cand = parser.get<cli_desc::cand_cuts, std::string>();
         if (cand == "0") {
             throw cli::ParseError("'base' formulation needs candidate callbacks enabled");
+        }
+    }
+
+    const auto& relax_callback = parser.get<cli_desc::relax_cuts, std::string>();
+    if (relax_callback != "0") {
+        const auto& root_max_iter = parser.get<cli_desc::root_max_iter, int>();
+        if (root_max_iter < 0) {
+            parser.set<cli_desc::root_max_iter>(std::numeric_limits<int>::max());
         }
     }
 
@@ -200,6 +210,7 @@ inline auto parse_cli(const int argc, char** argv, Logger& logger) -> ParameterR
     apply_allow(
         parser.add<cli_desc::relax_cuts, std::string>().shorthand('F').description(cli_desc::relax_cuts_help).default_val(cli_desc::def_relax_cuts),
         cli_desc::relax_cuts_choices);
+    parser.add<cli_desc::root_max_iter, int>().shorthand('r').description(cli_desc::root_max_iter_help).default_val(cli_desc::def_root_max_iter).min(-1);
 
     // Testing
     parser.add<cli_desc::testing, bool>().description(cli_desc::testing_help).default_val(cli_desc::def_testing);

@@ -436,8 +436,8 @@ void Solver::hplus_parse_cplex_status_() {
 }
 
 void Solver::hplus_get_cplex_solution_() {
-    std::vector<double> plan(inst_.m + inst_.nfadd, 0.0);
-    switch (int code = CPXgetx(global_.hplus_env, global_.hplus_lp, plan.data(), 0, static_cast<int>(inst_.m + inst_.nfadd - 1))) {
+    std::vector<double> plan(inst_.m, 0.0);
+    switch (int code = CPXgetx(global_.hplus_env, global_.hplus_lp, plan.data(), 0, static_cast<int>(inst_.m - 1))) {
         case CPXERR_NO_MEMORY:
             [[fallthrough]];
         case CPXERR_THREAD_FAILED:
