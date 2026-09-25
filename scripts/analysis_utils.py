@@ -94,7 +94,8 @@ def _load_run(
 
     Rows with Status != 0 (errors) are dropped.
     Solved = True iff optimality was proved (Final_LB == Final_UB < INFINITY).
-    Unsolved runs have Time capped at TIME_LIMIT.
+    Unsolved runs (LB/UB gap not closed) have Time set to TIME_LIMIT, whatever
+    the solver reported: it stops itself slightly before the limit.
     """
     if not Path(file_path).is_file():
         print(f"ERROR: {file_path} is not an existing file.")
@@ -109,7 +110,7 @@ def _load_run(
         ((ub < INFINITY) & ((ub - lb) <= OPT_EPS)).alias("Solved"),
         pl.lit(alias).alias("Model"),
     ).with_columns(
-        pl.when(~pl.col("Solved") & (pl.col("Time") >= TIME_LIMIT))
+        pl.when(~pl.col("Solved"))
         .then(pl.lit(float(TIME_LIMIT)))
         .otherwise(pl.col("Time"))
         .cast(pl.Float64)
