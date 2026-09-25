@@ -56,7 +56,7 @@ def _category_row(
         model_df = df.filter(pl.col("Model") == model).sort("Problem")
         delta = int(model_df["Solved"].sum()) - solved_base
         delta_str = f"+{delta}" if delta > 0 else str(delta)
-        if test_sig:
+        if test_sig and len(base_df):
             pv = mcnemar_test(
                 base_df["Solved"].to_numpy(), model_df["Solved"].to_numpy()
             )
@@ -74,7 +74,7 @@ def _category_row(
                 else (sv / base_sv if base_sv != 0 else float("nan"))
             )
             ratio_str = f"{ratio:.3f}"
-            if test_sig and wilcoxon_test(base_arr, model_arr) < PVALUE:
+            if test_sig and len(base_arr) and wilcoxon_test(base_arr, model_arr) < PVALUE:
                 ratio_str = f"*{ratio_str}"
             row[f"{m}_ratio({model})"] = ratio_str
 
