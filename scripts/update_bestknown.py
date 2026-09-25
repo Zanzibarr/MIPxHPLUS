@@ -11,6 +11,8 @@ import argparse
 from pathlib import Path
 import polars as pl
 
+from analysis_utils import strip_seed_suffix
+
 DEFAULT_BESTKNOWN = "../results/best_known.csv"
 EPS = 1e-6
 
@@ -21,16 +23,28 @@ def load_run(file: str) -> pl.DataFrame:
         columns=["Instance", "Status", "Final_LB", "Final_UB"],
         schema_overrides={"Final_LB": pl.Float64, "Final_UB": pl.Float64},
     )
-    return (
+    csvfile = (
         csvfile.filter(pl.col("Status") == 0)  # Only instances with no errors
         .drop(["Status"])
         .rename({"Final_LB": "Bound", "Final_UB": "Incumbent"})
     )
+    # Multi-seed runs: merge the seeds of each instance into its best bound/incumbent
+    # (check() then also catches a seed's bound exceeding another seed's incumbent)
+    return (
+        csvfile.with_columns(strip_seed_suffix(csvfile["Instance"]).alias("Instance"))
+        .group_by("Instance", maintain_order=True)
+        .agg(pl.col("Bound").max(), pl.col("Incumbent").min())
+    )
 
 
 def check(bk: pl.DataFrame, new: pl.DataFrame) -> None:
-    merged = bk.join(new, on="Instance", how="inner", suffix="_new")
     errors = []
+    # Checked on every new instance, also those not yet in bk
+    for row in new.to_dicts():
+        if row["Bound"] > row["Incumbent"] + EPS:
+            errors.append(f"{row['Instance']}: new bound is higher than new incumbent")
+
+    merged = bk.join(new, on="Instance", how="inner", suffix="_new")
     for row in merged.to_dicts():
         prob = row["Instance"]
         bound_ref, inc_ref, bound_new, inc_new = (
@@ -39,9 +53,6 @@ def check(bk: pl.DataFrame, new: pl.DataFrame) -> None:
             row["Bound_new"],
             row["Incumbent_new"],
         )
-
-        if bound_new > inc_new + EPS:
-            errors.append(f"{prob}: new bound is higher than new incumbent")
 
         if bound_new > inc_ref + EPS:
             errors.append(f"{prob}: new bound is higher than reference incumbent")

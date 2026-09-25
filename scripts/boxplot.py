@@ -39,6 +39,7 @@ from analysis_utils import (
     require_complete,
     resolve_aliases,
     set_time_limit,
+    strip_seed_suffix,
 )
 
 BEST_KNOWN = Path(__file__).parent.parent / "results" / "best_known.csv"
@@ -63,6 +64,8 @@ def compute_gaps(data: pl.DataFrame, cols: list[str]) -> pl.DataFrame:
     )
 
     data = require_complete(data, cols)
+    # multi-seed runs: every seed of an instance is matched to its best known
+    data = data.with_columns(strip_seed_suffix(data["Problem"]).alias("_bk_key"))
     frames: list[pl.DataFrame] = []
     for col in cols:
         if col not in data.columns:
@@ -75,7 +78,7 @@ def compute_gaps(data: pl.DataFrame, cols: list[str]) -> pl.DataFrame:
             * 100
         ).alias("Gap")
         frames.append(
-            data.join(bk, on="Problem", how="inner").select(
+            data.join(bk, left_on="_bk_key", right_on="Problem", how="inner").select(
                 "Problem", "Model", pl.lit(col).alias("Phase"), gap
             )
         )

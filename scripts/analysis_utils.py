@@ -82,6 +82,23 @@ def add_time_limit_arg(parser) -> None:
 # ---------------------------------------------------------------------------
 
 
+SEED_SUFFIX: str = r"-s\d+$"  # appended by run_batch.py --n-seeds > 1
+
+
+def strip_seed_suffix(names: pl.Series) -> pl.Series:
+    """Map multi-seed instance names (<instance>-s<k>) back to <instance>.
+
+    The suffix is removed only if the names come from a multi-seed run, i.e. at
+    least two distinct names differ only by their -s<k> suffix; otherwise names
+    are returned unchanged. Instance names may contain -s<n>- in the middle,
+    but never end with -s<n>.
+    """
+    seeded = names.unique().filter(names.unique().str.contains(SEED_SUFFIX))
+    if not seeded.str.replace(SEED_SUFFIX, "").is_duplicated().any():
+        return names
+    return names.str.replace(SEED_SUFFIX, "")
+
+
 def resolve_aliases(files: list[str], aliases: list[str] | None) -> list[str]:
     if aliases:
         if len(aliases) != len(files):
