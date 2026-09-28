@@ -14,7 +14,7 @@ import polars as pl
 from analysis_utils import strip_seed_suffix
 
 DEFAULT_BESTKNOWN = "../results/best_known.csv"
-EPS = 1e-6
+EPS = 1e-5
 
 
 def load_run(file: str) -> pl.DataFrame:

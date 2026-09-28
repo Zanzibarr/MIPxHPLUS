@@ -168,6 +168,7 @@ class Solver {
     void hplus_add_tl_constraints_();
     void hplus_add_ve_constraints_();
     void hplus_enable_candidate_callback_();
+    void hplus_enable_branch_callback_();
 
     void hplus_post_warm_start_();
     void hplus_post_tl_warm_start_();
@@ -193,6 +194,9 @@ class Solver {
     void hplus_separate_relax_lmcut_cut_(CPXCALLBACKCONTEXTptr context, char minimization);
     void hplus_reject_relax_sec_(CPXCALLBACKCONTEXTptr context, const std::vector<std::vector<unsigned int>>& cycles);
     void hplus_reject_relax_lm_(CPXCALLBACKCONTEXTptr context, const std::vector<std::vector<unsigned int>>& landmarks);
+
+    void hplus_branching_callback_(CPXCALLBACKCONTEXTptr context);
+    auto hplus_branching_compute_lmcut_(const std::vector<int>& fixings) -> double;
 
     void hplus_cplex_gather_info_();
     void hplus_parse_cplex_status_();

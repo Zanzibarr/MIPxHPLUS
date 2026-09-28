@@ -18,7 +18,9 @@ void Solver::solve_lmcut_() {
 
         const auto& [landmarks, lmcut_value] = lmcut_lmcut_(hmax_functions[choice], minimization);
 
-        // TODO: If lmcut_value is infinite, then the problem is infeasible
+        if (lmcut_value == std::numeric_limits<double>::infinity()) {
+            throw EarlyExit("computing LM-Cut", EarlyExit::INFEASIBLE);
+        }
 
         for (const auto& landmark : landmarks) {
             global_.landmarks.push_back(landmark);
@@ -41,7 +43,7 @@ auto Solver::lmcut_lmcut_(const lmcut_hmax_function& hmax, char minimization) ->
     lmcut_init_();
     const auto& lmcut_opt = params_.get<cli_desc::lmcut_opt, std::string>();
     double fixed_cost{0};
-    if (lmcut_opt.find('f') != std::string::npos) {
+    if (lmcut_opt.contains('f')) {
         for (const auto act_i : global_.fixed_actions) {
             fixed_cost += local_.lmcut_reduced_costs[act_i];
             local_.lmcut_reduced_costs[act_i] = 0;
@@ -61,6 +63,7 @@ auto Solver::lmcut_int_separation_(const std::vector<unsigned int>& used_actions
     }
 
     const auto& [landmarks, lmcut_val] = lmcut_compute_private_(hmax, minimization);
+    myassert(lmcut_val < std::numeric_limits<double>::infinity(), "LMCut computed in candidate callback returned infinity.");
 
     return {!landmarks.empty(), landmarks};
 }
@@ -76,6 +79,8 @@ auto Solver::lmcut_relax_separation_(const std::vector<double>& actions_weights,
     }
 
     auto [landmarks, lmcut_val] = lmcut_compute_private_(hmax, minimization);
+    // TODO: Remove this assert if we ever move to local valid cuts in the relaxation callback
+    myassert(lmcut_val < std::numeric_limits<double>::infinity(), "LMCut computed in relaxation callback returned infinity.");
 
     std::erase_if(landmarks, [&actions_weights](const std::vector<unsigned int>& landmark) {
         double sum = 0;
@@ -265,10 +270,17 @@ auto Solver::lmcut_compute_private_(const lmcut_hmax_function& hmax, char minimi
 
     lmcut_update_hmax_values_(global_.initial_actions, hmax);
 
+    if ((this->*hmax)(global_.goal_sparse).second == std::numeric_limits<double>::infinity()) {
+        return {{}, std::numeric_limits<double>::infinity()};
+    }
+
     local_.lmcut_initial_hmax_values = std::vector<double>(local_.lmcut_hmax_values.begin(), local_.lmcut_hmax_values.end());
 
     while (is_gr_strict_double((this->*hmax)(global_.goal_sparse).second, 0)) {
         const auto& [cut, val] = lmcut_compute_cut_(hmax, minimization);
+        // Careful re-adding this... this function is now called also at branching level, which computes local LM-Cut runs using the local fixings
+        // (hence the landmarks it computes won't be globally valid anymore)
+        //
         // BinarySet cut_bs{inst_.m};
         // cut_bs |= cut;
         // myassert(check_landmark_(cut_bs), "Found invalid landmark in lmcut");
@@ -389,6 +401,10 @@ auto Solver::lmcut_compute_cut_(const lmcut_hmax_function& hmax, char minimizati
     std::deque<int> queue;
 
     const auto& lmcut_opt = params_.get<cli_desc::lmcut_opt, std::string>();
+    // TODO: Skip +inf reduced-cost actions (fixed to 0 in the branching callback), so that they behave as removed. hmax already ignores them, but
+    // this forward pass still walks them, so they can enlarge the pre-goal section and end up in the cut (valid, but weaker cuts). Skip them:
+    //  - here, at the start of check_update_cut_pregoal;
+    //  - in the 'c' minimization (unapplicable_actions below), otherwise they get applied there as soon as they become reachable.
     const auto& check_update_cut_pregoal = [&](unsigned int act_i) -> void {
         explored.insert(act_i);
 
@@ -474,6 +490,7 @@ auto Solver::lmcut_compute_cut_(const lmcut_hmax_function& hmax, char minimizati
 
     if (minimization == 'c') {
         std::vector<unsigned int> unapplicable_actions;
+        // TODO: skip +inf reduced-cost actions here too (see the TODO on check_update_cut_pregoal)
         for (unsigned int act_i = 0; act_i < inst_.m; act_i++) {
             if (!bs_contains(pre_goal_section, inst_.actions[act_i].pre_sparse)) {
                 unapplicable_actions.push_back(act_i);

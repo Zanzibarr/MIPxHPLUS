@@ -1,12 +1,12 @@
 cmake_minimum_required(VERSION 3.20)
 
 project(hplus
-    VERSION 4.3.1
+    VERSION 4.3.2
     LANGUAGES CXX
 )
 
 # ── Language standard ────────────────────────────────────────────────────────
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
 

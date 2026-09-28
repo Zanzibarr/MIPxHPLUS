@@ -17,7 +17,7 @@ TIME_LIMIT: int = 900
 SHIFT: int = 1
 PVALUE: float = 0.05
 INFINITY: float = 1e20  # Final_UB value when no solution was found
-OPT_EPS: float = 1e-6  # bounds closer than this prove optimality
+OPT_EPS: float = 1e-5  # bounds closer than this prove optimality
 
 TIME_BRACKETS: list[float] = [0.1, 1, 10, 100]
 CAP_UNSOLVED: bool = True  # set Time of unsolved runs to TIME_LIMIT

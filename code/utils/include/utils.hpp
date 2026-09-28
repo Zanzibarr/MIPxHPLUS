@@ -21,7 +21,7 @@ using enum LoggerLevel;
 
 [[nodiscard]]
 inline auto version() -> std::string {
-    return "Version: " + std::string(PROJECT_VERSION);
+    return std::format("Version: {}{}", PROJECT_VERSION, "-TODObranching");
 }
 
 [[nodiscard]]
@@ -100,7 +100,8 @@ constexpr auto fix_precision(double val) -> double {
 // ##################################################################### //
 
 [[nodiscard]]
-inline auto isint(const std::string& str, const long long from = std::numeric_limits<int>::min(), const long long to = std::numeric_limits<int>::max()) -> bool {
+inline auto isint(const std::string& str, const long long from = std::numeric_limits<int>::min(),
+                  const long long to = std::numeric_limits<int>::max()) -> bool {
     // Handle empty string
     if (str.empty()) {
         return false;

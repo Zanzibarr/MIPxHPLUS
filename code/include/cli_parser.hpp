@@ -210,7 +210,14 @@ inline auto parse_cli(const int argc, char** argv, Logger& logger) -> ParameterR
     apply_allow(
         parser.add<cli_desc::relax_cuts, std::string>().shorthand('F').description(cli_desc::relax_cuts_help).default_val(cli_desc::def_relax_cuts),
         cli_desc::relax_cuts_choices);
-    parser.add<cli_desc::root_max_iter, int>().shorthand('r').description(cli_desc::root_max_iter_help).default_val(cli_desc::def_root_max_iter).min(-1);
+    parser.add<cli_desc::root_max_iter, int>()
+        .shorthand('r')
+        .description(cli_desc::root_max_iter_help)
+        .default_val(cli_desc::def_root_max_iter)
+        .min(-1);
+
+    // Branching
+    parser.add<cli_desc::branch_cb, bool>().shorthand('b').description(cli_desc::branch_help).default_val(cli_desc::def_branch);
 
     // Testing
     parser.add<cli_desc::testing, bool>().description(cli_desc::testing_help).default_val(cli_desc::def_testing);

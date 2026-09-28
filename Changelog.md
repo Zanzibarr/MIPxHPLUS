@@ -18,6 +18,19 @@ _To see info about this project, please refer to the [Readme](Readme.md)._
 <!-- ### :rocket: Performance Improvements -->
 
 
+## [4.3.2] - 2026/09/28
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+### :heavy_exclamation_mark: Changed
+- Bump C++ standard version from 20 to 23
+### :heavy_plus_sign: Added
+- LM-Cut infeasibility check
+- Option for the branching callback: branching only on action variables, recording statistics about how many times no action variable is fractional
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+<!-- ### :rocket: Performance Improvements -->
+
+
 ## [4.3.1] - YYYY/MM/DD
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->

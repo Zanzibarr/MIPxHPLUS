@@ -33,6 +33,9 @@ void Solver::solve_hplus_() {
                 hplus_add_ve_constraints_();
             } else if (model == "base") {
                 hplus_enable_candidate_callback_();
+                if (params_.get<cli_desc::branch_cb, bool>()) {
+                    hplus_enable_branch_callback_();
+                }
             } else {
                 logger_[FATAL] << std::format("Unhandled hplus formulation: {}", model);
             }
@@ -90,6 +93,8 @@ void Solver::hplus_init_cplex_() {
     call_cplex(CPXsetintparam(global_.hplus_env, CPXPARAM_MIP_Display, 3));
     // tolerance
     call_cplex(CPXsetdblparam(global_.hplus_env, CPXPARAM_MIP_Tolerances_MIPGap, 0));
+    // Same integrality threshold used in the callbacks (e.g. to detect fractional actions in the branching callback)
+    call_cplex(CPXsetdblparam(global_.hplus_env, CPXPARAM_MIP_Tolerances_Integrality, constants::epsilon));
     // memory/size limits
     call_cplex(CPXsetdblparam(global_.hplus_env, CPXPARAM_MIP_Limits_TreeMemory, 12000));
     call_cplex(CPXsetdblparam(global_.hplus_env, CPXPARAM_WorkMem, 4050));
@@ -348,6 +353,7 @@ void Solver::hplus_post_base_warm_start_() {
 }
 
 void Solver::hplus_enable_candidate_callback_() { global_.hplus_callback_context |= CPX_CALLBACKCONTEXT_CANDIDATE; }
+void Solver::hplus_enable_branch_callback_() { global_.hplus_callback_context |= CPX_CALLBACKCONTEXT_BRANCHING; }
 
 void Solver::hplus_cplex_gather_info_() {
     // ~~~~~~~~~~~ Solution Status ~~~~~~~~~~~ //
