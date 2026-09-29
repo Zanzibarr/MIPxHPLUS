@@ -401,29 +401,14 @@ auto Solver::lmcut_compute_cut_(const lmcut_hmax_function& hmax, char minimizati
     std::deque<int> queue;
 
     const auto& lmcut_opt = params_.get<cli_desc::lmcut_opt, std::string>();
-    // TODO: Skip +inf reduced-cost actions (fixed to 0 in the branching callback), so that they behave as removed. hmax already ignores them, but
-    // this forward pass still walks them, so they can enlarge the pre-goal section and end up in the cut (valid, but weaker cuts). Skip them:
-    //  - here, at the start of check_update_cut_pregoal;
-    //  - in the 'c' minimization (unapplicable_actions below), otherwise they get applied there as soon as they become reachable.
     const auto& check_update_cut_pregoal = [&](unsigned int act_i) -> void {
         explored.insert(act_i);
+        if (local_.lmcut_reduced_costs[act_i] == std::numeric_limits<double>::infinity()) {
+            return;
+        }
 
         if (is_gr_strict_double(local_.lmcut_reduced_costs[act_i], 0)) {
-            if (lmcut_opt.find('e') == std::string::npos) {
-                bool added = false;
-                for (const auto& eff : inst_.actions[act_i].eff_sparse) {
-                    if (local_.lmcut_goal_section.contains(eff)) {
-                        if (added) {
-                            continue;
-                        }
-                        cut.push_back(act_i);
-                        added = true;
-                    } else if (!pre_goal_section[eff]) {
-                        pre_goal_section.add(eff);
-                        queue.push_back(static_cast<int>(eff));
-                    }
-                }
-            } else {
+            if (lmcut_opt.contains('e')) {
                 // TODO Salvagnin, Zanella: "Tighter Bounds for h+ MIP Planning via LM-Cut Strengthening and Cut Generation"
 
                 // Case 1: This is the only action from the pre_goal_section that achieves a fact p not in the goal_section... actions added to
@@ -449,6 +434,20 @@ auto Solver::lmcut_compute_cut_(const lmcut_hmax_function& hmax, char minimizati
                 // Second pass: add effects to pre_goal_section in sorted eff_sparse order (deterministic).
                 for (const auto& eff : inst_.actions[act_i].eff_sparse) {
                     if (!pre_goal_section[eff]) {
+                        pre_goal_section.add(eff);
+                        queue.push_back(static_cast<int>(eff));
+                    }
+                }
+            } else {
+                bool added = false;
+                for (const auto& eff : inst_.actions[act_i].eff_sparse) {
+                    if (local_.lmcut_goal_section.contains(eff)) {
+                        if (added) {
+                            continue;
+                        }
+                        cut.push_back(act_i);
+                        added = true;
+                    } else if (!pre_goal_section[eff]) {
                         pre_goal_section.add(eff);
                         queue.push_back(static_cast<int>(eff));
                     }
@@ -490,9 +489,9 @@ auto Solver::lmcut_compute_cut_(const lmcut_hmax_function& hmax, char minimizati
 
     if (minimization == 'c') {
         std::vector<unsigned int> unapplicable_actions;
-        // TODO: skip +inf reduced-cost actions here too (see the TODO on check_update_cut_pregoal)
         for (unsigned int act_i = 0; act_i < inst_.m; act_i++) {
-            if (!bs_contains(pre_goal_section, inst_.actions[act_i].pre_sparse)) {
+            if (!bs_contains(pre_goal_section, inst_.actions[act_i].pre_sparse) &&
+                local_.lmcut_reduced_costs[act_i] < std::numeric_limits<double>::infinity()) {
                 unapplicable_actions.push_back(act_i);
             }
         }
@@ -505,6 +504,8 @@ auto Solver::lmcut_compute_cut_(const lmcut_hmax_function& hmax, char minimizati
     for (const auto& act_i : cut) {
         min_reduced_cost = std::min(min_reduced_cost, local_.lmcut_reduced_costs[act_i]);
     }
+
+    myassert(min_reduced_cost < std::numeric_limits<double>::infinity(), "Landmark with minimum reduced cost of infinity found.");
 
     for (const auto& act_i : cut) {
         local_.lmcut_reduced_costs[act_i] -= min_reduced_cost;

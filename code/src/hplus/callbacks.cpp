@@ -297,9 +297,6 @@ void Solver::hplus_relaxation_callback_(CPXCALLBACKCONTEXTptr context) {
 // ##################################################################### //
 // ######################### BRANCHING CALLBACK ######################## //
 // ##################################################################### //
-// TODO: With the true costs (see TODO on hplus_branching_compute_lmcut_) the base lmcut depends only on the node fixings: we could store the
-// lmcut_up/lmcut_down of the chosen action for each child (keyed by its node uid) and reuse it here as the base, instead of recomputing it.
-// This could be a way to lazily evalate some bounds if this proves to be expensive (as its done for strong branching)
 void Solver::hplus_branching_callback_(CPXCALLBACKCONTEXTptr context) {
     auto _callback_timer = scoped_timer("branch_callback");
     stats_.counter_inc<"branch_calls">();
@@ -334,10 +331,22 @@ void Solver::hplus_branching_callback_(CPXCALLBACKCONTEXTptr context) {
     }
 
     // TODO: Reachability analysis using hmax on the current node: it's +inf we can prune this node
+    // Compute hmax normally ...
+    // if (hmax >= std::numeric_limits<double>::infinity()) {
+    //    // TODO: prune node
+    //    return;
+    // }
 
     // TODO: Reachability analysis using hmax on fixing to 0 (one at a time) the fractional actions... this is faster than running lmcut
     // If an action shows that fixing to 0 leads to infeasibility, we can remove that action from the fractional list and write down that it must be
-    // fixed to 1
+    // fixed to 1 (hence, since it's done here, before the main branching loop, these fixings apply for all the lmcut executions)
+    // TODO: Instead of checking if the hmax is infinity, we could merge the two checks (reachability and optimality) into a "if hmax >= incumbent"
+    // TODO: We could do the same for fixings to 1, but the chances that hmax >= incumbent (the condition in which we would fix the action to 0) are
+    // pretty low in my opinion
+
+    // ... then, for each action that could be fixed to 0, update its effects as if that action never existed (if a fact has no more achievers, it
+    // should go up to +inf, the others should look at all the other achievers), then update the rest of the graph accordingly (the incremental
+    // hmax_update implementation in the greedy heuristic should work... check to make sure); keep a trail of changes, so we can do this incrementally
 
     std::vector<double> lbs(inst_.m);
     std::vector<double> ubs(inst_.m);
@@ -355,46 +364,53 @@ void Solver::hplus_branching_callback_(CPXCALLBACKCONTEXTptr context) {
         }
     }
 
-    // TODO: The first lmcut run is to be recomputed (unless we enable the caching, see above), after this we could try an incremental approach to
-    // computing lmcut (at least have lazy initialization of the data structures...)
+    // TODO: The first lmcut run is to be recomputed, after this we could try an incremental approach to computing lmcut (at least have lazy
+    // initialization of the data structures...)
     auto lmcut_base = hplus_branching_compute_lmcut_(fixings);
+    myassert(lmcut_base < std::numeric_limits<double>::infinity(),
+             "LMcut with infinite value after hmax reachability analysis said the node was feasible.");
 
-    // If the node is infeasible (goal unreachable with the current 0-fixings), there's nothing to branch on
-    // TODO: Once set up the basic reachability analysis shown above, this (should be) is un-necessary (maybe keep it as an assert)
-    if (lmcut_base == std::numeric_limits<double>::infinity()) {
-        // TODO: prune the node (CPXcallbackprunenode)
+    // TODO: This gets us the local best incumbent... lmcut is always a lower bound to h+, so this will never trigger as long as the incumbent queried
+    // is local... we might need to put back the global candidate reading incumbent updates, though this would break determinism(?)
+    double incumbent{-1};
+    call_cplex(CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_SOL, &incumbent));
+    if (is_gr_or_eq_double(lmcut_base, incumbent)) {
+        // TODO: Prune node
         return;
     }
-
-    // TODO (pruning with the incumbent, base): if lmcut_base >= incumbent, prune the node. See the pruning TODO below for the details.
 
     double max_score = -1;
     unsigned int branch_act = inst_.m;
     for (const auto act_i : actions_fract) {
-        myassert(fixings[act_i] == -1, "Fractional action was fixed to either 0 or 1 in branch callback");
+        myassert(fixings[act_i] == -1, "Action reported as fractional was fixed to either 0 or 1 in branch callback");
         //  fix act_i to 0: compute lmcut
         fixings[act_i] = 0;
-        auto lmcut_down = hplus_branching_compute_lmcut_(fixings);
+        auto lmcut_down = hplus_branching_compute_lmcut_(fixings);  // TODO: Make incremental
         fixings[act_i] = -1;
 
-        // If fixing to 0 makes the problem infeasible, generate a single child with this action fixed to 1 and exit the callback
-        // TODO: This should be turned into an assert after checking every fractional action with hmax above
-        if (lmcut_down == std::numeric_limits<double>::infinity()) {
-            // TODO: branch with only one child, with act_i fixed to 1 (see the reachability TODO above)
-            return;
-        }
+        myassert(lmcut_down < std::numeric_limits<double>::infinity(),
+                 "Action that was already proved to be fixable to 0 without making the problem infeasible returned a lmcut_down of +inf");
 
         //  fix act_i to 1: compute lmcut
         fixings[act_i] = 1;
-        auto lmcut_up = hplus_branching_compute_lmcut_(fixings);
+        auto lmcut_up = hplus_branching_compute_lmcut_(fixings);  // TODO: Make incremental
         fixings[act_i] = -1;
 
-        // TODO (pruning with the incumbent): lmcut_up/lmcut_down are valid lower bounds of the children, so if one of them reaches the incumbent
-        // (CPXCALLBACKINFO_BEST_SOL, in model space: no cost_prefix) that child can be pruned and act_i fixed to the other value; both -> prune the
-        // node. All the fixings found this way can be collected and applied together in a single child.
         // TODO: Since we are finding fixings in the loop, should we turn this for loop into a circular loop, that keeps going as long it keeps
         // finding fixings? An action fixed now, might change the lmcut execution of a non-fixed action from a past iteration: that could fix another
         // action... this should however have an upper limit on the number of iterations...
+        if (is_gr_or_eq_double(lmcut_down, incumbent) && is_gr_or_eq_double(lmcut_up, incumbent)) {
+            // TODO: Prune node
+            return;
+        }
+        if (is_gr_or_eq_double(lmcut_down, incumbent)) {
+            // TODO: fix action to 1
+            continue;
+        }
+        if (is_gr_or_eq_double(lmcut_up, incumbent)) {
+            // TODO: fix action to 0
+            continue;
+        }
 
         // score = max(delta(lmcut, lmcut^-), eps) * max(delta(lmcut, lmcut^+), eps)
         // LM-Cut is not monotone: fixing an action can decrease it (it happens, e.g. on miconic-s2-0), because different cuts are found. That's not a
@@ -439,12 +455,10 @@ auto Solver::hplus_branching_compute_lmcut_(const std::vector<int>& fixings) -> 
     // actions were removed): an hmax of any of the goal facts of +inf now means that the task is infeasible -> prune the node (if its the base lmcut)
     // or immediatelly create a single child node with the action fixed to 1 (if it was a 0-fixing of a fractional action).
     // Get actions fixed to 1: those shall have a 0 cost and have the lmcut cost initialized by those costs...
-    //
-    // TODO: +inf cost is not a true removal: these actions don't propagate hmax, but the pre-goal pass in lmcut still walks them, so they can
-    // enlarge the pre-goal section and the cuts, giving a valid but weaker bound (see the TODO in lmcut_compute_cut_).
     for (const auto [i, val] : std::views::enumerate(fixings)) {
         switch (val) {
             case -1:
+                // TODO: Remove this...
                 local_.lmcut_reduced_costs[i] = fix_precision(local_.lmcut_reduced_costs[i] * (1 - local_.relax_xstar[i]));
                 break;
             case 0:
