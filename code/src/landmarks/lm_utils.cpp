@@ -132,7 +132,7 @@ void Solver::landmark_minimalization_(std::vector<unsigned int>& landmark, const
     const unsigned int goal_act = inst_.m;
 
     const auto check_update_watch_pre = [&](unsigned int act_i, bool init = false) -> void {
-        myassert(init || watch_pre[act_i] != inst_.n, "Wrongly initialized watch precondition");
+        myassert((init || watch_pre[act_i] != inst_.n), "Wrongly initialized watch precondition");
 
         const unsigned int previous = watch_pre[act_i];
         // If the current watch_pre isn't reachable, there's no need to change it
@@ -170,7 +170,7 @@ void Solver::landmark_minimalization_(std::vector<unsigned int>& landmark, const
     };
 
     const auto check_update_goal_watch_pre = [&](bool init = false) -> void {
-        myassert(init || watch_pre[goal_act] != inst_.n, "Wrongly initialized watch precondition in goal facts");
+        myassert((init || watch_pre[goal_act] != inst_.n), "Wrongly initialized watch precondition in goal facts");
         // If the current watch_pre isn't reachable, there's no need to change it
         if (!init && !reachable_state[watch_pre[goal_act]]) {
             return;

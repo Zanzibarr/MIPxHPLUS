@@ -8,6 +8,7 @@
 #include <list>
 #include <logger.hxx>
 #include <mutex>
+#include <optional>
 #include <parameters.hxx>
 #include <pq.hxx>
 #include <random>
@@ -197,6 +198,8 @@ class Solver {
 
     void hplus_branching_callback_(CPXCALLBACKCONTEXTptr context);
     auto hplus_branching_compute_lmcut_(const std::vector<int>& fixings) -> double;
+    void hplus_branching_make_branches_(CPXCALLBACKCONTEXTptr context, const std::vector<std::pair<unsigned int, double>>& fixings,
+                                        std::optional<unsigned int> branch_act, double nodeest);
 
     void hplus_cplex_gather_info_();
     void hplus_parse_cplex_status_();

@@ -82,7 +82,7 @@ void Solver::solve() {
                 logger_[WARNING] << std::format("Proved optimality for this instance while {}", e.what());
 
                 myassert(is_same_double(global_.best_bound, global_.best_incumbent), "Optimality proven but bounds are not matching.");
-                myassert(!global_.solution.empty() || inst_.goal.empty(), "Optimality proven but no solution is provided.");
+                myassert((!global_.solution.empty() || inst_.goal.empty()), "Optimality proven but no solution is provided.");
 
                 // solve_hplus_ _SHOULD_ not be throwing an OPTIMAL EarlyExit, so we're here only when we exit early due to the primal heuristic
                 // matching lmcut's lower bound: in this case we have no way of knowing what would have been the LP/root relaxation, so we write

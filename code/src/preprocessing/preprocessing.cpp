@@ -125,11 +125,11 @@ void Solver::preprocess_() {
         prep_fixed_actions_();  // fixes all preconditions and effects of the surviving fixed actions
 
         // Consistency tripwires: every step must leave the instance counters in sync with the actual containers
-        myassert(inst_.m == inst_.actions.size() && inst_.m == inst_.actions_names.size() && inst_.m == global_.fixed_actions.capacity() &&
-                     inst_.m == global_.eliminated_actions.capacity(),
+        myassert((inst_.m == inst_.actions.size() && inst_.m == inst_.actions_names.size() && inst_.m == global_.fixed_actions.capacity() &&
+                  inst_.m == global_.eliminated_actions.capacity()),
                  "Action count out of sync after a preprocessing pass");
-        myassert(inst_.n == inst_.goal.capacity() && inst_.n == landmarks.size() && inst_.n == global_.fixed_facts.capacity() &&
-                     inst_.n == global_.eliminated_facts.capacity(),
+        myassert((inst_.n == inst_.goal.capacity() && inst_.n == landmarks.size() && inst_.n == global_.fixed_facts.capacity() &&
+                  inst_.n == global_.eliminated_facts.capacity()),
                  "Fact count out of sync after a preprocessing pass");
         // Each eliminator resets its own marker set, and returns early exactly when the set is already empty (and still correctly sized, since it
         // eliminated nothing): either way neither set outlives the pass

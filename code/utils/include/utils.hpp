@@ -21,7 +21,7 @@ using enum LoggerLevel;
 
 [[nodiscard]]
 inline auto version() -> std::string {
-    return std::format("Version: {}{}", PROJECT_VERSION, "-TODObranching");
+    return std::format("Version: {}{}", PROJECT_VERSION, "-branch-lmcut");
 }
 
 [[nodiscard]]
@@ -69,13 +69,13 @@ inline volatile std::sig_atomic_t GLOBAL_TERMINATE_CONDITION = 0;
 // ###################### FLOATING POINT PRECISION ##################### //
 // ##################################################################### //
 
-constexpr auto is_same_double(double val1, double val2) -> bool { return std::abs(val1 - val2) < constants::epsilon; }
+constexpr auto is_same_double(double val1, double val2, double eps = constants::epsilon) -> bool { return std::abs(val1 - val2) < eps; }
 
-constexpr auto is_gr_or_eq_double(double val1, double val2) -> bool { return val1 >= val2 - constants::epsilon; }
-constexpr auto is_lw_or_eq_double(double val1, double val2) -> bool { return is_gr_or_eq_double(val2, val1); }
+constexpr auto is_gr_or_eq_double(double val1, double val2, double eps = constants::epsilon) -> bool { return val1 >= val2 - eps; }
+constexpr auto is_lw_or_eq_double(double val1, double val2, double eps = constants::epsilon) -> bool { return is_gr_or_eq_double(val2, val1, eps); }
 
-constexpr auto is_gr_strict_double(double val1, double val2) -> bool { return val1 > val2 + constants::epsilon; }
-constexpr auto is_lw_strict_double(double val1, double val2) -> bool { return is_gr_strict_double(val2, val1); }
+constexpr auto is_gr_strict_double(double val1, double val2, double eps = constants::epsilon) -> bool { return val1 > val2 + eps; }
+constexpr auto is_lw_strict_double(double val1, double val2, double eps = constants::epsilon) -> bool { return is_gr_strict_double(val2, val1, eps); }
 
 // if val is epsilon close to an integer, return that integer
 constexpr auto fix_precision(double val) -> double {

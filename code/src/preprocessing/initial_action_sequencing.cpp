@@ -61,7 +61,7 @@ auto Solver::prep_initial_action_sequencing_() -> bool {
             for (std::size_t i = 0; i < watchers.size();) {
                 // No filter needed here: only fixed/0-cost actions are ever inserted into the watch lists (see the init loop above)
                 const auto act_i = watchers[i];
-                myassert(global_.fixed_actions[act_i] || inst_.actions[act_i].cost == 0, "Non fixed/0-cost action found in a watch list");
+                myassert((global_.fixed_actions[act_i] || inst_.actions[act_i].cost == 0), "Non fixed/0-cost action found in a watch list");
 
                 // Try to find a new unsatisfied precondition to watch
                 bool moved = false;

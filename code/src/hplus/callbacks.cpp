@@ -326,32 +326,14 @@ void Solver::hplus_branching_callback_(CPXCALLBACKCONTEXTptr context) {
 
     // If none is fractional, for now, record this statistics and let CPLEX choose how to branch
     if (actions_fract.empty()) {
-        stats_.counter_inc<"branch_allint">();
+        stats_.counter_inc<"branch_all-int">();
         return;
     }
 
-    // TODO: Reachability analysis using hmax on the current node: it's +inf we can prune this node
-    // Compute hmax normally ...
-    // if (hmax >= std::numeric_limits<double>::infinity()) {
-    //    // TODO: prune node
-    //    return;
-    // }
-
-    // TODO: Reachability analysis using hmax on fixing to 0 (one at a time) the fractional actions... this is faster than running lmcut
-    // If an action shows that fixing to 0 leads to infeasibility, we can remove that action from the fractional list and write down that it must be
-    // fixed to 1 (hence, since it's done here, before the main branching loop, these fixings apply for all the lmcut executions)
-    // TODO: Instead of checking if the hmax is infinity, we could merge the two checks (reachability and optimality) into a "if hmax >= incumbent"
-    // TODO: We could do the same for fixings to 1, but the chances that hmax >= incumbent (the condition in which we would fix the action to 0) are
-    // pretty low in my opinion
-
-    // ... then, for each action that could be fixed to 0, update its effects as if that action never existed (if a fact has no more achievers, it
-    // should go up to +inf, the others should look at all the other achievers), then update the rest of the graph accordingly (the incremental
-    // hmax_update implementation in the greedy heuristic should work... check to make sure); keep a trail of changes, so we can do this incrementally
-
     std::vector<double> lbs(inst_.m);
     std::vector<double> ubs(inst_.m);
-    call_cplex(CPXcallbackgetlocallb(context, lbs.data(), 0, inst_.m - 1));
-    call_cplex(CPXcallbackgetlocalub(context, ubs.data(), 0, inst_.m - 1));
+    call_cplex(CPXcallbackgetlocallb(context, lbs.data(), 0, static_cast<int>(inst_.m - 1)));
+    call_cplex(CPXcallbackgetlocalub(context, ubs.data(), 0, static_cast<int>(inst_.m - 1)));
     std::vector<int> fixings;
     fixings.reserve(inst_.m);
     for (const auto [lb, ub] : std::views::zip(lbs, ubs)) {
@@ -364,85 +346,127 @@ void Solver::hplus_branching_callback_(CPXCALLBACKCONTEXTptr context) {
         }
     }
 
-    // TODO: The first lmcut run is to be recomputed, after this we could try an incremental approach to computing lmcut (at least have lazy
-    // initialization of the data structures...)
     auto lmcut_base = hplus_branching_compute_lmcut_(fixings);
-    myassert(lmcut_base < std::numeric_limits<double>::infinity(),
-             "LMcut with infinite value after hmax reachability analysis said the node was feasible.");
 
-    // TODO: This gets us the local best incumbent... lmcut is always a lower bound to h+, so this will never trigger as long as the incumbent queried
-    // is local... we might need to put back the global candidate reading incumbent updates, though this would break determinism(?)
+    // Get the incumbent for basic pruning
     double incumbent{-1};
     call_cplex(CPXcallbackgetinfodbl(context, CPXCALLBACKINFO_BEST_SOL, &incumbent));
+
+    // If LMCut returns a bound worse than the incumbent, we can prune
     if (is_gr_or_eq_double(lmcut_base, incumbent)) {
-        // TODO: Prune node
+        if (lmcut_base == std::numeric_limits<double>::infinity()) {  // Prune by infeasibility
+            stats_.counter_inc<"branch_lmcut-inf">();
+        } else {  // Prune by duality
+            stats_.counter_inc<"branch_lmcut-prune">();
+        }
+
+        call_cplex(CPXcallbackprunenode(context));
         return;
     }
 
+    // Loop over actions we can branch on to compute the branching scores
     double max_score = -1;
     unsigned int branch_act = inst_.m;
+    std::vector<std::pair<unsigned int, double>> derived_fixings;
+    unsigned int fixed_0 = 0;
+    unsigned int fixed_1 = 0;
     for (const auto act_i : actions_fract) {
         myassert(fixings[act_i] == -1, "Action reported as fractional was fixed to either 0 or 1 in branch callback");
+
         //  fix act_i to 0: compute lmcut
         fixings[act_i] = 0;
-        auto lmcut_down = hplus_branching_compute_lmcut_(fixings);  // TODO: Make incremental
+        auto lmcut_down = hplus_branching_compute_lmcut_(fixings);
         fixings[act_i] = -1;
-
-        myassert(lmcut_down < std::numeric_limits<double>::infinity(),
-                 "Action that was already proved to be fixable to 0 without making the problem infeasible returned a lmcut_down of +inf");
 
         //  fix act_i to 1: compute lmcut
         fixings[act_i] = 1;
-        auto lmcut_up = hplus_branching_compute_lmcut_(fixings);  // TODO: Make incremental
+        auto lmcut_up = hplus_branching_compute_lmcut_(fixings);
         fixings[act_i] = -1;
 
-        // TODO: Since we are finding fixings in the loop, should we turn this for loop into a circular loop, that keeps going as long it keeps
-        // finding fixings? An action fixed now, might change the lmcut execution of a non-fixed action from a past iteration: that could fix another
-        // action... this should however have an upper limit on the number of iterations...
         if (is_gr_or_eq_double(lmcut_down, incumbent) && is_gr_or_eq_double(lmcut_up, incumbent)) {
-            // TODO: Prune node
+            stats_.counter_inc<"branch_lmcut-prune-child">();
+            call_cplex(CPXcallbackprunenode(context));
             return;
         }
         if (is_gr_or_eq_double(lmcut_down, incumbent)) {
-            // TODO: fix action to 1
+            ++fixed_1;
+            derived_fixings.emplace_back(act_i, 1);
             continue;
         }
         if (is_gr_or_eq_double(lmcut_up, incumbent)) {
-            // TODO: fix action to 0
+            ++fixed_0;
+            derived_fixings.emplace_back(act_i, 0);
             continue;
         }
 
-        // score = max(delta(lmcut, lmcut^-), eps) * max(delta(lmcut, lmcut^+), eps)
-        // LM-Cut is not monotone: fixing an action can decrease it (it happens, e.g. on miconic-s2-0), because different cuts are found. That's not a
-        // gain, so a decrease is clamped to eps instead of taking the absolute value.
-        // TODO: A decrease in lmcut should be capped at eps or not?
+        // Score the child nodes
         auto score = std::max(lmcut_down - lmcut_base, constants::epsilon) * std::max(lmcut_up - lmcut_base, constants::epsilon);
-        // NOTE: scores can be much smaller than epsilon (eps * eps, eps * delta), so is_gr_strict_double sees them as ties: a plain > might be
-        // better.
-        if (is_gr_strict_double(score, max_score)) {
+        // Use a smaller epsilon since we are comparing epsilon-multiplied values
+        if (is_gr_strict_double(score, max_score, constants::epsilon * 1e-2)) {
             max_score = score;
             branch_act = act_i;
         }
     }
 
-    // TODO: Branch on the variable with maximum score (CPXcallbackmakebranch, two children: ub = 0 / lb = 1)
-    // https://www.ibm.com/docs/en/cofz/22.1.2?topic=SS9UKU_22.1.2/com.ibm.cplex.zos.help/refcallablelibrary/macros/CPX_CALLBACKCONTEXT_BRANCHING.htm
+    stats_.counter_inc<"branch_fixed-0">(fixed_0);
+    stats_.counter_inc<"branch_fixed-1">(fixed_1);
+    if (branch_act != inst_.m) {
+        stats_.gauge_record<"branch_score">(max_score);
+    }
+
+    // If no action has been chosen, all fractional actions have been fixed by the lmcut tests: just one child with all the fixings applied
+    // Otherwise, branch on the chosen action: two children, both with all fixings applied
+    // TODO: The landmarks produced by the up and down children of the chosen action could be added as local cuts in the child nodes... or if there's
+    // not an action to branch on, we could add those generated by computing the base lmcut
+    hplus_branching_make_branches_(context, derived_fixings, branch_act == inst_.m ? std::nullopt : std::optional{branch_act},
+                                   std::max(lmcut_base, cost));
 }
 
-// TODO: this computes a valid local lower bound (according to the fixings used)... can we pass this information to cplex then?
-// Does it make sense? I'm lowering the reduced costs of some actions (the non-fixed ones), so I'm computing the missing lmcut to optimality, not the
-// base lmcut, so this might be a really bad relaxation and it doesn't make sense to pass it to cplex...
-//
-// Considerations:
-//  - With c(1-x) the value is still a valid local lower bound (lowering the costs keeps LM-Cut admissible), just a weaker one.
-//  - Fixing an action to 1 brings its cost back from discounted to full: part of the up-gain might come from that, rather than from the fixing
-//    changing the landmarks, which would favor actions with a large c x.
-//  - With the true costs the bound is (typically) stronger, has no such bias, and depends only on the fixings (cacheable, see TODO on the callback).
-//  - Downside: close to the root the LP bound (which already has the lmcut landmarks) is likely stronger, so many deltas might be ~0 there; they
-//    should get more informative as the fixings accumulate.
-//
-// NOTE (local cuts, undecided): instead of passing the bound itself, the landmarks found here (currently thrown away) could be added to the child as
-// local cuts through CPXcallbackmakebranch (dropping the actions fixed to 0): they are what produce the bound in that subtree.
+// Create the children of the current node: each child gets all the given fixings; if branch_act is set, two children are created (with branch_act
+// fixed to 0 and to 1 respectively), otherwise a single child is created with just the fixings.
+// https://www.ibm.com/docs/en/cofz/22.1.2?topic=SS9UKU_22.1.2/com.ibm.cplex.zos.help/refcallablelibrary/macros/CPX_CALLBACKCONTEXT_BRANCHING.htm
+void Solver::hplus_branching_make_branches_(CPXCALLBACKCONTEXTptr context, const std::vector<std::pair<unsigned int, double>>& fixings,
+                                            std::optional<unsigned int> branch_act, double nodeest) {
+    // Nothing to branch on and nothing to fix: let CPLEX choose how to branch
+    // TODO: This should be an assert (?)
+    if (!branch_act.has_value() && fixings.empty()) {
+        return;
+    }
+
+    // Bound changes shared by all children (+1 slot for the branching action, if any)
+    std::vector<int> varind;
+    std::vector<char> varlu;
+    std::vector<double> varbd;
+    varind.reserve(fixings.size() + 1);
+    varlu.reserve(fixings.size() + 1);
+    varbd.reserve(fixings.size() + 1);
+    for (const auto& [act_i, val] : fixings) {
+        varind.push_back(static_cast<int>(act_i));
+        varlu.push_back(is_same_double(val, 0) ? 'U' : 'L');
+        varbd.push_back(val);
+    }
+
+    int seqnum{-1};
+    if (!branch_act.has_value()) {
+        stats_.counter_inc<"branch_single-child">();
+        call_cplex(CPXcallbackmakebranch(context, static_cast<int>(varind.size()), varind.data(), varlu.data(), varbd.data(), 0, 0, nullptr, nullptr,
+                                         nullptr, nullptr, nullptr, nodeest, &seqnum));
+        return;
+    }
+
+    varind.push_back(static_cast<int>(*branch_act));
+    // Down child: branch_act <= 0
+    varlu.push_back('U');
+    varbd.push_back(0);
+    call_cplex(CPXcallbackmakebranch(context, static_cast<int>(varind.size()), varind.data(), varlu.data(), varbd.data(), 0, 0, nullptr, nullptr,
+                                     nullptr, nullptr, nullptr, nodeest, &seqnum));
+    // Up child: branch_act >= 1
+    varlu.back() = 'L';
+    varbd.back() = 1;
+    call_cplex(CPXcallbackmakebranch(context, static_cast<int>(varind.size()), varind.data(), varlu.data(), varbd.data(), 0, 0, nullptr, nullptr,
+                                     nullptr, nullptr, nullptr, nodeest, &seqnum));
+}
+
 auto Solver::hplus_branching_compute_lmcut_(const std::vector<int>& fixings) -> double {
     auto _callback_timer = scoped_timer("branch_lmcut");
     stats_.counter_inc<"branch_lmcut_calls">();
@@ -457,9 +481,7 @@ auto Solver::hplus_branching_compute_lmcut_(const std::vector<int>& fixings) -> 
     // Get actions fixed to 1: those shall have a 0 cost and have the lmcut cost initialized by those costs...
     for (const auto [i, val] : std::views::enumerate(fixings)) {
         switch (val) {
-            case -1:
-                // TODO: Remove this...
-                local_.lmcut_reduced_costs[i] = fix_precision(local_.lmcut_reduced_costs[i] * (1 - local_.relax_xstar[i]));
+            case -1:  // We don't touch non-fixed actions
                 break;
             case 0:
                 local_.lmcut_reduced_costs[i] = std::numeric_limits<double>::infinity();
@@ -474,9 +496,7 @@ auto Solver::hplus_branching_compute_lmcut_(const std::vector<int>& fixings) -> 
     }
 
     // Compute lmcut
-    // TODO: 'c' minimization is hardcoded: it changes the lmcut value (hence the scores), so make it (and the hmax function) a parameter and compare
-    // them. Keep the hmax function deterministic, otherwise the same fixings can give different values.
-    const auto& [landmarks, lmcut] = lmcut_compute_private_(&Solver::lmcut_hmax_arbitrary_, 'c');
+    const auto& [landmarks, lmcut] = lmcut_compute_private_(&Solver::lmcut_hmax_arbitrary_, 'g');
 
-    return lmcut + fixed_cost;
+    return fixed_cost + lmcut;
 }
