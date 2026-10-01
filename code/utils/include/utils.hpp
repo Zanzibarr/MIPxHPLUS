@@ -21,7 +21,7 @@ using enum LoggerLevel;
 
 [[nodiscard]]
 inline auto version() -> std::string {
-    return std::format("Version: {}{}", PROJECT_VERSION, "-branch-lmcut");
+    return std::format("Version: {}{}", PROJECT_VERSION, "-branch-lmcut-missing");
 }
 
 [[nodiscard]]

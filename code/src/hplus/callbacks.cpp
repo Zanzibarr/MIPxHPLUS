@@ -1,4 +1,5 @@
 #include <binary_set.hxx>
+#include <numeric>
 #include <ranges>
 
 #include "cli_descriptions.hpp"
@@ -172,7 +173,7 @@ void Solver::hplus_candidate_get_info_() {
 void Solver::hplus_reject_candidate_with_new_sol_(CPXCALLBACKCONTEXTptr context, const std::vector<unsigned int>& solution) {
     unsigned int ncols{inst_.m + inst_.nfadd + inst_.n};
     std::vector<int> ind(ncols);
-    std::iota(ind.begin(), ind.end(), 0);
+    std::ranges::iota(ind, 0);
     std::vector<double> val(ncols, 0.0);
     std::vector<unsigned int> new_sol;
     double cost{0};
@@ -400,7 +401,7 @@ void Solver::hplus_branching_callback_(CPXCALLBACKCONTEXTptr context) {
         }
 
         // Score the child nodes
-        auto score = std::max(lmcut_down - lmcut_base, constants::epsilon) * std::max(lmcut_up - lmcut_base, constants::epsilon);
+        auto score = std::max(lmcut_base - lmcut_down, constants::epsilon) * std::max(lmcut_base - lmcut_up, constants::epsilon);
         // Use a smaller epsilon since we are comparing epsilon-multiplied values
         if (is_gr_strict_double(score, max_score, constants::epsilon * 1e-2)) {
             max_score = score;
@@ -487,7 +488,7 @@ auto Solver::hplus_branching_compute_lmcut_(const std::vector<int>& fixings) -> 
                 local_.lmcut_reduced_costs[i] = std::numeric_limits<double>::infinity();
                 break;
             case 1:
-                fixed_cost += local_.lmcut_reduced_costs[i];
+                // fixed_cost += local_.lmcut_reduced_costs[i];
                 local_.lmcut_reduced_costs[i] = 0;
                 break;
             default:

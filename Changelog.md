@@ -25,7 +25,7 @@ _To see info about this project, please refer to the [Readme](Readme.md)._
 - Bump C++ standard version from 20 to 23
 ### :heavy_plus_sign: Added
 - LM-Cut infeasibility check
-- Option for the branching callback: branching only on action variables, recording statistics
+- Option for the branching callback: branching only on action variables
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
 <!-- ### :rocket: Performance Improvements -->
