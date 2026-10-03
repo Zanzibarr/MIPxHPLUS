@@ -135,3 +135,23 @@ inline auto isint(const std::string& str, const long long from = std::numeric_li
         return false;
     }
 }
+
+// (a - b) / max(a, b) -> this is a number in [-1, +1]
+inline auto gap(double a, double b) -> double {
+    assert(a >= 0 && b >= 0);
+
+    // This covers also the case both 0
+    if (is_same_double(a, b)) {
+        return 0;
+    }
+    // -b / b = -1
+    if (is_same_double(a, 0)) {
+        return -1;
+    }
+    // a / a = 1
+    if (is_same_double(b, 0)) {
+        return 1;
+    }
+
+    return (a - b) / std::max(a, b);
+}

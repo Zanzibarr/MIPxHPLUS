@@ -137,6 +137,7 @@ void Solver::show() {
     logger_ << stats_.stats_report_to_str();
     logger_ << stats_.counter_report_to_str();
     logger_ << stats_.gauge_report_to_str();
+    logger_ << stats_.histogram_report_to_str();
 }
 
 auto Solver::get() -> std::vector<std::string> {

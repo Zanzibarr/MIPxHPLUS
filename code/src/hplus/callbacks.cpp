@@ -330,6 +330,9 @@ void Solver::hplus_branching_callback_(CPXCALLBACKCONTEXTptr context) {
         return;
     }
 
+    stats_.gauge_record<"branch_nfract">(std::ssize(actions_fract));
+    stats_.histogram_record<"branch_nfract_hist">(std::ssize(actions_fract));
+
     std::vector<double> lbs(inst_.m);
     std::vector<double> ubs(inst_.m);
     call_cplex(CPXcallbackgetlocallb(context, lbs.data(), 0, static_cast<int>(inst_.m - 1)));
@@ -411,7 +414,9 @@ void Solver::hplus_branching_callback_(CPXCALLBACKCONTEXTptr context) {
     stats_.counter_inc<"branch_fixed-0">(fixed_0);
     stats_.counter_inc<"branch_fixed-1">(fixed_1);
     if (branch_act != inst_.m) {
-        stats_.gauge_record<"branch_score">(max_score);
+        auto bound_score = gap(cost, lmcut_base);
+        stats_.gauge_record<"branch_boundgap">(bound_score);
+        stats_.histogram_record<"branch_boundgap_hist">(bound_score);
     }
 
     // If no action has been chosen, all fractional actions have been fixed by the lmcut tests: just one child with all the fixings applied

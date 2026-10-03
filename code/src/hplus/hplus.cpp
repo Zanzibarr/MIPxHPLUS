@@ -353,7 +353,11 @@ void Solver::hplus_post_base_warm_start_() {
 }
 
 void Solver::hplus_enable_candidate_callback_() { global_.hplus_callback_context |= CPX_CALLBACKCONTEXT_CANDIDATE; }
-void Solver::hplus_enable_branch_callback_() { global_.hplus_callback_context |= CPX_CALLBACKCONTEXT_BRANCHING; }
+void Solver::hplus_enable_branch_callback_() {
+    global_.hplus_callback_context |= CPX_CALLBACKCONTEXT_BRANCHING;
+    stats_.histogram_create<"branch_nfract_hist">(0, inst_.m, 20);
+    stats_.histogram_create<"branch_boundgap_hist">(-1, 1, 20);
+}
 
 void Solver::hplus_cplex_gather_info_() {
     // ~~~~~~~~~~~ Solution Status ~~~~~~~~~~~ //
