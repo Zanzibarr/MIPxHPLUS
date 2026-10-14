@@ -163,6 +163,13 @@ def parse():
         default=None,
         help=f"path to the hplus executable (default: {HPLUS})",
     )
+    parser.add_argument(
+        "--n-seeds",
+        type=int,
+        default=1,
+        dest="n_seeds",
+        help="number of seeds for each instance (default: 1)",
+    )
     parser.add_argument("--bash", action="store_true")
     parser.add_argument(
         "--mode",
@@ -170,7 +177,9 @@ def parse():
         default="write",
         help="write: only create scripts (default) | run: only execute existing | results: runs the result script on a specified batch",
     )
+
     args, extra = parser.parse_known_args()
+    assert args.n_seeds >= 1, f"--n-seeds must be at least 1 (got {args.n_seeds})"
     args.commands = " ".join(extra) if extra else None
     args.exe = Path(args.exe).expanduser().resolve() if args.exe else HPLUS
     return args
@@ -179,8 +188,7 @@ def parse():
 def build_command(args):
     timelimit = args.timelimit if args.timelimit is not None else TIME_LIMIT
     threads = args.threads if args.threads is not None else THREADS
-    seed = args.seed if args.seed is not None else SEED
-    base = f"{args.exe} -t {timelimit} -T {threads} -s {seed} -v"
+    base = f"{args.exe} -t {timelimit} -T {threads} -v"
     if args.commands is not None:
         return f"{base} {args.commands}"
     return base
@@ -228,22 +236,28 @@ def write_slurm_scripts(args, rundir):
     solutions_dir.mkdir()
 
     threads = args.threads if args.threads is not None else THREADS
+    seed = args.seed
 
     job_paths = []
     for inst in instances(args):
-        instance = Path(inst).stem
-        job = jobsdir / f"{instance}.sh"
-        job.write_text(
-            SLURM_JOB_TEMPLATE.format(
-                instance=instance,
-                threads=threads,
-                timelimit_slurm=TIME_LIMIT_SLURM,
-                output_dir=output_dir,
-                command=f"{command} -i {inst} -o false -l {logsdir}/{instance}.log -c {cpxlogsdir}/{instance}.log -w {solutions_dir}/{instance}.sol",
+        for seed_counter in range(args.n_seeds):
+            curr_seed = seed + seed_counter
+
+            instance = Path(inst).stem
+            out_name = f"{instance}-s{seed_counter}" if args.n_seeds > 1 else instance
+            job = jobsdir / f"{out_name}.sh"
+
+            job.write_text(
+                SLURM_JOB_TEMPLATE.format(
+                    instance=out_name,
+                    threads=threads,
+                    timelimit_slurm=TIME_LIMIT_SLURM,
+                    output_dir=output_dir,
+                    command=f"{command} -s {curr_seed} -i {inst} -o false -l {logsdir}/{out_name}.log -c {cpxlogsdir}/{out_name}.log -w {solutions_dir}/{out_name}.sol",
+                )
             )
-        )
-        job.chmod(0o755)
-        job_paths.append(job)
+            job.chmod(0o755)
+            job_paths.append(job)
 
     assert len(job_paths) > 0, "no instances found"
 
@@ -272,15 +286,22 @@ def write_bash_scripts(args, rundir):
     solutions_dir = Path(rundir) / "solutions"
     solutions_dir.mkdir()
 
+    seed = args.seed
+
     job_paths = []
     for inst in instances(args):
-        instance = Path(inst).stem
-        job = jobsdir / f"{instance}.sh"
-        job.write_text(
-            f"#!/bin/bash\n{command} -i {inst} -o false -l {logsdir}/{instance}.log -c {cpxlogsdir}/{instance}.log -w {solutions_dir}/{instance}.sol\n"
-        )
-        job.chmod(0o755)
-        job_paths.append(job)
+        for seed_counter in range(args.n_seeds):
+            curr_seed = seed + seed_counter
+
+            instance = Path(inst).stem
+            out_name = f"{instance}-s{seed_counter}" if args.n_seeds > 1 else instance
+            job = jobsdir / f"{out_name}.sh"
+
+            job.write_text(
+                f"#!/bin/bash\n{command} -s {curr_seed} -i {inst} -o false -l {logsdir}/{out_name}.log -c {cpxlogsdir}/{out_name}.log -w {solutions_dir}/{out_name}.sol\n"
+            )
+            job.chmod(0o755)
+            job_paths.append(job)
 
     assert len(job_paths) > 0, "no instances found"
 

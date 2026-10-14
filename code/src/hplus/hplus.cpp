@@ -90,6 +90,8 @@ void Solver::hplus_init_cplex_() {
     call_cplex(CPXsetintparam(global_.hplus_env, CPXPARAM_MIP_Display, 3));
     // tolerance
     call_cplex(CPXsetdblparam(global_.hplus_env, CPXPARAM_MIP_Tolerances_MIPGap, 0));
+    // Same integrality threshold used in the callbacks
+    call_cplex(CPXsetdblparam(global_.hplus_env, CPXPARAM_MIP_Tolerances_Integrality, constants::epsilon));
     // memory/size limits
     call_cplex(CPXsetdblparam(global_.hplus_env, CPXPARAM_MIP_Limits_TreeMemory, 12000));
     call_cplex(CPXsetdblparam(global_.hplus_env, CPXPARAM_WorkMem, 4050));

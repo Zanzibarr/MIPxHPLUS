@@ -17,7 +17,7 @@ TIME_LIMIT: int = 900
 SHIFT: int = 1
 PVALUE: float = 0.05
 INFINITY: float = 1e20  # Final_UB value when no solution was found
-OPT_EPS: float = 1e-6  # bounds closer than this prove optimality
+OPT_EPS: float = 1e-5  # bounds closer than this prove optimality
 
 TIME_BRACKETS: list[float] = [0.1, 1, 10, 100]
 CAP_UNSOLVED: bool = True  # set Time of unsolved runs to TIME_LIMIT
@@ -80,6 +80,23 @@ def add_time_limit_arg(parser) -> None:
 # ---------------------------------------------------------------------------
 # Data loading (CSV files produced by parse_results.py)
 # ---------------------------------------------------------------------------
+
+
+SEED_SUFFIX: str = r"-s\d+$"  # appended by run_batch.py --n-seeds > 1
+
+
+def strip_seed_suffix(names: pl.Series) -> pl.Series:
+    """Map multi-seed instance names (<instance>-s<k>) back to <instance>.
+
+    The suffix is removed only if the names come from a multi-seed run, i.e. at
+    least two distinct names differ only by their -s<k> suffix; otherwise names
+    are returned unchanged. Instance names may contain -s<n>- in the middle,
+    but never end with -s<n>.
+    """
+    seeded = names.unique().filter(names.unique().str.contains(SEED_SUFFIX))
+    if not seeded.str.replace(SEED_SUFFIX, "").is_duplicated().any():
+        return names
+    return names.str.replace(SEED_SUFFIX, "")
 
 
 def resolve_aliases(files: list[str], aliases: list[str] | None) -> list[str]:
