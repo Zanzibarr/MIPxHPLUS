@@ -87,8 +87,9 @@ void Solver::read_instance_() {
             logger_[FATAL] << "Corrupted file: missing <begin_mutex_group>";
         }
         while (line != "end_mutex_group") {
-            std::getline(file,
-                         line);  // reach end_mutex_group (ignore all content)
+            if (!std::getline(file, line)) {  // reach end_mutex_group (ignore all content)
+                logger_[FATAL] << "Corrupted file: reached end of file before an <end_mutex_group>";
+            }
             if (line == "begin_state") {
                 logger_[FATAL] << "Corrupted file: found a <begin_state> before an <end_mutex_group>";
             }

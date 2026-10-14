@@ -69,6 +69,9 @@ void Solver::hplus_post_tl_warm_start_() {
     constexpr int effortlevel{CPX_MIPSTART_NOCHECK};
     unsigned int timestamp{0};
 
+    // Timestamps have lb = 1 and NOCHECK trusts us: facts never reached by the warm start are unconstrained, so give them the lower bound
+    std::fill(val.begin() + inst_.m + inst_.nfadd + inst_.n, val.begin() + inst_.m + inst_.nfadd + (2 * inst_.n), 1.0);
+
     for (const auto& act_i : warm_start) {
         val[act_i] = 1;
         timestamp++;

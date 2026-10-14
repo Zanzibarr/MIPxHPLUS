@@ -68,12 +68,11 @@ void Solver::hplus_candidate_callback_(CPXCALLBACKCONTEXTptr context) {
         return;
     }
 
-    // The feasibility of the solution is determined by the existance of unreachable actions -> the goal might be reachable even if some actions are
-    // unreachable, in this case we know that we can obtain the same (or a better) solution by using a strict subset of used actions
-    // NOTE!: This rejects the candidate solution, BUT we post another one that is guaranteed to be a better one (either only less actions, or even a
-    // better incumbent)
+    // The goal might be reachable even if some actions are unreachable (e.g. a cycle of useless actions): the candidate is then accepted, since its
+    // cost is an upper bound on that of the plan made by its reachable actions (no plan is lost, and the optimum is unchanged). On top of that we
+    // post the pruned plan (subset of the used actions, same or lower cost) as a heuristic solution
     if (local_.cand_reachable_state.superset_of(inst_.goal)) {
-        hplus_reject_candidate_with_new_sol_(context, local_.cand_reachable_action_sequence);
+        hplus_post_pruned_candidate_(context, local_.cand_reachable_action_sequence);
         return;
     }
 
@@ -165,21 +164,20 @@ void Solver::hplus_candidate_get_info_() {
     }
 }
 
-void Solver::hplus_reject_candidate_with_new_sol_(CPXCALLBACKCONTEXTptr context, const std::vector<unsigned int>& solution) {
+// The candidate itself is NOT rejected (see hplus_candidate_callback_): this only posts its pruned version as an additional heuristic solution
+void Solver::hplus_post_pruned_candidate_(CPXCALLBACKCONTEXTptr context, const std::vector<unsigned int>& solution) {
     unsigned int ncols{inst_.m + inst_.nfadd + inst_.n};
     std::vector<int> ind(ncols);
     std::iota(ind.begin(), ind.end(), 0);
     std::vector<double> val(ncols, 0.0);
-    std::vector<unsigned int> new_sol;
     double cost{0};
 
-    // Compute a better solution (we already know that we can reach the goal)
+    // Compute a pruned solution (we already know that we can reach the goal)
     BinarySet state{inst_.n};
     for (const auto& act_i : solution) {
         if (bs_contains(state, inst_.actions[act_i].eff_sparse)) {
             continue;  // If this action has no effects on this current state, we can optimize the solution by ignoring this action
         }
-        new_sol.push_back(act_i);
         cost += inst_.actions[act_i].cost;
         val[act_i] = 1;
         for (unsigned int i = 0; i < inst_.actions[act_i].eff_sparse.size(); i++) {
@@ -197,7 +195,7 @@ void Solver::hplus_reject_candidate_with_new_sol_(CPXCALLBACKCONTEXTptr context,
         }
     }
 
-    // Give CPLEX the better solution
+    // Give CPLEX the pruned solution
     call_cplex(
         CPXcallbackpostheursoln(context, static_cast<int>(ncols), ind.data(), val.data(), static_cast<double>(cost), CPXCALLBACKSOLUTION_NOCHECK));
 }

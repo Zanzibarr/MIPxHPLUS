@@ -127,6 +127,11 @@ inline auto validate_cli(cli::ArgParser& parser) -> void {
                 "Forward relevance analysis (f) requires backward relevance analysis (b): enabling backward relevance analysis");
             choices += 'b';
         }
+        if (choices.find('p') != std::string::npos && choices.find('b') == std::string::npos) {
+            parsing_warnings.emplace_back(
+                "Non-precondition facts elimination (p) requires backward relevance analysis (b): enabling backward relevance analysis");
+            choices += 'b';
+        }
         parser.set<cli_desc::preprocess>(choices);
     }
     parser.set<cli_desc::lmcut_pcf>(

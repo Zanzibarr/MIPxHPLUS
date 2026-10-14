@@ -179,7 +179,7 @@ class Solver {
 
     void hplus_candidate_callback_(CPXCALLBACKCONTEXTptr context);
     void hplus_candidate_get_info_();
-    void hplus_reject_candidate_with_new_sol_(CPXCALLBACKCONTEXTptr context, const std::vector<unsigned int>& solution);
+    void hplus_post_pruned_candidate_(CPXCALLBACKCONTEXTptr context, const std::vector<unsigned int>& solution);
     void hplus_separate_cand_sec_cut_(CPXCALLBACKCONTEXTptr context);
     void hplus_separate_cand_lmfront_cut_(CPXCALLBACKCONTEXTptr context);
     void hplus_separate_cand_lmcomp_cut_(CPXCALLBACKCONTEXTptr context);

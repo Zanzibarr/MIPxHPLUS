@@ -1,3 +1,7 @@
+// ATTENTION: EXPERIMENTAL. Symmetry breaking ('s' and 'o' preprocessing) is not fully tested when integrated with the rest of the code. Known gaps:
+//  - an action fixed by orbital probing ('o') is not a strict landmark, but the rest of the code assumes fixed actions/facts are used/reached by
+//    every plan (e.g. the primal heuristic and the pruned candidate solution posted with CPXCALLBACKSOLUTION_NOCHECK may violate their bounds)
+//  - symmetric facts elimination ('s') assumes bliss never returns redundant 2-cycles among identical facts
 #include <algorithm>
 #include <array>
 #include <digraph.hh>

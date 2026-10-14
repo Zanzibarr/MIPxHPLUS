@@ -426,6 +426,8 @@ void Solver::hplus_parse_cplex_status_() {
             // Do nothing
             break;
         // ~~~~~~~~~~ Proven infeasible ~~~~~~~~~~ //
+        case CPXMIP_INForUNBD:  // infeasible or unbounded (presolve): all variables are bounded, so it's infeasible
+            [[fallthrough]];
         case CPXMIP_INFEASIBLE:  // proven to be infeasible
             throw EarlyExit("solving cplex", EarlyExit::INFEASIBLE);
             break;
@@ -470,7 +472,7 @@ void Solver::hplus_get_cplex_solution_() {
     // Check we are getting ALL the actions that cplex uses
     while (!state.superset_of(inst_.goal)) {
         bool intcheck{false};
-        for (const auto idx : remaining) {
+        for (const auto idx : remaining.sparse()) {  // iterate on a copy: 'remaining' gets modified in the loop
             if (!bs_contains(state, inst_.actions[cpx_result[idx]].pre_sparse)) {
                 continue;
             }

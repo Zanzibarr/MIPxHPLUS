@@ -18,7 +18,9 @@ void Solver::solve_lmcut_() {
 
         const auto& [landmarks, lmcut_value] = lmcut_lmcut_(hmax_functions[choice], minimization);
 
-        // TODO: If lmcut_value is infinite, then the problem is infeasible
+        if (lmcut_value == std::numeric_limits<double>::infinity()) {
+            throw EarlyExit("computing LM-Cut", EarlyExit::INFEASIBLE);
+        }
 
         for (const auto& landmark : landmarks) {
             global_.landmarks.push_back(landmark);
@@ -266,6 +268,11 @@ auto Solver::lmcut_compute_private_(const lmcut_hmax_function& hmax, char minimi
     lmcut_update_hmax_values_(global_.initial_actions, hmax);
 
     local_.lmcut_initial_hmax_values = std::vector<double>(local_.lmcut_hmax_values.begin(), local_.lmcut_hmax_values.end());
+
+    // Goal not relaxed-reachable: the cut loop would only find empty cuts until the time limit
+    if ((this->*hmax)(global_.goal_sparse).second == std::numeric_limits<double>::infinity()) {
+        return {landmarks, std::numeric_limits<double>::infinity()};
+    }
 
     while (is_gr_strict_double((this->*hmax)(global_.goal_sparse).second, 0)) {
         const auto& [cut, val] = lmcut_compute_cut_(hmax, minimization);
