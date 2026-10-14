@@ -42,6 +42,7 @@ make
 - **-DCMAKE_BUILD_TYPE=**\<Debug/Release>: Build type (default is Debug), Debug mode enables warnings
 - **-DENABLE_ASSERTS=**\<ON/OFF>: Specify whether to enable asserts in non-Debug builds (default is OFF)
 - **-DCPLEX_PATH=**\<path_to_cplex>: (absolute path), specify a custom path to the CPLEX installation (see the CMakeLists.txt to see which are the default ones (CPLEX_POSSIBLE_PATHS) or append your to that list to avoid specifying it every time)
+- **-DBLISS_PATH=**\<path_to_bliss>: (absolute path), specify a custom path to the BLISS installation (see the CMakeLists.txt to see which is the default one)
 
 ### Run options
 
