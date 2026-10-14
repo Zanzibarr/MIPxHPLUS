@@ -132,6 +132,11 @@ inline auto validate_cli(cli::ArgParser& parser) -> void {
                 "Non-precondition facts elimination (p) requires backward relevance analysis (b): enabling backward relevance analysis");
             choices += 'b';
         }
+        if (choices.find('s') != std::string::npos || choices.find('o') != std::string::npos) {
+            parsing_warnings.emplace_back(
+                "The 's' and 'o' (symmetry) steps in the preprocessing are sperimental, and not fully tested when integrated with the rest of the "
+                "features");
+        }
         parser.set<cli_desc::preprocess>(choices);
     }
     parser.set<cli_desc::lmcut_pcf>(
@@ -215,7 +220,11 @@ inline auto parse_cli(const int argc, char** argv, Logger& logger) -> ParameterR
     apply_allow(
         parser.add<cli_desc::relax_cuts, std::string>().shorthand('F').description(cli_desc::relax_cuts_help).default_val(cli_desc::def_relax_cuts),
         cli_desc::relax_cuts_choices);
-    parser.add<cli_desc::root_max_iter, int>().shorthand('r').description(cli_desc::root_max_iter_help).default_val(cli_desc::def_root_max_iter).min(-1);
+    parser.add<cli_desc::root_max_iter, int>()
+        .shorthand('r')
+        .description(cli_desc::root_max_iter_help)
+        .default_val(cli_desc::def_root_max_iter)
+        .min(-1);
 
     // Testing
     parser.add<cli_desc::testing, bool>().description(cli_desc::testing_help).default_val(cli_desc::def_testing);
