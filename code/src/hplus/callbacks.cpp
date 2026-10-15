@@ -63,20 +63,24 @@ void Solver::hplus_candidate_callback_(CPXCALLBACKCONTEXTptr context) {
 
     // If the solution is feasible, we don't have to cut it
     if (local_.cand_unreachable_actions.empty()) {
-        myassert(local_.cand_reachable_state.superset_of(inst_.goal),
+        // Without the base model (testing) nothing in the MIP enforces the goal: a candidate whose used actions are all reachable can still miss
+        // it, and must then be cut here
+        if (local_.cand_reachable_state.superset_of(inst_.goal)) {
+            return;
+        }
+        myassert((params_.get<cli_desc::testing, bool>()),
                  "Solution with no unreachable actions that doesn't reach the goal has been found in the candidate callback");
-        return;
     }
 
     // The goal might be reachable even if some actions are unreachable (e.g. a cycle of useless actions): the candidate is then accepted, since its
     // cost is an upper bound on that of the plan made by its reachable actions (no plan is lost, and the optimum is unchanged). On top of that we
     // post the pruned plan (subset of the used actions, same or lower cost) as a heuristic solution
-    if (local_.cand_reachable_state.superset_of(inst_.goal)) {
+    else if (local_.cand_reachable_state.superset_of(inst_.goal)) {
         hplus_post_pruned_candidate_(context, local_.cand_reachable_action_sequence);
         return;
     }
 
-    // Here we know that there are unreachable actions, and the goal is unreachable -> we need to find some cuts
+    // Here we know that the goal is unreachable -> we need to find some cuts
 
     const auto& cand_cuts = params_.get<cli_desc::cand_cuts, std::string>();
     if (cand_cuts == "sec") {
@@ -166,7 +170,8 @@ void Solver::hplus_candidate_get_info_() {
 
 // The candidate itself is NOT rejected (see hplus_candidate_callback_): this only posts its pruned version as an additional heuristic solution
 void Solver::hplus_post_pruned_candidate_(CPXCALLBACKCONTEXTptr context, const std::vector<unsigned int>& solution) {
-    unsigned int ncols{inst_.m + inst_.nfadd + inst_.n};
+    // Without the base model (testing) only the action variables exist
+    const unsigned int ncols{params_.get<cli_desc::testing, bool>() ? inst_.m : inst_.m + inst_.nfadd + inst_.n};
     std::vector<int> ind(ncols);
     std::iota(ind.begin(), ind.end(), 0);
     std::vector<double> val(ncols, 0.0);
@@ -180,14 +185,16 @@ void Solver::hplus_post_pruned_candidate_(CPXCALLBACKCONTEXTptr context, const s
         }
         cost += inst_.actions[act_i].cost;
         val[act_i] = 1;
-        for (unsigned int i = 0; i < inst_.actions[act_i].eff_sparse.size(); i++) {
-            if (state[inst_.actions[act_i].eff_sparse[i]]) {
-                continue;
+        if (!params_.get<cli_desc::testing, bool>()) {
+            for (unsigned int i = 0; i < inst_.actions[act_i].eff_sparse.size(); i++) {
+                if (state[inst_.actions[act_i].eff_sparse[i]]) {
+                    continue;
+                }
+                unsigned int fadd_idx = inst_.m + global_.hplus_fadd_cpx_start[act_i] + i;
+                val[fadd_idx] = 1;
+                unsigned int var_idx = inst_.m + inst_.nfadd + inst_.actions[act_i].eff_sparse[i];
+                val[var_idx] = 1;
             }
-            unsigned int fadd_idx = inst_.m + global_.hplus_fadd_cpx_start[act_i] + i;
-            val[fadd_idx] = 1;
-            unsigned int var_idx = inst_.m + inst_.nfadd + inst_.actions[act_i].eff_sparse[i];
-            val[var_idx] = 1;
         }
         state |= inst_.actions[act_i].eff_sparse;
         if (state.superset_of(inst_.goal)) {
