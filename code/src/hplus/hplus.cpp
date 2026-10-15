@@ -157,37 +157,41 @@ void Solver::hplus_build_base_model_() {
 
     call_cplex(CPXnewcols(global_.hplus_env, global_.hplus_lp, static_cast<int>(count), objs.data(), lbs.data(), ubs.data(), types.data(), nullptr));
     stopcheck();
+    unsigned int fa_start{0};
+    unsigned int var_start{0};
+    if (!params_.get<cli_desc::testing, bool>()) {
+        objs.clear();
+        objs.resize(inst_.n, 0.0);
+        lbs.clear();
+        lbs.resize(inst_.n, 0.0);
+        ubs.clear();
+        ubs.resize(inst_.n, 1.0);
+        types.clear();
+        types.resize(inst_.n, 'B');
 
-    objs.clear();
-    objs.resize(inst_.n, 0.0);
-    lbs.clear();
-    lbs.resize(inst_.n, 0.0);
-    ubs.clear();
-    ubs.resize(inst_.n, 1.0);
-    types.clear();
-    types.resize(inst_.n, 'B');
+        // --- first archievers --- //
+        fa_start = curr_col;
+        for (unsigned int act_i = 0; act_i < inst_.m; act_i++) {
+            curr_col += inst_.actions[act_i].eff_sparse.size();
+            call_cplex(CPXnewcols(global_.hplus_env, global_.hplus_lp, static_cast<int>(inst_.actions[act_i].eff_sparse.size()), objs.data(),
+                                  lbs.data(), ubs.data(), types.data(), nullptr));
+            stopcheck();
+        }
 
-    // --- first archievers --- //
-    const unsigned int fa_start{curr_col};
-    for (unsigned int act_i = 0; act_i < inst_.m; act_i++) {
-        curr_col += inst_.actions[act_i].eff_sparse.size();
-        call_cplex(CPXnewcols(global_.hplus_env, global_.hplus_lp, static_cast<int>(inst_.actions[act_i].eff_sparse.size()), objs.data(), lbs.data(),
-                              ubs.data(), types.data(), nullptr));
+        // ------- variables ------ //
+        var_start = curr_col;
+        count = 0;
+        for (unsigned int var_i = 0; var_i < inst_.n; var_i++) {
+            lbs[count++] = (global_.fixed_facts[var_i] || inst_.goal[var_i]) ? 1 : 0;
+        }
+        curr_col += count;
+
+        call_cplex(
+            CPXnewcols(global_.hplus_env, global_.hplus_lp, static_cast<int>(count), objs.data(), lbs.data(), ubs.data(), types.data(), nullptr));
         stopcheck();
+
+        stats_.counter_set<"n_var_base">(inst_.n + inst_.m + inst_.nfadd);
     }
-
-    // ------- variables ------ //
-    const unsigned int var_start{curr_col};
-    count = 0;
-    for (unsigned int var_i = 0; var_i < inst_.n; var_i++) {
-        lbs[count++] = (global_.fixed_facts[var_i] || inst_.goal[var_i]) ? 1 : 0;
-    }
-    curr_col += count;
-
-    call_cplex(CPXnewcols(global_.hplus_env, global_.hplus_lp, static_cast<int>(count), objs.data(), lbs.data(), ubs.data(), types.data(), nullptr));
-    stopcheck();
-
-    stats_.counter_set<"n_var_base">(inst_.n + inst_.m + inst_.nfadd);
 
     // ====================================================== //
     // ================== CPLEX CONSTRAINTS ================= //
@@ -210,67 +214,70 @@ void Solver::hplus_build_base_model_() {
     constexpr double rhs_1{1};
     constexpr int begin{0};
 
-    // Equation 2 - Rankooh, Rintanen: "Efficient Computation and Informative Estimation of h+ by Integer and Linear Programming"
-    for (unsigned int var_i = 0; var_i < inst_.n; var_i++) {
-        nnz = 0;
-        ind[nnz] = get_var_idx(var_i);
-        val[(nnz++)] = 1;
-
-        for (const auto& act_i : global_.act_with_eff[var_i]) {
-            unsigned int var_count = sorted_find(inst_.actions[act_i].eff_sparse, var_i);
-            ind[nnz] = get_fa_idx(act_i, var_count);
-            val[(nnz++)] = -1;
-        }
-
-        // if nnz == 1, then we'd have p = 0, meaning we could simply fix this variable to 0
-        if (nnz == 1) {
-            const char fix = 'B';
-            call_cplex(CPXchgbds(global_.hplus_env, global_.hplus_lp, 1, ind.data(), &fix, &rhs_0));
-        } else {
-            stats_.counter_inc<"n_const_base">();
-            call_cplex(CPXaddrows(global_.hplus_env, global_.hplus_lp, 0, 1, static_cast<int>(nnz), &rhs_0, &sense_e, &begin, ind.data(), val.data(),
-                                  nullptr, nullptr));
-        }
-        stopcheck();
-    }
-
-    // Equation 3 - Rankooh, Rintanen: "Efficient Computation and Informative Estimation of h+ by Integer and Linear Programming"
-    for (unsigned int fact_p = 0; fact_p < inst_.n; fact_p++) {
-        for (unsigned int fact_q = 0; fact_q < inst_.n; fact_q++) {
+    if (!params_.get<cli_desc::testing, bool>()) {
+        // Equation 2 - Rankooh, Rintanen: "Efficient Computation and Informative Estimation of h+ by Integer and Linear Programming"
+        for (unsigned int var_i = 0; var_i < inst_.n; var_i++) {
             nnz = 0;
-            ind[nnz] = get_var_idx(fact_q);
-            val[(nnz++)] = -1;
-            for (const auto& act_i : global_.act_with_eff[fact_p]) {
-                if (!sorted_contains(inst_.actions[act_i].pre_sparse, fact_q)) {
-                    continue;
-                }
-                unsigned int var_count = sorted_find(inst_.actions[act_i].eff_sparse, fact_p);
+            ind[nnz] = get_var_idx(var_i);
+            val[(nnz++)] = 1;
+
+            for (const auto& act_i : global_.act_with_eff[var_i]) {
+                unsigned int var_count = sorted_find(inst_.actions[act_i].eff_sparse, var_i);
                 ind[nnz] = get_fa_idx(act_i, var_count);
-                val[(nnz++)] = 1;
+                val[(nnz++)] = -1;
             }
-            // if nnz == 1 than we have -fact_p <= 0, hence it's always true, we can ignore this constraint
-            if (nnz != 1) {
+
+            // if nnz == 1, then we'd have p = 0, meaning we could simply fix this variable to 0
+            if (nnz == 1) {
+                const char fix = 'B';
+                call_cplex(CPXchgbds(global_.hplus_env, global_.hplus_lp, 1, ind.data(), &fix, &rhs_0));
+            } else {
                 stats_.counter_inc<"n_const_base">();
-                call_cplex(CPXaddrows(global_.hplus_env, global_.hplus_lp, 0, 1, static_cast<int>(nnz), &rhs_0, &sense_l, &begin, ind.data(),
+                call_cplex(CPXaddrows(global_.hplus_env, global_.hplus_lp, 0, 1, static_cast<int>(nnz), &rhs_0, &sense_e, &begin, ind.data(),
                                       val.data(), nullptr, nullptr));
             }
             stopcheck();
         }
-    }
-    ind.resize(2);
-    val.resize(2);
 
-    // Equation 5 - Rankooh, Rintanen: "Efficient Computation and Informative Estimation of h+ by Integer and Linear Programming"
-    for (unsigned int act_i = 0; act_i < inst_.m; act_i++) {
-        for (unsigned int var_count = 0; var_count < inst_.actions[act_i].eff_sparse.size(); var_count++) {
-            ind[0] = get_act_idx(act_i);
-            val[0] = -1;
-            ind[1] = get_fa_idx(act_i, var_count);
-            val[1] = 1;
-            stats_.counter_inc<"n_const_base">();
-            call_cplex(CPXaddrows(global_.hplus_env, global_.hplus_lp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind.data(), val.data(), nullptr, nullptr));
+        // Equation 3 - Rankooh, Rintanen: "Efficient Computation and Informative Estimation of h+ by Integer and Linear Programming"
+        for (unsigned int fact_p = 0; fact_p < inst_.n; fact_p++) {
+            for (unsigned int fact_q = 0; fact_q < inst_.n; fact_q++) {
+                nnz = 0;
+                ind[nnz] = get_var_idx(fact_q);
+                val[(nnz++)] = -1;
+                for (const auto& act_i : global_.act_with_eff[fact_p]) {
+                    if (!sorted_contains(inst_.actions[act_i].pre_sparse, fact_q)) {
+                        continue;
+                    }
+                    unsigned int var_count = sorted_find(inst_.actions[act_i].eff_sparse, fact_p);
+                    ind[nnz] = get_fa_idx(act_i, var_count);
+                    val[(nnz++)] = 1;
+                }
+                // if nnz == 1 than we have -fact_p <= 0, hence it's always true, we can ignore this constraint
+                if (nnz != 1) {
+                    stats_.counter_inc<"n_const_base">();
+                    call_cplex(CPXaddrows(global_.hplus_env, global_.hplus_lp, 0, 1, static_cast<int>(nnz), &rhs_0, &sense_l, &begin, ind.data(),
+                                          val.data(), nullptr, nullptr));
+                }
+                stopcheck();
+            }
         }
-        stopcheck();
+        ind.resize(2);
+        val.resize(2);
+
+        // Equation 5 - Rankooh, Rintanen: "Efficient Computation and Informative Estimation of h+ by Integer and Linear Programming"
+        for (unsigned int act_i = 0; act_i < inst_.m; act_i++) {
+            for (unsigned int var_count = 0; var_count < inst_.actions[act_i].eff_sparse.size(); var_count++) {
+                ind[0] = get_act_idx(act_i);
+                val[0] = -1;
+                ind[1] = get_fa_idx(act_i, var_count);
+                val[1] = 1;
+                stats_.counter_inc<"n_const_base">();
+                call_cplex(
+                    CPXaddrows(global_.hplus_env, global_.hplus_lp, 0, 1, 2, &rhs_0, &sense_l, &begin, ind.data(), val.data(), nullptr, nullptr));
+            }
+            stopcheck();
+        }
     }
 
     ind.resize(inst_.m);
@@ -331,17 +338,19 @@ void Solver::hplus_post_base_warm_start_() {
 
     for (const auto& act_i : warm_start) {
         val[act_i] = 1;
-        int var_count{-1};
-        for (const auto& var_i : inst_.actions[act_i].eff_sparse) {
-            var_count++;
-            if (state[var_i]) {
-                continue;
-            }
+        if (!params_.get<cli_desc::testing, bool>()) {
+            int var_count{-1};
+            for (const auto& var_i : inst_.actions[act_i].eff_sparse) {
+                var_count++;
+                if (state[var_i]) {
+                    continue;
+                }
 
-            unsigned int fadd_idx = inst_.m + global_.hplus_fadd_cpx_start[act_i] + static_cast<unsigned int>(var_count);
-            val[fadd_idx] = 1;
-            unsigned int var_idx = inst_.m + inst_.nfadd + var_i;
-            val[var_idx] = 1;
+                unsigned int fadd_idx = inst_.m + global_.hplus_fadd_cpx_start[act_i] + static_cast<unsigned int>(var_count);
+                val[fadd_idx] = 1;
+                unsigned int var_idx = inst_.m + inst_.nfadd + var_i;
+                val[var_idx] = 1;
+            }
         }
         state |= inst_.actions[act_i].eff_sparse;
     }

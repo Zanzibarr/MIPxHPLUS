@@ -21,7 +21,7 @@ using enum LoggerLevel;
 
 [[nodiscard]]
 inline auto version() -> std::string {
-    return "Version: " + std::string(PROJECT_VERSION);
+    return "Version: " + std::string(PROJECT_VERSION) + "_test_nobase";
 }
 
 [[nodiscard]]
