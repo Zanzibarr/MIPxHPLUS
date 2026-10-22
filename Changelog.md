@@ -18,7 +18,19 @@ _To see info about this project, please refer to the [Readme](Readme.md)._
 <!-- ### :rocket: Performance Improvements -->
 
 
-## [4.3.1] - YYYY/MM/DD
+## [4.3.2] - 2026/10/22
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+<!-- ### :heavy_exclamation_mark: Changed -->
+### :heavy_plus_sign: Added
+- Max-Flow based landmark separator for fractional solutions
+<!-- ### :x: Removed -->
+### :curly_loop: Other
+- Added comments and citations linking the reference papers to the code
+<!-- ### :rocket: Performance Improvements -->
+
+
+## [4.3.1] - 2026/09/25
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->
 ### :heavy_exclamation_mark: Changed

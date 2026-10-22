@@ -128,6 +128,10 @@ void Solver::hplus_run_cplex_() {
     global_.hplus_dettime = det_end - det_start;
 }
 
+// Base model IP(Pi), Eqs. (2)-(7) - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"
+// Columns: x_a (actions) in [0, m), z_{a,q} (first achievers) in [m, m + nfadd), y_p (facts) in [m + nfadd, m + nfadd + n).
+// No dummy facts s/t are added: the initial state is empty (actions with no preconditions play the role of the actions in A_{s->}), and the goal is
+// a set of facts whose y_p are fixed to 1 (instead of the single y_t = 1 of Eq. (6) of the same paper)
 void Solver::hplus_build_base_model_() {
     auto stopcheck = []() {
         if (global_limits::time_reached()) {
@@ -146,6 +150,7 @@ void Solver::hplus_build_base_model_() {
     std::vector<char> types(inst_.m, 'B');
 
     // -------- actions ------- //
+    // x_a, with objective cost(a)
     const unsigned int act_start{curr_col};
     unsigned int count{0};
     for (unsigned int act_i = 0; act_i < inst_.m; act_i++) {
@@ -167,7 +172,8 @@ void Solver::hplus_build_base_model_() {
     types.clear();
     types.resize(inst_.n, 'B');
 
-    // --- first archievers --- //
+    // --- first achievers ---- //
+    // z_{a,q}, one per pair (a, q in add(a)): hplus_fadd_cpx_start[a] is the offset of the first one of action a
     const unsigned int fa_start{curr_col};
     for (unsigned int act_i = 0; act_i < inst_.m; act_i++) {
         curr_col += inst_.actions[act_i].eff_sparse.size();
@@ -177,6 +183,7 @@ void Solver::hplus_build_base_model_() {
     }
 
     // ------- variables ------ //
+    // y_p: goal facts are fixed to 1, as are fixed facts found by the preprocessing
     const unsigned int var_start{curr_col};
     count = 0;
     for (unsigned int var_i = 0; var_i < inst_.n; var_i++) {
@@ -210,7 +217,9 @@ void Solver::hplus_build_base_model_() {
     constexpr double rhs_1{1};
     constexpr int begin{0};
 
-    // Equation 2 - Rankooh, Rintanen: "Efficient Computation and Informative Estimation of h+ by Integer and Linear Programming"
+    // Equation 2 - Feyzbakhsh Rankooh, Rintanen: "Efficient Computation and Informative Estimation of h+ by Integer and Linear Programming"
+    // Equation 3 - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"
+    // sum_{a in A_{->q}} z_{a,q} = y_q   (here q = var_i)
     for (unsigned int var_i = 0; var_i < inst_.n; var_i++) {
         nnz = 0;
         ind[nnz] = get_var_idx(var_i);
@@ -222,7 +231,7 @@ void Solver::hplus_build_base_model_() {
             val[(nnz++)] = -1;
         }
 
-        // if nnz == 1, then we'd have p = 0, meaning we could simply fix this variable to 0
+        // if nnz == 1, then we'd have y_q = 0, meaning we could simply fix this variable to 0
         if (nnz == 1) {
             const char fix = 'B';
             call_cplex(CPXchgbds(global_.hplus_env, global_.hplus_lp, 1, ind.data(), &fix, &rhs_0));
@@ -234,21 +243,23 @@ void Solver::hplus_build_base_model_() {
         stopcheck();
     }
 
-    // Equation 3 - Rankooh, Rintanen: "Efficient Computation and Informative Estimation of h+ by Integer and Linear Programming"
-    for (unsigned int fact_p = 0; fact_p < inst_.n; fact_p++) {
-        for (unsigned int fact_q = 0; fact_q < inst_.n; fact_q++) {
+    // Equation 3 - Feyzbakhsh Rankooh, Rintanen: "Efficient Computation and Informative Estimation of h+ by Integer and Linear Programming"
+    // Equation 4 - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"
+    // sum_{a in A_{p->q}} z_{a,q} <= y_p
+    for (unsigned int fact_q = 0; fact_q < inst_.n; fact_q++) {
+        for (unsigned int fact_p = 0; fact_p < inst_.n; fact_p++) {
             nnz = 0;
-            ind[nnz] = get_var_idx(fact_q);
+            ind[nnz] = get_var_idx(fact_p);
             val[(nnz++)] = -1;
-            for (const auto& act_i : global_.act_with_eff[fact_p]) {
-                if (!sorted_contains(inst_.actions[act_i].pre_sparse, fact_q)) {
+            for (const auto& act_i : global_.act_with_eff[fact_q]) {
+                if (!sorted_contains(inst_.actions[act_i].pre_sparse, fact_p)) {
                     continue;
                 }
-                unsigned int var_count = sorted_find(inst_.actions[act_i].eff_sparse, fact_p);
+                unsigned int var_count = sorted_find(inst_.actions[act_i].eff_sparse, fact_q);
                 ind[nnz] = get_fa_idx(act_i, var_count);
                 val[(nnz++)] = 1;
             }
-            // if nnz == 1 than we have -fact_p <= 0, hence it's always true, we can ignore this constraint
+            // if nnz == 1 than we have -y_p <= 0 (A_{p->q} is empty), hence it's always true, we can ignore this constraint
             if (nnz != 1) {
                 stats_.counter_inc<"n_const_base">();
                 call_cplex(CPXaddrows(global_.hplus_env, global_.hplus_lp, 0, 1, static_cast<int>(nnz), &rhs_0, &sense_l, &begin, ind.data(),
@@ -260,7 +271,9 @@ void Solver::hplus_build_base_model_() {
     ind.resize(2);
     val.resize(2);
 
-    // Equation 5 - Rankooh, Rintanen: "Efficient Computation and Informative Estimation of h+ by Integer and Linear Programming"
+    // Equation 5 - Feyzbakhsh Rankooh, Rintanen: "Efficient Computation and Informative Estimation of h+ by Integer and Linear Programming"
+    // Equation 5 - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"
+    // z_{a,q} <= x_a
     for (unsigned int act_i = 0; act_i < inst_.m; act_i++) {
         for (unsigned int var_count = 0; var_count < inst_.actions[act_i].eff_sparse.size(); var_count++) {
             ind[0] = get_act_idx(act_i);
@@ -276,9 +289,9 @@ void Solver::hplus_build_base_model_() {
     ind.resize(inst_.m);
     val.resize(inst_.m);
 
-    // Equation 14 - Salvagnin, Zanella: "MIP Formulations for Delete-free AI Planning"
-    // If preprocessing is used, there might be Disjunctive Action Landmarks to add as constraints... those must be counted as acyclicity constraints,
-    // since those are not needed for the base model correctness
+    // Equation 14 - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"
+    // sum_{a in L} x_a >= 1, for each landmark L computed upfront (LM-cut initialization, Section 5.2 - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning")...
+    // those must be counted as acyclicity constraints, since those are not needed for the base model correctness
     for (const auto& landmark : global_.landmarks) {
         // If the landmark is composed of only one action, that that action has to be used -> fix it instead of creating a landmark (CPLEX
         // preprocessing would fix it anyways)
@@ -316,6 +329,7 @@ void Solver::hplus_post_warm_start_() {
     }
 }
 
+// MIP start (Section 5.1 - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"): x_a, z_{a,q}, y_q from the primal heuristic plan
 void Solver::hplus_post_base_warm_start_() {
     BinarySet state{inst_.n};
     const auto& warm_start{global_.solution};

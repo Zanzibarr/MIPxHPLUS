@@ -1,5 +1,6 @@
 #include "solver.hpp"
 
+// Section "LM-Cut as Cut Separator" - Zanella, Salvagnin: "Tighter Bounds for h+ MIP Planning via LM-Cut Strengthening and Cut Generation"
 void Solver::hplus_separate_cand_lmcut_cut_(CPXCALLBACKCONTEXTptr context, char minimization) {
     auto _sep_timer = scoped_timer("cand_lm_sep");
     const auto& [found, landmarks] = lmcut_int_separation_(local_.cand_used_actions.sparse(), &Solver::lmcut_hmax_arbitrary_, minimization);

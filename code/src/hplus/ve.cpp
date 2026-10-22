@@ -3,6 +3,9 @@
 
 #include "solver.hpp"
 
+// Vertex elimination model VE(Pi), Section 3.3 - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"
+// Feyzbakhsh Rankooh, Rintanen: "Efficient Computation and Informative Estimation of h+ by Integer and Linear Programming"
+// Rose, Tarjan, Lueker: "Algorithmic Aspects of Vertex Elimination on Graphs"
 void Solver::hplus_add_ve_constraints_() {
     const auto stopcheck = []() {
         if (global_limits::time_reached()) {
@@ -15,6 +18,7 @@ void Solver::hplus_add_ve_constraints_() {
     // ====================================================== //
 
     // Initialize data structures
+    // graph: current G_i (starting from the causal relation graph G_Pi), hplus_veg_cumulative_graph: E*_Pi (union of all E_i), triangles_list: Delta
     // This needs to not be an unordered_set because it gets iterated upon to create triangles_list, which is directly used to add constraints to
     // CPLEX (order sensitive)
     std::vector<std::set<unsigned int>> graph(inst_.n);
@@ -23,7 +27,7 @@ void Solver::hplus_add_ve_constraints_() {
     priority_queue<unsigned int> nodes_queue(static_cast<size_t>(2 * inst_.n));
     std::vector<unsigned int> degree_counter(inst_.n, 0);
 
-    // Build initial graph G_0
+    // Build initial graph G_0 = G_Pi: (p, q) is an edge iff A_{p->q} is not empty
     for (unsigned int act_i = 0; act_i < inst_.m; ++act_i) {
         for (const auto& var_i : inst_.actions[act_i].pre_sparse) {
             for (const auto& var_j : inst_.actions[act_i].eff_sparse) {
@@ -54,7 +58,7 @@ void Solver::hplus_add_ve_constraints_() {
         }
     }
 
-    // Apply minimum degree heuristics for G_i
+    // Apply minimum degree heuristics for G_i (computes the elimination ordering O, footnote 2 - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning")
     for ([[maybe_unused]] unsigned int _ = 0; _ < inst_.n; ++_) {
         if (nodes_queue.empty()) [[unlikely]] {
             break;
@@ -98,7 +102,7 @@ void Solver::hplus_add_ve_constraints_() {
             --degree_counter[pre];
             new_nodes.insert(pre);
 
-            // Add triangles involving pre, idx, and successors of idx
+            // Add triangles involving pre, idx, and successors of idx: (pre, idx, eff) in Delta
             for (const auto& eff : graph[idx]) {
                 if (pre != eff) [[likely]] {
                     triangles_list.emplace_back(pre, idx, eff);
@@ -129,6 +133,7 @@ void Solver::hplus_add_ve_constraints_() {
     // =================== CPLEX VARIABLES ================== //
     // ====================================================== //
 
+    // e_{p,q} for each (p, q) in E*_Pi: hplus_veg_starts[p] is the offset of the first one with tail p
     const unsigned int veg_start{static_cast<unsigned int>(CPXgetnumcols(global_.hplus_env, global_.hplus_lp))};
 
     std::vector<double> objs(inst_.n, 0.0);
@@ -169,7 +174,9 @@ void Solver::hplus_add_ve_constraints_() {
     constexpr char sense_l = 'L';
     constexpr int begin{0};
 
-    // Equation 6 - Rankooh, Rintanen: "Efficient Computation and Informative Estimation of h+ by Integer and Linear Programming"
+    // Equation 6 - Feyzbakhsh Rankooh, Rintanen: "Efficient Computation and Informative Estimation of h+ by Integer and Linear Programming"
+    // Equation 9 - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"
+    // z_{a,q} <= e_{p,q}   (p = var_i, q = var_j)
     for (unsigned int act_i = 0; act_i < inst_.m; ++act_i) {
         for (const auto& var_i : inst_.actions[act_i].pre_sparse) {
             int var_count{-1};
@@ -194,7 +201,9 @@ void Solver::hplus_add_ve_constraints_() {
         }
     }
 
-    // Equation 7 - Rankooh, Rintanen: "Efficient Computation and Informative Estimation of h+ by Integer and Linear Programming"
+    // Equation 7 - Feyzbakhsh Rankooh, Rintanen: "Efficient Computation and Informative Estimation of h+ by Integer and Linear Programming"
+    // Equation 10 - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"
+    // e_{p,q} + e_{q,p} <= 1   (p = var_i, q = var_j)
     for (unsigned int var_i = 0; var_i < inst_.n; ++var_i) {
         for (const auto& var_j : global_.hplus_veg_cumulative_graph[var_i]) {
             // if the "inverse" veg variable was eliminated, we can skip the constraint
@@ -214,16 +223,18 @@ void Solver::hplus_add_ve_constraints_() {
     const std::vector<char> tmpfix(2, 'B');
     const std::vector<double> tmpzero(2, 0.0);
 
-    // Equation 8 - Rankooh, Rintanen: "Efficient Computation and Informative Estimation of h+ by Integer and Linear Programming"
-    for (const auto& [a, b, c] : triangles_list) {
-        ind[0] = get_veg_idx(a, b);
+    // Equation 8 - Feyzbakhsh Rankooh, Rintanen: "Efficient Computation and Informative Estimation of h+ by Integer and Linear Programming"
+    // Equation 11 - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"
+    // e_{p,q} + e_{q,r} - 1 <= e_{p,r}, for each (p, q, r) in Delta
+    for (const auto& [fact_p, fact_q, fact_r] : triangles_list) {
+        ind[0] = get_veg_idx(fact_p, fact_q);
         val[0] = 1;
-        ind[1] = get_veg_idx(b, c);
+        ind[1] = get_veg_idx(fact_q, fact_r);
         val[1] = 1;
-        ind[2] = get_veg_idx(a, c);
+        ind[2] = get_veg_idx(fact_p, fact_r);
         val[2] = -1;
-        // if veg(a, c) is eliminated, we can simply eliminate the other two VEG varliables
-        if (!std::binary_search(global_.hplus_veg_cumulative_graph[a].begin(), global_.hplus_veg_cumulative_graph[a].end(), c)) {
+        // if e_{p,r} is eliminated, we can simply eliminate the other two VEG varliables
+        if (!std::binary_search(global_.hplus_veg_cumulative_graph[fact_p].begin(), global_.hplus_veg_cumulative_graph[fact_p].end(), fact_r)) {
             call_cplex(CPXchgbds(global_.hplus_env, global_.hplus_lp, 2, ind.data(), tmpfix.data(), tmpzero.data()));
             continue;
         }
@@ -233,6 +244,8 @@ void Solver::hplus_add_ve_constraints_() {
     }
 }
 
+// MIP start (Section 5.1) for VE(Pi) - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"
+// e_{p,q} = 1 iff p is achieved strictly before q in the warm start
 void Solver::hplus_post_ve_warm_start_() {
     BinarySet state{inst_.n};
     const auto& warm_start{global_.solution};
@@ -268,10 +281,10 @@ void Solver::hplus_post_ve_warm_start_() {
         ++step;
     }
 
-    // Set veg(i, j) = 1 iff first_time[i] < first_time[j].
-    //   Equation 6: when fa(act,eff)=1, pre was in state before eff → first_time[pre] < first_time[eff]
-    //   Equation 7: antisymmetry holds because < is strict
-    //   Equation 8: transitivity holds because < is transitive
+    // Set e_{i,j} = 1 iff first_time[i] < first_time[j] (equation numbers refer to Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning").
+    //   Equation 9: when z_{act,eff}=1, pre was in state before eff → first_time[pre] < first_time[eff]
+    //   Equation 10: antisymmetry holds because < is strict
+    //   Equation 11: transitivity holds because < is transitive
     for (unsigned int var_i = 0; var_i < inst_.n; ++var_i) {
         for (unsigned int k = 0; k < global_.hplus_veg_cumulative_graph[var_i].size(); ++k) {
             const unsigned int var_j = global_.hplus_veg_cumulative_graph[var_i][k];

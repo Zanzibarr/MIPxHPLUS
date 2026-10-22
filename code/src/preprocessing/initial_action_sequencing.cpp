@@ -2,6 +2,8 @@
 
 #include "solver.hpp"
 
+// Section "Initial Prefix Computation" - Zanella, Salvagnin: "Tighter Bounds for h+ MIP Planning via LM-Cut Strengthening and Cut Generation"
+// Applicable fixed/0-cost actions are committed to the initial prefix pi_pre, and the residual task Pi_{|a} is kept
 auto Solver::prep_initial_action_sequencing_() -> bool {
     logger_[DEBUG] << "PREP: initial prefix extraction";
 

@@ -109,6 +109,10 @@ auto Solver::check_landmark_(const BinarySet& landmark) -> bool {
     return !state.superset_of(inst_.goal);
 }
 
+// L_p of Section "Optimized Landmark Selection" - Zanella, Salvagnin: "Tighter Bounds for h+ MIP Planning via LM-Cut Strengthening and Cut
+// Generation"
+// Drops from the cut-set the actions with a precondition outside the pre-goal section V (reachable_state): L_p = {a | pre(a) subset of V, add(a)
+// intersects G}
 void Solver::landmark_minimalization_greedy_(std::vector<unsigned int>& landmark, const BinarySet& reachable_state) {
     std::unordered_set<unsigned int> removed;
     for (const auto& act_i : landmark) {
@@ -123,6 +127,12 @@ void Solver::landmark_minimalization_greedy_(std::vector<unsigned int>& landmark
     std::erase_if(landmark, [&removed](const auto& elem) { return removed.contains(elem); });
 }
 
+// Greedy minimal landmark (Algorithm 1, lines 5-8) - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"
+// Haslum, Slaney, Thiebaux: "Minimal Landmarks for Optimal Delete-Free Planning"
+// Also used on the LM-cut landmarks: Section "Looking for Minimal Landmarks" - Zanella, Salvagnin: "Tighter Bounds for h+ MIP Planning via LM-Cut
+// Strengthening and Cut Generation"
+// landmark = A \ H (actions not in H), reachable_state = R(H): each action a in the landmark is moved into H (removed from the landmark) iff t is
+// still not in R(H u {a}); reachability is updated incrementally with watched preconditions
 void Solver::landmark_minimalization_(std::vector<unsigned int>& landmark, const std::vector<unsigned int>& unapplicable, BinarySet reachable_state) {
     // Watch lists
     std::vector<unsigned int> watch_pre(inst_.m + 1, inst_.n);  // Watch precondition of each action (as default we use a non-existant fact)

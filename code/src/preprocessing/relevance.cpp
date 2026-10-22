@@ -5,6 +5,8 @@
 #include "cli_descriptions.hpp"
 #include "solver.hpp"
 
+// Relevance analysis
+// Imai, Fukunaga: "On a Practical, Integer-Linear Programming Model for Delete-Free Tasks and its Use as a Heuristic for Cost-Optimal Planning"
 void Solver::prep_relevance_backward_(BinarySet& relevant_variables) {
     logger_[DEBUG] << "PREP: backwards relevance analysis";
 
@@ -77,6 +79,8 @@ void Solver::prep_relevance_backward_(BinarySet& relevant_variables) {
     }
 }
 
+// Forward relevance analysis
+// Haslum, Slaney, Thiebaux: "Minimal Landmarks for Optimal Delete-Free Planning"
 void Solver::prep_relevance_forward_(BinarySet& relevant_variables) {
     logger_[DEBUG] << "PREP: forward relevance analysis";
 

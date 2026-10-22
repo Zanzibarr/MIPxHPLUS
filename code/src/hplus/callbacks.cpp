@@ -48,6 +48,8 @@ void Solver::hplus_progress_callback_(CPXCALLBACKCONTEXTptr context) {
 // ######################### CANDIDATE CALLBACK ######################## //
 // ##################################################################### //
 
+// Lazy constraint callback of the B&C models (Section 4) - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"
+// Works on the integer point x^ (cand_xstar): H = {a | x^_a = 1}
 void Solver::hplus_candidate_callback_(CPXCALLBACKCONTEXTptr context) {
     auto _callback_timer = scoped_timer("cand_callback");
     stats_.counter_inc<"cand_calls">();
@@ -78,6 +80,9 @@ void Solver::hplus_candidate_callback_(CPXCALLBACKCONTEXTptr context) {
 
     // Here we know that there are unreachable actions, and the goal is unreachable -> we need to find some cuts
 
+    // sec: SEC(Pi), lm-f: Eq. (16), lm-c: LMC(Pi) (Algorithm 1) - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"
+    // lmcut, lmcut-g, lmcut-c: Section "LM-Cut as Cut Separator" - Zanella, Salvagnin: "Tighter Bounds for h+ MIP Planning via LM-Cut Strengthening
+    // and Cut Generation"
     const auto& cand_cuts = params_.get<cli_desc::cand_cuts, std::string>();
     if (cand_cuts == "sec") {
         hplus_separate_cand_sec_cut_(context);
@@ -96,6 +101,7 @@ void Solver::hplus_candidate_callback_(CPXCALLBACKCONTEXTptr context) {
     }
 }
 
+// Computes H (cand_used_actions), R(H) (cand_reachable_state) and the actions of H that cannot be applied from it (cand_unreachable_actions)
 void Solver::hplus_candidate_get_info_() {
     if (local_.cand_used_actions.capacity() != inst_.m) {
         local_.cand_used_actions = BinarySet(inst_.m);
@@ -204,6 +210,8 @@ void Solver::hplus_post_pruned_candidate_(CPXCALLBACKCONTEXTptr context, const s
 // ######################## RELAXATION CALLBACK ######################## //
 // ##################################################################### //
 
+// Fractional separation callback (Section 6, root cut-loop of Section 7.4) - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"
+// Works on the fractional point x* (relax_xstar)
 void Solver::hplus_relaxation_callback_(CPXCALLBACKCONTEXTptr context) {
     // Get the lp relaxation (first ever LP solution)
     std::call_once(global_.relax_lb_once, [&] {
@@ -271,6 +279,9 @@ void Solver::hplus_relaxation_callback_(CPXCALLBACKCONTEXTptr context) {
         }
     }
 
+    // sec: fSEC(Pi), lm: fLM(Pi) - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"
+    // lmcut, lmcut-g, lmcut-c: Section "LM-Cut as Cut Separator" - Zanella, Salvagnin: "Tighter Bounds for h+ MIP Planning via LM-Cut Strengthening
+    // and Cut Generation"
     if (relax_cuts == "sec") {
         hplus_separate_relax_sec_cut_(context);
     } else if (relax_cuts == "lm") {

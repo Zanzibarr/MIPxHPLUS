@@ -1,5 +1,7 @@
 #include "solver.hpp"
 
+// h^max / h^add of the facts from the (empty) initial state (Eq. (1) - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning")
+// Bonet, Geffner: "Planning as Heuristic Search"
 void Solver::primal_hmaxadd_init_values_(const primal_hmax_function& h_eqtype) {
     for (const auto& act_i : global_.initial_actions) {
         const unsigned int cost{inst_.actions[act_i].cost};
@@ -218,6 +220,8 @@ inline void Solver::primal_update_hadd_values_(const std::vector<unsigned int>& 
     }
 }
 
+// Algorithm 2, line 5 - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"
+// argmin_{a'} h^add_{S u add(a')}, with h^add of a state = sum of h^add of the goal facts (h^add of the dummy goal fact t)
 auto Solver::primal_greedychoice_hadd_(const std::list<unsigned int>& candidates, const BinarySet& state) -> std::pair<bool, unsigned int> {
     unsigned int best_choice = 0;
     double best_hadd = std::numeric_limits<double>::infinity();

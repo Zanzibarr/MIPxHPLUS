@@ -4,6 +4,8 @@
 
 #include "solver.hpp"
 
+// Landmark-based model reduction: fact landmarks and fixed facts/actions
+// Imai, Fukunaga: "On a Practical, Integer-Linear Programming Model for Delete-Free Tasks and its Use as a Heuristic for Cost-Optimal Planning"
 auto Solver::prep_fact_landmarks_(std::vector<std::vector<unsigned int>>& landmarks_ret) -> bool {
     logger_[DEBUG] << "PREP: fact landmarks extraction";
 

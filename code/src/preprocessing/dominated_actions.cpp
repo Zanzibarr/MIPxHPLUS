@@ -2,6 +2,8 @@
 
 #include "solver.hpp"
 
+// Dominated actions elimination
+// Imai, Fukunaga: "On a Practical, Integer-Linear Programming Model for Delete-Free Tasks and its Use as a Heuristic for Cost-Optimal Planning"
 auto Solver::prep_dominated_actions_(std::vector<std::vector<unsigned int>>& landmarks) -> bool {
     logger_[DEBUG] << "PREP: dominated actions extraction";
 

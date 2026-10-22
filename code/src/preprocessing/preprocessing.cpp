@@ -163,6 +163,7 @@ void Solver::preprocess_() {
         }
     }
 
+    // Section "Goal Extension" - Zanella, Salvagnin: "Tighter Bounds for h+ MIP Planning via LM-Cut Strengthening and Cut Generation"
     // Fixed facts can be treated as goal facts (we cannot move this step in the preprocessing loop, since there's a step that eliminates non-goal
     // facts that have no actions needing them... in that case goal and fixed facts are different, and keeping a small goal enables more eliminations)
     if (params_.get<cli_desc::preprocess, std::string>().find('g') != std::string::npos) {
@@ -173,6 +174,8 @@ void Solver::preprocess_() {
     logger_[DEBUG] << std::format("Size of the prefix: {}", global_.solution_prefix.size());
 }
 
+// Facts true in the initial state are removed, so that the initial state is empty: this plays the role of the single initial fact s (I = {s}) of
+// Section 2 - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"
 void Solver::prep_initial_state_removal_() {
     logger_[INFO] << ("Removing initial state variables");
     std::vector<size_t> istate_offsets(inst_.n);

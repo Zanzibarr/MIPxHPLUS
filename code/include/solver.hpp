@@ -18,6 +18,7 @@
 
 // Keep this: we need it for the "using namespce utilz"
 #include "constants.hpp"
+#include "max_flow.hpp"
 #include "utils.hpp"
 
 struct Action {
@@ -53,7 +54,7 @@ class Solver {
     }
 
     // ~~~~~~~~~~~~ preprocessing ~~~~~~~~~~~~ //
-    // Haslum, Slaney, Thiebaux: "Minimal landmarks for optimal deletefree planning"
+    // Haslum, Slaney, Thiebaux: "Minimal Landmarks for Optimal Delete-Free Planning"
     // Imai, Fukunaga: "On a Practical, Integer-Linear Programming Model for Delete-Free Tasks and its Use as a Heuristic for Cost-Optimal Planning"
     void preprocess_();
     void prep_initial_state_removal_();
@@ -84,17 +85,19 @@ class Solver {
     void print_info_();
 
     // ~~~~~~~~~~~ landmarks utils ~~~~~~~~~~~ //
-    // Haslum, Slaney, Thiebaux: "Minimal landmarks for optimal deletefree planning"
-    // TODO Salvagnin, Zanella: "Tighter Bounds for h+ MIP Planning via LM-Cut Strengthening and Cut Generation"
+    // Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"
+    // Haslum, Slaney, Thiebaux: "Minimal Landmarks for Optimal Delete-Free Planning"
+    // Zanella, Salvagnin: "Tighter Bounds for h+ MIP Planning via LM-Cut Strengthening and Cut Generation"
     void landmark_minimalization_greedy_(std::vector<unsigned int>& landmark, const BinarySet& reachable_state);
     void landmark_minimalization_(std::vector<unsigned int>& landmark, const std::vector<unsigned int>& unapplicable, BinarySet reachable_state);
     [[nodiscard]]
     auto check_landmark_(const BinarySet& landmark) -> bool;
 
     // ~~~~~~~~~~~~~~~~ lmcut ~~~~~~~~~~~~~~~~ //
-    // Domshlak, Helmert: "Landmarks, Critical Paths and Abstractions: What's the Difference Anyway?"
+    // Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"
+    // Helmert, Domshlak: "Landmarks, Critical Paths and Abstractions: What's the Difference Anyway?"
     // Lauer, Fickert: "Beating LM-cut with LM-cut: Quick Cutting and Practical Tie Breaking for the Precondition Choice Function"
-    // TODO Salvagnin, Zanella: "Tighter Bounds for h+ MIP Planning via LM-Cut Strengthening and Cut Generation"
+    // Zanella, Salvagnin: "Tighter Bounds for h+ MIP Planning via LM-Cut Strengthening and Cut Generation"
     using lmcut_hmax_function = std::pair<int, double> (Solver::*)(const std::vector<unsigned int>&);
     void solve_lmcut_();
 
@@ -131,8 +134,21 @@ class Solver {
     [[nodiscard]]
     auto lmcut_compute_cut_(const lmcut_hmax_function& hmax, char minimization) -> std::pair<std::vector<unsigned int>, double>;
 
+    // ~~~~~~~~~~~ max-flow landmarks ~~~~~~~~~~ //
+    // Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning" (Section 6.2.2, Algorithm 4)
+    [[nodiscard]]
+    auto maxflow_lm_relax_separation_(const std::vector<double>& actions_weights) -> std::pair<bool, std::vector<unsigned int>>;
+
+    void maxflow_lm_init_();
+    void maxflow_lm_compute_fmax_fadd_(const std::vector<double>& actions_weights, std::vector<double>& fmax, std::vector<double>& fadd);
+    [[nodiscard]]
+    auto maxflow_lm_compute_pcf_(const std::vector<double>& fmax, const std::vector<double>& fadd) -> std::vector<unsigned int>;
+    [[nodiscard]]
+    auto maxflow_lm_extract_landmark_(const FlowNetwork& graph, const std::vector<unsigned int>& pcf) -> std::vector<unsigned int>;
+
     // ~~~~~~~~~~~ primal heuristic ~~~~~~~~~~ //
-    // Salvagnin, Zanella: "MIP Formulations for Delete-free AI Planning"
+    // Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning" (Section 5.1, Algorithm 2)
+    // Bonet, Geffner: "Planning as Heuristic Search"
     using primal_hmax_function = double (*)(double, double);
     using greedychoice_function = std::pair<bool, unsigned int> (Solver::*)(const std::list<unsigned int>&, const BinarySet&);
     void solve_primal_();
@@ -153,11 +169,17 @@ class Solver {
 
     // ~~~~~~~~~~~ computing hplus ~~~~~~~~~~~ //
     // Imai, Fukunaga: "On a Practical, Integer-Linear Programming Model for Delete-Free Tasks and its Use as a Heuristic for Cost-Optimal Planning"
-    // Rankooh, Rintanen: "Efficient Computation and Informative Estimation of h+ by Integer and Linear Programming"
+    // Feyzbakhsh Rankooh, Rintanen: "Efficient Computation and Informative Estimation of h+ by Integer and Linear Programming"
     // Bonet, Castillo: "A Complete Algorithm for Generating Landmarks"
-    // Haslum, Slaney, Thiebaux: "Minimal landmarks for optimal deletefree planning"
-    // Salvagnin, Zanella: "MIP Formulations for Delete-free AI Planning"
-    // TODO Salvagnin, Zanella: "Tighter Bounds for h+ MIP Planning via LM-Cut Strengthening and Cut Generation"
+    // Haslum, Slaney, Thiebaux: "Minimal Landmarks for Optimal Delete-Free Planning"
+    // Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"
+    // Zanella, Salvagnin: "Tighter Bounds for h+ MIP Planning via LM-Cut Strengthening and Cut Generation"
+    //
+    // Models (Table 1 - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"):
+    // --hplus-alg tl -> TL(Pi), ve -> VE(Pi), base -> B&C models, with --cand-cuts sec -> SEC(Pi), lm-c -> LMC(Pi), and --relax-cuts sec -> fSEC(Pi),
+    // lm -> fLM(Pi); --primal-heur adds the h subscript, --lmcut-pcf the LM subscript
+    // --cand-cuts / --relax-cuts lmcut, lmcut-g, lmcut-c: Section "LM-Cut as Cut Separator" - Zanella, Salvagnin: "Tighter Bounds for h+ MIP Planning
+    // via LM-Cut Strengthening and Cut Generation"
     void solve_hplus_();
 
     void hplus_init_cplex_();
@@ -233,7 +255,7 @@ class Solver {
         std::vector<unsigned int> initial_actions;  // Actions that are applicable from the initial (empty) state
 
         // LM-Cut data
-        std::vector<std::vector<unsigned int>> landmarks;
+        std::vector<std::vector<unsigned int>> landmarks;  // Landmarks used to initialize the model
 
         // Primal heuristic data
         std::vector<double> primal_h_values;                                    // hmax/hadd values for each fact
@@ -254,11 +276,11 @@ class Solver {
         double hplus_dettime = -1;  // deterministic ticks consumed by CPXmipopt (execution-path fingerprint)
 
         // Cplex base model helpers
-        std::vector<unsigned int> hplus_fadd_cpx_start;
+        std::vector<unsigned int> hplus_fadd_cpx_start;  // Offset of the first z_{a,q} column of each action a (first achievers)
 
         // Vertex elimination graph
-        std::vector<unsigned int> hplus_veg_starts;
-        std::vector<std::vector<unsigned int>> hplus_veg_cumulative_graph;
+        std::vector<unsigned int> hplus_veg_starts;                         // Offset of the first e_{p,q} column of each fact p
+        std::vector<std::vector<unsigned int>> hplus_veg_cumulative_graph;  // E*_Pi: hplus_veg_cumulative_graph[p] = sorted {q | (p, q) in E*_Pi}
 
         // Gather info about root node relaxation
         std::atomic<bool> relax_lb_rootnode_recorded{false};
@@ -277,23 +299,30 @@ class Solver {
         bool rng_ready;
 
         // LM-Cut data
-        std::vector<int> lmcut_pcf;
+        std::vector<int> lmcut_pcf;  // D(a) (precondition choice function)
         std::vector<double> lmcut_hmax_values;
         std::vector<double> lmcut_initial_hmax_values;  // For VDM
         std::vector<double> lmcut_pcf_hmax;             // hmax_values[pcf[act]]
         std::vector<double> lmcut_reduced_costs;
         std::unordered_set<unsigned int> lmcut_goal_section;  // Persistent V* for GZD
 
+        // Max-flow landmarks data (depends only on the instance: built once per thread, then copied at each separation)
+        // Nodes: [0, n) facts, n source, n+1 sink, [n+2, n+2+m) one dummy node per action (pcf -> dummy -> effects)
+        FlowNetwork maxflow_lm_network;                              // Network with all the precondition and goal edges at 0 capacity
+        std::vector<unsigned int> maxflow_lm_act_node;               // Dummy node of each action (index m: dummy goal action -> sink)
+        std::vector<std::vector<unsigned int>> maxflow_lm_pre_edge;  // maxflow_lm_pre_edge[a][k]: edge index of pre_k(a) -> act_node[a]
+        std::vector<unsigned int> maxflow_lm_goal_edge;              // maxflow_lm_goal_edge[k]: edge index of goal_k -> sink
+
         // Candidate callback data
-        std::vector<double> cand_xstar;
-        BinarySet cand_used_actions;
+        std::vector<double> cand_xstar;  // Integer point x^\ast
+        BinarySet cand_used_actions;     // Set H of used action in x^\ast
         std::vector<unsigned int> cand_reachable_action_sequence;
         std::vector<unsigned int> cand_unreachable_actions;
         std::vector<unsigned int> cand_unused_actions;
-        BinarySet cand_reachable_state;
+        BinarySet cand_reachable_state;  // R(H)
 
         // Relaxation callback data
-        std::vector<double> relax_xstar;
+        std::vector<double> relax_xstar;              // Fractional point x^\ast
         std::unordered_set<int> relax_visited_nodes;  // Nodes (except root) already visited by this thread in the current restart
         int relax_visited_restart;                    // CPLEX restart relax_visited_nodes refers to (zero-initialized: local_ is static)
     };

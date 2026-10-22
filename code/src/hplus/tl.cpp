@@ -1,10 +1,13 @@
 #include "solver.hpp"
 
+// Time labeling model TL(Pi), Section 3.2 - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"
+// Imai, Fukunaga: "On a Practical, Integer-Linear Programming Model for Delete-Free Tasks and its Use as a Heuristic for Cost-Optimal Planning"
 void Solver::hplus_add_tl_constraints_() {
     // ====================================================== //
     // =================== CPLEX VARIABLES ================== //
     // ====================================================== //
 
+    // Timestamps t_p in {1, ..., |P|}: |P| is also the big-M of Eq. (8) - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"
     const double max_steps{static_cast<double>(inst_.n)};
     const unsigned int tvar_start{static_cast<unsigned int>(CPXgetnumcols(global_.hplus_env, global_.hplus_lp))};
 
@@ -35,7 +38,9 @@ void Solver::hplus_add_tl_constraints_() {
     const double rhs{max_steps - 1};
     constexpr int begin{0};
 
-    // Equation 9 - Rankooh, Rintanen: "Efficient Computation and Informative Estimation of h+ by Integer and Linear Programming"
+    // Equation 9 - Feyzbakhsh Rankooh, Rintanen: "Efficient Computation and Informative Estimation of h+ by Integer and Linear Programming"
+    // Equation 8 - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"
+    // t_p - t_q + 1 <= |P| (1 - z_{a,q}), written as |P| z_{a,q} - t_q + t_p <= |P| - 1   (p = pre, q = eff)
     for (unsigned int act_i = 0; act_i < inst_.m; ++act_i) {
         unsigned int var_count{0};
         for (const auto& eff : inst_.actions[act_i].eff_sparse) {
@@ -55,6 +60,8 @@ void Solver::hplus_add_tl_constraints_() {
     }
 }
 
+// MIP start (Section 5.1) for TL(Pi) - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"
+// t_q is the (1-based) step of the warm start in which q is first achieved
 void Solver::hplus_post_tl_warm_start_() {
     BinarySet state{inst_.n};
     const auto& warm_start{global_.solution};

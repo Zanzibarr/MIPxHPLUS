@@ -2,6 +2,8 @@
 #include "solver.hpp"
 #include "utils.hpp"
 
+// MIP start (Section 5.1) - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"
+// gha is the h^add lookahead of Algorithm 2 of the same paper; gc, gcxe and ghm are alternative greedy scores
 void Solver::solve_primal_() {
     const auto& primal = params_.get<cli_desc::primal_heur, std::string>();
 

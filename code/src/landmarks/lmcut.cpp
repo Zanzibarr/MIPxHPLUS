@@ -5,6 +5,8 @@
 #include "solver.hpp"
 #include "utils.hpp"
 
+// LM-cut initialization (Section 5.2) - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"
+// LM-cut is run once per pcf in --lmcut-pcf, collecting all the landmarks in global_.landmarks (the paper uses ARB, INV and VDM)
 void Solver::solve_lmcut_() {
     const char minimization = params_.get<cli_desc::lmcut_min, std::string>()[0];
 
@@ -39,6 +41,9 @@ void Solver::solve_lmcut_() {
     }
 }
 
+// Option 'f': Section "Exploiting Preprocessing Information" - Zanella, Salvagnin: "Tighter Bounds for h+ MIP Planning via LM-Cut Strengthening and
+// Cut Generation"
+// The fixed actions A_F get reduced cost 0, and their cost c(A_F) is charged to the bound upfront
 auto Solver::lmcut_lmcut_(const lmcut_hmax_function& hmax, char minimization) -> std::pair<std::vector<std::vector<unsigned int>>, double> {
     lmcut_init_();
     const auto& lmcut_opt = params_.get<cli_desc::lmcut_opt, std::string>();
@@ -53,6 +58,8 @@ auto Solver::lmcut_lmcut_(const lmcut_hmax_function& hmax, char minimization) ->
     return {landmarks, cost + fixed_cost};
 }
 
+// Section "LM-Cut as Cut Separator" (integer solutions) - Zanella, Salvagnin: "Tighter Bounds for h+ MIP Planning via LM-Cut Strengthening and Cut
+// Generation"
 auto Solver::lmcut_int_separation_(const std::vector<unsigned int>& used_actions, const lmcut_hmax_function& hmax, char minimization)
     -> std::pair<bool, std::vector<std::vector<unsigned int>>> {
     lmcut_init_();
@@ -67,6 +74,8 @@ auto Solver::lmcut_int_separation_(const std::vector<unsigned int>& used_actions
     return {!landmarks.empty(), landmarks};
 }
 
+// Section "LM-Cut as Cut Separator" (fractional solutions) - Zanella, Salvagnin: "Tighter Bounds for h+ MIP Planning via LM-Cut Strengthening and Cut
+// Generation"
 auto Solver::lmcut_relax_separation_(const std::vector<double>& actions_weights, const lmcut_hmax_function& hmax, char minimization)
     -> std::pair<bool, std::vector<std::vector<unsigned int>>> {
     lmcut_init_();
@@ -90,6 +99,11 @@ auto Solver::lmcut_relax_separation_(const std::vector<double>& actions_weights,
     return {!landmarks.empty(), landmarks};
 }
 
+// Precondition choice functions (pcf, Section 2.3 - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"): each returns D(a) and h^max
+// of the given preconditions
+// Lauer, Fickert: "Beating LM-cut with LM-cut: Quick Cutting and Practical Tie Breaking for the Precondition Choice Function"
+
+// ARB: ties don't change the pcf
 auto Solver::lmcut_hmax_arbitrary_(const std::vector<unsigned int>& preconditions) -> std::pair<int, double> {
     int pcf{-1};
     double hmax{-1};
@@ -102,6 +116,7 @@ auto Solver::lmcut_hmax_arbitrary_(const std::vector<unsigned int>& precondition
     return {pcf, hmax};
 }
 
+// INV: ties always change the pcf
 auto Solver::lmcut_hmax_inverse_(const std::vector<unsigned int>& preconditions) -> std::pair<int, double> {
     int pcf{-1};
     double hmax{-1};
@@ -114,6 +129,7 @@ auto Solver::lmcut_hmax_inverse_(const std::vector<unsigned int>& preconditions)
     return {pcf, hmax};
 }
 
+// VDM: on ties, prefer the precondition whose h^max decreased the least since the first iteration
 auto Solver::lmcut_hmax_vdm_(const std::vector<unsigned int>& preconditions) -> std::pair<int, double> {
     int pcf{-1};
     int count{0};
@@ -294,7 +310,7 @@ auto Solver::lmcut_compute_private_(const lmcut_hmax_function& hmax, char minimi
 void Solver::lmcut_update_and_enqueue_effects_values_(priority_queue<double>& queue, unsigned int act_i) {
     const double new_cost{local_.lmcut_pcf_hmax[act_i] + local_.lmcut_reduced_costs[act_i]};
     for (const auto& eff : inst_.actions[act_i].eff_sparse) {
-        // h_max(eff) = min_a{cost(a) + max{h_max{pre}}}
+        // h_max(eff) = min_a{cost(a) + max{h_max{pre}}} (Eq. (1) - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning")
         if (is_gr_or_eq_double(new_cost, local_.lmcut_hmax_values[eff])) {
             continue;
         }
@@ -386,6 +402,10 @@ void Solver::lmcut_update_hmax_values_(const std::vector<unsigned int>& changed_
     }
 }
 
+// Goal section V* (facts reaching the goal through 0 reduced-cost actions), pre-goal section and s-t cut-set of the justification graph G_D
+// Helmert, Domshlak: "Landmarks, Critical Paths and Abstractions: What's the Difference Anyway?"
+// Steps 3-5 of Section "Strengthening LM-Cut" - Zanella, Salvagnin: "Tighter Bounds for h+ MIP Planning via LM-Cut Strengthening and Cut Generation"
+// (goal section = G, pre-goal section = V, cut = L_std, or L_e with option 'e')
 auto Solver::lmcut_compute_cut_(const lmcut_hmax_function& hmax, char minimization) -> std::pair<std::vector<unsigned int>, double> {
     lmcut_compute_goal_section_(hmax);
 
@@ -415,7 +435,8 @@ auto Solver::lmcut_compute_cut_(const lmcut_hmax_function& hmax, char minimizati
                     }
                 }
             } else {
-                // TODO Salvagnin, Zanella: "Tighter Bounds for h+ MIP Planning via LM-Cut Strengthening and Cut Generation"
+                // L_e of Section "Smaller Pre-Goal Section" - Zanella, Salvagnin: "Tighter Bounds for h+ MIP Planning via LM-Cut Strengthening and
+                // Cut Generation"
 
                 // Case 1: This is the only action from the pre_goal_section that achieves a fact p not in the goal_section... actions added to
                 // the cut because of this fact are not necessary for the validity of the landmark (the current action is a landmark for p (with
@@ -473,7 +494,8 @@ auto Solver::lmcut_compute_cut_(const lmcut_hmax_function& hmax, char minimizati
         }
     }
 
-    // TODO Salvagnin, Zanella: "Tighter Bounds for h+ MIP Planning via LM-Cut Strengthening and Cut Generation"
+    // g: L_p of Section "Optimized Landmark Selection", c: Section "Looking for Minimal Landmarks" - Zanella, Salvagnin: "Tighter Bounds for h+ MIP
+    // Planning via LM-Cut Strengthening and Cut Generation"
     if (minimization == 'g') {
         // Note that this MUST be done after the cut has been computed 'cause before the pre_goal might still change...
         landmark_minimalization_greedy_(cut, pre_goal_section);

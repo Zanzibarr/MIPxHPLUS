@@ -18,6 +18,9 @@ constexpr auto hadd(double fact_a, double fact_b) -> double {
 }
 }  // namespace
 
+// Algorithm 2 - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"
+// Greedy dive: state = S, solution = pi, candidates = the actions applicable in S (whose effects are not already in S); the score of each
+// candidate is given by the greedychoice function
 void Solver::primal_greedy_() {
     // Initialize watch preconditions
     std::vector<unsigned int> watch_pre(inst_.m, inst_.n);
