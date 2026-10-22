@@ -295,7 +295,7 @@ data-network-sat18-strips-p14,345.0,345.0
 data-network-sat18-strips-p15,478.0,478.0
 data-network-sat18-strips-p16,518.0,518.0
 data-network-sat18-strips-p17,589.0,589.0
-data-network-sat18-strips-p18,456.53568913985157,472.0
+data-network-sat18-strips-p18,457.46670301448654,472.0
 data-network-sat18-strips-p19,1224.0,1224.0
 data-network-sat18-strips-p20,644.444011690417,673.0
 depot-p01,10.0,10.0
@@ -1293,7 +1293,7 @@ organic-synthesis-split-sat18-strips-p15,273.0,273.0
 organic-synthesis-split-sat18-strips-p16,540.0,540.0
 organic-synthesis-split-sat18-strips-p17,365.9013469885713,580.0
 organic-synthesis-split-sat18-strips-p18,482.0,803.0
-organic-synthesis-split-sat18-strips-p19,86.0,715.0
+organic-synthesis-split-sat18-strips-p19,230.0,715.0
 organic-synthesis-split-sat18-strips-p20,241.0,398.0
 parcprinter-08-strips-p01,169009.0,169009.0
 parcprinter-08-strips-p02,438047.0,438047.0
@@ -2559,7 +2559,7 @@ transport-sat14-strips-p08,973.0687842030353,1468.0
 transport-sat14-strips-p09,1011.4585556711538,1380.0
 transport-sat14-strips-p10,992.3366,1425.0
 transport-sat14-strips-p11,451.5473868393993,575.0
-transport-sat14-strips-p12,472.58299231102063,618.0
+transport-sat14-strips-p12,476.32611638110046,618.0
 transport-sat14-strips-p13,556.0,556.0
 transport-sat14-strips-p14,908.0,908.0
 transport-sat14-strips-p15,1017.0,1017.0
