@@ -8,7 +8,7 @@ This script is compatible with hplus versions: 4.0.0 -> current
 Boxplot of the gap (%) between bound columns (--gap) and the best known
 incumbent (from results/best_known.csv, not necessarily a proven optimum):
 one group of boxes per bound column, one box per model. Instances whose gap
-is 0 for every model and bound are dropped.
+is 0 for every model and bound are dropped, unless --keep-zero is given.
 """
 
 import argparse
@@ -158,6 +158,11 @@ def main() -> None:
         metavar="T",
         help="Exclude instances where any run exceeded T seconds",
     )
+    parser.add_argument(
+        "--keep-zero",
+        action="store_true",
+        help="Keep problems whose gap is 0 for all models and bounds",
+    )
     add_time_limit_arg(parser)
     parser.add_argument(
         "--out", default="boxplot.pdf", help="Output file (default: boxplot.pdf)"
@@ -178,7 +183,8 @@ def main() -> None:
 
     gaps = compute_gaps(data, args.gap)
     # drop problems whose gap is 0 for all models/phases
-    gaps = gaps.filter(pl.col("Gap").fill_null(0).abs().max().over("Problem") > 0)
+    if not args.keep_zero:
+        gaps = gaps.filter(pl.col("Gap").fill_null(0).abs().max().over("Problem") > 0)
 
     plot = gap_boxplot(gaps, args.gap, aliases, args.points)
     save(plot, args.out, width=max(8, len(args.gap) * 1.5 * len(aliases)))
