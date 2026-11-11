@@ -18,6 +18,20 @@ _To see info about this project, please refer to the [Readme](Readme.md)._
 <!-- ### :rocket: Performance Improvements -->
 
 
+## [4.3.3] - 2026/11/11
+<!-- ### :warning: Known issues -->
+<!-- ### :ballot_box_with_check: Fixed -->
+### :heavy_exclamation_mark: Changed
+- Optimized landmark minimization: replacing linear-time search in watch-pre code when the precondition's position is already known
+- Removed integrity check in release builds for binary_set hot path (validate_element)
+### :heavy_plus_sign: Added
+- Additional infeasibility check before preprocessing
+<!-- ### :x: Removed -->
+<!-- ### :curly_loop: Other -->
+### :rocket: Performance Improvements
+- 2-3% faster times overall on default parameters
+
+
 ## [4.3.2] - 2026/10/22
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->

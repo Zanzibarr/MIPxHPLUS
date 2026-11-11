@@ -32,6 +32,7 @@ void Solver::solve() {
 
             // IMPORTANT: KEEP THIS BEFORE EVERYTHING ELSE, SO THE EMPTY STATE ASSUMPTION HOLDS FOR EVERYTHING, INCLUDING PREPROCESSING
             prep_initial_state_removal_();
+            prep_reachability_check_();
 
             if (params_.get<cli_desc::preprocess, std::string>() != "0") {
                 logger_[INFO] << "Preprocessing instance";

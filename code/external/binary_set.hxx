@@ -727,13 +727,15 @@ class BinarySet {
     }
 
     // Validation helpers
-    void validate_element(unsigned int element) const {
+    void validate_element([[maybe_unused]] unsigned int element) const {
+#ifndef NDEBUG  // hot path (every operator[], add, remove): checked only in builds with asserts
         if (capacity_ == 0) {
             throw std::domain_error("This BinarySet has a capacity of 0.");
         }
         if (element >= capacity_) {
             throw std::out_of_range("Specified element is outside the valid range [0, capacity-1].");
         }
+#endif
     }
 
     void validate_same_capacity(const BinarySet& other) const {

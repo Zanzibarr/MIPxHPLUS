@@ -231,6 +231,43 @@ void Solver::prep_initial_state_removal_() {
     }
 }
 
+// Relaxed reachability from the empty initial state: if the goal is not reached, h+ is infinite. Without this check an unreachable goal fact
+// reaches the later steps (e.g. its fact-landmark set stays "full", so every fact and some actions get fixed, and 'i' may end up eliminating
+// every action), and the run crashes instead of reporting infeasibility
+void Solver::prep_reachability_check_() {
+    std::vector<std::vector<unsigned int>> act_with_pre(inst_.n);
+    std::vector<unsigned int> missing(inst_.m);
+    std::vector<unsigned int> queue;
+    for (unsigned int act_i = 0; act_i < inst_.m; act_i++) {
+        missing[act_i] = static_cast<unsigned int>(inst_.actions[act_i].pre_sparse.size());
+        for (const auto pre : inst_.actions[act_i].pre_sparse) {
+            act_with_pre[pre].push_back(act_i);
+        }
+        if (missing[act_i] == 0) {
+            queue.push_back(act_i);
+        }
+    }
+    BinarySet reached{inst_.n};
+    while (!queue.empty()) {
+        const auto act_i = queue.back();
+        queue.pop_back();
+        for (const auto eff : inst_.actions[act_i].eff_sparse) {
+            if (reached[eff]) {
+                continue;
+            }
+            reached.add(eff);
+            for (const auto act_j : act_with_pre[eff]) {
+                if (--missing[act_j] == 0) {
+                    queue.push_back(act_j);
+                }
+            }
+        }
+    }
+    if (!reached.superset_of(inst_.goal)) {
+        throw EarlyExit("checking relaxed reachability", EarlyExit::INFEASIBLE);
+    }
+}
+
 void Solver::prep_eliminated_facts_(std::vector<std::vector<unsigned int>>& landmarks) {
     if (global_.eliminated_facts.empty()) {
         return;

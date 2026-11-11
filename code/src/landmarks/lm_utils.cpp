@@ -141,7 +141,8 @@ void Solver::landmark_minimalization_(std::vector<unsigned int>& landmark, const
 
     const unsigned int goal_act = inst_.m;
 
-    const auto check_update_watch_pre = [&](unsigned int act_i, bool init = false) -> void {
+    // pos: index of act_i in watching[watch_pre[act_i]] when the caller knows it (avoids a linear search in the hot loop)
+    const auto check_update_watch_pre = [&](unsigned int act_i, bool init = false, std::size_t pos_hint = SIZE_MAX) -> void {
         myassert(init || watch_pre[act_i] != inst_.n, "Wrongly initialized watch precondition");
 
         const unsigned int previous = watch_pre[act_i];
@@ -162,7 +163,10 @@ void Solver::landmark_minimalization_(std::vector<unsigned int>& landmark, const
             if (!init /*&& watch_pre[act_i] != previous -- this is commented due to the check at the beginning of the function*/) {
                 myassert(std::ranges::find(watching[previous], act_i) != watching[previous].end(),
                          "Action was not found among those watching this fact");
-                const auto pos = static_cast<unsigned int>(std::ranges::find(watching[previous], act_i) - watching[previous].begin());
+                myassert(pos_hint == SIZE_MAX || watching[previous][pos_hint] == act_i, "Wrong position hint");
+                const auto pos = pos_hint != SIZE_MAX
+                                     ? static_cast<unsigned int>(pos_hint)
+                                     : static_cast<unsigned int>(std::ranges::find(watching[previous], act_i) - watching[previous].begin());
                 const auto size = static_cast<unsigned int>(watching[previous].size());
                 watching[previous][pos] = watching[previous][size - 1];
                 watching[previous].resize(size - 1);
@@ -218,7 +222,9 @@ void Solver::landmark_minimalization_(std::vector<unsigned int>& landmark, const
         // (mirroring insert_sorted(unapplicable, act_i) in the WATCH_LIT=0 branch).
         // Registering all landmark actions upfront caused them to chain their effects during
         // the simulation of earlier actions, producing different results than WATCH_LIT=0.
-        if (!action.pre_sparse.empty()) {
+        // Skip if already registered (landmark and unapplicable may overlap, e.g. an LM-cut action whose pcf is in the pre-goal section but
+        // some other precondition is not): a second init would push it into a second watch list, leaving a stale entry
+        if (!action.pre_sparse.empty() && watch_pre[act_i] == inst_.n) {
             check_update_watch_pre(act_i, true);
         }
 
@@ -264,7 +270,8 @@ void Solver::landmark_minimalization_(std::vector<unsigned int>& landmark, const
             for (size_t i = 0; i < watching[fact].size();) {
                 const auto act_j = watching[fact][i];
                 // Update its watch_pre
-                check_update_watch_pre(act_j);
+                myassert(watch_pre[act_j] == fact, "Action in a watch list of another fact");
+                check_update_watch_pre(act_j, false, i);
                 // If act_j was erased from watching[fact], it shifted out of position i
                 if (i < watching[fact].size() && watching[fact][i] == act_j) {
                     ++i;

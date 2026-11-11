@@ -58,6 +58,8 @@ class Solver {
     // Imai, Fukunaga: "On a Practical, Integer-Linear Programming Model for Delete-Free Tasks and its Use as a Heuristic for Cost-Optimal Planning"
     void preprocess_();
     void prep_initial_state_removal_();
+    // Throws EarlyExit::INFEASIBLE if some goal fact is unreachable even in the delete-free relaxation
+    void prep_reachability_check_();
     // Recomputes landmarks and fixed facts/actions; returns whether the landmark sets differ from the ones in input
     [[nodiscard]]
     auto prep_fact_landmarks_(std::vector<std::vector<unsigned int>>& landmarks) -> bool;
