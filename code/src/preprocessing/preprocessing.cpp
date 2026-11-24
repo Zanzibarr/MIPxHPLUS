@@ -42,8 +42,10 @@ void Solver::preprocess_() {
     // Convergence tripwire: every pass beyond the first must be caused by a change, and each change strictly shrinks n, m or nfadd (or grows a
     // landmark set, which re-arms at most one extra settling pass, or grows fixed_actions via 'o', at most m times) — a generous linear bound
     // catches any future non-terminating trigger
+#ifndef NDEBUG
     const unsigned int max_passes = (2 * (inst_.n + inst_.m + inst_.nfadd)) + 3;
     unsigned int passes{0};
+#endif
 
     while ((use_l && nfadd_at_last_l != inst_.nfadd) || (use_a && pending_a) || (use_b && pending_b) || (use_d && pending_d) ||
            (use_i && pending_i) || (use_symm && pending_symm)) {

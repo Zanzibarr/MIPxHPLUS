@@ -150,6 +150,7 @@ auto Solver::prep_symmetry_breaking_() -> bool {
     }
 
     // Analyze generators
+#ifndef NDEBUG
     const auto& generator_to_string = [this, n_local, &vertex_to_fact, &vertex_to_act](const std::vector<std::vector<unsigned int>>& generator) {
         auto name = [this, n_local, &vertex_to_fact, &vertex_to_act](unsigned int v) {
             if (v >= n_local) {
@@ -171,6 +172,7 @@ auto Solver::prep_symmetry_breaking_() -> bool {
         }
         return cycles_string;
     };
+#endif
 
     bool use_s = params_.get<cli_desc::preprocess, std::string>().find('s') != std::string::npos;
     if (use_s) {
@@ -242,7 +244,7 @@ auto Solver::prep_symmetry_breaking_() -> bool {
     bool use_o = params_.get<cli_desc::preprocess, std::string>().find('o') != std::string::npos;
     if (use_o) {
         unsigned int orbits_counter{0};
-        
+
         struct Orbit {
             unsigned int rep;
             unsigned int size{0};      // final orbit size: largest orbits are ordered first
