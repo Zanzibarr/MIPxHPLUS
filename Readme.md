@@ -54,8 +54,8 @@ See the help page:
 
 ## Publications and Presentations
 - **Master Thesis** (2025, v2.4.2): [\[Thesis\]](results/2025_master_thesis.pdf)  
+- **IJOO MIP Workshop** (2025, v2.4.2): [\[Paper\]](results/2025_MIPWorkshopIJOO_paper.pdf)
 - **AIROYoung Workshop** (2026, v2.4.2): [\[Slides\]](results/2026_AIROYoung_slides.pdf)  
-- **IJOO MIP Workshop** (2025, v2.4.2, under review): [\[Preprint\]](results/2025_MIPWorkshopIJOO_preprint.pdf)
 - **CPAIOR Extended Abstract** (2026, v3.1.10): [\[Slides\]](results/2026_CPAIOR_slides.pdf)  
 - **IPCO Poster** (2026, v3.1.10): [\[Poster\]](results/2026_IPCO_poster.pdf)  
 
