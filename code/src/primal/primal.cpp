@@ -7,7 +7,7 @@
 void Solver::solve_primal_() {
     const auto& primal = params_.get<cli_desc::primal_heur, std::string>();
 
-    if (primal == "gc" || primal == "gcxe" || primal == "gha" || primal == "ghm") {
+    if (primal == "gc" || primal == "gcxe" || primal == "gha" || primal == "ghac" || primal == "ghm") {
         primal_greedy_();
     } else {
         logger_[WARNING] << std::format("Unhandled primal algorithm: {}", primal);

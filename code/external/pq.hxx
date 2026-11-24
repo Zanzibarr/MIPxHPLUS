@@ -84,7 +84,7 @@ class priority_queue {
         if (position[j] < 0) throw std::invalid_argument("Element wasn't in the priority queue.");
         int gap{position[j]};
         if (mantain_heap) {
-            score_type oldp = prior[gap];
+            score_type oldp = prior[j];
             // if the priority didn't change, return immediately
             if (oldp == p) return;
 

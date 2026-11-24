@@ -178,6 +178,21 @@ void Solver::preprocess_() {
 // Section 2 - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning"
 void Solver::prep_initial_state_removal_() {
     logger_[INFO] << ("Removing initial state variables");
+
+    // Goal already true in the initial state (this includes an empty goal): the empty plan is optimal, h+ = 0. Stop here, since every later step
+    // assumes a non-empty goal (backward relevance would otherwise eliminate every fact and action, and an empty BinarySet cannot be built)
+    bool goal_in_start{true};
+    for (const auto var : inst_.goal) {
+        goal_in_start = goal_in_start && inst_.start[var];
+    }
+    if (goal_in_start) {
+        inst_.goal.clear();
+        global_.best_bound = 0;
+        global_.best_incumbent = 0;
+        global_.solution = {};
+        throw EarlyExit("removing the initial state (goal already satisfied)", EarlyExit::OPTIMAL);
+    }
+
     std::vector<size_t> istate_offsets(inst_.n);
     size_t n_opt{inst_.n};
     for (unsigned int i = 0, counter = 0; i < inst_.n; i++) {

@@ -24,8 +24,16 @@ void Solver::hplus_add_ve_constraints_() {
     std::vector<std::set<unsigned int>> graph(inst_.n);
     global_.hplus_veg_cumulative_graph.resize(inst_.n);
     std::vector<std::tuple<unsigned int, unsigned int, unsigned int>> triangles_list;
-    priority_queue<unsigned int> nodes_queue(static_cast<size_t>(2 * inst_.n));
+    priority_queue<uint64_t> nodes_queue(static_cast<size_t>(2 * inst_.n));
     std::vector<unsigned int> degree_counter(inst_.n, 0);
+    // Eliminating v adds at most in(v) * out(v) edges to G_i and at most that many triangles to Delta: order by this product (a "min-fill"-like
+    // score, instead of the plain min-degree in + out), breaking ties by the degree (< 2n + 1). Sources and sinks (product 0) go first, for free
+    std::vector<unsigned int> in_deg(inst_.n, 0);
+    std::vector<unsigned int> out_deg(inst_.n, 0);
+    const uint64_t tie_base{(2 * static_cast<uint64_t>(inst_.n)) + 1};
+    const auto score = [&](unsigned int v) {
+        return (static_cast<uint64_t>(in_deg[v]) * out_deg[v] * tie_base) + degree_counter[v];
+    };
 
     // Build initial graph G_0 = G_Pi: (p, q) is an edge iff A_{p->q} is not empty
     for (unsigned int act_i = 0; act_i < inst_.m; ++act_i) {
@@ -39,6 +47,8 @@ void Solver::hplus_add_ve_constraints_() {
                 if (const auto [iter, inserted] = graph[var_i].insert(var_j); inserted) {
                     ++degree_counter[var_i];
                     ++degree_counter[var_j];
+                    ++out_deg[var_i];
+                    ++in_deg[var_j];
                 }
             }
 
@@ -54,11 +64,11 @@ void Solver::hplus_add_ve_constraints_() {
     // Initialize priority queue with nodes that have edges
     for (unsigned int node_i = 0; node_i < inst_.n; ++node_i) {
         if (degree_counter[node_i] > 0) [[likely]] {
-            nodes_queue.push(node_i, degree_counter[node_i]);
+            nodes_queue.push(node_i, score(node_i));
         }
     }
 
-    // Apply minimum degree heuristics for G_i (computes the elimination ordering O, footnote 2 - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning")
+    // Apply minimum in*out product heuristics for G_i (computes the elimination ordering O, footnote 2 - Salvagnin, Zanella: "MIP Formulations for Delete-Free AI Planning")
     for ([[maybe_unused]] unsigned int _ = 0; _ < inst_.n; ++_) {
         if (nodes_queue.empty()) [[unlikely]] {
             break;
@@ -91,6 +101,8 @@ void Solver::hplus_add_ve_constraints_() {
                 if (const auto [iter, inserted] = graph[pre].insert(eff); inserted) {
                     ++degree_counter[pre];
                     ++degree_counter[eff];
+                    ++out_deg[pre];
+                    ++in_deg[eff];
                 }
 
                 // Update cumulative graph
@@ -100,6 +112,7 @@ void Solver::hplus_add_ve_constraints_() {
             // Remove edge pre -> idx
             graph[pre].erase(idx);
             --degree_counter[pre];
+            --out_deg[pre];
             new_nodes.insert(pre);
 
             // Add triangles involving pre, idx, and successors of idx: (pre, idx, eff) in Delta
@@ -113,16 +126,19 @@ void Solver::hplus_add_ve_constraints_() {
         // Remove all edges from idx and update degrees
         for (const auto& eff : graph[idx]) {
             --degree_counter[eff];
+            --in_deg[eff];
             new_nodes.insert(eff);
         }
 
         graph[idx].clear();
         degree_counter[idx] = 0;
+        in_deg[idx] = 0;
+        out_deg[idx] = 0;
 
         // Update priority queue for affected nodes
         std::ranges::for_each(new_nodes, [&](const auto& node) {
-            if (degree_counter[node] > 0 && nodes_queue.has(node)) {
-                nodes_queue.change(node, degree_counter[node]);
+            if (nodes_queue.has(node)) {
+                nodes_queue.change(node, score(node));
             }
         });
 

@@ -43,7 +43,8 @@ void Solver::primal_greedy_() {
     }
 
     const auto& primal = params_.get<cli_desc::primal_heur, std::string>();
-    if (primal == "ghm" || primal == "gha") {
+    if (primal == "ghm" || primal == "gha" || primal == "ghac") {
+        global_.primal_hadd_with_cost = (primal == "ghac");
         global_.primal_h_values = std::vector<double>(inst_.n, std::numeric_limits<double>::infinity());
         global_.primal_trail = std::stack<std::pair<unsigned int, double>>{};
         global_.primal_action_trail = std::stack<std::tuple<unsigned int, int, double>>{};
@@ -73,7 +74,8 @@ void Solver::primal_greedy_() {
     std::map<std::string, greedychoice_function> greedychoice_functions{{"gc", &Solver::primal_greedychoice_cost_},
                                                                         {"gcxe", &Solver::primal_greedychoice_cxe_},
                                                                         {"ghm", &Solver::primal_greedychoice_hmax_},
-                                                                        {"gha", &Solver::primal_greedychoice_hadd_}};
+                                                                        {"gha", &Solver::primal_greedychoice_hadd_},
+                                                                        {"ghac", &Solver::primal_greedychoice_hadd_}};
     auto greedy_choice = std::bind_front(greedychoice_functions[primal], this);
 
     std::vector<unsigned int> solution;

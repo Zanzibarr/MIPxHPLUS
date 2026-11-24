@@ -242,7 +242,8 @@ auto Solver::primal_greedychoice_hadd_(const std::list<unsigned int>& candidates
         std::erase_if(new_eff, [&state](const auto val) { return state[val]; });
         primal_update_hadd_values_(new_eff);
 
-        double hadd_value = current_hadd;
+        // ghac: also charge the action's own cost, so that a cheap action enabling the goal is not beaten by an expensive one reaching it directly
+        double hadd_value = current_hadd + (global_.primal_hadd_with_cost ? static_cast<double>(inst_.actions[act_i].cost) : 0.0);
 
         // Restore fact values via trail; accumulate delta on goal facts for hadd_value
         while (!global_.primal_trail.empty()) {

@@ -18,6 +18,22 @@ _To see info about this project, please refer to the [Readme](Readme.md)._
 <!-- ### :rocket: Performance Improvements -->
 
 
+## [4.3.4] - 2026/11/24
+<!-- ### :warning: Known issues -->
+### :ballot_box_with_check: Fixed
+- Minor bug on external priority queue
+### :heavy_exclamation_mark: Changed
+- Switched vertex elimination ordering from min-degree to min-fill
+### :heavy_plus_sign: Added
+- Primal heuristic greedy choice: argmin_{a}{cost(a) + hadd(a)}
+- Optimality check before preprocessing
+<!-- ### :x: Removed -->
+### :curly_loop: Other
+- Minor optimizations to preprocessing
+### :rocket: Performance Improvements
+- TBD
+
+
 ## [4.3.3] - 2026/11/11
 <!-- ### :warning: Known issues -->
 <!-- ### :ballot_box_with_check: Fixed -->

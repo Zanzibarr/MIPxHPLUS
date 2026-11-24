@@ -94,7 +94,7 @@ inline constexpr std::string_view lmcut_opt_help =
     "Landmark optimizations inside LM-Cut as a combo of letters: 0 (None), e (non goal-section effects of an action crossing the cut are not added "
     "to the pre-goal), f (fixed actions removed from LMCut computation)";
 inline constexpr std::string_view primal_heur_help =
-    "Primal heuristic used to warm-start the MIP or for the hplus-feas mode (0 for none); disabled in info/lmcut modes";
+    "Primal heuristic used to warm-start the MIP or for the hplus-feas mode (0 for none; ghac: gha scoring cost(a) + h^add instead of h^add); disabled in info/lmcut modes";
 inline constexpr std::string_view cand_cuts_help =
     "Cut settings for the candidate (integer-solution) separator; 0: none, sec: Subtour Elimination Constraints, lm-f: Frontier Landmarks, lm-c: "
     "Complementary Minimal Landmarks, lmcut: LM-Cut separator, lmcut-g/-c: Minimal LM-Cut";
@@ -109,7 +109,7 @@ inline constexpr std::string_view testing_help = "Testing flag for development";
 inline constexpr std::array<std::string_view, 4> mode_choices = {"info", "lmcut", "hplus-feas", "hplus"};
 inline constexpr std::array<std::string_view, 4> hplus_alg_choices = {"0", "base", "tl", "ve"};
 inline constexpr std::array<std::string_view, 3> lmcut_min_choices = {"0", "g", "c"};
-inline constexpr std::array<std::string_view, 5> primal_heur_choices = {"0", "gc", "gcxe", "gha", "ghm"};
+inline constexpr std::array<std::string_view, 6> primal_heur_choices = {"0", "gc", "gcxe", "gha", "ghac", "ghm"};
 inline constexpr std::array<std::string_view, 7> cand_cuts_choices = {"0", "sec", "lm-f", "lm-c", "lmcut", "lmcut-g", "lmcut-c"};
 inline constexpr std::array<std::string_view, 7> relax_cuts_choices = {"0", "sec", "lm", "lm-m", "lmcut", "lmcut-g", "lmcut-c"};
 
