@@ -1,5 +1,6 @@
 #include <binary_set.hxx>
 #include <deque>
+#include <numeric>  // std::iota
 #include <utility>  // std::move
 
 #include "solver.hpp"
@@ -136,11 +137,17 @@ auto Solver::prep_fact_landmarks_(std::vector<std::vector<unsigned int>>& landma
 
     // list of fact landmarks for each variable
     std::vector<std::vector<unsigned int>> new_landmarks(inst_.n);
+    // Iterate the set bits (ascending, as the former n x n scan of bit tests did); a "full" set (flag bit n) lists every fact
     for (unsigned int fact_p = 0; fact_p < inst_.n; fact_p++) {
-        for (unsigned int fact_q = 0; fact_q < inst_.n; fact_q++) {
-            if (landmarks[fact_p][fact_q] || landmarks[fact_p][inst_.n]) {
-                new_landmarks[fact_p].push_back(fact_q);
-            }
+        auto& lms = new_landmarks[fact_p];
+        if (landmarks[fact_p][inst_.n]) {
+            lms.resize(inst_.n);
+            std::iota(lms.begin(), lms.end(), 0U);
+            continue;
+        }
+        lms.reserve(landmarks[fact_p].size());
+        for (const auto fact_q : landmarks[fact_p]) {
+            lms.push_back(fact_q);
         }
     }
 

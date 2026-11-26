@@ -1274,7 +1274,7 @@ organic-synthesis-split-opt18-strips-p16,103.0,103.0
 organic-synthesis-split-opt18-strips-p17,229.0,229.0
 organic-synthesis-split-opt18-strips-p18,284.90048955480154,627.0
 organic-synthesis-split-opt18-strips-p19,155.0,155.0
-organic-synthesis-split-opt18-strips-p20,336.5186988706125,435.0
+organic-synthesis-split-opt18-strips-p20,336.5186988706125,420.0
 organic-synthesis-split-sat18-strips-p01,216.0,216.0
 organic-synthesis-split-sat18-strips-p02,247.0,247.0
 organic-synthesis-split-sat18-strips-p03,246.0,246.0
@@ -1283,7 +1283,7 @@ organic-synthesis-split-sat18-strips-p05,224.0,224.0
 organic-synthesis-split-sat18-strips-p06,45.0,45.0
 organic-synthesis-split-sat18-strips-p07,48.0,48.0
 organic-synthesis-split-sat18-strips-p08,108.0,108.0
-organic-synthesis-split-sat18-strips-p09,129.5641396641663,238.0
+organic-synthesis-split-sat18-strips-p09,129.5641396641663,221.0
 organic-synthesis-split-sat18-strips-p10,241.6302003081664,318.0
 organic-synthesis-split-sat18-strips-p11,201.1276079311713,362.0
 organic-synthesis-split-sat18-strips-p12,333.80616260112987,429.0
@@ -2546,14 +2546,14 @@ transport-sat11-strips-p15,923.0,923.0
 transport-sat11-strips-p16,882.0000000000002,882.0
 transport-sat11-strips-p17,970.7796791729941,1294.0
 transport-sat11-strips-p18,860.0862921314053,1175.0
-transport-sat11-strips-p19,934.2195392748706,1265.0
+transport-sat11-strips-p19,934.2195392748706,1255.0
 transport-sat11-strips-p20,932.6213739079822,1309.0
 transport-sat14-strips-p01,438.97617577780034,523.0
 transport-sat14-strips-p02,481.0777107200559,570.0
 transport-sat14-strips-p03,431.64507456190034,546.0
 transport-sat14-strips-p04,966.1063562109828,1096.0
 transport-sat14-strips-p05,927.9999999999999,928.0
-transport-sat14-strips-p06,966.1063562109828,1100.0
+transport-sat14-strips-p06,966.1063562109828,1096.0
 transport-sat14-strips-p07,1011.3544944353933,1380.0
 transport-sat14-strips-p08,973.0687842030353,1468.0
 transport-sat14-strips-p09,1011.4585556711538,1380.0

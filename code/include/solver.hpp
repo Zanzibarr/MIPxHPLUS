@@ -263,6 +263,7 @@ class Solver {
         std::vector<double> primal_h_values;                                    // hmax/hadd values for each fact
         std::stack<std::pair<unsigned int, double>> primal_trail;               // trail for fact values changes
         std::stack<std::tuple<unsigned int, int, double>> primal_action_trail;  // trail for hmax changes (action, old_pcf, old_pcf_val)
+        bool primal_hadd_with_cost{false};                                      // ghac: score cost(a) + h^add(S u add(a))
         priority_queue<double> primal_pq;                                       // priority queue fo rhmax/hadd updates
         BinarySet primal_used_actions;                                          // Actions used in the current solution (used only for hmax/hadd)
         BinarySet primal_trail_flags;                                           // tracks which facts are in trail (avoids duplicates)
