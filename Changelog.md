@@ -31,7 +31,9 @@ _To see info about this project, please refer to the [Readme](Readme.md)._
 ### :curly_loop: Other
 - Minor optimizations to preprocessing
 ### :rocket: Performance Improvements
-- TBD
+- **min-degree -> min-fill** in VE graph building: 1-2% faster (2-5% faster build time), no significant changes in nodes, 10% less e_{i,j} variables and 12-14% less constraints
+- **gha -> ghac** as greedy choice for the primal heuristic: <1% faster, halved the average optimality gap of the primal heuristic
+- other implementation changes: 1-2% faster, no significant changes in nodes
 
 
 ## [4.3.3] - 2026/11/11
@@ -45,7 +47,7 @@ _To see info about this project, please refer to the [Readme](Readme.md)._
 <!-- ### :x: Removed -->
 <!-- ### :curly_loop: Other -->
 ### :rocket: Performance Improvements
-- 2-3% faster times overall on default parameters
+- 1-2% faster times overall on default parameters
 
 
 ## [4.3.2] - 2026/10/22
