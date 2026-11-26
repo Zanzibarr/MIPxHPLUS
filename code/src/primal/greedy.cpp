@@ -48,7 +48,7 @@ void Solver::primal_greedy_() {
         global_.primal_h_values = std::vector<double>(inst_.n, std::numeric_limits<double>::infinity());
         global_.primal_trail = std::stack<std::pair<unsigned int, double>>{};
         global_.primal_action_trail = std::stack<std::tuple<unsigned int, int, double>>{};
-        global_.primal_pq = priority_queue<double>{inst_.n};
+        global_.primal_pq = priority_queue<double>{static_cast<int>(inst_.n)};
         global_.primal_used_actions = BinarySet(inst_.m);
         global_.primal_trail_flags = BinarySet(inst_.n);
         primal_hmaxadd_init_values_((primal == "ghm") ? hmax : hadd);

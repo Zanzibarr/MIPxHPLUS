@@ -363,7 +363,7 @@ void Solver::lmcut_compute_goal_section_(const lmcut_hmax_function& hmax) {
 }
 
 void Solver::lmcut_update_hmax_values_(const std::vector<unsigned int>& changed_actions, const lmcut_hmax_function& hmax) {
-    priority_queue<double> queue{inst_.n};
+    priority_queue<double> queue{static_cast<int>(inst_.n)};
     for (const auto& act_i : changed_actions) {
         lmcut_update_and_enqueue_effects_values_(queue, act_i);
     }
